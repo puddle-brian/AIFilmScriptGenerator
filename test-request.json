@@ -1,0 +1,10 @@
+{
+  "storyInput": {
+    "title": "Test Story",
+    "genre": "Drama",
+    "logline": "A test story",
+    "characters": "John, a protagonist",
+    "tone": "Serious"
+  },
+  "template": "three-act"
+} 

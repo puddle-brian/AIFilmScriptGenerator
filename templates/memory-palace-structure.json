@@ -1,0 +1,41 @@
+{
+  "name": "Memory Palace Structure (Subjective Time)",
+  "description": "Non-linear exploration of memory, time, and subjective reality where past, present, and imagined future interweave",
+  "structure": {
+    "present_anchor": {
+      "name": "Present Anchor",
+      "description": "Establish a concrete present moment that serves as the anchor point for temporal journeys",
+      "elements": ["Current Location", "Immediate Situation", "Protagonist's State of Mind"]
+    },
+    "memory_trigger": {
+      "name": "Memory Trigger",
+      "description": "An object, person, or sensation that opens the floodgates to the past",
+      "elements": ["Sensory Catalyst", "Emotional Recognition", "Time Displacement Begins"]
+    },
+    "layered_recollection": {
+      "name": "Layered Recollection",
+      "description": "Multiple time periods exist simultaneously, memories within memories",
+      "elements": ["Nested Flashbacks", "Contradictory Versions", "Temporal Overlap"]
+    },
+    "subjective_reconstruction": {
+      "name": "Subjective Reconstruction",
+      "description": "The protagonist actively reconstructs or reimagines past events",
+      "elements": ["Wishful Thinking", "Guilt Revision", "Fantasy Integration"]
+    },
+    "temporal_confusion": {
+      "name": "Temporal Confusion",
+      "description": "The boundaries between past, present, and imagined future dissolve",
+      "elements": ["Time Loops", "Causal Uncertainty", "Reality Questioning"]
+    },
+    "revelation_through_repetition": {
+      "name": "Revelation Through Repetition",
+      "description": "Truth emerges through repeated scenes with subtle variations",
+      "elements": ["Obsessive Return", "Detail Variations", "Gradual Clarity"]
+    },
+    "acceptance_or_madness": {
+      "name": "Acceptance or Madness",
+      "description": "Protagonist either integrates the temporal experience or succumbs to confusion",
+      "elements": ["Psychological Resolution", "Continued Uncertainty", "New Understanding"]
+    }
+  }
+} 

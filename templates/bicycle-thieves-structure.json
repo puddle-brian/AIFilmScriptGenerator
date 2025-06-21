@@ -1,0 +1,41 @@
+{
+  "name": "Bicycle Thieves Structure (Neorealist Social Drama)",
+  "description": "Working-class protagonist faces moral dilemmas in pursuit of basic survival and dignity",
+  "structure": {
+    "economic_setup": {
+      "name": "Economic Setup",
+      "description": "Establish the protagonist's precarious economic situation and social context",
+      "elements": ["Financial Desperation", "Social Conditions", "Family Responsibilities"]
+    },
+    "opportunity_appears": {
+      "name": "Opportunity Appears",
+      "description": "A chance for economic stability presents itself",
+      "elements": ["Job Opportunity", "Required Investment", "Hope for Future"]
+    },
+    "initial_success": {
+      "name": "Initial Success",
+      "description": "Protagonist begins to build toward stability",
+      "elements": ["Work Begins", "Family Pride", "Sense of Purpose"]
+    },
+    "catastrophic_loss": {
+      "name": "Catastrophic Loss",
+      "description": "The foundation of stability is suddenly removed",
+      "elements": ["Theft/Loss", "Immediate Crisis", "System Indifference"]
+    },
+    "desperate_search": {
+      "name": "Desperate Search",
+      "description": "Protagonist pursues recovery through increasingly desperate means",
+      "elements": ["Official Channels Fail", "Personal Investigation", "Growing Desperation"]
+    },
+    "moral_compromise": {
+      "name": "Moral Compromise",
+      "description": "Protagonist faces choice between ethics and survival",
+      "elements": ["Temptation to Steal", "Moral Boundary Crossed", "Justification Attempts"]
+    },
+    "humanizing_revelation": {
+      "name": "Humanizing Revelation",
+      "description": "Recognition of shared humanity even in moral failure",
+      "elements": ["Empathy for Others", "Understanding Systemic Forces", "Dignity in Defeat"]
+    }
+  }
+} 

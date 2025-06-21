@@ -1,0 +1,81 @@
+{
+  "name": "Save the Cat",
+  "description": "Blake Snyder's 15-beat structure for commercial storytelling",
+  "structure": {
+    "opening_image": {
+      "name": "Opening Image (1)",
+      "description": "A visual that represents the struggle and tone of the story",
+      "elements": ["Visual Metaphor", "Tone Established", "Character's Problem Hinted"]
+    },
+    "theme_stated": {
+      "name": "Theme Stated (5)",
+      "description": "During the setup, someone asks a question or makes a statement that is the theme",
+      "elements": ["Central Question", "Life Lesson", "Story's Heart"]
+    },
+    "setup": {
+      "name": "Set-Up (1-10)",
+      "description": "Introduce the hero, the stakes, and the goal of the story",
+      "elements": ["Hero Introduction", "Status Quo", "What's at Stake"]
+    },
+    "catalyst": {
+      "name": "Catalyst (12)",
+      "description": "The inciting incident that sets the story in motion",
+      "elements": ["Life-Changing Event", "No Going Back", "New Direction"]
+    },
+    "debate": {
+      "name": "Debate (12-25)",
+      "description": "The hero weighs whether to take on the challenge",
+      "elements": ["Should I Go?", "Fear vs. Need", "Internal Conflict"]
+    },
+    "break_into_two": {
+      "name": "Break Into Two (25)",
+      "description": "The hero decides to take on the challenge and enters Act 2",
+      "elements": ["Choice Made", "New World Entered", "Adventure Begins"]
+    },
+    "b_story": {
+      "name": "B Story (30)",
+      "description": "A subplot that carries the theme of the movie",
+      "elements": ["Secondary Character", "Theme Explored", "Emotional Journey"]
+    },
+    "fun_and_games": {
+      "name": "Fun and Games (30-55)",
+      "description": "The premise of the movie is explored - the trailer moments",
+      "elements": ["Promise of Premise", "Trailer Moments", "Audience Expectations Met"]
+    },
+    "midpoint": {
+      "name": "Midpoint (55)",
+      "description": "An up or down moment that changes the direction of the story",
+      "elements": ["False Victory/Defeat", "Stakes Raised", "New Information"]
+    },
+    "bad_guys_close_in": {
+      "name": "Bad Guys Close In (55-75)",
+      "description": "Forces of antagonism gather momentum against the hero",
+      "elements": ["External Pressure", "Internal Doubts", "Team Falls Apart"]
+    },
+    "all_is_lost": {
+      "name": "All Is Lost (75)",
+      "description": "The hero's lowest point - the moment of greatest despair",
+      "elements": ["Lowest Point", "Hope Lost", "Death Moment"]
+    },
+    "dark_night_of_soul": {
+      "name": "Dark Night of the Soul (75-85)",
+      "description": "The hero mourns the loss and processes the journey so far",
+      "elements": ["Reflection", "Processing Loss", "Finding Inner Strength"]
+    },
+    "break_into_three": {
+      "name": "Break Into Three (85)",
+      "description": "The hero finds the solution to the problem",
+      "elements": ["A-ha Moment", "Solution Found", "New Approach"]
+    },
+    "finale": {
+      "name": "Finale (85-110)",
+      "description": "The hero applies the new lesson and defeats the antagonist",
+      "elements": ["Final Battle", "Lessons Applied", "Old vs. New Self"]
+    },
+    "final_image": {
+      "name": "Final Image (110)",
+      "description": "A visual that represents the change that has occurred",
+      "elements": ["Transformation Complete", "New Normal", "Growth Shown"]
+    }
+  }
+} 

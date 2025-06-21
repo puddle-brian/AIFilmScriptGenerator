@@ -1,0 +1,66 @@
+{
+  "name": "Hero's Journey",
+  "description": "Joseph Campbell's monomyth structure following the hero's transformative journey",
+  "structure": {
+    "ordinary_world": {
+      "name": "Ordinary World",
+      "description": "The hero's normal life before the adventure begins",
+      "elements": ["Status Quo", "Hero's Background", "Mundane Problems"]
+    },
+    "call_to_adventure": {
+      "name": "Call to Adventure",
+      "description": "The hero is presented with a problem or challenge",
+      "elements": ["Disruption", "Quest Presented", "Stakes Established"]
+    },
+    "refusal_of_call": {
+      "name": "Refusal of the Call",
+      "description": "The hero hesitates or refuses the adventure due to fear or doubt",
+      "elements": ["Hesitation", "Fear of Unknown", "Comfort Zone"]
+    },
+    "meeting_mentor": {
+      "name": "Meeting the Mentor",
+      "description": "The hero encounters a wise figure who gives advice, guidance, or magical gifts",
+      "elements": ["Wise Guide", "Gifts/Tools", "Encouragement"]
+    },
+    "crossing_threshold": {
+      "name": "Crossing the First Threshold",
+      "description": "The hero commits to the adventure and enters the special world",
+      "elements": ["Point of No Return", "Entering Special World", "First Challenges"]
+    },
+    "tests_allies_enemies": {
+      "name": "Tests, Allies, and Enemies",
+      "description": "The hero faces challenges and makes allies and enemies in the special world",
+      "elements": ["New Rules", "Allies Gained", "Enemies Revealed", "Skills Tested"]
+    },
+    "approach": {
+      "name": "Approach to the Inmost Cave",
+      "description": "The hero prepares for the major challenge in the special world",
+      "elements": ["Preparation", "Final Planning", "Inner Fears Faced"]
+    },
+    "ordeal": {
+      "name": "The Ordeal",
+      "description": "The hero faces their greatest fear or most difficult challenge",
+      "elements": ["Greatest Fear", "Death/Rebirth", "Crisis Point"]
+    },
+    "reward": {
+      "name": "The Reward",
+      "description": "The hero survives and gains something from the experience",
+      "elements": ["Surviving Death", "Gaining Treasure", "New Wisdom"]
+    },
+    "road_back": {
+      "name": "The Road Back",
+      "description": "The hero begins the journey back to the ordinary world",
+      "elements": ["Returning Home", "New Challenges", "Commitment to Change"]
+    },
+    "resurrection": {
+      "name": "Resurrection",
+      "description": "The hero faces a final test and is transformed by the experience",
+      "elements": ["Final Test", "Transformation", "New Self Emerges"]
+    },
+    "return_with_elixir": {
+      "name": "Return with the Elixir",
+      "description": "The hero returns home transformed and with something to benefit the ordinary world",
+      "elements": ["Homecoming", "Sharing Wisdom", "World Changed"]
+    }
+  }
+} 

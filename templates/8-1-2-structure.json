@@ -1,0 +1,41 @@
+{
+  "name": "8½ Structure (Stream of Consciousness)",
+  "description": "Reality, memory, and fantasy interweave in a non-linear exploration of artistic crisis and personal identity",
+  "structure": {
+    "present_crisis": {
+      "name": "Present Crisis",
+      "description": "Establish the protagonist's current creative and personal paralysis",
+      "elements": ["Artistic Block", "Personal Relationships in Crisis", "External Pressures"]
+    },
+    "childhood_memories": {
+      "name": "Childhood Memories",
+      "description": "Formative experiences that shaped the protagonist's psyche and artistic vision",
+      "elements": ["Foundational Trauma", "Early Influences", "Loss of Innocence"]
+    },
+    "fantasy_sequences": {
+      "name": "Fantasy Sequences",
+      "description": "Idealized or surreal scenarios that reveal inner desires and fears",
+      "elements": ["Wish Fulfillment", "Symbolic Imagery", "Subconscious Desires"]
+    },
+    "relationship_fragments": {
+      "name": "Relationship Fragments",
+      "description": "Non-linear exploration of past and present relationships",
+      "elements": ["Wife/Partner Dynamics", "Muse Figures", "Mother/Father Relationships"]
+    },
+    "artistic_process": {
+      "name": "Artistic Process",
+      "description": "Meta-commentary on the creative process and artistic responsibility",
+      "elements": ["Creative Struggles", "Artistic Integrity", "Commercial Pressures"]
+    },
+    "integration_attempt": {
+      "name": "Integration Attempt",
+      "description": "Protagonist tries to synthesize all elements into coherent artistic vision",
+      "elements": ["Bringing Together Fragments", "Accepting Contradictions", "Creative Breakthrough"]
+    },
+    "circular_resolution": {
+      "name": "Circular Resolution",
+      "description": "Ending that loops back to beginning with new understanding or continued uncertainty",
+      "elements": ["Return to Starting Point", "Transformed Perspective", "Ongoing Journey"]
+    }
+  }
+} 

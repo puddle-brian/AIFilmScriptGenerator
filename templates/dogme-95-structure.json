@@ -1,0 +1,41 @@
+{
+  "name": "Dogme 95 Structure (Naturalistic Social Drama)",
+  "description": "Raw, handheld naturalistic approach focusing on authentic human behavior and social dynamics",
+  "structure": {
+    "family_gathering": {
+      "name": "Family/Group Gathering",
+      "description": "Characters assemble for a specific social occasion, tensions simmer beneath surface civility",
+      "elements": ["Arrival Dynamics", "Hidden Tensions", "Social Facades"]
+    },
+    "underlying_conflicts": {
+      "name": "Underlying Conflicts",
+      "description": "Past grievances and current resentments begin to surface through natural interactions",
+      "elements": ["Old Wounds", "Unspoken Resentments", "Class/Power Dynamics"]
+    },
+    "alcohol_catalyst": {
+      "name": "Social Lubricant/Catalyst",
+      "description": "Alcohol, celebration, or stress removes inhibitions and social filters",
+      "elements": ["Lowered Defenses", "Truth Telling", "Behavioral Changes"]
+    },
+    "eruption_of_truth": {
+      "name": "Eruption of Truth",
+      "description": "Suppressed emotions and secrets explode in raw, uncomfortable confrontations",
+      "elements": ["Public Humiliation", "Secret Revelations", "Emotional Violence"]
+    },
+    "group_fragmentation": {
+      "name": "Group Fragmentation",
+      "description": "The social unit breaks apart as individuals choose sides or flee",
+      "elements": ["Alliance Shifts", "Abandonment", "Isolation"]
+    },
+    "individual_reckoning": {
+      "name": "Individual Reckoning",
+      "description": "Characters face the consequences of revealed truths about themselves and others",
+      "elements": ["Self-Confrontation", "Moral Inventory", "Relationship Assessment"]
+    },
+    "fragile_reconciliation": {
+      "name": "Fragile Reconciliation",
+      "description": "Tentative attempts at healing or acceptance of permanent damage",
+      "elements": ["Awkward Apologies", "Conditional Forgiveness", "Changed Relationships"]
+    }
+  }
+} 

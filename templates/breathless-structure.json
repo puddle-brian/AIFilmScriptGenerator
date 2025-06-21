@@ -1,0 +1,41 @@
+{
+  "name": "Breathless Structure (Nouvelle Vague)",
+  "description": "Improvised, episodic structure following characters living moment to moment with existential detachment",
+  "structure": {
+    "impulsive_act": {
+      "name": "Impulsive Act",
+      "description": "Protagonist commits to action without full consideration of consequences",
+      "elements": ["Spontaneous Decision", "Criminal Act", "Point of No Return"]
+    },
+    "urban_drift": {
+      "name": "Urban Drift",
+      "description": "Characters move through city spaces, engaging in seemingly casual interactions",
+      "elements": ["Wandering Through City", "Casual Encounters", "Philosophical Conversations"]
+    },
+    "romantic_interlude": {
+      "name": "Romantic Interlude",
+      "description": "Extended sequences exploring relationship dynamics and sexual tension",
+      "elements": ["Seduction Attempts", "Power Games", "Intimate Conversations"]
+    },
+    "existential_discussions": {
+      "name": "Existential Discussions",
+      "description": "Characters debate life, death, love, and meaning in seemingly casual moments",
+      "elements": ["Philosophical Debates", "Literary References", "Cultural Commentary"]
+    },
+    "consequences_emerge": {
+      "name": "Consequences Emerge",
+      "description": "The reality of earlier actions begins to intrude on the drift",
+      "elements": ["Police Investigation", "Past Catches Up", "Freedom Threatened"]
+    },
+    "betrayal_revelation": {
+      "name": "Betrayal/Revelation",
+      "description": "Trust is broken or hidden motivations are revealed",
+      "elements": ["Character Betrayal", "True Motivations", "Illusions Shattered"]
+    },
+    "fatalistic_ending": {
+      "name": "Fatalistic Ending",
+      "description": "Conclusion that accepts the inevitability of consequences",
+      "elements": ["Acceptance of Fate", "Final Gesture", "Existential Resignation"]
+    }
+  }
+} 

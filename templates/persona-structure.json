@@ -1,0 +1,41 @@
+{
+  "name": "Persona Structure (Psychological Chamber)",
+  "description": "Two characters in isolation, exploring identity, performance, and the dissolution of self",
+  "structure": {
+    "initial_separation": {
+      "name": "Initial Separation",
+      "description": "Establish the two main characters and their distinct identities/situations",
+      "elements": ["Character A's Crisis", "Character B's Role", "Isolation Setting"]
+    },
+    "tentative_connection": {
+      "name": "Tentative Connection",
+      "description": "Characters begin to interact, initial boundaries established",
+      "elements": ["First Interactions", "Power Dynamics", "Mutual Observation"]
+    },
+    "role_exploration": {
+      "name": "Role Exploration",
+      "description": "Characters test different personas and relationship dynamics",
+      "elements": ["Caretaker/Patient", "Confessor/Listener", "Performer/Audience"]
+    },
+    "boundary_blurring": {
+      "name": "Boundary Blurring",
+      "description": "The distinction between characters begins to break down",
+      "elements": ["Shared Experiences", "Identity Confusion", "Psychological Merging"]
+    },
+    "crisis_revelation": {
+      "name": "Crisis/Revelation",
+      "description": "A moment of brutal honesty or psychological breakdown",
+      "elements": ["Mask Removal", "Truth Confrontation", "Psychological Violence"]
+    },
+    "attempted_separation": {
+      "name": "Attempted Separation",
+      "description": "Characters try to reestablish boundaries and distinct identities",
+      "elements": ["Rejection of Connection", "Return to Roles", "Defensive Mechanisms"]
+    },
+    "ambiguous_resolution": {
+      "name": "Ambiguous Resolution",
+      "description": "Ending that questions the nature of identity and human connection",
+      "elements": ["Unresolved Tension", "Continued Ambiguity", "Existential Questions"]
+    }
+  }
+} 

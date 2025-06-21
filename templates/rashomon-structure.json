@@ -1,0 +1,41 @@
+{
+  "name": "Rashomon Structure (Multiple Perspectives)",
+  "description": "Multiple narrators tell conflicting versions of the same events, revealing subjective truth and human nature",
+  "structure": {
+    "frame_opening": {
+      "name": "Frame Opening",
+      "description": "Establish the framing device - characters discussing or investigating the central event",
+      "elements": ["Setting the Frame", "Initial Mystery", "Unreliable Narrators Introduced"]
+    },
+    "first_perspective": {
+      "name": "First Perspective",
+      "description": "The first narrator's version of events, establishing baseline narrative",
+      "elements": ["Narrator Introduction", "Their Version of Truth", "Character Motivations Revealed"]
+    },
+    "second_perspective": {
+      "name": "Second Perspective", 
+      "description": "Second narrator contradicts or adds to the first version",
+      "elements": ["Contradictory Details", "New Information", "Different Character Focus"]
+    },
+    "third_perspective": {
+      "name": "Third Perspective",
+      "description": "Third narrator provides another layer of contradiction or revelation",
+      "elements": ["Further Contradictions", "Hidden Motivations", "Moral Complexity"]
+    },
+    "fourth_perspective": {
+      "name": "Fourth Perspective (Optional)",
+      "description": "Additional perspective that may be more objective or equally subjective",
+      "elements": ["Witness Account", "Outside Perspective", "New Evidence"]
+    },
+    "synthesis_revelation": {
+      "name": "Synthesis/Revelation",
+      "description": "Attempt to reconcile the different versions or accept their irreducibility",
+      "elements": ["Truth Remains Elusive", "Human Nature Explored", "Moral Ambiguity"]
+    },
+    "frame_closing": {
+      "name": "Frame Closing",
+      "description": "Return to framing device with new understanding or continued uncertainty",
+      "elements": ["Characters React", "Philosophical Implications", "Ambiguous Resolution"]
+    }
+  }
+} 

@@ -1,0 +1,51 @@
+{
+  "name": "Three-Act Structure",
+  "description": "Classic three-act storytelling structure with setup, confrontation, and resolution",
+  "structure": {
+    "act1_setup": {
+      "name": "Act 1: Setup",
+      "description": "Introduce the protagonist, establish the ordinary world, and set up the central conflict",
+      "elements": ["Opening Image", "Setup", "Theme Stated", "Catalyst", "Debate"]
+    },
+    "act1_inciting_incident": {
+      "name": "Inciting Incident",
+      "description": "The event that disrupts the protagonist's normal life and sets the story in motion",
+      "elements": ["Call to Adventure", "Disruption of Normal World"]
+    },
+    "act1_plot_point_1": {
+      "name": "Plot Point 1",
+      "description": "The moment when the protagonist commits to the journey and enters Act 2",
+      "elements": ["Point of No Return", "Entering New World"]
+    },
+    "act2a_rising_action": {
+      "name": "Act 2A: Rising Action",
+      "description": "The protagonist learns the rules of the new world and faces initial obstacles",
+      "elements": ["Fun and Games", "Learning the Rules", "Initial Obstacles"]
+    },
+    "act2_midpoint": {
+      "name": "Midpoint",
+      "description": "A major revelation or turning point that changes the protagonist's approach",
+      "elements": ["False Victory/Defeat", "Revelation", "Stakes Raised"]
+    },
+    "act2b_obstacles": {
+      "name": "Act 2B: Obstacles",
+      "description": "The protagonist faces greater challenges as the antagonist closes in",
+      "elements": ["Bad Guys Close In", "Internal Doubts", "Team Disintegration"]
+    },
+    "act2_plot_point_2": {
+      "name": "Plot Point 2", 
+      "description": "The lowest point for the protagonist, leading into the final act",
+      "elements": ["All is Lost", "Dark Night of the Soul", "Final Lesson Learned"]
+    },
+    "act3_climax": {
+      "name": "Act 3: Climax",
+      "description": "The final confrontation between protagonist and antagonist",
+      "elements": ["Final Battle", "Applying Lessons Learned", "Character Arc Complete"]
+    },
+    "act3_resolution": {
+      "name": "Resolution",
+      "description": "The aftermath of the climax and return to a new normal",
+      "elements": ["Final Image", "New World Order", "Character Growth Shown"]
+    }
+  }
+} 
