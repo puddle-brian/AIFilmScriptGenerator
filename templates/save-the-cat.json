@@ -1,6 +1,7 @@
 {
   "name": "Save the Cat",
   "description": "Blake Snyder's 15-beat structure for commercial storytelling",
+  "category": "criterion_patterns",
   "structure": {
     "opening_image": {
       "name": "Opening Image (1)",

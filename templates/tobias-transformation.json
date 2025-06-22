@@ -1,0 +1,38 @@
+{
+  "name": "Transformation",
+  "description": "A character undergoes fundamental change, becoming a completely different person",
+  "category": "tobias_20_plots",
+  "examples": "Jekyll and Hyde, The Fly, Shrek",
+  "structure": {
+    "catalyst": {
+      "name": "Catalyst",
+      "description": "An event or force triggers the transformation process",
+      "elements": ["Change Agent", "Transformation Begun", "Point of No Return"]
+    },
+    "initial_change": {
+      "name": "Initial Change",
+      "description": "The first signs of transformation become apparent",
+      "elements": ["Physical Changes", "Behavioral Shifts", "Identity Confusion"]
+    },
+    "struggle": {
+      "name": "Struggle",
+      "description": "The character fights against or tries to control the change",
+      "elements": ["Resistance", "Internal Conflict", "Desperate Measures"]
+    },
+    "acceptance": {
+      "name": "Acceptance",
+      "description": "The character begins to accept their new nature",
+      "elements": ["Self-Recognition", "New Abilities", "Changed Perspective"]
+    },
+    "integration": {
+      "name": "Integration",
+      "description": "The character learns to live with their transformed self",
+      "elements": ["Balance Found", "New Identity", "Relationships Rebuilt"]
+    },
+    "new_equilibrium": {
+      "name": "New Equilibrium",
+      "description": "A stable state is reached with the transformed character",
+      "elements": ["Acceptance by Others", "New Normal", "Growth Completed"]
+    }
+  }
+} 

@@ -1,0 +1,38 @@
+{
+  "name": "Rebirth",
+  "description": "A character trapped in darkness or evil is redeemed through love or sacrifice",
+  "category": "booker_7_plots",
+  "examples": "A Christmas Carol, Beauty and the Beast, Groundhog Day",
+  "structure": {
+    "initial_darkness": {
+      "name": "Initial Darkness",
+      "description": "The protagonist is trapped in a dark, selfish, or corrupted state",
+      "elements": ["Spiritual Death", "Isolation", "Negative Behavior"]
+    },
+    "catalyst": {
+      "name": "Catalyst",
+      "description": "An event or person enters the protagonist's life as a force for change",
+      "elements": ["Agent of Change", "Challenge Presented", "Opportunity for Growth"]
+    },
+    "resistance": {
+      "name": "Resistance",
+      "description": "The protagonist initially resists change, clinging to old ways",
+      "elements": ["Denial", "Old Patterns", "Fear of Change"]
+    },
+    "growing_awareness": {
+      "name": "Growing Awareness",
+      "description": "The protagonist begins to see the need for change",
+      "elements": ["Self-Recognition", "Glimpses of Truth", "Internal Conflict"]
+    },
+    "crisis": {
+      "name": "Crisis",
+      "description": "A crucial moment where the protagonist must choose transformation or remain trapped",
+      "elements": ["Moment of Truth", "Ultimate Test", "Choice Required"]
+    },
+    "transformation": {
+      "name": "Transformation",
+      "description": "The protagonist chooses change and is spiritually reborn",
+      "elements": ["Redemption", "New Life", "Love Triumphs"]
+    }
+  }
+} 

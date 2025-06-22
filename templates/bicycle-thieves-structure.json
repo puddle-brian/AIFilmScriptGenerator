@@ -1,6 +1,7 @@
 {
   "name": "Bicycle Thieves Structure (Neorealist Social Drama)",
   "description": "Working-class protagonist faces moral dilemmas in pursuit of basic survival and dignity",
+  "category": "criterion_patterns",
   "structure": {
     "economic_setup": {
       "name": "Economic Setup",

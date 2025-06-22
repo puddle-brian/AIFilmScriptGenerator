@@ -1,6 +1,7 @@
 {
   "name": "Memory Palace Structure (Subjective Time)",
   "description": "Non-linear exploration of memory, time, and subjective reality where past, present, and imagined future interweave",
+  "category": "criterion_patterns",
   "structure": {
     "present_anchor": {
       "name": "Present Anchor",

@@ -39,6 +39,115 @@ body {
     font-weight: 300;
 }
 
+/* Project Header */
+.project-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    padding: 20px 30px;
+    margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: slideDown 0.5s ease;
+}
+
+@keyframes slideDown {
+    from { 
+        opacity: 0; 
+        transform: translateY(-20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.project-info {
+    flex: 1;
+}
+
+.project-title-section {
+    display: flex;
+    align-items: baseline;
+    gap: 15px;
+    margin-bottom: 8px;
+}
+
+.project-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+}
+
+.project-status {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.project-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #718096;
+    font-size: 0.9rem;
+}
+
+.project-template,
+.project-scenes,
+.project-id {
+    font-weight: 500;
+}
+
+.project-separator {
+    color: #cbd5e0;
+    font-weight: bold;
+}
+
+.project-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+}
+
+@media (max-width: 768px) {
+    .project-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+        padding: 20px;
+    }
+    
+    .project-title-section {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .project-meta {
+        flex-wrap: wrap;
+    }
+    
+    .project-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
 /* Progress Indicator */
 .progress-container {
     margin-bottom: 40px;
@@ -409,6 +518,71 @@ body {
 .template-option p {
     color: #718096;
     line-height: 1.5;
+}
+
+/* Template Category Styles */
+.template-category {
+    margin-bottom: 40px;
+    border: 1px solid #e2e8f0;
+    border-radius: 15px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.category-header {
+    background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+    padding: 20px 25px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.category-header h3 {
+    margin: 0 0 8px 0;
+    color: #2d3748;
+    font-size: 1.4rem;
+    font-weight: 600;
+}
+
+.category-description {
+    margin: 0;
+    color: #718096;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.templates-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 15px;
+    padding: 20px;
+}
+
+.template-option h4 {
+    margin: 0 0 10px 0;
+    color: #2d3748;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.template-description {
+    color: #718096;
+    line-height: 1.5;
+    margin: 0 0 10px 0;
+    font-size: 0.9rem;
+}
+
+.template-examples {
+    color: #4a5568;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin: 0;
+    padding-top: 10px;
+    border-top: 1px solid #f1f3f4;
+}
+
+.template-examples strong {
+    color: #4facfe;
+    font-weight: 600;
 }
 
 /* Structure Content */
@@ -1010,12 +1184,12 @@ body {
 
 /* Scene Group Styles for Individual Generation */
 .scene-group-header {
-    background: #e9ecef;
-    padding: 15px;
+    background: #f8fafc;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #dee2e6;
 }
 
 .scene-group-header h3 {
@@ -1111,4 +1285,321 @@ body {
 
 .plot-info {
     font-style: italic;
+}
+
+/* Prompt Preview Modal Styles */
+.prompt-modal .modal-content {
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 1000px;
+}
+
+.prompt-section {
+    margin-bottom: 25px;
+}
+
+.prompt-section h4 {
+    color: #2d3748;
+    margin-bottom: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 5px;
+}
+
+.prompt-content {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 300px;
+    overflow-y: auto;
+    color: #4a5568;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px 25px;
+    border-top: 1px solid #e2e8f0;
+    background: #f7fafc;
+}
+
+/* Prompt Review Section */
+.prompt-review-section {
+    background: linear-gradient(135deg, #e6fffa 0%, #f0fff4 100%);
+    border: 1px solid #68d391;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 25px;
+}
+
+.prompt-review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.prompt-review-header h3 {
+    margin: 0;
+    color: #2f855a;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.prompt-summary {
+    color: #2d3748;
+    font-size: 0.9rem;
+}
+
+.prompt-summary p {
+    margin: 5px 0;
+    line-height: 1.4;
+}
+
+.prompt-summary strong {
+    color: #2f855a;
+    font-weight: 600;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.btn-success {
+    background: #48bb78;
+    color: white;
+    border: 2px solid #48bb78;
+}
+
+.btn-success:hover {
+    background: #38a169;
+    border-color: #38a169;
+}
+
+/* Prompt Editor Styles */
+.prompt-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f7fafc;
+}
+
+.prompt-editor {
+    width: 100%;
+    min-height: 200px;
+    padding: 15px;
+    border: 2px solid #4facfe;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    background: white;
+    color: #2d3748;
+    resize: vertical;
+}
+
+.prompt-editor:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.custom-prompt-notice {
+    background: linear-gradient(135deg, #fef5e7 0%, #fff5d6 100%);
+    border: 1px solid #f6ad55;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.custom-prompt-notice p {
+    margin: 0;
+    color: #744210;
+    font-size: 0.9rem;
+}
+
+.custom-prompt-notice strong {
+    color: #c05621;
+}
+
+/* Plot Points Generation Styles */
+.plot-points-generation {
+    margin-top: 20px;
+}
+
+.structure-element-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+
+.element-header {
+    background: #f8fafc;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.element-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 1.2rem;
+}
+
+.element-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.element-description {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: white;
+}
+
+.element-description p {
+    margin: 5px 0;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.plot-points-container {
+    padding: 20px;
+    background: white;
+}
+
+.no-plot-points {
+    color: #64748b;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+    background: #f8fafc;
+    border-radius: 4px;
+}
+
+.plot-points-list h4 {
+    color: #1e293b;
+    margin-bottom: 15px;
+    font-size: 1rem;
+}
+
+.plot-point-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.plot-point-item:last-child {
+    border-bottom: none;
+}
+
+.plot-point-number {
+    background: #3b82f6;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.plot-point-content {
+    flex: 1;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #334155;
+}
+
+.plot-point-actions {
+    display: flex;
+    gap: 5px;
+}
+
+.plot-point-actions .btn {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+/* Plot Points Reference in Scenes */
+.plot-points-reference {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.plot-points-reference h4 {
+    color: #0369a1;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.plot-points-reference ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.plot-points-reference li {
+    color: #0369a1;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    margin-bottom: 5px;
+}
+
+.plot-points-warning {
+    background: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 4px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+.plot-points-warning p {
+    color: #92400e;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Update scene group header to accommodate new actions */
+.scene-group-header {
+    background: #f8fafc;
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scene-group-actions {
+    display: flex;
+    gap: 10px;
 }

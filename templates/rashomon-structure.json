@@ -1,6 +1,7 @@
 {
   "name": "Rashomon Structure (Multiple Perspectives)",
   "description": "Multiple narrators tell conflicting versions of the same events, revealing subjective truth and human nature",
+  "category": "criterion_patterns",
   "structure": {
     "frame_opening": {
       "name": "Frame Opening",

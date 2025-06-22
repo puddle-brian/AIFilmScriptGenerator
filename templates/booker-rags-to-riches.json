@@ -1,0 +1,38 @@
+{
+  "name": "Rags to Riches",
+  "description": "A humble protagonist rises from obscurity to wealth, power, or status through perseverance and personal growth",
+  "category": "booker_7_plots",
+  "examples": "Cinderella, Pretty Woman, Slumdog Millionaire",
+  "structure": {
+    "initial_wretchedness": {
+      "name": "Initial Wretchedness",
+      "description": "The hero is in a lowly position, oppressed or undervalued",
+      "elements": ["Humble Origins", "Oppression", "Hidden Potential"]
+    },
+    "call_to_adventure": {
+      "name": "Call to Adventure",
+      "description": "An opportunity for advancement presents itself",
+      "elements": ["Opportunity Appears", "Chance Encounter", "Door Opens"]
+    },
+    "getting_out": {
+      "name": "Getting Out",
+      "description": "The hero takes the first steps toward improvement",
+      "elements": ["First Attempt", "Leaving Old Life", "Taking Risks"]
+    },
+    "first_success": {
+      "name": "First Success",
+      "description": "Initial achievements bring hope and confidence",
+      "elements": ["Early Victory", "Recognition", "Growing Confidence"]
+    },
+    "crisis": {
+      "name": "Crisis",
+      "description": "A major setback threatens to undo all progress",
+      "elements": ["Major Obstacle", "Identity Crisis", "Values Tested"]
+    },
+    "final_triumph": {
+      "name": "Final Triumph",
+      "description": "The hero overcomes the crisis and achieves transformation",
+      "elements": ["True Self Revealed", "Success Achieved", "Transformation Complete"]
+    }
+  }
+} 

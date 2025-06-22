@@ -1,6 +1,7 @@
 {
   "name": "8½ Structure (Stream of Consciousness)",
   "description": "Reality, memory, and fantasy interweave in a non-linear exploration of artistic crisis and personal identity",
+  "category": "criterion_patterns",
   "structure": {
     "present_crisis": {
       "name": "Present Crisis",

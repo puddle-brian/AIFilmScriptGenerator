@@ -1,0 +1,38 @@
+{
+  "name": "Supplication",
+  "description": "A person in distress appeals to another for help or mercy",
+  "category": "polti_36_situations",
+  "examples": "Antigone pleading for burial rights, Oliver Twist asking for more food",
+  "structure": {
+    "desperation": {
+      "name": "Desperation",
+      "description": "The supplicant faces a dire situation requiring outside help",
+      "elements": ["Crisis Established", "Need Identified", "Powerlessness Revealed"]
+    },
+    "approach": {
+      "name": "The Approach",
+      "description": "The supplicant seeks out the person who has the power to help",
+      "elements": ["Authority Identified", "Access Sought", "Preparation Made"]
+    },
+    "supplication": {
+      "name": "The Supplication",
+      "description": "The formal request for help is made",
+      "elements": ["Plea Delivered", "Vulnerability Shown", "Stakes Revealed"]
+    },
+    "consideration": {
+      "name": "Consideration",
+      "description": "The powerful person weighs the request and its implications",
+      "elements": ["Decision Process", "Competing Interests", "Moral Weight"]
+    },
+    "response": {
+      "name": "Response",
+      "description": "The answer is given - help granted, denied, or conditional",
+      "elements": ["Decision Rendered", "Terms Set", "Consequences Begin"]
+    },
+    "aftermath": {
+      "name": "Aftermath",
+      "description": "The results of the supplication play out",
+      "elements": ["Help Received/Denied", "New Dynamics", "Lesson Learned"]
+    }
+  }
+} 

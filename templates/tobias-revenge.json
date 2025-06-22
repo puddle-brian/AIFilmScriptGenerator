@@ -1,0 +1,38 @@
+{
+  "name": "Revenge",
+  "description": "A protagonist seeks retribution against those who have wronged them",
+  "category": "tobias_20_plots",
+  "examples": "The Count of Monte Cristo, Kill Bill, Gladiator",
+  "structure": {
+    "the_wrong": {
+      "name": "The Wrong",
+      "description": "The protagonist suffers a grave injustice or loss",
+      "elements": ["Initial Harm", "Personal Loss", "Injustice Established"]
+    },
+    "recognition": {
+      "name": "Recognition",
+      "description": "The protagonist realizes the extent of the wrong and who is responsible",
+      "elements": ["Truth Revealed", "Culprit Identified", "Motivation Crystallized"]
+    },
+    "the_vow": {
+      "name": "The Vow",
+      "description": "The protagonist commits to seeking revenge",
+      "elements": ["Promise Made", "Path Chosen", "Point of No Return"]
+    },
+    "pursuit": {
+      "name": "The Pursuit",
+      "description": "The protagonist hunts down the target and gathers power",
+      "elements": ["Target Pursued", "Strength Gathered", "Plan Formed"]
+    },
+    "confrontation": {
+      "name": "Confrontation",
+      "description": "The protagonist faces the antagonist in direct conflict",
+      "elements": ["Face-to-Face Meeting", "Truth Revealed", "Stakes Raised"]
+    },
+    "justice": {
+      "name": "Justice",
+      "description": "Revenge is achieved, but at what cost?",
+      "elements": ["Retribution Delivered", "Price Paid", "Moral Reckoning"]
+    }
+  }
+} 

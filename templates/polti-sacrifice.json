@@ -1,0 +1,38 @@
+{
+  "name": "Self-Sacrificing for a Loved One",
+  "description": "A character gives up something precious to save or help someone they love",
+  "category": "polti_36_situations",
+  "examples": "A Tale of Two Cities, Casablanca, The Gift of the Magi",
+  "structure": {
+    "threat_to_loved_one": {
+      "name": "Threat to Loved One",
+      "description": "Someone the protagonist loves faces danger or need",
+      "elements": ["Danger Identified", "Love Established", "Stakes Set"]
+    },
+    "recognition": {
+      "name": "Recognition",
+      "description": "The protagonist realizes they can help through sacrifice",
+      "elements": ["Solution Seen", "Cost Understood", "Choice Presented"]
+    },
+    "internal_struggle": {
+      "name": "Internal Struggle",
+      "description": "The protagonist wrestles with the decision to sacrifice",
+      "elements": ["Doubt and Fear", "Love vs Self-Interest", "Moral Weight"]
+    },
+    "decision": {
+      "name": "The Decision",
+      "description": "The protagonist chooses to make the sacrifice",
+      "elements": ["Choice Made", "Path Committed", "Love Triumphs"]
+    },
+    "sacrifice": {
+      "name": "The Sacrifice",
+      "description": "The protagonist gives up what they value for their loved one",
+      "elements": ["Act Performed", "Price Paid", "Love Demonstrated"]
+    },
+    "consequence": {
+      "name": "Consequence",
+      "description": "The results of the sacrifice unfold",
+      "elements": ["Loved One Saved", "Transformation", "Noble Purpose Fulfilled"]
+    }
+  }
+} 

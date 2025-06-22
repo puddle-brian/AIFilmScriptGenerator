@@ -1,6 +1,7 @@
 {
   "name": "Breathless Structure (Nouvelle Vague)",
   "description": "Improvised, episodic structure following characters living moment to moment with existential detachment",
+  "category": "criterion_patterns",
   "structure": {
     "impulsive_act": {
       "name": "Impulsive Act",

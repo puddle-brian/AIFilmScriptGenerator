@@ -1,0 +1,38 @@
+{
+  "name": "Escape",
+  "description": "A protagonist must break free from physical, emotional, or psychological imprisonment",
+  "category": "tobias_20_plots",
+  "examples": "The Shawshank Redemption, Room, Cast Away",
+  "structure": {
+    "imprisonment": {
+      "name": "Imprisonment",
+      "description": "The protagonist is trapped in an unacceptable situation",
+      "elements": ["Confinement Established", "Limitations Defined", "Desperation Set"]
+    },
+    "recognition": {
+      "name": "Recognition",
+      "description": "The protagonist realizes escape is necessary and possible",
+      "elements": ["Hope Discovered", "Opportunity Glimpsed", "Determination Born"]
+    },
+    "preparation": {
+      "name": "Preparation",
+      "description": "The protagonist plans and prepares for the escape attempt",
+      "elements": ["Plan Developed", "Resources Gathered", "Allies Found"]
+    },
+    "first_attempt": {
+      "name": "First Attempt",
+      "description": "The initial escape attempt, often unsuccessful",
+      "elements": ["Plan Executed", "Obstacles Encountered", "Setback Experienced"]
+    },
+    "renewed_effort": {
+      "name": "Renewed Effort",
+      "description": "Learning from failure, the protagonist tries again",
+      "elements": ["Lessons Learned", "New Strategy", "Determination Renewed"]
+    },
+    "breakthrough": {
+      "name": "Breakthrough",
+      "description": "The protagonist finally achieves freedom",
+      "elements": ["Barrier Broken", "Freedom Achieved", "New Life Begun"]
+    }
+  }
+} 

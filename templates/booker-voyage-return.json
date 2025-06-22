@@ -1,0 +1,43 @@
+{
+  "name": "Voyage and Return",
+  "description": "The hero travels to a strange new world, has adventures, then returns home transformed",
+  "category": "booker_7_plots",
+  "examples": "Alice in Wonderland, The Wizard of Oz, Avatar",
+  "structure": {
+    "anticipation_stage": {
+      "name": "Anticipation Stage",
+      "description": "Life in the ordinary world before the journey",
+      "elements": ["Normal Life", "Restlessness", "Desire for Adventure"]
+    },
+    "journey": {
+      "name": "The Journey",
+      "description": "The hero travels to or discovers the strange new world",
+      "elements": ["Portal Crossed", "New World Entered", "Wonder and Confusion"]
+    },
+    "first_wonder": {
+      "name": "First Wonder",
+      "description": "Initial fascination with the strange new world",
+      "elements": ["Magical Discoveries", "New Rules Learned", "Temporary Paradise"]
+    },
+    "frustration": {
+      "name": "Frustration",
+      "description": "The new world reveals its darker, more dangerous aspects",
+      "elements": ["Threats Emerge", "Dangers Revealed", "Homesickness Grows"]
+    },
+    "nightmare": {
+      "name": "Nightmare",
+      "description": "The hero is trapped or threatened in the strange world",
+      "elements": ["Serious Peril", "Desperation", "Need to Escape"]
+    },
+    "thrilling_escape": {
+      "name": "Thrilling Escape",
+      "description": "The hero escapes and returns to the familiar world",
+      "elements": ["Dramatic Escape", "Return Journey", "Portal Recrossed"]
+    },
+    "return": {
+      "name": "Return Transformed",
+      "description": "The hero returns home changed by the experience",
+      "elements": ["Wisdom Gained", "Growth Achieved", "New Perspective"]
+    }
+  }
+} 

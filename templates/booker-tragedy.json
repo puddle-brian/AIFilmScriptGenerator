@@ -1,0 +1,33 @@
+{
+  "name": "Tragedy",
+  "description": "A flawed hero's character defects lead to their downfall despite initial promise",
+  "category": "booker_7_plots",
+  "examples": "Romeo and Juliet, Macbeth, Breaking Bad",
+  "structure": {
+    "anticipation_stage": {
+      "name": "Anticipation Stage",
+      "description": "The hero begins with promise but harbors a fatal flaw",
+      "elements": ["Hero's Potential", "Fatal Flaw Hinted", "Initial Success"]
+    },
+    "dream_stage": {
+      "name": "Dream Stage",
+      "description": "The hero achieves initial success and seems destined for greatness",
+      "elements": ["Early Victories", "Growing Power", "Overconfidence"]
+    },
+    "frustration_stage": {
+      "name": "Frustration Stage",
+      "description": "The first serious obstacles appear, often due to the hero's flaw",
+      "elements": ["Opposition Emerges", "Flaw Manifests", "First Failures"]
+    },
+    "nightmare_stage": {
+      "name": "Nightmare Stage",
+      "description": "The hero's flaw consumes them, leading to destructive behavior",
+      "elements": ["Self-Destruction", "Moral Corruption", "Isolation"]
+    },
+    "destruction": {
+      "name": "Destruction",
+      "description": "The inevitable catastrophic end, often affecting others as well",
+      "elements": ["Final Catastrophe", "Hero's Downfall", "Consequences for Others"]
+    }
+  }
+} 

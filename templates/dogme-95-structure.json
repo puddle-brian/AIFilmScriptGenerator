@@ -1,6 +1,7 @@
 {
   "name": "Dogme 95 Structure (Naturalistic Social Drama)",
   "description": "Raw, handheld naturalistic approach focusing on authentic human behavior and social dynamics",
+  "category": "criterion_patterns",
   "structure": {
     "family_gathering": {
       "name": "Family/Group Gathering",

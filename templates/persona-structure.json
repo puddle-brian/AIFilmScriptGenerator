@@ -1,6 +1,7 @@
 {
   "name": "Persona Structure (Psychological Chamber)",
   "description": "Two characters in isolation, exploring identity, performance, and the dissolution of self",
+  "category": "criterion_patterns",
   "structure": {
     "initial_separation": {
       "name": "Initial Separation",

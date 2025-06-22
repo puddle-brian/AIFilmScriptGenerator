@@ -1,0 +1,43 @@
+{
+  "name": "Overcoming the Monster",
+  "description": "The hero must defeat a threatening force (physical or metaphorical monster) to restore peace and order",
+  "category": "booker_7_plots",
+  "examples": "Jaws, Star Wars, Lord of the Rings",
+  "structure": {
+    "anticipation": {
+      "name": "Anticipation Stage",
+      "description": "The monster's presence is felt, creating fear and anticipation in the community",
+      "elements": ["Monster's Shadow", "Growing Threat", "Initial Fear"]
+    },
+    "call_to_adventure": {
+      "name": "Call to Adventure",
+      "description": "The hero is called upon or chooses to confront the monster",
+      "elements": ["Hero Identified", "Mission Accepted", "Stakes Established"]
+    },
+    "getting_out": {
+      "name": "Getting Out",
+      "description": "The hero begins the journey, leaving safety to face the monster",
+      "elements": ["Departure", "Crossing Threshold", "Point of No Return"]
+    },
+    "initial_fascination": {
+      "name": "Initial Fascination",
+      "description": "Early encounters reveal the monster's power, but also weaknesses",
+      "elements": ["First Confrontation", "Monster's Power Revealed", "Hope Glimpsed"]
+    },
+    "frustration": {
+      "name": "Frustration",
+      "description": "The monster proves more dangerous than expected, setbacks occur",
+      "elements": ["Plans Fail", "Casualties Mount", "Doubt Creeps In"]
+    },
+    "nightmare": {
+      "name": "Nightmare",
+      "description": "The monster seems unbeatable, all seems lost",
+      "elements": ["Darkest Hour", "Hero Nearly Defeated", "Ultimate Test"]
+    },
+    "thrilling_escape": {
+      "name": "Thrilling Escape and Final Victory",
+      "description": "Through courage, sacrifice, or insight, the hero defeats the monster",
+      "elements": ["Final Battle", "Monster Defeated", "Order Restored"]
+    }
+  }
+} 

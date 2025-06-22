@@ -1,0 +1,38 @@
+{
+  "name": "Pursuit",
+  "description": "A relentless chase between pursuer and pursued, with constantly shifting advantages",  
+  "category": "tobias_20_plots",
+  "examples": "The Fugitive, North by Northwest, Mad Max: Fury Road",
+  "structure": {
+    "inciting_incident": {
+      "name": "Inciting Incident",
+      "description": "An event sets the chase in motion",
+      "elements": ["Crime Committed", "False Accusation", "Chase Triggered"]
+    },
+    "the_chase_begins": {
+      "name": "The Chase Begins",
+      "description": "The pursuit is officially launched",
+      "elements": ["Hunters Mobilized", "Trail Picked Up", "Race Against Time"]
+    },
+    "false_leads": {
+      "name": "False Leads",
+      "description": "Misdirection and near-misses complicate the pursuit",
+      "elements": ["Wrong Turns", "Close Calls", "Temporary Escapes"]
+    },
+    "closing_in": {
+      "name": "Closing In",
+      "description": "The pursuer gains ground on the pursued",
+      "elements": ["Distance Shortened", "Options Limited", "Pressure Increased"]
+    },
+    "cornered": {
+      "name": "Cornered",
+      "description": "The pursued is trapped with seemingly no escape",
+      "elements": ["Final Stand", "Last Resort", "Truth Moment"]
+    },
+    "resolution": {
+      "name": "Resolution",
+      "description": "The chase concludes with capture, escape, or revelation",
+      "elements": ["Justice Served", "Truth Revealed", "Chase Ended"]
+    }
+  }
+} 

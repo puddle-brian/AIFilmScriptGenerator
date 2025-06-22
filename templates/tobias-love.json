@@ -1,0 +1,38 @@
+{
+  "name": "Love",
+  "description": "The journey of romantic love from initial attraction through obstacles to union",
+  "category": "tobias_20_plots", 
+  "examples": "Casablanca, The Princess Bride, Titanic",
+  "structure": {
+    "attraction": {
+      "name": "Attraction",
+      "description": "Two people are drawn to each other despite differences",
+      "elements": ["First Meeting", "Mutual Interest", "Chemistry Established"]
+    },
+    "declaration": {
+      "name": "Declaration",
+      "description": "Feelings are acknowledged and expressed",
+      "elements": ["Love Confessed", "Commitment Considered", "Future Envisioned"]
+    },
+    "obstacles": {
+      "name": "Obstacles",
+      "description": "External or internal forces threaten to keep the lovers apart",
+      "elements": ["Barriers Emerge", "Society Opposes", "Internal Doubts"]
+    },
+    "separation": {
+      "name": "Separation",
+      "description": "The lovers are forced apart by circumstances",
+      "elements": ["Physical Distance", "Emotional Barriers", "Misunderstandings"]
+    },
+    "testing": {
+      "name": "Testing",
+      "description": "Love is tested through trials and temptations",
+      "elements": ["Loyalty Questioned", "Sacrifices Required", "True Feelings Revealed"]
+    },
+    "reunion": {
+      "name": "Reunion",
+      "description": "Love triumphs and the couple is united",
+      "elements": ["Obstacles Overcome", "Truth Prevails", "Love Conquers All"]
+    }
+  }
+} 

@@ -1,0 +1,38 @@
+{
+  "name": "Comedy",
+  "description": "Confusion and misunderstandings lead to chaos, but ultimately resolution and harmony",
+  "category": "booker_7_plots",
+  "examples": "Romantic comedies, mistaken identity stories",
+  "structure": {
+    "setup": {
+      "name": "Setup",
+      "description": "Establish the characters and their relationships in a state of imbalance",
+      "elements": ["Character Introduction", "Initial Conflict", "Misunderstanding Seeds"]
+    },
+    "complication": {
+      "name": "Complication",
+      "description": "A misunderstanding or deception creates confusion",
+      "elements": ["Mistaken Identity", "Lies Told", "Confusion Multiplies"]
+    },
+    "mounting_confusion": {
+      "name": "Mounting Confusion",
+      "description": "The initial complication spirals into greater chaos",
+      "elements": ["Complications Multiply", "Characters at Cross-Purposes", "Absurd Situations"]
+    },
+    "crisis": {
+      "name": "Crisis",
+      "description": "The confusion reaches its peak, threatening relationships",
+      "elements": ["Truth Nearly Revealed", "Relationships Strained", "Maximum Chaos"]
+    },
+    "revelation": {
+      "name": "Revelation",
+      "description": "The truth comes out, clearing up misunderstandings",
+      "elements": ["Truth Revealed", "Deceptions Exposed", "Understanding Dawns"]
+    },
+    "resolution": {
+      "name": "Resolution",
+      "description": "Harmony is restored, often with marriages or reunions",
+      "elements": ["Conflicts Resolved", "Love Triumphs", "New Order Established"]
+    }
+  }
+} 

@@ -14,6 +14,28 @@
             <p class="subtitle">Create professional scripts with AI-powered hierarchical development</p>
         </header>
 
+        <!-- Project Header (shown when project is loaded) -->
+        <div class="project-header" id="projectHeader" style="display: none;">
+            <div class="project-info">
+                <div class="project-title-section">
+                    <h2 class="project-title" id="projectTitle">Project Title</h2>
+                    <span class="project-status" id="projectStatus">Working on Structure</span>
+                </div>
+                <div class="project-meta">
+                    <span class="project-template" id="projectTemplate">Template: Three-Act Structure</span>
+                    <span class="project-separator">•</span>
+                    <span class="project-scenes" id="projectScenes">70 scenes</span>
+                    <span class="project-separator">•</span>
+                    <span class="project-id" id="projectId">ID: abc123</span>
+                </div>
+            </div>
+            <div class="project-actions">
+                <button class="btn btn-sm btn-outline" onclick="showLoadProjectModal()">📁 Load Project</button>
+                <button class="btn btn-sm btn-outline" onclick="showProjectDetails()">📋 Details</button>
+                <button class="btn btn-sm btn-secondary" onclick="saveProject()">💾 Save</button>
+            </div>
+        </div>
+
         <!-- Progress Indicator -->
         <div class="progress-container">
             <div class="progress-bar">
@@ -23,9 +45,10 @@
                 <div class="step" data-step="1"><span>Story Input</span></div>
                 <div class="step" data-step="2"><span>Template</span></div>
                 <div class="step" data-step="3"><span>Structure</span></div>
-                <div class="step" data-step="4"><span>Scenes</span></div>
-                <div class="step" data-step="5"><span>Dialogue</span></div>
-                <div class="step" data-step="6"><span>Export</span></div>
+                <div class="step" data-step="4"><span>Plot Points</span></div>
+                <div class="step" data-step="5"><span>Scenes</span></div>
+                <div class="step" data-step="6"><span>Dialogue</span></div>
+                <div class="step" data-step="7"><span>Export</span></div>
             </div>
         </div>
 
@@ -183,11 +206,12 @@
                 </div>
                 <h2>Step 2: Choose Plot Structure</h2>
                 <p class="step-description">Select a story structure template that best fits your narrative:</p>
-                <div id="templateOptions" class="template-grid">
+                <div id="templateOptions">
                     <!-- Templates will be loaded here -->
                 </div>
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
+                    <button class="btn btn-outline" id="previewPromptBtn" disabled onclick="previewPrompt()">🔍 Preview Prompt</button>
                     <button class="btn btn-primary" id="selectTemplateBtn" disabled onclick="generateStructure()">Generate Structure</button>
                 </div>
             </div>
@@ -211,16 +235,53 @@
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(2)">Back</button>
                     <button class="btn btn-outline" onclick="regenerateStructure()">Regenerate</button>
-                    <button class="btn btn-primary" onclick="approveStructure()">Approve & Generate Scenes</button>
+                    <button class="btn btn-primary" onclick="approveStructure()">Approve & Generate Plot Points</button>
                 </div>
             </div>
         </section>
 
-        <!-- Step 4: Scenes Review -->
+        <!-- Step 4: Plot Points Generation -->
         <section class="workflow-step" id="step4">
             <div class="card">
-                <h2>Step 4: Generate Scenes</h2>
-                <p class="step-description">Generate scenes for each structural element individually. This approach gives you more control and avoids token limits.</p>
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">Story Input</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(3)">Structure</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <span class="breadcrumb-current">Plot Points</span>
+                </div>
+                <h2>Step 4: Generate Plot Points</h2>
+                <p class="step-description">Generate causal plot points for each structural element. These will guide the scene creation process.</p>
+                
+                <div id="plotPointsContent">
+                    <!-- Plot points will be generated here -->
+                </div>
+                
+                <div class="step-actions">
+                    <button class="btn btn-secondary" onclick="goToStep(3)">Back</button>
+                    <button class="btn btn-primary" onclick="goToStep(5)">Continue to Scenes</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Step 5: Scenes Review -->
+        <section class="workflow-step" id="step5">
+            <div class="card">
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">Story Input</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(3)">Structure</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(4)">Plot Points</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <span class="breadcrumb-current">Scenes</span>
+                </div>
+                <h2>Step 5: Generate Scenes</h2>
+                <p class="step-description">Generate scenes for each structural element using the plot points as guidance.</p>
                 
                 <!-- Scene Generation Options -->
                 <div class="scene-generation-options" id="sceneGenerationOptions" style="margin-bottom: 20px;">
@@ -229,6 +290,9 @@
                     <div class="plot-generation-section" style="margin-bottom: 15px;">
                         <button class="btn btn-primary" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
                             📋 Generate All Plot Points
+                        </button>
+                        <button class="btn btn-outline" onclick="previewAllPlotPointsPrompt()" title="Preview the prompt used to generate all plot points">
+                            🔍 Preview Plot Points Prompt
                         </button>
                         <span class="plot-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
                             Creates causal connections between scenes using "and then" / "therefore" logic
@@ -250,25 +314,53 @@
             </div>
         </section>
 
-        <!-- Step 5: Dialogue Generation -->
-        <section class="workflow-step" id="step5">
+        <!-- Step 6: Dialogue Generation -->
+        <section class="workflow-step" id="step6">
             <div class="card">
-                <h2>Step 5: Generate Dialogue</h2>
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">Story Input</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(3)">Structure</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(4)">Plot Points</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(5)">Scenes</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <span class="breadcrumb-current">Dialogue</span>
+                </div>
+                <h2>Step 6: Generate Dialogue</h2>
                 <p class="step-description">Generate and review dialogue for each scene:</p>
                 <div id="dialogueContent">
                     <!-- Scene dialogue options will appear here -->
                 </div>
                 <div class="step-actions">
-                    <button class="btn btn-secondary" onclick="goToStep(4)">Back</button>
+                    <button class="btn btn-secondary" onclick="goToStep(5)">Back</button>
                     <button class="btn btn-primary" onclick="finalizeScript()">Complete Script</button>
                 </div>
             </div>
         </section>
 
-        <!-- Step 6: Final Script & Export -->
-        <section class="workflow-step" id="step6">
+        <!-- Step 7: Final Script & Export -->
+        <section class="workflow-step" id="step7">
             <div class="card">
-                <h2>Step 6: Final Script</h2>
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">Story Input</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(3)">Structure</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(4)">Plot Points</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(5)">Scenes</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(6)">Dialogue</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <span class="breadcrumb-current">Final Script</span>
+                </div>
+                <h2>Step 7: Final Script</h2>
                 <p class="step-description">Your completed script is ready for export:</p>
                 
                 <div class="script-stats">
@@ -319,6 +411,92 @@
             </div>
         </div>
 
+        <!-- Prompt Preview Modal -->
+        <div class="modal" id="promptPreviewModal">
+            <div class="modal-content prompt-modal">
+                <div class="modal-header">
+                    <h3>Prompt Preview & Editor</h3>
+                    <div class="prompt-controls">
+                        <button class="btn btn-outline btn-sm" onclick="toggleEditMode()">✏️ Edit</button>
+                        <button class="btn btn-outline btn-sm" onclick="resetPrompt()">🔄 Reset</button>
+                        <button class="btn btn-success btn-sm" id="savePromptBtn" onclick="saveCustomPrompt()" style="display: none;">💾 Save</button>
+                    </div>
+                    <button class="modal-close" onclick="hidePromptPreviewModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="customPromptNotice" class="custom-prompt-notice" style="display: none;">
+                        <p>🎨 <strong>Custom Prompt Active:</strong> You're using a modified version of the original prompt.</p>
+                    </div>
+                    
+                    <div class="prompt-section">
+                        <h4>System Message:</h4>
+                        <div class="prompt-content" id="systemMessageContent"></div>
+                        <textarea class="prompt-editor" id="systemMessageEditor" style="display: none;"></textarea>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>User Prompt:</h4>
+                        <div class="prompt-content" id="userPromptContent"></div>
+                        <textarea class="prompt-editor" id="userPromptEditor" style="display: none;"></textarea>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>Template Structure:</h4>
+                        <div class="prompt-content" id="templateStructureContent"></div>
+                        <textarea class="prompt-editor" id="templateStructureEditor" style="display: none;"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hidePromptPreviewModal()">Close</button>
+                    <button class="btn btn-primary" onclick="generateWithCurrentPrompt()">Generate with this Prompt</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scene Prompt Modal -->
+        <div class="modal" id="scenePromptModal">
+            <div class="modal-content prompt-modal">
+                <div class="modal-header">
+                    <h3>Scene Generation Prompt</h3>
+                    <button class="modal-close" onclick="hideScenePromptModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="prompt-section">
+                        <h4>System Message:</h4>
+                        <div class="prompt-content" id="scenePromptSystemMessage"></div>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>User Prompt:</h4>
+                        <div class="prompt-content" id="scenePromptUserPrompt"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideScenePromptModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plot Point Prompt Modal -->
+        <div class="modal" id="plotPointPromptModal">
+            <div class="modal-content prompt-modal">
+                <div class="modal-header">
+                    <h3>Plot Point Generation Prompt</h3>
+                    <button class="modal-close" onclick="hidePlotPointPromptModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="prompt-section">
+                        <h4>System Message:</h4>
+                        <div class="prompt-content" id="plotPointPromptSystemMessage"></div>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>User Prompt:</h4>
+                        <div class="prompt-content" id="plotPointPromptUserPrompt"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hidePlotPointPromptModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Notification Toast -->
         <div class="toast" id="toast">
             <div class="toast-content">
@@ -328,6 +506,7 @@
         </div>
     </div>
 
+    <script src="data-loader.js"></script>
     <script src="script.js"></script>
 </body>
 </html> 
