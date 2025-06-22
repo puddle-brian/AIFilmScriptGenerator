@@ -1,6 +1,96 @@
 # Film Script Generator
 
-A hierarchical film script generator that breaks down story ideas into structured plot elements, allowing user approval at each level before proceeding to more detailed content generation.
+A hierarchical story development system that uses progressive prompt refinement to guide users from high-level story concepts to detailed screenplay content.
+
+## Features
+
+### Core Workflow
+1. **Story Input** - Define concept, characters, influences, and tone
+2. **Template Selection** - Choose from proven narrative structures
+3. **Acts Generation** - Create structured story acts
+4. **Plot Points** - Generate causal story beats
+5. **Scenes** - Develop detailed scene descriptions
+6. **Dialogue** - Generate professional screenplay dialogue
+7. **Export** - Output in multiple formats
+
+### ✨ New: Inline Content Editing
+All generated content (Acts, Plot Points, Scenes, and Dialogue) now supports inline editing:
+
+- **Click "Edit"** on any generated content block to modify it
+- **Real-time editing** with syntax highlighting for different content types
+- **Auto-save** - Changes are saved to both the project files and hierarchical context
+- **Maintains coherence** - Edited content is used in subsequent generation steps
+- **Visual feedback** - Clear indication of edit mode vs. view mode
+- **Undo support** - Cancel changes to revert to original content
+
+#### How It Works
+- **Acts**: Edit name, description, and character development notes
+- **Plot Points**: Modify individual plot points or reorder them
+- **Scenes**: Update titles, locations, times, and descriptions
+- **Dialogue**: Edit the full screenplay dialogue directly
+
+All edits maintain the hierarchical context system, ensuring that subsequent AI generations build upon your modified content.
+
+## Technical Architecture
+
+The system uses a 5-level hierarchical context architecture:
+1. **Story Foundation** - Core concept and influences
+2. **Structure Template** - Narrative framework
+3. **Generated Story Acts** - Specific story structure
+4. **Plot Points** - Causal story beats
+5. **Individual Scenes** - Detailed scene implementation
+
+## Setup
+
+1. Install dependencies: `npm install`
+2. Add your Anthropic API key to `.env`: `ANTHROPIC_API_KEY=your_key_here`
+3. Start the server: `npm start`
+4. Open `http://localhost:3000`
+
+## API Endpoints
+
+### Content Editing
+- `PUT /api/edit-content/acts/:projectPath/:actKey` - Save edited act content
+- `PUT /api/edit-content/plot-points/:projectPath/:actKey` - Save edited plot points
+- `PUT /api/edit-content/scenes/:projectPath/:actKey/:sceneIndex` - Save edited scene
+- `PUT /api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex` - Save edited dialogue
+
+### Generation
+- `POST /api/generate-structure` - Generate story acts
+- `POST /api/generate-plot-points-for-act/:projectPath/:actKey` - Generate plot points
+- `POST /api/generate-scenes-for-element/:projectPath/:actKey` - Generate scenes
+- `POST /api/generate-dialogue` - Generate screenplay dialogue
+
+## File Structure
+
+```
+generated/
+  [ProjectName]/
+    01_context/
+      context.json          # Complete hierarchical context
+      story-input.json      # Level 1 data
+      story-acts.json       # Level 3 data
+    02_plot-points/
+      [act].json            # Level 4 data per story act
+    03_scenes/
+      [act]/                # Level 5 data per story act
+        scene-[n].json
+    04_dialogue/
+      [act]/
+        scene-[n].json
+```
+
+## Supported Export Formats
+
+- Professional Screenplay (PDF-ready)
+- Fountain Format
+- Final Draft Format
+- Plain Text
+- Production Package (with character/location breakdowns)
+
+---
+
+The Film Script Generator maintains narrative coherence through its hierarchical context system while giving you full creative control through inline editing capabilities.
 
 ## Features
 

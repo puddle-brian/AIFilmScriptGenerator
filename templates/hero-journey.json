@@ -1,22 +1,25 @@
 {
   "name": "Hero's Journey",
-  "description": "Joseph Campbell's monomyth structure following the hero's transformative journey",
+  "description": "Joseph Campbell's monomyth structure following the hero's transformative journey through concrete actions and choices",
   "category": "criterion_patterns",
   "structure": {
     "ordinary_world": {
       "name": "Ordinary World",
-      "description": "The hero's normal life before the adventure begins",
-      "elements": ["Status Quo", "Hero's Background", "Mundane Problems"]
+      "description": "The hero's normal life shown through daily actions and routine behaviors",
+      "elements": ["Daily Routine Actions", "Character Behavior", "Specific Problems to Solve"],
+      "action_examples": ["Hero performs daily job", "Character interacts with family", "Specific obstacle blocks goal"]
     },
     "call_to_adventure": {
       "name": "Call to Adventure",
-      "description": "The hero is presented with a problem or challenge",
-      "elements": ["Disruption", "Quest Presented", "Stakes Established"]
+      "description": "A specific event or person disrupts the hero's world with a concrete challenge",
+      "elements": ["Specific Disrupting Event", "Clear Mission Offered", "Tangible Stakes"],
+      "action_examples": ["Messenger arrives with urgent news", "Hero discovers evidence of crime", "Character receives desperate phone call"]
     },
     "refusal_of_call": {
       "name": "Refusal of the Call",
-      "description": "The hero hesitates or refuses the adventure due to fear or doubt",
-      "elements": ["Hesitation", "Fear of Unknown", "Comfort Zone"]
+      "description": "The hero actively avoids or rejects the challenge through specific actions",
+      "elements": ["Active Avoidance Behavior", "Excuse-Making Actions", "Clinging to Routine"],
+      "action_examples": ["Hero throws away the message", "Character lies to avoid responsibility", "Hero physically runs from the situation"]
     },
     "meeting_mentor": {
       "name": "Meeting the Mentor",
@@ -40,8 +43,9 @@
     },
     "ordeal": {
       "name": "The Ordeal",
-      "description": "The hero faces their greatest fear or most difficult challenge",
-      "elements": ["Greatest Fear", "Death/Rebirth", "Crisis Point"]
+      "description": "The hero confronts a life-threatening situation requiring decisive action",
+      "elements": ["Physical Danger", "Impossible Choice", "Do-or-Die Moment"],
+      "action_examples": ["Hero must choose who to save", "Character faces armed opponent", "Hero must sacrifice something precious to survive"]
     },
     "reward": {
       "name": "The Reward",

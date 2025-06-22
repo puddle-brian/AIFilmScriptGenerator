@@ -1790,7 +1790,7 @@ Return ONLY a JSON object:
   "plotPoint": "Your single plot point sentence here"
 }`;
       
-      systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that connect scenes logically.";
+      systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency.";
     } else {
       // All plot points generation prompt
       prompt = `You are a master screenwriter creating plot points that connect scenes with clear causal relationships.
@@ -1829,7 +1829,7 @@ Return ONLY a JSON object with this structure:
 
 Focus on creating a strong narrative spine where each scene leads logically to the next through conflict and consequence.`;
       
-      systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that connect scenes logically.";
+      systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency.";
     }
 
     res.json({
@@ -1881,12 +1881,34 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
     const hierarchicalPrompt = context.generateHierarchicalPrompt(3, `
 PLOT POINTS GENERATION REQUIREMENTS:
 1. Break down this story act into ${desiredSceneCount} causally connected plot points
-2. Each plot point should be a single, clear sentence that captures a key story beat
-3. Plot points should connect causally using "BUT" (introducing conflict/complications) and "THEREFORE" (showing consequences/progress) - AVOID "and then" chronological sequencing
-4. They should advance the character development specified for this act
-5. They should serve the overall story structure and move the narrative forward
-6. Do NOT reference specific scene content - these plot points will guide scene creation
-7. Make the plot points unpredictable, novel, unique, and surprising for the audience while maintaining the story's overall structure and character development.
+2. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
+3. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
+4. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
+5. Show character development through ACTIONS and CHOICES, not internal monologue
+6. Each plot point should create a specific dramatic situation or encounter
+7. Make events unpredictable and cinematic while serving the character arc
+8. Do NOT reference specific scene content - these plot points will guide scene creation
+
+CHARACTER ARC THROUGH ACTION:
+- Show character growth through CHOICES under pressure
+- Reveal personality through HOW characters act, not what they think
+- Use physical behavior to show emotional states
+- Force characters to make decisions that reveal their true nature
+
+CINEMATIC SPECIFICITY:
+- Include specific locations that serve the story (not just "a room")
+- Add time pressure or urgency to create tension
+- Introduce physical obstacles or concrete goals
+- Create visual conflicts that can be filmed dramatically
+
+EXAMPLES OF GOOD PLOT POINTS:
+- "She saves a child from a burning building"
+- "Police surround him with weapons drawn"  
+- "He breaks into an abandoned school to sleep"
+- "He must choose between saving his friend or escaping before the building collapses"
+- "She discovers the hidden evidence just as her phone battery dies"
+
+AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
 
 Create ${desiredSceneCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
@@ -1901,7 +1923,7 @@ Return ONLY a JSON object with this exact structure:
   ]
 }`;
 
-    const systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that break down story acts into dramatic beats. Always respond with valid JSON.";
+    const systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency. Always respond with valid JSON.";
 
     res.json({
       prompt: prompt,
@@ -2990,29 +3012,84 @@ app.post('/api/export', async (req, res) => {
         try {
           const scenesContent = await fs.readFile(scenesFile, 'utf8');
           scenesData = JSON.parse(scenesContent);
+          console.log('Scenes data loaded successfully. Keys:', Object.keys(scenesData));
         } catch (error) {
-          console.log('No scenes file found or error reading scenes');
+          console.log('No scenes file found or error reading scenes:', error.message);
         }
         
-        // Load all dialogue files
+        // Load dialogues in proper story order using scenes structure
         const dialogueDir = path.join(projectDir, '03_dialogue');
-        let dialogueFiles = [];
-        try {
-          dialogueFiles = await fs.readdir(dialogueDir);
-        } catch (error) {
-          console.log('No dialogue directory found');
-        }
-        
-        // Read all dialogue content
         const dialogueContent = [];
-        for (const file of dialogueFiles) {
-          if (file.endsWith('.txt')) {
-            try {
-              const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
-              dialogueContent.push(content);
-            } catch (error) {
-              console.log(`Error reading dialogue file ${file}`);
+        
+        // If we have scenes data, use it to order dialogues properly
+        if (scenesData && scenesData.scenes) {
+          console.log('Using scenes structure for ordering. Available acts:', Object.keys(scenesData.scenes));
+          
+          // Load the original structure to get the correct act ordering
+          let structureKeys = Object.keys(scenesData.scenes);
+          try {
+            const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+            const structureContent = await fs.readFile(structureFile, 'utf8');
+            const structureData = JSON.parse(structureContent);
+            if (structureData.structure) {
+              structureKeys = Object.keys(structureData.structure);
+              console.log('Using template structure order:', structureKeys);
             }
+          } catch (error) {
+            console.log('Could not load structure file, using scenes order');
+          }
+          
+          // Get scene titles in story order
+          const orderedSceneTitles = [];
+          
+          for (const structureKey of structureKeys) {
+            const sceneGroup = scenesData.scenes[structureKey];
+            if (sceneGroup && sceneGroup.scenes) {
+              console.log(`Processing act ${structureKey} with ${sceneGroup.scenes.length} scenes`);
+              for (const scene of sceneGroup.scenes) {
+                orderedSceneTitles.push(scene.title);
+                console.log(`Added scene to order: ${scene.title}`);
+              }
+            }
+          }
+          
+          console.log('Final scene order:', orderedSceneTitles.slice(0, 5), '... (first 5 scenes)');
+          
+          // Load dialogues in story order
+          for (const sceneTitle of orderedSceneTitles) {
+            try {
+              const dialogueFiles = await fs.readdir(dialogueDir);
+              // Find the dialogue file for this scene (matches scene title)
+              const matchingFile = dialogueFiles.find(file => 
+                file.startsWith(sceneTitle.replace(/\s+/g, '_'))
+              );
+              
+              if (matchingFile) {
+                const content = await fs.readFile(path.join(dialogueDir, matchingFile), 'utf8');
+                dialogueContent.push({ filename: matchingFile, content: content, sceneTitle: sceneTitle });
+              }
+            } catch (error) {
+              console.log(`Error loading dialogue for scene: ${sceneTitle}`);
+            }
+          }
+        } else {
+          // Fallback: load all dialogue files alphabetically
+          try {
+            const dialogueFiles = await fs.readdir(dialogueDir);
+            dialogueFiles.sort();
+            
+            for (const file of dialogueFiles) {
+              if (file.endsWith('.txt')) {
+                try {
+                  const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
+                  dialogueContent.push({ filename: file, content: content });
+                } catch (error) {
+                  console.log(`Error reading dialogue file ${file}`);
+                }
+              }
+            }
+          } catch (error) {
+            console.log('No dialogue directory found');
           }
         }
         
@@ -3064,8 +3141,9 @@ app.post('/api/export', async (req, res) => {
       
       // Add dialogue content in professional format
       if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach((dialogue, index) => {
-          script += formatDialogueForScreenplay(dialogue);
+        data.dialogueContent.forEach((dialogueData, index) => {
+          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
+          script += formatDialogueForScreenplay(dialogueText);
           if (index > 0 && (index + 1) % 3 === 0) {
             script += '\n\n                         [PAGE BREAK]\n\n';
           }
@@ -3166,8 +3244,9 @@ app.post('/api/export', async (req, res) => {
       fountain += 'FADE IN:\n\n';
       
       if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach(dialogue => {
-          fountain += convertToFountain(dialogue) + '\n\n';
+        data.dialogueContent.forEach(dialogueData => {
+          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
+          fountain += convertToFountain(dialogueText) + '\n\n';
         });
       }
       
@@ -3215,8 +3294,9 @@ app.post('/api/export', async (req, res) => {
 `;
       
       if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach(dialogue => {
-          fdx += convertToFinalDraft(dialogue);
+        data.dialogueContent.forEach(dialogueData => {
+          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
+          fdx += convertToFinalDraft(dialogueText);
         });
       }
       
@@ -3460,12 +3540,34 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     const hierarchicalPrompt = context.generateHierarchicalPrompt(3, `
 PLOT POINTS GENERATION REQUIREMENTS:
 1. Break down this story act into 4 causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
-2. Each plot point should be a single, clear sentence that captures a key story beat
-3. Plot points should connect causally using "BUT" (introducing conflict/complications) and "THEREFORE" (showing consequences/progress) - AVOID "and then" chronological sequencing
-4. They should advance the character development specified for this act
-5. They should serve the overall story structure and move the narrative forward
-6. Do NOT reference specific scene content - these plot points will guide scene creation
-7. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
+2. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
+3. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
+4. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
+5. Show character development through ACTIONS and CHOICES, not internal monologue
+6. Each plot point should create a specific dramatic situation or encounter
+7. Make events unpredictable and cinematic while serving the character arc
+8. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
+
+CHARACTER ARC THROUGH ACTION:
+- Show character growth through CHOICES under pressure
+- Reveal personality through HOW characters act, not what they think
+- Use physical behavior to show emotional states
+- Force characters to make decisions that reveal their true nature
+
+CINEMATIC SPECIFICITY:
+- Include specific locations that serve the story (not just "a room")
+- Add time pressure or urgency to create tension
+- Introduce physical obstacles or concrete goals
+- Create visual conflicts that can be filmed dramatically
+
+EXAMPLES OF GOOD PLOT POINTS:
+- "She saves a child from a burning building"
+- "Police surround him with weapons drawn"  
+- "He breaks into an abandoned school to sleep"
+- "He must choose between saving his friend or escaping before the building collapses"
+- "She discovers the hidden evidence just as her phone battery dies"
+
+AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
 
 Create 4 plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
@@ -3487,7 +3589,7 @@ Return ONLY a JSON object with this exact structure:
       model: model,
       max_tokens: 1500,
       temperature: 0.7,
-      system: "You are a professional screenwriter. Generate clear, causal plot points that break down story acts into dramatic beats. Always respond with valid JSON.",
+      system: "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency. Always respond with valid JSON.",
       messages: [
         {
           role: "user",
@@ -3907,6 +4009,213 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', async (req, re
   } catch (error) {
     console.error('Error generating all scenes for act:', error);
     res.status(500).json({ error: 'Failed to generate all scenes for act', details: error.message });
+  }
+});
+
+// API Endpoints for Editable Content System
+
+// Save edited act content
+app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
+  try {
+    const { projectPath, actKey } = req.params;
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    
+    // Parse the new content (could be JSON or plain text)
+    let updatedAct;
+    try {
+      updatedAct = JSON.parse(content);
+    } catch (e) {
+      // If not valid JSON, treat as plain text description
+      updatedAct = {
+        name: projectData.structure[actKey]?.name || actKey,
+        description: content
+      };
+    }
+    
+    // Update the specific act
+    projectData.structure[actKey] = {
+      ...projectData.structure[actKey],
+      ...updatedAct,
+      lastModified: new Date().toISOString()
+    };
+    
+    // Save back to file
+    await fs.writeFile(structureFile, JSON.stringify(projectData, null, 2));
+    
+    console.log(`Act ${actKey} updated successfully`);
+    res.json({ 
+      success: true, 
+      message: 'Act updated successfully',
+      updatedAct: projectData.structure[actKey]
+    });
+    
+  } catch (error) {
+    console.error('Error saving act content:', error);
+    res.status(500).json({ error: error.message || 'Failed to save act content' });
+  }
+});
+
+// Save edited plot points content
+app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) => {
+  try {
+    const { projectPath, actKey } = req.params;
+    const { content } = req.body;
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const plotPointsDir = path.join(projectDir, '02_plot-points');
+    const plotPointsFile = path.join(plotPointsDir, `${actKey}.json`);
+    
+    // Ensure directory exists
+    await fs.mkdir(plotPointsDir, { recursive: true });
+    
+    // Parse the new content
+    let updatedPlotPoints;
+    try {
+      updatedPlotPoints = JSON.parse(content);
+      if (!Array.isArray(updatedPlotPoints)) {
+        // If it's not an array, split by lines and clean up
+        updatedPlotPoints = content.split('\n').filter(line => line.trim());
+      }
+    } catch (e) {
+      // Split by lines if not valid JSON
+      updatedPlotPoints = content.split('\n').filter(line => line.trim());
+    }
+    
+    const plotPointsData = {
+      plotPoints: updatedPlotPoints,
+      actKey: actKey,
+      lastModified: new Date().toISOString()
+    };
+    
+    // Save to file
+    await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
+    
+    console.log(`Plot points for ${actKey} updated successfully`);
+    res.json({ 
+      success: true, 
+      message: 'Plot points updated successfully',
+      plotPoints: updatedPlotPoints
+    });
+    
+  } catch (error) {
+    console.error('Error saving plot points content:', error);
+    res.status(500).json({ error: error.message || 'Failed to save plot points content' });
+  }
+});
+
+// Save edited scene content
+app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req, res) => {
+  try {
+    const { projectPath, actKey, sceneIndex } = req.params;
+    const { content } = req.body;
+    const sceneIndexNum = parseInt(sceneIndex);
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const scenesDir = path.join(projectDir, '03_scenes', actKey);
+    const sceneFile = path.join(scenesDir, `scene-${sceneIndexNum}.json`);
+    
+    // Load existing scene if it exists
+    let existingScene = {};
+    try {
+      const existingData = await fs.readFile(sceneFile, 'utf8');
+      existingScene = JSON.parse(existingData);
+    } catch (e) {
+      // File doesn't exist, start with empty object
+    }
+    
+    // Parse the new content
+    let updatedScene;
+    try {
+      updatedScene = JSON.parse(content);
+    } catch (e) {
+      // If not valid JSON, treat as scene description
+      updatedScene = {
+        ...existingScene,
+        description: content
+      };
+    }
+    
+    const sceneData = {
+      ...existingScene,
+      ...updatedScene,
+      lastModified: new Date().toISOString()
+    };
+    
+    // Ensure directory exists
+    await fs.mkdir(scenesDir, { recursive: true });
+    
+    // Save to file
+    await fs.writeFile(sceneFile, JSON.stringify(sceneData, null, 2));
+    
+    console.log(`Scene ${actKey}[${sceneIndex}] updated successfully`);
+    res.json({ 
+      success: true, 
+      message: 'Scene updated successfully',
+      updatedScene: sceneData
+    });
+    
+  } catch (error) {
+    console.error('Error saving scene content:', error);
+    res.status(500).json({ error: error.message || 'Failed to save scene content' });
+  }
+});
+
+// Save edited dialogue content
+app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (req, res) => {
+  try {
+    const { projectPath, actKey, sceneIndex } = req.params;
+    const { content } = req.body;
+    const sceneIndexNum = parseInt(sceneIndex);
+    
+    if (!content) {
+      return res.status(400).json({ error: 'Content is required' });
+    }
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const dialogueDir = path.join(projectDir, '04_dialogue', actKey);
+    const dialogueFile = path.join(dialogueDir, `scene-${sceneIndexNum}.json`);
+    
+    const dialogueData = {
+      dialogue: content,
+      actKey: actKey,
+      sceneIndex: sceneIndexNum,
+      lastModified: new Date().toISOString()
+    };
+    
+    // Ensure directory exists
+    await fs.mkdir(dialogueDir, { recursive: true });
+    
+    // Save to file
+    await fs.writeFile(dialogueFile, JSON.stringify(dialogueData, null, 2));
+    
+    console.log(`Dialogue for ${actKey}[${sceneIndex}] updated successfully`);
+    res.json({ 
+      success: true, 
+      message: 'Dialogue updated successfully',
+      dialogue: content
+    });
+    
+  } catch (error) {
+    console.error('Error saving dialogue content:', error);
+    res.status(500).json({ error: error.message || 'Failed to save dialogue content' });
   }
 });
 

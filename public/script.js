@@ -28,6 +28,317 @@ const modelPricing = {
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25, description: 'Cheapest' }
 };
 
+// Unified Editable Content Block System
+class EditableContentBlock {
+    constructor(options) {
+        this.id = options.id;
+        this.type = options.type; // 'acts', 'plot-points', 'scenes', 'dialogue'
+        this.title = options.title;
+        this.content = options.content;
+        this.originalContent = options.content;
+        this.container = options.container;
+        this.onSave = options.onSave; // Callback function for saving
+        this.onCancel = options.onCancel; // Optional callback for canceling
+        this.metadata = options.metadata || {}; // Additional data like structureKey, index, etc.
+        this.isEditing = false;
+        this.element = null;
+        
+        this.render();
+    }
+    
+    render() {
+        const blockId = `editable-block-${this.id}`;
+        const textareaId = `textarea-${this.id}`;
+        
+        this.element = document.createElement('div');
+        this.element.className = 'editable-content-block';
+        this.element.id = blockId;
+        
+        this.element.innerHTML = `
+            <div class="editable-content-header">
+                <div class="editable-content-title">
+                    ${this.title}
+                    <span class="content-type-badge ${this.type}">${this.type.replace('-', ' ')}</span>
+                </div>
+                <div class="editable-content-actions">
+                    <button class="edit-btn" onclick="editableBlocks['${this.id}'].startEdit()">
+                        ✏️ Edit
+                    </button>
+                </div>
+            </div>
+            <div class="editable-content-body">
+                <div class="editable-content-display">
+                    ${this.formatContentForDisplay(this.content)}
+                </div>
+                <div class="editable-content-editor">
+                    <textarea id="${textareaId}" placeholder="Enter your content here...">${this.content}</textarea>
+                    <div class="editable-content-editor-actions">
+                        <button class="cancel-btn" onclick="editableBlocks['${this.id}'].cancelEdit()">
+                            Cancel
+                        </button>
+                        <button class="save-btn" onclick="editableBlocks['${this.id}'].saveEdit()">
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+                <div class="editable-content-meta">
+                    Last modified: ${new Date().toLocaleString()}
+                </div>
+            </div>
+        `;
+        
+        this.container.appendChild(this.element);
+        
+        // Store reference for global access
+        if (!window.editableBlocks) {
+            window.editableBlocks = {};
+        }
+        window.editableBlocks[this.id] = this;
+    }
+    
+    formatContentForDisplay(content) {
+        // Format content based on type
+        switch (this.type) {
+            case 'acts':
+                return this.formatActsContent(content);
+            case 'plot-points':
+                return this.formatPlotPointsContent(content);
+            case 'scenes':
+                return this.formatScenesContent(content);
+            case 'dialogue':
+                return this.formatDialogueContent(content);
+            default:
+                return `<p>${content}</p>`;
+        }
+    }
+    
+    formatActsContent(content) {
+        // If content is a JSON string, parse it
+        if (typeof content === 'string' && content.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(content);
+                return `
+                    <h3>${parsed.name || 'Untitled Act'}</h3>
+                    <p><strong>Description:</strong> ${parsed.description || 'No description'}</p>
+                    ${parsed.character_development ? `<p><strong>Character Development:</strong> ${parsed.character_development}</p>` : ''}
+                `;
+            } catch (e) {
+                return `<p>${content}</p>`;
+            }
+        }
+        return `<p>${content}</p>`;
+    }
+    
+    formatPlotPointsContent(content) {
+        // If content is an array or JSON array string
+        if (Array.isArray(content)) {
+            return `
+                <ol>
+                    ${content.map(point => `<li>${point}</li>`).join('')}
+                </ol>
+            `;
+        } else if (typeof content === 'string' && content.startsWith('[')) {
+            try {
+                const parsed = JSON.parse(content);
+                return `
+                    <ol>
+                        ${parsed.map(point => `<li>${point}</li>`).join('')}
+                    </ol>
+                `;
+            } catch (e) {
+                return `<p>${content}</p>`;
+            }
+        }
+        return `<p>${content}</p>`;
+    }
+    
+    formatScenesContent(content) {
+        // If content is a JSON string, parse it
+        if (typeof content === 'string' && content.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(content);
+                return `
+                    <h3>${parsed.title || parsed.name || 'Untitled Scene'}</h3>
+                    <p><strong>Location:</strong> ${parsed.location || 'Not specified'}</p>
+                    <p><strong>Time:</strong> ${parsed.time_of_day || parsed.time || 'Not specified'}</p>
+                    <p><strong>Description:</strong> ${parsed.description || 'No description'}</p>
+                `;
+            } catch (e) {
+                return `<p>${content}</p>`;
+            }
+        }
+        return `<p>${content}</p>`;
+    }
+    
+    formatDialogueContent(content) {
+        // Format dialogue content with proper screenplay formatting
+        return `<pre class="screenplay-content">${content}</pre>`;
+    }
+    
+    startEdit() {
+        this.isEditing = true;
+        this.element.classList.add('editing');
+        
+        // Focus on the textarea
+        const textarea = this.element.querySelector('textarea');
+        if (textarea) {
+            textarea.focus();
+            textarea.select();
+        }
+    }
+    
+    cancelEdit() {
+        this.isEditing = false;
+        this.element.classList.remove('editing');
+        
+        // Restore original content
+        const textarea = this.element.querySelector('textarea');
+        if (textarea) {
+            textarea.value = this.content;
+        }
+        
+        if (this.onCancel) {
+            this.onCancel(this);
+        }
+    }
+    
+    async saveEdit() {
+        const textarea = this.element.querySelector('textarea');
+        if (!textarea) return;
+        
+        const newContent = textarea.value.trim();
+        
+        if (newContent === this.content) {
+            // No changes, just exit edit mode
+            this.cancelEdit();
+            return;
+        }
+        
+        try {
+            // Show loading state
+            this.element.classList.add('loading');
+            const saveBtn = this.element.querySelector('.save-btn');
+            if (saveBtn) {
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Saving...';
+            }
+            
+            // Call the save callback
+            if (this.onSave) {
+                await this.onSave(newContent, this);
+            }
+            
+            // Update content and display
+            this.content = newContent;
+            this.updateDisplay();
+            
+            // Exit edit mode
+            this.isEditing = false;
+            this.element.classList.remove('editing');
+            
+            // Show success feedback
+            this.showSaveFeedback('Content saved successfully!', 'success');
+            
+        } catch (error) {
+            console.error('Error saving content:', error);
+            this.showSaveFeedback('Error saving content. Please try again.', 'error');
+        } finally {
+            // Remove loading state
+            this.element.classList.remove('loading');
+            const saveBtn = this.element.querySelector('.save-btn');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        }
+    }
+    
+    updateDisplay() {
+        const displayDiv = this.element.querySelector('.editable-content-display');
+        if (displayDiv) {
+            displayDiv.innerHTML = this.formatContentForDisplay(this.content);
+        }
+        
+        // Update metadata
+        const metaDiv = this.element.querySelector('.editable-content-meta');
+        if (metaDiv) {
+            metaDiv.innerHTML = `Last modified: ${new Date().toLocaleString()}`;
+        }
+    }
+    
+    showSaveFeedback(message, type) {
+        // Remove existing feedback
+        const existingFeedback = this.element.querySelector('.content-save-feedback');
+        if (existingFeedback) {
+            existingFeedback.remove();
+        }
+        
+        // Create new feedback
+        const feedback = document.createElement('div');
+        feedback.className = `content-save-feedback ${type}`;
+        feedback.textContent = message;
+        
+        // Insert at the top of the body
+        const body = this.element.querySelector('.editable-content-body');
+        body.insertBefore(feedback, body.firstChild);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (feedback.parentNode) {
+                feedback.remove();
+            }
+        }, 3000);
+    }
+    
+    updateContent(newContent) {
+        this.content = newContent;
+        this.updateDisplay();
+        
+        // Update textarea if in edit mode
+        if (this.isEditing) {
+            const textarea = this.element.querySelector('textarea');
+            if (textarea) {
+                textarea.value = newContent;
+            }
+        }
+    }
+    
+    destroy() {
+        if (this.element && this.element.parentNode) {
+            this.element.parentNode.removeChild(this.element);
+        }
+        
+        // Remove from global registry
+        if (window.editableBlocks && window.editableBlocks[this.id]) {
+            delete window.editableBlocks[this.id];
+        }
+    }
+}
+
+// Helper function to create editable content blocks
+function createEditableContentBlock(options) {
+    return new EditableContentBlock(options);
+}
+
+// Find template ID by its display name
+function findTemplateIdByName(templateName) {
+    if (!templateName || !appState.availableTemplates) {
+        return null;
+    }
+    
+    // Search through all categories to find the template
+    for (const category of Object.values(appState.availableTemplates)) {
+        if (category.templates) {
+            const template = category.templates.find(t => t.name === templateName);
+            if (template) {
+                return template.id;
+            }
+        }
+    }
+    
+    return null; // Template not found
+}
+
 // DOM Elements
 const elements = {
     progressFill: document.getElementById('progressFill'),
@@ -227,14 +538,25 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Initialize application
 async function initializeApp() {
+    console.log('=== INITIALIZE APP DEBUG ===');
     updateProgressBar();
     updateStepIndicators();
+    
+    // Populate dropdowns from JSON files
+    await populateDropdowns();
     
     // Load from localStorage if available
     const savedState = localStorage.getItem('filmScriptGenerator');
     if (savedState) {
         try {
             const parsed = JSON.parse(savedState);
+            console.log('Parsed saved state:', {
+                currentStep: parsed.currentStep,
+                projectPath: parsed.projectPath,
+                isLoadedProject: parsed.isLoadedProject,
+                hasDialogues: parsed.generatedDialogues ? Object.keys(parsed.generatedDialogues).length : 0
+            });
+            
             Object.assign(appState, parsed);
             
             // If we have a loaded project path, restore the full project
@@ -242,6 +564,21 @@ async function initializeApp() {
                 console.log('Restoring loaded project from localStorage:', appState.projectPath);
                 try {
                     await restoreLoadedProject();
+                    console.log('Project restored. Dialogue count:', Object.keys(appState.generatedDialogues || {}).length);
+                    
+                    // After restoring project data, navigate to the saved step
+                    // Note: populateFormWithProject skips navigation during restore, so we handle it here
+                    if (appState.currentStep > 1) {
+                        console.log(`Force navigating to step ${appState.currentStep} (loaded project)`);
+                        console.log('Final dialogue count before navigation:', Object.keys(appState.generatedDialogues || {}).length);
+                        
+                        // Small delay to ensure all async operations are complete
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Force navigation without validation for loaded projects
+                        // since we trust the saved state from a real project
+                        await forceGoToStep(appState.currentStep);
+                    }
                 } catch (error) {
                     console.error('Error restoring loaded project:', error);
                     // Clear the invalid project state
@@ -250,11 +587,81 @@ async function initializeApp() {
                     saveToLocalStorage();
                 }
             } else if (appState.currentStep > 1) {
-                goToStep(appState.currentStep);
+                console.log('Checking navigation for non-loaded project...');
+                console.log('Current step:', appState.currentStep);
+                console.log('Can navigate to step 7?', canNavigateToStep(7));
+                console.log('Dialogue count:', Object.keys(appState.generatedDialogues || {}).length);
+                
+                // For non-loaded projects, use normal validation
+                if (canNavigateToStep(appState.currentStep)) {
+                    console.log(`Navigating to step ${appState.currentStep} (validation passed)`);
+                    await goToStep(appState.currentStep);
+                } else {
+                    // If we can't navigate to the saved step, find the highest valid step
+                    let validStep = 1;
+                    for (let step = 7; step >= 1; step--) {
+                        if (canNavigateToStep(step)) {
+                            validStep = step;
+                            break;
+                        }
+                    }
+                    console.log(`Saved step ${appState.currentStep} not valid, navigating to step ${validStep}`);
+                    await goToStep(validStep);
+                }
             }
         } catch (e) {
             console.error('Error loading saved state:', e);
         }
+    }
+    console.log('=== INITIALIZE APP COMPLETE ===');
+}
+
+// Populate dropdowns from JSON files
+async function populateDropdowns() {
+    try {
+        const { directors, screenwriters, films, tones } = await window.dataLoader.loadAllData();
+        
+        // Populate directors dropdown
+        const directorSelect = document.getElementById('directorSelect');
+        directors.forEach(director => {
+            const option = document.createElement('option');
+            option.value = director;
+            option.textContent = director;
+            directorSelect.appendChild(option);
+        });
+        
+        // Populate screenwriters dropdown
+        const screenwriterSelect = document.getElementById('screenwriterSelect');
+        screenwriters.forEach(screenwriter => {
+            const option = document.createElement('option');
+            option.value = screenwriter;
+            option.textContent = screenwriter;
+            screenwriterSelect.appendChild(option);
+        });
+        
+        // Populate films dropdown
+        const filmSelect = document.getElementById('filmSelect');
+        films.forEach(film => {
+            const option = document.createElement('option');
+            option.value = film;
+            option.textContent = film;
+            filmSelect.appendChild(option);
+        });
+        
+        // Populate tones dropdown (remove duplicates first)
+        const toneSelect = document.getElementById('tone');
+        const uniqueTones = [...new Set(tones)]; // Remove duplicates
+        uniqueTones.forEach(tone => {
+            const option = document.createElement('option');
+            option.value = tone;
+            option.textContent = tone;
+            toneSelect.appendChild(option);
+        });
+        
+        console.log('Dropdowns populated successfully');
+    } catch (error) {
+        console.error('Error populating dropdowns:', error);
+        showToast('Error loading dropdown options. Using default values.', 'warning');
     }
 }
 
@@ -687,20 +1094,37 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
         container.appendChild(promptSection);
     }
     
+    // Create editable content blocks for each act
     Object.entries(structure).forEach(([key, element]) => {
         if (typeof element === 'object' && element.name) {
-            const structureElement = document.createElement('div');
-            structureElement.className = 'structure-element';
-            structureElement.innerHTML = `
-                <h3>${element.name || key}</h3>
-                <p>${element.description || 'No description available'}</p>
-                ${element.elements ? `
-                    <div class="elements">
-                        ${element.elements.map(el => `<span class="element-tag">${el}</span>`).join('')}
-                    </div>
-                ` : ''}
-            `;
-            container.appendChild(structureElement);
+            const actContent = JSON.stringify(element);
+            
+            createEditableContentBlock({
+                id: `act-${key}`,
+                type: 'acts',
+                title: element.name || key.replace(/_/g, ' ').toUpperCase(),
+                content: actContent,
+                container: container,
+                metadata: { actKey: key },
+                onSave: async (newContent, block) => {
+                    // Save the edited act content
+                    await saveActContent(key, newContent);
+                    
+                    // Update the app state
+                    if (appState.generatedStructure && appState.generatedStructure[key]) {
+                        try {
+                            const updatedAct = JSON.parse(newContent);
+                            appState.generatedStructure[key] = { ...appState.generatedStructure[key], ...updatedAct };
+                        } catch (e) {
+                            // If not JSON, update description
+                            appState.generatedStructure[key].description = newContent;
+                        }
+                    }
+                    
+                    // Save to local storage
+                    saveToLocalStorage();
+                }
+            });
         }
     });
     
@@ -712,6 +1136,28 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
         regenerateBtn.style.display = 'inline-block';
         approveBtn.style.display = 'inline-block';
     }
+}
+
+// Save act content function
+async function saveActContent(actKey, content) {
+    if (!appState.projectPath) {
+        throw new Error('No project loaded');
+    }
+    
+    const response = await fetch(`/api/edit-content/acts/${appState.projectPath}/${actKey}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save act content');
+    }
+    
+    return await response.json();
 }
 
 // Show the prompt that was used for the current structure
@@ -998,28 +1444,123 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     const container = document.getElementById(`plotPoints-container-${structureKey}`);
     if (!container) return;
     
-    let html = '<div class="plot-points-list">';
-    html += '<h4>Generated Plot Points:</h4>';
+    // Clear existing content
+    container.innerHTML = '';
     
-    plotPoints.forEach((plotPoint, index) => {
-        html += `
-            <div class="plot-point-item">
-                <div class="plot-point-number">${index + 1}</div>
-                <div class="plot-point-content">${plotPoint}</div>
-                <div class="plot-point-actions">
-                    <button class="btn btn-sm btn-outline" onclick="regenerateElementPlotPoint('${structureKey}', ${index})" title="Regenerate this plot point">
-                        🔄
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="previewIndividualPlotPointPrompt('${structureKey}', ${index})" title="Preview the prompt for regenerating this plot point">
-                        🔍
-                    </button>
-                </div>
-            </div>
-        `;
+    // Create editable content block for plot points
+    const plotPointsContent = Array.isArray(plotPoints) ? JSON.stringify(plotPoints) : plotPoints;
+    const actName = appState.generatedStructure[structureKey]?.name || structureKey.replace(/_/g, ' ').toUpperCase();
+    
+    createEditableContentBlock({
+        id: `plot-points-${structureKey}`,
+        type: 'plot-points',
+        title: `Plot Points - ${actName}`,
+        content: plotPointsContent,
+        container: container,
+        metadata: { structureKey: structureKey },
+        onSave: async (newContent, block) => {
+            // Save the edited plot points content
+            await savePlotPointsContent(structureKey, newContent);
+            
+            // Update the app state
+            let updatedPlotPoints;
+            try {
+                updatedPlotPoints = JSON.parse(newContent);
+            } catch (e) {
+                // Split by lines if not valid JSON
+                updatedPlotPoints = newContent.split('\n').filter(line => line.trim());
+            }
+            
+            if (!appState.plotPoints) {
+                appState.plotPoints = {};
+            }
+            appState.plotPoints[structureKey] = updatedPlotPoints;
+            
+            // Save to local storage
+            saveToLocalStorage();
+        }
     });
     
-    html += '</div>';
-    container.innerHTML = html;
+    // Add regeneration actions below the editable block
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'plot-points-actions';
+    actionsDiv.style.marginTop = '15px';
+    actionsDiv.innerHTML = `
+        <button class="btn btn-outline btn-sm" onclick="regenerateAllPlotPointsForElement('${structureKey}')" title="Regenerate all plot points for this act">
+            🔄 Regenerate All Plot Points
+        </button>
+        <button class="btn btn-outline btn-sm" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for generating plot points">
+            🔍 Preview Prompt
+        </button>
+    `;
+    container.appendChild(actionsDiv);
+}
+
+// Save plot points content function
+async function savePlotPointsContent(structureKey, content) {
+    if (!appState.projectPath) {
+        throw new Error('No project loaded');
+    }
+    
+    const response = await fetch(`/api/edit-content/plot-points/${appState.projectPath}/${structureKey}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save plot points content');
+    }
+    
+    return await response.json();
+}
+
+// Regenerate all plot points for a specific element
+async function regenerateAllPlotPointsForElement(structureKey) {
+    try {
+        showLoading(`Regenerating plot points for ${structureKey}...`);
+        
+        const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                desiredSceneCount: 4, // Default value
+                model: getSelectedModel()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update app state
+            if (!appState.plotPoints) {
+                appState.plotPoints = {};
+            }
+            appState.plotPoints[structureKey] = data.plotPoints;
+            
+            // Update the editable block
+            const blockId = `plot-points-${structureKey}`;
+            if (window.editableBlocks && window.editableBlocks[blockId]) {
+                window.editableBlocks[blockId].updateContent(JSON.stringify(data.plotPoints));
+            }
+            
+            showToast('Plot points regenerated successfully!', 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to regenerate plot points');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error regenerating plot points:', error);
+        showToast('Error regenerating plot points. Please try again.', 'error');
+        hideLoading();
+    }
 }
 
 // Regenerate a single plot point within an act
@@ -2058,10 +2599,9 @@ function displayDialogueGeneration() {
         if (Array.isArray(sceneGroup)) {
             sceneGroup.forEach((scene, index) => {
                 const sceneId = `${structureKey}-${index}`;
-                const elementId = `dialogue-${structureKey}-${index}`;
                 
                 // Check if dialogue already exists for this scene
-                let dialogueContent = '<em>Click "Generate Dialogue" to create the screenplay for this scene.</em>';
+                let dialogueContent = 'Click "Generate Dialogue" to create the screenplay for this scene.';
                 let hasExistingDialogue = false;
                 
                 // First check the direct scene ID format
@@ -2082,31 +2622,71 @@ function displayDialogueGeneration() {
                     });
                 }
                 
-                const sceneElement = document.createElement('div');
-                sceneElement.className = 'dialogue-scene';
-                sceneElement.innerHTML = `
-                    <h4>
-                        ${scene.title || scene.name || 'Untitled Scene'}
-                        <div class="scene-actions">
-                            <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
-                                ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
-                            </button>
-                            <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
-                                🔍 Dialogue Prompt
-                            </button>
-                        </div>
-                    </h4>
-                    <div id="${elementId}" class="script-content">
-                        ${hasExistingDialogue ? dialogueContent : dialogueContent}
-                    </div>
-                `;
+                const sceneTitle = `${scene.title || scene.name || 'Untitled Scene'} - Dialogue`;
                 
-                container.appendChild(sceneElement);
+                createEditableContentBlock({
+                    id: `dialogue-${structureKey}-${index}`,
+                    type: 'dialogue',
+                    title: sceneTitle,
+                    content: dialogueContent,
+                    container: container,
+                    metadata: { structureKey: structureKey, sceneIndex: index, sceneId: sceneId },
+                    onSave: async (newContent, block) => {
+                        // Save the edited dialogue content
+                        await saveDialogueContent(structureKey, index, newContent);
+                        
+                        // Update the app state
+                        if (!appState.generatedDialogues) {
+                            appState.generatedDialogues = {};
+                        }
+                        appState.generatedDialogues[sceneId] = newContent;
+                        
+                        // Save to local storage
+                        saveToLocalStorage();
+                    }
+                });
+                
+                // Add generation actions for this dialogue
+                const actionsDiv = document.createElement('div');
+                actionsDiv.className = 'dialogue-actions';
+                actionsDiv.style.marginTop = '10px';
+                actionsDiv.style.marginBottom = '20px';
+                actionsDiv.innerHTML = `
+                    <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
+                        ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
+                        🔍 Dialogue Prompt
+                    </button>
+                `;
+                container.appendChild(actionsDiv);
             });
         }
     });
     
     console.log('Dialogue interface displayed with existing content restored');
+}
+
+// Save dialogue content function
+async function saveDialogueContent(structureKey, sceneIndex, content) {
+    if (!appState.projectPath) {
+        throw new Error('No project loaded');
+    }
+    
+    const response = await fetch(`/api/edit-content/dialogue/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save dialogue content');
+    }
+    
+    return await response.json();
 }
 
 // Generate dialogue for a specific scene
@@ -2135,7 +2715,13 @@ async function generateDialogue(structureKey, sceneIndex) {
         
         if (response.ok) {
             appState.generatedDialogues[sceneId] = data.dialogue;
-            document.getElementById(`dialogue-${sceneId}`).textContent = data.dialogue;
+            
+            // Update the editable block if it exists
+            const blockId = `dialogue-${structureKey}-${sceneIndex}`;
+            if (window.editableBlocks && window.editableBlocks[blockId]) {
+                window.editableBlocks[blockId].updateContent(data.dialogue);
+            }
+            
             showToast('Dialogue generated successfully!', 'success');
         } else {
             throw new Error(data.error || 'Failed to generate dialogue');
@@ -2329,11 +2915,8 @@ function assembleScript() {
     let totalGeneratedScenes = 0;
     let totalScenes = 0;
     
-    // Debug logging
+    // Debug logging (minimal)
     console.log('=== ASSEMBLE SCRIPT DEBUG ===');
-    console.log('appState.generatedScenes:', appState.generatedScenes);
-    console.log('appState.generatedDialogues:', appState.generatedDialogues);
-    console.log('Keys in generatedDialogues:', Object.keys(appState.generatedDialogues || {}));
     
     // Professional title page
     script += generateTitlePage();
@@ -2345,10 +2928,24 @@ function assembleScript() {
     const totalDialogues = Object.keys(appState.generatedDialogues || {}).length;
     console.log('Total dialogues available:', totalDialogues);
     
-    // Iterate through all scenes in story order
+    // Fixed approach: Use template structure ordering (same as server-side)
     if (appState.generatedScenes) {
-        Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
-            if (Array.isArray(sceneGroup)) {
+        // Use template structure order, not alphabetical sorting
+        let structureKeys = Object.keys(appState.generatedScenes);
+        
+        // If we have template data, use its order instead
+        if (appState.templateData && appState.templateData.structure) {
+            const templateKeys = Object.keys(appState.templateData.structure);
+            // Filter to only include keys that have generated scenes
+            structureKeys = templateKeys.filter(key => appState.generatedScenes[key]);
+            console.log('Client-side using template structure order:', structureKeys);
+        } else {
+            console.log('Client-side fallback: using generated scenes order (no template available)');
+        }
+        
+        structureKeys.forEach((structureKey) => {
+            const sceneGroup = appState.generatedScenes[structureKey];
+            if (sceneGroup && Array.isArray(sceneGroup)) {
                 sceneGroup.forEach((scene, index) => {
                     const sceneId = `${structureKey}-${index}`;
                     totalScenes++;
@@ -2363,13 +2960,11 @@ function assembleScript() {
                     if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
                         dialogueContent = appState.generatedDialogues[sceneId];
                         dialogueFound = true;
-                        console.log(`Found dialogue with position key: ${sceneId}`);
                     }
                     // Try scene title as key
                     else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
                         dialogueContent = appState.generatedDialogues[scene.title];
                         dialogueFound = true;
-                        console.log(`Found dialogue with title key: ${scene.title}`);
                     }
                     // Try normalized scene title
                     else if (appState.generatedDialogues && scene.title) {
@@ -2377,7 +2972,6 @@ function assembleScript() {
                         if (appState.generatedDialogues[normalizedTitle]) {
                             dialogueContent = appState.generatedDialogues[normalizedTitle];
                             dialogueFound = true;
-                            console.log(`Found dialogue with normalized title key: ${normalizedTitle}`);
                         }
                     }
                     
@@ -2385,11 +2979,9 @@ function assembleScript() {
                         // Scene has dialogue - format it professionally
                         script += formatSceneForScreenplay(dialogueContent, sceneNumber);
                         totalGeneratedScenes++;
-                        console.log(`Added dialogue for scene: ${scene.title}`);
                     } else {
                         // Scene doesn't have dialogue yet - show professional placeholder
                         script += formatPlaceholderScene(scene, sceneNumber);
-                        console.log(`Added placeholder for scene: ${scene.title}`);
                     }
                     
                     sceneNumber++;
@@ -2397,7 +2989,7 @@ function assembleScript() {
             }
         });
     } else {
-        // Fallback: if no scene structure, just add generated dialogues
+        // Final fallback: if no scene structure, just add generated dialogues
         console.log('No scene structure, using fallback dialogue method');
         Object.values(appState.generatedDialogues || {}).forEach(dialogue => {
             script += formatSceneForScreenplay(dialogue, sceneNumber);
@@ -2640,7 +3232,29 @@ function downloadFile(content, filename, contentType) {
 }
 
 // Navigation functions
+// Force navigation to a step without validation (used for loaded projects)
+async function forceGoToStep(stepNumber) {
+    console.log(`Force navigating to step ${stepNumber} without validation`);
+    await goToStepInternal(stepNumber, false);
+}
+
+// Regular navigation with validation
 async function goToStep(stepNumber) {
+    await goToStepInternal(stepNumber, true);
+}
+
+// Internal function that handles both validated and forced navigation
+async function goToStepInternal(stepNumber, validateAccess = true) {
+    console.log(`goToStepInternal: step=${stepNumber}, validate=${validateAccess}`);
+    
+    // If validation is enabled and we can't navigate to this step, don't proceed
+    if (validateAccess && !canNavigateToStep(stepNumber)) {
+        console.warn(`Cannot navigate to step ${stepNumber} - validation failed`);
+        return;
+    }
+    
+    console.log(`Proceeding to step ${stepNumber}`);
+    
     // Hide all steps
     document.querySelectorAll('.workflow-step').forEach(step => {
         step.classList.remove('active');
@@ -2699,24 +3313,41 @@ async function goToStep(stepNumber) {
 
 // Check if navigation to a specific step is allowed
 function canNavigateToStep(stepNumber) {
+    let result;
     switch (stepNumber) {
         case 1:
-            return true; // Can always go to step 1
+            result = true; // Can always go to step 1
+            break;
         case 2:
-            return appState.storyInput && appState.storyInput.title; // Need story input
+            result = appState.storyInput && appState.storyInput.title; // Need story input
+            break;
         case 3:
-            return appState.selectedTemplate; // Need template selected
+            result = appState.selectedTemplate; // Need template selected
+            break;
         case 4:
-            return appState.generatedStructure; // Need structure generated
+            result = appState.generatedStructure; // Need structure generated
+            break;
         case 5:
-            return appState.plotPoints && Object.keys(appState.plotPoints).length > 0; // Need plot points generated
+            result = appState.plotPoints && Object.keys(appState.plotPoints).length > 0; // Need plot points generated
+            break;
         case 6:
-            return appState.generatedScenes; // Need scenes generated
+            result = appState.generatedScenes; // Need scenes generated
+            break;
         case 7:
-            return Object.keys(appState.generatedDialogues || {}).length > 0; // Need at least some dialogue generated
+            result = Object.keys(appState.generatedDialogues || {}).length > 0; // Need at least some dialogue generated
+            if (stepNumber === 7) {
+                console.log('Step 7 validation:', {
+                    dialogueCount: Object.keys(appState.generatedDialogues || {}).length,
+                    dialogueKeys: Object.keys(appState.generatedDialogues || {}),
+                    result: result
+                });
+            }
+            break;
         default:
-            return false;
+            result = false;
     }
+    
+    return result;
 }
 
 // Handle clicking on step indicators
@@ -3046,7 +3677,8 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Update app state with loaded data
     appState.storyInput = projectData.storyInput;
-    appState.selectedTemplate = projectData.template ? projectData.template.name : null;
+    // Fix: Find the correct template ID based on the template name
+    appState.selectedTemplate = findTemplateIdByName(projectData.template ? projectData.template.name : null);
     appState.templateData = projectData.template;
     appState.generatedStructure = projectData.structure;
     appState.projectId = projectData.projectId;
@@ -3117,7 +3749,8 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
                     const templateName = element.querySelector('h3').textContent;
                     if (templateName === projectData.template.name) {
                         element.classList.add('selected');
-                        appState.selectedTemplate = templateName;
+                        // Fix: Use the template ID, not the display name
+                        appState.selectedTemplate = findTemplateIdByName(templateName);
                         appState.templateData = projectData.template;
                         console.log('Template selected:', templateName);
                     }
@@ -3129,10 +3762,14 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         }
     }
     
-    // Navigate to appropriate step
-    console.log('Navigating to step:', targetStep);
-    goToStep(targetStep);
-    console.log('Navigation completed');
+    // Navigate to appropriate step (only if not a restore operation)
+    if (!isRestore) {
+        console.log('Navigating to step:', targetStep);
+        goToStep(targetStep);
+        console.log('Navigation completed');
+    } else {
+        console.log('Skipping navigation during restore - will be handled by initializeApp');
+    }
     
     // If we have a structure, display it
     if (projectData.structure && targetStep >= 3) {
@@ -3480,31 +4117,76 @@ function displayScenesForElement(structureKey, sceneGroup) {
     
     if (Array.isArray(sceneGroup)) {
         sceneGroup.forEach((scene, index) => {
-            const sceneElement = document.createElement('div');
-            sceneElement.className = 'scene-item';
-            sceneElement.innerHTML = `
-                <h4>
-                    <span class="scene-number">Scene ${index + 1}</span>
-                    ${scene.title || scene.name || 'Untitled Scene'}
-                    <div class="scene-actions">
-                        <button class="btn btn-primary btn-sm generate-scene-btn" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
-                            🔄 Regenerate Scene
-                        </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate this scene">
-                            🔍 Scene Prompt
-                        </button>
-                    </div>
-                </h4>
-                <div class="scene-meta">
-                    <span><strong>Location:</strong> ${scene.location || 'Not specified'}</span>
-                    <span><strong>Time:</strong> ${scene.time_of_day || scene.time || 'Not specified'}</span>
-                </div>
-                <div class="scene-description">${scene.description || 'No description available'}</div>
-            `;
+            const sceneContent = JSON.stringify(scene);
+            const sceneTitle = `Scene ${index + 1}: ${scene.title || scene.name || 'Untitled Scene'}`;
             
-            container.appendChild(sceneElement);
+            createEditableContentBlock({
+                id: `scene-${structureKey}-${index}`,
+                type: 'scenes',
+                title: sceneTitle,
+                content: sceneContent,
+                container: container,
+                metadata: { structureKey: structureKey, sceneIndex: index },
+                onSave: async (newContent, block) => {
+                    // Save the edited scene content
+                    await saveSceneContent(structureKey, index, newContent);
+                    
+                    // Update the app state
+                    let updatedScene;
+                    try {
+                        updatedScene = JSON.parse(newContent);
+                    } catch (e) {
+                        // If not valid JSON, update description
+                        updatedScene = { ...scene, description: newContent };
+                    }
+                    
+                    if (appState.generatedScenes && appState.generatedScenes[structureKey] && appState.generatedScenes[structureKey][index]) {
+                        appState.generatedScenes[structureKey][index] = { ...appState.generatedScenes[structureKey][index], ...updatedScene };
+                    }
+                    
+                    // Save to local storage
+                    saveToLocalStorage();
+                }
+            });
+            
+            // Add regeneration actions for this scene
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'scene-actions';
+            actionsDiv.style.marginTop = '10px';
+            actionsDiv.style.marginBottom = '20px';
+            actionsDiv.innerHTML = `
+                <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
+                    🔄 Regenerate Scene
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate this scene">
+                    🔍 Scene Prompt
+                </button>
+            `;
+            container.appendChild(actionsDiv);
         });
     }
+}
+
+// Save scene content function
+async function saveSceneContent(structureKey, sceneIndex, content) {
+    if (!appState.projectPath) {
+        throw new Error('No project loaded');
+    }
+    
+    const response = await fetch(`/api/edit-content/scenes/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ content })
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save scene content');
+    }
+    
+    return await response.json();
 }
 
 // Continue to next step after template selection
