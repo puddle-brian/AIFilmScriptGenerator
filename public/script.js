@@ -202,14 +202,14 @@ function autoGenerate() {
 }
 
 // Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
+document.addEventListener('DOMContentLoaded', async function() {
+    await initializeApp();
     setupEventListeners();
     loadTemplates();
 });
 
 // Initialize application
-function initializeApp() {
+async function initializeApp() {
     updateProgressBar();
     updateStepIndicators();
     
@@ -219,13 +219,46 @@ function initializeApp() {
         try {
             const parsed = JSON.parse(savedState);
             Object.assign(appState, parsed);
-            if (appState.currentStep > 1) {
+            
+            // If we have a loaded project path, restore the full project
+            if (appState.projectPath && appState.isLoadedProject) {
+                console.log('Restoring loaded project from localStorage:', appState.projectPath);
+                try {
+                    await restoreLoadedProject();
+                } catch (error) {
+                    console.error('Error restoring loaded project:', error);
+                    // Clear the invalid project state
+                    appState.projectPath = null;
+                    appState.isLoadedProject = false;
+                    saveToLocalStorage();
+                }
+            } else if (appState.currentStep > 1) {
                 goToStep(appState.currentStep);
             }
         } catch (e) {
             console.error('Error loading saved state:', e);
         }
     }
+}
+
+// Restore a loaded project from localStorage on page reload
+async function restoreLoadedProject() {
+    if (!appState.projectPath) {
+        throw new Error('No project path to restore');
+    }
+    
+    console.log('Restoring project:', appState.projectPath);
+    const response = await fetch(`/api/load-project/${encodeURIComponent(appState.projectPath)}`);
+    
+    if (!response.ok) {
+        throw new Error(`Failed to restore project: ${response.status} ${response.statusText}`);
+    }
+    
+    const projectData = await response.json();
+    console.log('Project data restored:', projectData);
+    
+    // Populate the form with the restored project data
+    await populateFormWithProject(projectData, false, true); // Don't show toast on restore, isRestore = true
 }
 
 // Setup event listeners
@@ -493,17 +526,42 @@ function displayDialogueGeneration() {
     Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
         if (Array.isArray(sceneGroup)) {
             sceneGroup.forEach((scene, index) => {
+                const sceneId = `${structureKey}-${index}`;
+                const elementId = `dialogue-${structureKey}-${index}`;
+                
+                // Check if dialogue already exists for this scene
+                let dialogueContent = '<em>Click "Generate Dialogue" to create the screenplay for this scene.</em>';
+                let hasExistingDialogue = false;
+                
+                // First check the direct scene ID format
+                if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
+                    dialogueContent = appState.generatedDialogues[sceneId];
+                    hasExistingDialogue = true;
+                } else if (appState.generatedDialogues) {
+                    // Also check for dialogue matching by scene title (for loaded projects)
+                    const sceneTitle = scene.title || scene.name || '';
+                    const normalizedSceneTitle = sceneTitle.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                    
+                    Object.entries(appState.generatedDialogues).forEach(([dialogueKey, dialogue]) => {
+                        const normalizedDialogueKey = dialogueKey.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        if (normalizedSceneTitle === normalizedDialogueKey) {
+                            dialogueContent = dialogue;
+                            hasExistingDialogue = true;
+                        }
+                    });
+                }
+                
                 const sceneElement = document.createElement('div');
                 sceneElement.className = 'dialogue-scene';
                 sceneElement.innerHTML = `
                     <h4>
                         ${scene.title || scene.name || 'Untitled Scene'}
                         <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
-                            Generate Dialogue
+                            ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
                         </button>
                     </h4>
-                    <div id="dialogue-${structureKey}-${index}" class="script-content">
-                        <em>Click "Generate Dialogue" to create the screenplay for this scene.</em>
+                    <div id="${elementId}" class="script-content">
+                        ${hasExistingDialogue ? dialogueContent : dialogueContent}
                     </div>
                 `;
                 
@@ -511,6 +569,8 @@ function displayDialogueGeneration() {
             });
         }
     });
+    
+    console.log('Dialogue interface displayed with existing content restored');
 }
 
 // Generate dialogue for a specific scene
@@ -685,6 +745,12 @@ function goToStep(stepNumber) {
     
     // Show target step
     document.getElementById(`step${stepNumber}`).classList.add('active');
+    
+    // Refresh content for specific steps when navigating to them
+    if (stepNumber === 5 && appState.generatedScenes) {
+        // Refresh dialogue interface to restore existing dialogue content
+        displayDialogueGeneration();
+    }
     
     appState.currentStep = stepNumber;
     updateProgressBar();
@@ -877,14 +943,21 @@ async function loadProject(projectPath) {
         const projectData = await response.json();
         console.log('Project data loaded:', projectData);
         
-        // Populate all form fields with loaded data
-        await populateFormWithProject(projectData);
+        try {
+            // Populate all form fields with loaded data
+            console.log('About to call populateFormWithProject...');
+            console.log('Project data being passed:', projectData);
+            await populateFormWithProject(projectData);
+            console.log('populateFormWithProject completed successfully');
+        } catch (error) {
+            console.error('Error in populateFormWithProject:', error);
+            console.error('Error stack:', error.stack);
+            showToast(`Error loading project: ${error.message}`, 'error');
+        }
         
         // Hide modal
         hideLoadProjectModal();
         hideLoading();
-        
-        showToast(`Project "${projectData.storyInput.title}" loaded successfully!`, 'success');
         
     } catch (error) {
         console.error('Error loading project:', error);
@@ -893,18 +966,25 @@ async function loadProject(projectPath) {
     }
 }
 
-async function populateFormWithProject(projectData) {
+async function populateFormWithProject(projectData, showToastMessage = true, isRestore = false) {
+    console.log('=== START populateFormWithProject ===');
     console.log('Populating form with project data:', projectData);
+    console.log('Is restore operation:', isRestore);
     
     // Clear existing state
+    console.log('Clearing existing state...');
     appState.influences = { directors: [], screenwriters: [], films: [] };
     
     // Populate basic story info
+    console.log('Populating basic story info...');
+    console.log('Title element:', document.getElementById('title'));
+    console.log('Setting title to:', projectData.storyInput.title);
     document.getElementById('title').value = projectData.storyInput.title || '';
     document.getElementById('logline').value = projectData.storyInput.logline || '';
     document.getElementById('characters').value = projectData.storyInput.characters || '';
     document.getElementById('totalScenes').value = projectData.storyInput.totalScenes || 70;
     document.getElementById('tone').value = projectData.storyInput.tone || '';
+    console.log('Basic story info populated');
     
     // Populate influences if they exist
     if (projectData.storyInput.influences) {
@@ -930,49 +1010,179 @@ async function populateFormWithProject(projectData) {
     
     // Determine which step to show based on available data
     let targetStep = 1;
+    let maxAvailableStep = 1;
+    
     if (projectData.structure) {
-        targetStep = 3; // Go to structure review
+        maxAvailableStep = 3; // Structure available
         if (projectData.scenes) {
-            targetStep = 4; // Go to scenes review
-            appState.generatedScenes = projectData.scenes;
+            maxAvailableStep = 4; // Scenes available
+            console.log('Raw scenes data:', projectData.scenes);
+            // Convert scenes format for app state
+            const scenesForState = {};
+            Object.entries(projectData.scenes).forEach(([key, value]) => {
+                console.log(`Processing scene group ${key}:`, value);
+                if (value.scenes && Array.isArray(value.scenes)) {
+                    // New format: {key: {scenes: [...]}}
+                    scenesForState[key] = value.scenes;
+                    console.log(`Converted ${key} to array of ${value.scenes.length} scenes`);
+                } else if (Array.isArray(value)) {
+                    // Old format: {key: [...]}
+                    scenesForState[key] = value;
+                    console.log(`${key} already in array format with ${value.length} scenes`);
+                }
+            });
+            appState.generatedScenes = scenesForState;
+            console.log('Final scenes for app state:', scenesForState);
+            
+            if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
+                maxAvailableStep = 5; // Dialogue available
+                console.log('Dialogue data:', projectData.dialogue);
+                appState.generatedDialogues = projectData.dialogue;
+            }
         }
+    }
+    
+    // Determine target step based on whether this is a restore operation
+    if (isRestore && appState.currentStep && appState.currentStep <= maxAvailableStep) {
+        // If restoring and current step is valid, stay on current step
+        targetStep = appState.currentStep;
+        console.log(`Restore: staying on current step ${targetStep} (max available: ${maxAvailableStep})`);
+    } else {
+        // If initial load or current step is invalid, go to highest available step
+        targetStep = maxAvailableStep;
+        console.log(`Initial load: going to highest available step ${targetStep}`);
     }
     
     // Make sure templates are loaded first
     if (targetStep >= 2) {
-        await loadTemplates();
-        
-        // Select the template if we have one
-        if (projectData.template && projectData.template.name) {
-            // Find and select the template
-            const templateElements = document.querySelectorAll('.template-card');
-            templateElements.forEach(element => {
-                const templateName = element.querySelector('h3').textContent;
-                if (templateName === projectData.template.name) {
-                    element.classList.add('selected');
-                    appState.selectedTemplate = templateName;
-                    appState.templateData = projectData.template;
-                }
-            });
+        try {
+            console.log('Loading templates...');
+            await loadTemplates();
+            console.log('Templates loaded successfully');
+            
+            // Select the template if we have one
+            if (projectData.template && projectData.template.name) {
+                console.log('Selecting template:', projectData.template.name);
+                // Find and select the template
+                const templateElements = document.querySelectorAll('.template-card');
+                console.log('Found template elements:', templateElements.length);
+                templateElements.forEach(element => {
+                    const templateName = element.querySelector('h3').textContent;
+                    if (templateName === projectData.template.name) {
+                        element.classList.add('selected');
+                        appState.selectedTemplate = templateName;
+                        appState.templateData = projectData.template;
+                        console.log('Template selected:', templateName);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error loading templates:', error);
+            // Continue anyway, just log the error
         }
     }
     
     // Navigate to appropriate step
+    console.log('Navigating to step:', targetStep);
     goToStep(targetStep);
+    console.log('Navigation completed');
     
     // If we have a structure, display it
     if (projectData.structure && targetStep >= 3) {
         console.log('Displaying structure:', projectData.structure);
         displayStructure(projectData.structure);
+        console.log('Structure display completed');
     }
     
     // If we have scenes, display them
     if (projectData.scenes && targetStep >= 4) {
         console.log('Displaying scenes:', projectData.scenes);
-        displayScenes(projectData.scenes);
+        // Convert scenes format if needed
+        const scenesToDisplay = {};
+        Object.entries(projectData.scenes).forEach(([key, value]) => {
+            if (value.scenes && Array.isArray(value.scenes)) {
+                // New format: {key: {scenes: [...]}}
+                scenesToDisplay[key] = value.scenes;
+            } else if (Array.isArray(value)) {
+                // Old format: {key: [...]}
+                scenesToDisplay[key] = value;
+            }
+        });
+        console.log('Scenes to display:', scenesToDisplay);
+        displayScenes(scenesToDisplay);
+        console.log('Scenes display completed');
     }
     
+    // If we have dialogue and we're going to step 5, display dialogue generation interface
+    if (targetStep >= 5) {
+        console.log('Displaying dialogue generation interface');
+        displayDialogueGeneration();
+        console.log('Dialogue generation interface displayed');
+        
+        // If we have existing dialogue, populate it
+        if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
+            console.log('Populating existing dialogue');
+            console.log('Available dialogue keys:', Object.keys(projectData.dialogue));
+            console.log('Current scenes in app state:', Object.keys(appState.generatedScenes));
+            
+            // Check immediately what elements are available
+            console.log('Available dialogue elements (immediate):', Array.from(document.querySelectorAll('[id^="dialogue-"]')).map(el => el.id));
+            
+            // Wait a moment for the dialogue interface to be fully rendered
+            setTimeout(() => {
+                console.log('=== TIMEOUT EXECUTED ===');
+                console.log('Available dialogue elements after timeout:', Array.from(document.querySelectorAll('[id^="dialogue-"]')).map(el => el.id));
+                
+                Object.entries(projectData.dialogue).forEach(([sceneId, dialogue]) => {
+                    console.log(`Processing dialogue: ${sceneId}`);
+                    
+                    // The dialogue ID format is like "The_Empty_Studio" but we need to find the matching scene
+                    // Look through all generated scenes to find the matching one
+                    let found = false;
+                    Object.entries(appState.generatedScenes).forEach(([structureKey, scenes]) => {
+                        scenes.forEach((scene, index) => {
+                            const expectedElementId = `dialogue-${structureKey}-${index}`;
+                            const dialogueElement = document.getElementById(expectedElementId);
+                            
+                            // Check if this scene matches the dialogue (by title or name)
+                            // Normalize both titles by removing all non-alphanumeric characters and converting to lowercase
+                            const rawSceneTitle = scene.title || scene.name || '';
+                            const sceneTitle = rawSceneTitle.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                            const dialogueTitle = sceneId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                            
+                            console.log(`Comparing scene "${rawSceneTitle}" -> "${sceneTitle}" with dialogue "${sceneId}" -> "${dialogueTitle}" for element ${expectedElementId}`);
+                            
+                            if (sceneTitle === dialogueTitle || sceneTitle.includes(dialogueTitle) || dialogueTitle.includes(sceneTitle)) {
+                                if (dialogueElement) {
+                                    dialogueElement.textContent = dialogue;
+                                    console.log(`✅ Populated dialogue for scene: ${structureKey}-${index} (${sceneId})`);
+                                    found = true;
+                                } else {
+                                    console.log(`❌ Element ${expectedElementId} not found`);
+                                }
+                            }
+                        });
+                    });
+                    
+                    if (!found) {
+                        console.log(`❌ Could not match dialogue "${sceneId}" to any scene`);
+                    }
+                });
+            }, 100);
+        }
+    }
+    
+    // Mark this as a loaded project so it can be restored on page reload
+    appState.isLoadedProject = true;
+    
+    console.log('Saving to localStorage...');
     saveToLocalStorage();
+    console.log('=== END populateFormWithProject ===');
+    
+    // Show success message if requested
+    if (showToastMessage) {
+        showToast(`Project "${projectData.storyInput.title}" loaded successfully!`, 'success');
+    }
 }
 
 async function deleteProject(projectPath, projectTitle) {

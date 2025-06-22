@@ -525,6 +525,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
     const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    const dialogueDir = path.join(projectDir, '03_dialogue');
     
     // Load the main project data
     const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
@@ -534,9 +535,38 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     try {
       const scenesContent = await fs.readFile(scenesFile, 'utf8');
       const scenesJson = JSON.parse(scenesContent);
-      scenesData = scenesJson.scenes;
+      // Handle both old and new scene formats
+      if (scenesJson.scenes) {
+        scenesData = scenesJson.scenes;
+      } else {
+        scenesData = scenesJson;
+      }
+      console.log(`Scenes loaded for project ${projectPath}:`, Object.keys(scenesData));
     } catch (error) {
       console.log(`No scenes found for project ${projectPath}`);
+    }
+    
+    // Try to load dialogue files if they exist
+    let dialogueData = {};
+    try {
+      const dialogueFiles = await fs.readdir(dialogueDir);
+      console.log(`Found dialogue files for project ${projectPath}:`, dialogueFiles);
+      
+      for (const file of dialogueFiles) {
+        if (file.endsWith('.txt')) {
+          try {
+            const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
+            // Extract scene identifier from filename (remove extension and hash)
+            const sceneId = file.replace('.txt', '').replace(/_[a-f0-9]{8}$/, '');
+            dialogueData[sceneId] = content;
+            console.log(`Loaded dialogue for scene: ${sceneId}`);
+          } catch (error) {
+            console.log(`Error reading dialogue file ${file}:`, error.message);
+          }
+        }
+      }
+    } catch (error) {
+      console.log(`No dialogue directory found for project ${projectPath}`);
     }
     
     // Return comprehensive project data
@@ -547,6 +577,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
       template: projectData.template,
       structure: projectData.structure,
       scenes: scenesData,
+      dialogue: dialogueData,
       generatedAt: projectData.generatedAt
     };
     
