@@ -692,6 +692,49 @@ function goToStep(stepNumber) {
     saveToLocalStorage();
 }
 
+// Check if navigation to a specific step is allowed
+function canNavigateToStep(stepNumber) {
+    switch (stepNumber) {
+        case 1:
+            return true; // Can always go to step 1
+        case 2:
+            return appState.storyInput && appState.storyInput.title; // Need story input
+        case 3:
+            return appState.selectedTemplate; // Need template selected
+        case 4:
+            return appState.generatedStructure; // Need structure generated
+        case 5:
+            return appState.generatedScenes; // Need scenes generated
+        case 6:
+            return Object.keys(appState.generatedDialogues || {}).length > 0; // Need dialogue generated
+        default:
+            return false;
+    }
+}
+
+// Handle clicking on step indicators
+function handleStepClick(stepNumber) {
+    if (stepNumber === appState.currentStep) {
+        return; // Already on this step
+    }
+    
+    if (canNavigateToStep(stepNumber)) {
+        goToStep(stepNumber);
+        showToast(`Navigated to Step ${stepNumber}`, 'success');
+    } else {
+        // Show helpful message about what's needed
+        const requirements = {
+            2: "Please complete the story input first",
+            3: "Please select a story structure template first", 
+            4: "Please generate and approve the plot structure first",
+            5: "Please generate and approve scenes first",
+            6: "Please generate dialogue for scenes first"
+        };
+        
+        showToast(requirements[stepNumber] || "Cannot navigate to this step yet", 'error');
+    }
+}
+
 function updateProgressBar() {
     const progressPercentage = (appState.currentStep / 6) * 100;
     elements.progressFill.style.width = `${progressPercentage}%`;
@@ -700,12 +743,20 @@ function updateProgressBar() {
 function updateStepIndicators() {
     document.querySelectorAll('.step').forEach((step, index) => {
         const stepNumber = index + 1;
-        step.classList.remove('active', 'completed');
+        step.classList.remove('active', 'completed', 'disabled');
         
         if (stepNumber === appState.currentStep) {
             step.classList.add('active');
         } else if (stepNumber < appState.currentStep) {
             step.classList.add('completed');
+        } else if (!canNavigateToStep(stepNumber)) {
+            step.classList.add('disabled');
+        }
+        
+        // Add click handler if not already added
+        if (!step.hasAttribute('data-click-handler')) {
+            step.setAttribute('data-click-handler', 'true');
+            step.addEventListener('click', () => handleStepClick(stepNumber));
         }
     });
 }
@@ -781,9 +832,14 @@ async function showLoadProjectModal() {
                     <strong>Scenes:</strong> ${project.totalScenes || 'Not specified'}
                 </div>
                 <div class="project-logline">"${project.logline}"</div>
-                <button class="load-project-btn" onclick="loadProject('${project.path}')">
-                    Load This Project
-                </button>
+                <div class="project-actions">
+                    <button class="load-project-btn" onclick="loadProject('${project.path}')">
+                        📁 Load Project
+                    </button>
+                    <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+                        🗑️ Delete
+                    </button>
+                </div>
             `;
             projectsList.appendChild(projectDiv);
         });
@@ -822,7 +878,7 @@ async function loadProject(projectPath) {
         console.log('Project data loaded:', projectData);
         
         // Populate all form fields with loaded data
-        populateFormWithProject(projectData);
+        await populateFormWithProject(projectData);
         
         // Hide modal
         hideLoadProjectModal();
@@ -837,7 +893,9 @@ async function loadProject(projectPath) {
     }
 }
 
-function populateFormWithProject(projectData) {
+async function populateFormWithProject(projectData) {
+    console.log('Populating form with project data:', projectData);
+    
     // Clear existing state
     appState.influences = { directors: [], screenwriters: [], films: [] };
     
@@ -880,20 +938,82 @@ function populateFormWithProject(projectData) {
         }
     }
     
+    // Make sure templates are loaded first
+    if (targetStep >= 2) {
+        await loadTemplates();
+        
+        // Select the template if we have one
+        if (projectData.template && projectData.template.name) {
+            // Find and select the template
+            const templateElements = document.querySelectorAll('.template-card');
+            templateElements.forEach(element => {
+                const templateName = element.querySelector('h3').textContent;
+                if (templateName === projectData.template.name) {
+                    element.classList.add('selected');
+                    appState.selectedTemplate = templateName;
+                    appState.templateData = projectData.template;
+                }
+            });
+        }
+    }
+    
     // Navigate to appropriate step
     goToStep(targetStep);
     
     // If we have a structure, display it
     if (projectData.structure && targetStep >= 3) {
+        console.log('Displaying structure:', projectData.structure);
         displayStructure(projectData.structure);
     }
     
     // If we have scenes, display them
     if (projectData.scenes && targetStep >= 4) {
+        console.log('Displaying scenes:', projectData.scenes);
         displayScenes(projectData.scenes);
     }
     
     saveToLocalStorage();
+}
+
+async function deleteProject(projectPath, projectTitle) {
+    // Show confirmation dialog
+    const confirmMessage = `Are you sure you want to delete the project "${projectTitle}"?\n\nThis will permanently delete all files including:\n• Story structure\n• Generated scenes\n• Dialogue\n• Exported scripts\n\nThis action cannot be undone.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    try {
+        showLoading('Deleting project...');
+        
+        const response = await fetch(`/api/project/${encodeURIComponent(projectPath)}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            let errorMessage = 'Failed to delete project';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (parseError) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        
+        hideLoading();
+        showToast(`Project "${projectTitle}" deleted successfully!`, 'success');
+        
+        // Refresh the projects list
+        showLoadProjectModal();
+        
+    } catch (error) {
+        console.error('Error deleting project:', error);
+        showToast(`Error deleting project: ${error.message}`, 'error');
+        hideLoading();
+    }
 }
 
 // Error handling

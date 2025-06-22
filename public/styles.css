@@ -73,6 +73,15 @@ body {
     color: rgba(255,255,255,0.6);
     font-size: 0.9rem;
     position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 5px;
+    border-radius: 8px;
+}
+
+.step:hover {
+    color: rgba(255,255,255,0.9);
+    background: rgba(255,255,255,0.1);
 }
 
 .step.active {
@@ -82,6 +91,20 @@ body {
 
 .step.completed {
     color: #4facfe;
+}
+
+.step.completed:hover {
+    color: #2e86de;
+}
+
+.step.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.step.disabled:hover {
+    color: rgba(255,255,255,0.6);
+    background: none;
 }
 
 .step::before {
@@ -841,6 +864,12 @@ body {
     margin-bottom: 15px;
 }
 
+.project-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
 .load-project-btn {
     background: #4facfe;
     color: white;
@@ -850,9 +879,70 @@ body {
     cursor: pointer;
     font-size: 0.9rem;
     transition: all 0.2s ease;
+    flex: 1;
 }
 
 .load-project-btn:hover {
     background: #2e86de;
     transform: translateY(-1px);
+}
+
+.delete-project-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.delete-project-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.delete-project-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Breadcrumb Navigation */
+.step-breadcrumb {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.breadcrumb-btn {
+    background: none;
+    border: none;
+    color: #4facfe;
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.breadcrumb-btn:hover {
+    background: #f0f9ff;
+    color: #2e86de;
+}
+
+.breadcrumb-separator {
+    margin: 0 8px;
+    color: #a0aec0;
+    font-size: 0.8rem;
+}
+
+.breadcrumb-current {
+    color: #2d3748;
+    font-weight: 600;
+    font-size: 0.9rem;
 } 

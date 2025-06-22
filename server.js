@@ -557,6 +557,31 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
   }
 });
 
+// Delete project endpoint
+app.delete('/api/project/:projectPath', async (req, res) => {
+  try {
+    const projectPath = req.params.projectPath;
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    
+    // Check if project directory exists
+    try {
+      await fs.access(projectDir);
+    } catch (error) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Recursively delete the project directory
+    await fs.rm(projectDir, { recursive: true, force: true });
+    
+    console.log(`Project deleted: ${projectPath}`);
+    res.json({ message: 'Project deleted successfully', projectPath });
+    
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Failed to delete project', details: error.message });
+  }
+});
+
 // Regenerate scenes from existing project (simple approach - generate fewer scenes)
 app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
   try {
@@ -739,18 +764,98 @@ app.post('/api/export', async (req, res) => {
   try {
     const { projectData, format = 'text', projectPath } = req.body;
     
+    // If we have a projectPath, load all the actual content from the project directory
+    let fullProjectData = projectData;
+    if (projectPath) {
+      try {
+        const projectDir = path.join(__dirname, 'generated', projectPath);
+        
+        // Load scenes if they exist
+        const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+        let scenesData = null;
+        try {
+          const scenesContent = await fs.readFile(scenesFile, 'utf8');
+          scenesData = JSON.parse(scenesContent);
+        } catch (error) {
+          console.log('No scenes file found or error reading scenes');
+        }
+        
+        // Load all dialogue files
+        const dialogueDir = path.join(projectDir, '03_dialogue');
+        let dialogueFiles = [];
+        try {
+          dialogueFiles = await fs.readdir(dialogueDir);
+        } catch (error) {
+          console.log('No dialogue directory found');
+        }
+        
+        // Read all dialogue content
+        const dialogueContent = [];
+        for (const file of dialogueFiles) {
+          if (file.endsWith('.txt')) {
+            try {
+              const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
+              dialogueContent.push(content);
+            } catch (error) {
+              console.log(`Error reading dialogue file ${file}`);
+            }
+          }
+        }
+        
+        fullProjectData = {
+          ...projectData,
+          scenes: scenesData,
+          dialogueContent: dialogueContent
+        };
+      } catch (error) {
+        console.log('Error loading project content, using basic data');
+      }
+    }
+    
     // Assemble the full script
-    let script = `${projectData.storyInput.title}\n`;
+    let script = `${fullProjectData.storyInput.title}\n`;
     script += `Written by: [Author Name]\n\n`;
-    script += `LOGLINE: ${projectData.storyInput.logline}\n\n`;
-    script += `GENRE: ${projectData.storyInput.genre}\n\n`;
-    script += `CHARACTERS: ${projectData.storyInput.characters}\n\n`;
+    script += `LOGLINE: ${fullProjectData.storyInput.logline}\n\n`;
+    script += `GENRE: ${fullProjectData.storyInput.genre || fullProjectData.storyInput.tone || 'Drama'}\n\n`;
+    script += `CHARACTERS: ${fullProjectData.storyInput.characters}\n\n`;
     script += `FADE IN:\n\n`;
     
-    // Add all dialogue scenes
-    if (projectData.dialogues) {
-      Object.values(projectData.dialogues).forEach(dialogue => {
-        script += dialogue + '\n\n';
+    // Add structure overview if available
+    if (fullProjectData.structure) {
+      script += `=== STORY STRUCTURE ===\n\n`;
+      Object.entries(fullProjectData.structure).forEach(([key, element]) => {
+        script += `${element.name || key.replace(/_/g, ' ').toUpperCase()}\n`;
+        script += `${element.description}\n\n`;
+      });
+      script += `\n`;
+    }
+    
+    // Add scenes if available
+    if (fullProjectData.scenes && fullProjectData.scenes.scenes) {
+      script += `=== SCENES BREAKDOWN ===\n\n`;
+      Object.entries(fullProjectData.scenes.scenes).forEach(([structureKey, structureScenes]) => {
+        script += `${structureKey.replace(/_/g, ' ').toUpperCase()}\n\n`;
+        if (structureScenes.scenes) {
+          structureScenes.scenes.forEach((scene, index) => {
+            script += `Scene ${scene.scene_number || index + 1}: ${scene.title}\n`;
+            script += `Location: ${scene.location}\n`;
+            script += `Characters: ${Array.isArray(scene.characters) ? scene.characters.join(', ') : scene.characters}\n\n`;
+            script += `${scene.description}\n\n`;
+            if (scene.emotional_beats) {
+              script += `Emotional Beats: ${Array.isArray(scene.emotional_beats) ? scene.emotional_beats.join(', ') : scene.emotional_beats}\n\n`;
+            }
+            script += `---\n\n`;
+          });
+        }
+      });
+    }
+    
+    // Add all dialogue content
+    if (fullProjectData.dialogueContent && fullProjectData.dialogueContent.length > 0) {
+      script += `=== DIALOGUE SCENES ===\n\n`;
+      fullProjectData.dialogueContent.forEach((dialogue, index) => {
+        script += `${dialogue}\n\n`;
+        script += `---\n\n`;
       });
     }
     
@@ -761,21 +866,21 @@ app.post('/api/export', async (req, res) => {
       const projectDir = path.join(__dirname, 'generated', projectPath);
       const finalScriptDir = path.join(projectDir, '04_final_script');
       
-      const scriptTitle = (projectData.storyInput.title || 'script').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+      const scriptTitle = (fullProjectData.storyInput.title || 'script').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
       const scriptFile = path.join(finalScriptDir, `${scriptTitle}_final.txt`);
       const scriptJsonFile = path.join(finalScriptDir, `${scriptTitle}_complete_project.json`);
       
       await fs.writeFile(scriptFile, script);
-      await fs.writeFile(scriptJsonFile, JSON.stringify(projectData, null, 2));
+      await fs.writeFile(scriptJsonFile, JSON.stringify(fullProjectData, null, 2));
       
       console.log(`Final script saved to: ${scriptFile}`);
     }
     
     if (format === 'json') {
-      res.json({ script, projectData });
+      res.json({ script, fullProjectData });
     } else {
       res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="${projectData.storyInput.title || 'script'}.txt"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${fullProjectData.storyInput.title || 'script'}.txt"`);
       res.send(script);
     }
   } catch (error) {

@@ -177,6 +177,10 @@
         <!-- Step 2: Template Selection -->
         <section class="workflow-step" id="step2">
             <div class="card">
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">← Story Input</button>
+                    <span class="breadcrumb-current">Template Selection</span>
+                </div>
                 <h2>Step 2: Choose Plot Structure</h2>
                 <p class="step-description">Select a story structure template that best fits your narrative:</p>
                 <div id="templateOptions" class="template-grid">
@@ -192,6 +196,13 @@
         <!-- Step 3: Structure Review -->
         <section class="workflow-step" id="step3">
             <div class="card">
+                <div class="step-breadcrumb">
+                    <button class="breadcrumb-btn" onclick="goToStep(1)">Story Input</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
+                    <span class="breadcrumb-separator">→</span>
+                    <span class="breadcrumb-current">Structure Review</span>
+                </div>
                 <h2>Step 3: Review Plot Structure</h2>
                 <p class="step-description">Review and approve the generated plot structure:</p>
                 <div id="structureContent">
