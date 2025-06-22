@@ -12,6 +12,9 @@
         <header class="header">
             <h1 class="title">Film Script Generator</h1>
             <p class="subtitle">Create professional scripts with AI-powered hierarchical development</p>
+            <div class="header-actions" id="headerActions" style="display: none;">
+                <button class="btn btn-sm btn-outline" onclick="showLoadProjectModal()">📁 Load Existing Project</button>
+            </div>
         </header>
 
         <!-- Project Header (shown when project is loaded) -->
@@ -30,6 +33,18 @@
                 </div>
             </div>
             <div class="project-actions">
+                <div class="model-selector">
+                    <label for="modelSelect" class="model-label">AI Model:</label>
+                    <select id="modelSelect" class="model-select">
+                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet (Best Quality)</option>
+                        <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku (Fast & Cheap)</option>
+                        <option value="claude-3-haiku-20240307">Claude 3 Haiku (Cheapest)</option>
+                    </select>
+                    <div class="model-info">
+                        <span class="model-cost" id="modelCost">~$3/$15 per million tokens</span>
+                    </div>
+                </div>
+                <button class="btn btn-sm btn-primary" onclick="startNewProject()">✨ New Project</button>
                 <button class="btn btn-sm btn-outline" onclick="showLoadProjectModal()">📁 Load Project</button>
                 <button class="btn btn-sm btn-outline" onclick="showProjectDetails()">📋 Details</button>
                 <button class="btn btn-sm btn-secondary" onclick="saveProject()">💾 Save</button>
@@ -205,14 +220,32 @@
                     <span class="breadcrumb-current">Template Selection</span>
                 </div>
                 <h2>Step 2: Choose Template</h2>
-                <p class="step-description">Select a story structure template that best fits your narrative:</p>
+                <p class="step-description" id="templateStepDescription">Select a story structure template that best fits your narrative:</p>
+                
+                <!-- Selected Template Display (Expanded State) -->
+                <div class="selected-template-display" id="selectedTemplateDisplay" style="display: none;">
+                    <div class="template-info-card selected-template-card">
+                        <div class="selected-template-header">
+                            <div class="selected-template-info">
+                                <h3 id="selectedTemplateName">Template Name</h3>
+                                <p class="template-description" id="selectedTemplateDescription">Template description</p>
+                                <div class="template-category" id="selectedTemplateCategory">Category</div>
+                            </div>
+                            <div class="selected-template-actions">
+                                <button class="btn btn-outline btn-sm" onclick="changeTemplate()">
+                                    ↻ Change Template
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="templateOptions">
                     <!-- Templates will be loaded here -->
                 </div>
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(1)">Back</button>
-                    <button class="btn btn-outline" id="previewPromptBtn" disabled onclick="previewPrompt()">🔍 Preview Prompt</button>
-                    <button class="btn btn-primary" id="selectTemplateBtn" disabled onclick="generateStructure()">Generate Acts</button>
+                    <button class="btn btn-primary" id="selectTemplateBtn" disabled onclick="goToNextStep()">Continue to Acts</button>
                 </div>
             </div>
         </section>
@@ -225,17 +258,37 @@
                     <span class="breadcrumb-separator">→</span>
                     <button class="breadcrumb-btn" onclick="goToStep(2)">Template</button>
                     <span class="breadcrumb-separator">→</span>
-                    <span class="breadcrumb-current">Acts Review</span>
+                    <span class="breadcrumb-current">Acts Generation</span>
                 </div>
-                <h2>Step 3: Review Story Acts</h2>
-                <p class="step-description">Review and approve the generated story acts:</p>
+                <h2>Step 3: Generate Story Acts</h2>
+                <p class="step-description">Generate story acts using your selected template:</p>
+                
+                <!-- Acts Generation Options -->
+                <div class="acts-generation-options" id="actsGenerationOptions" style="margin-bottom: 20px;">
+                    <div class="acts-generation-section" style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="generateStructure()" title="Generate story acts using the selected template">
+                            📋 Generate Acts
+                        </button>
+                        <button class="btn btn-outline" onclick="previewPrompt()" title="Preview the prompt used to generate acts">
+                            🔍 Preview Acts Prompt
+                        </button>
+                        <span class="acts-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+                            Creates structured story acts based on your selected template
+                        </span>
+                    </div>
+
+                    <p class="generation-info">
+                        <strong>Tip:</strong> Generate acts to create the structural foundation for your story before developing plot points and scenes.
+                    </p>
+                </div>
+                
                 <div id="structureContent">
                     <!-- Generated structure will appear here -->
                 </div>
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(2)">Back</button>
-                    <button class="btn btn-outline" onclick="regenerateStructure()">Regenerate</button>
-                    <button class="btn btn-primary" onclick="approveStructure()">Approve & Generate Plot Points</button>
+                    <button class="btn btn-outline" onclick="regenerateStructure()" id="regenerateBtn" style="display: none;">Regenerate</button>
+                    <button class="btn btn-primary" onclick="approveStructure()" id="approveBtn" style="display: none;">Approve & Continue to Plot Points</button>
                 </div>
             </div>
         </section>
@@ -254,6 +307,25 @@
                 </div>
                 <h2>Step 4: Generate Plot Points</h2>
                 <p class="step-description">Generate causal plot points for each story act. These will guide the scene creation process.</p>
+                
+                <!-- Plot Points Generation Options -->
+                <div class="plot-generation-options" id="plotGenerationOptions" style="margin-bottom: 20px;">
+                    <div class="plot-generation-section" style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
+                            📋 Generate All Plot Points
+                        </button>
+                        <button class="btn btn-outline" onclick="previewAllPlotPointsPrompt()" title="Preview the prompt used to generate all plot points">
+                            🔍 Preview Plot Points Prompt
+                        </button>
+                        <span class="plot-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+                            Creates causal connections between scenes using "but" / "therefore" logic
+                        </span>
+                    </div>
+
+                    <p class="generation-info">
+                        <strong>Tip:</strong> Generate plot points to create a strong narrative thread connecting your scenes with clear causal relationships.
+                    </p>
+                </div>
                 
                 <div id="plotPointsContent">
                     <!-- Plot points will be generated here -->
@@ -283,24 +355,22 @@
                 <h2>Step 5: Generate Scenes</h2>
                 <p class="step-description">Generate scenes for each story act using the plot points as guidance.</p>
                 
-                <!-- Scene Generation Options -->
-                <div class="scene-generation-options" id="sceneGenerationOptions" style="margin-bottom: 20px;">
-                    <h3>Scene & Plot Management</h3>
-                    
-                    <div class="plot-generation-section" style="margin-bottom: 15px;">
-                        <button class="btn btn-primary" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
-                            📋 Generate All Plot Points
+                <!-- Scenes Generation Options -->
+                <div class="scenes-generation-options" id="scenesGenerationOptions" style="margin-bottom: 20px;">
+                    <div class="scenes-generation-section" style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="generateAllScenes()" title="Generate scenes for all acts that have plot points">
+                            🎬 Generate All Scenes
                         </button>
-                        <button class="btn btn-outline" onclick="previewAllPlotPointsPrompt()" title="Preview the prompt used to generate all plot points">
-                            🔍 Preview Plot Points Prompt
+                        <button class="btn btn-outline" onclick="previewAllScenesPrompt()" title="Preview the prompts used to generate all scenes">
+                            🔍 Preview All Scenes Prompts
                         </button>
-                        <span class="plot-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
-                            Creates causal connections between scenes using "and then" / "therefore" logic
+                        <span class="scenes-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+                            Creates scenes based on the plot points from each story act
                         </span>
                     </div>
 
                     <p class="generation-info">
-                        <strong>Tip:</strong> Generate plot points to create a strong narrative thread connecting your scenes with clear causal relationships.
+                        <strong>Tip:</strong> Scenes will only be generated for acts that have plot points. Complete Step 4 first to ensure all acts have plot points.
                     </p>
                 </div>
                 
@@ -332,12 +402,32 @@
                 </div>
                 <h2>Step 6: Generate Dialogue</h2>
                 <p class="step-description">Generate and review dialogue for each scene:</p>
+                
+                <!-- Dialogue Generation Options -->
+                <div class="dialogue-generation-options" id="dialogueGenerationOptions" style="margin-bottom: 20px;">
+                    <div class="dialogue-generation-section" style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="generateAllDialogue()" title="Generate dialogue for all scenes that exist">
+                            💬 Generate All Dialogue
+                        </button>
+                        <button class="btn btn-outline" onclick="previewAllDialoguePrompts()" title="Preview the prompts used to generate all dialogue">
+                            🔍 Preview All Dialogue Prompts
+                        </button>
+                        <span class="dialogue-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+                            Creates professional dialogue for all generated scenes
+                        </span>
+                    </div>
+
+                    <p class="generation-info">
+                        <strong>Tip:</strong> Dialogue will only be generated for scenes that exist. Complete Step 5 first to ensure all acts have scenes.
+                    </p>
+                </div>
+                
                 <div id="dialogueContent">
                     <!-- Scene dialogue options will appear here -->
                 </div>
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(5)">Back</button>
-                    <button class="btn btn-primary" onclick="finalizeScript()">Complete Script</button>
+                    <button class="btn btn-primary" onclick="finalizeScript()">View Final Script</button>
                 </div>
             </div>
         </section>
@@ -365,12 +455,12 @@
                 
                 <div class="script-stats">
                     <div class="stat">
-                        <span class="stat-label">Total Scenes:</span>
-                        <span class="stat-value" id="totalScenes">0</span>
+                        <span class="stat-label">Scenes with Dialogue:</span>
+                        <span class="stat-value" id="totalScenesDisplay">0/0 scenes</span>
                     </div>
                     <div class="stat">
                         <span class="stat-label">Estimated Pages:</span>
-                        <span class="stat-value" id="estimatedPages">0</span>
+                        <span class="stat-value" id="estimatedPagesDisplay">0</span>
                     </div>
                 </div>
 
@@ -379,9 +469,52 @@
                 </div>
 
                 <div class="export-options">
-                    <button class="btn btn-primary" onclick="exportScript('text')">Download Script (.txt)</button>
-                    <button class="btn btn-outline" onclick="exportScript('json')">Export Project (.json)</button>
-                    <button class="btn btn-outline" onclick="saveProject()">Save Project</button>
+                    <h3>🎬 Professional Export Options</h3>
+                    <div class="export-formats">
+                        <div class="export-category">
+                            <h4>📄 Industry Standard Formats</h4>
+                            <button class="btn btn-primary" onclick="exportScript('screenplay')">
+                                📝 Professional Screenplay (.txt)
+                            </button>
+                            <button class="btn btn-outline" onclick="exportScript('fountain')">
+                                ⛲ Fountain Format (.fountain)
+                            </button>
+                            <button class="btn btn-outline" onclick="exportScript('fdx')">
+                                🎭 Final Draft (.fdx)
+                            </button>
+                        </div>
+                        
+                        <div class="export-category">
+                            <h4>📦 Production Ready</h4>
+                            <button class="btn btn-success" onclick="exportScript('production')">
+                                🎬 Production Package
+                            </button>
+                            <button class="btn btn-outline" onclick="exportScript('pdf-ready')">
+                                📄 PDF-Ready Format
+                            </button>
+                        </div>
+                        
+                        <div class="export-category">
+                            <h4>💾 Project Files</h4>
+                            <button class="btn btn-outline" onclick="exportScript('json')">
+                                📁 Export Project (.json)
+                            </button>
+                            <button class="btn btn-outline" onclick="saveProject()">
+                                💾 Save Project
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="export-info">
+                        <p><strong>📋 Format Guide:</strong></p>
+                        <ul>
+                            <li><strong>Professional Screenplay:</strong> Industry-standard formatting with proper margins and spacing</li>
+                            <li><strong>Fountain:</strong> Plain-text markup language readable by most screenwriting software</li>
+                            <li><strong>Final Draft:</strong> XML format compatible with Final Draft software</li>
+                            <li><strong>Production Package:</strong> Complete package with script, character breakdown, and production notes</li>
+                            <li><strong>PDF-Ready:</strong> Formatted for easy conversion to PDF with proper page breaks</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="step-actions">
@@ -493,6 +626,52 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="hidePlotPointPromptModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Plot Point Prompt Modal -->
+        <div class="modal" id="individualPlotPointPromptModal">
+            <div class="modal-content prompt-modal">
+                <div class="modal-header">
+                    <h3>Individual Plot Point Regeneration Prompt</h3>
+                    <button class="modal-close" onclick="hideIndividualPlotPointPromptModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="prompt-section">
+                        <h4>System Message:</h4>
+                        <div class="prompt-content" id="individualPlotPointPromptSystemMessage"></div>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>User Prompt:</h4>
+                        <div class="prompt-content" id="individualPlotPointPromptUserPrompt"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideIndividualPlotPointPromptModal()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dialogue Prompt Modal -->
+        <div class="modal" id="dialoguePromptModal">
+            <div class="modal-content prompt-modal">
+                <div class="modal-header">
+                    <h3>Dialogue Generation Prompt</h3>
+                    <button class="modal-close" onclick="hideDialoguePromptModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="prompt-section">
+                        <h4>System Message:</h4>
+                        <div class="prompt-content" id="dialoguePromptSystemMessage"></div>
+                    </div>
+                    <div class="prompt-section">
+                        <h4>User Prompt:</h4>
+                        <div class="prompt-content" id="dialoguePromptUserPrompt"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideDialoguePromptModal()">Close</button>
                 </div>
             </div>
         </div>

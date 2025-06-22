@@ -17,7 +17,15 @@ const appState = {
     customPrompt: null,
     originalPrompt: null,
     isEditMode: false,
-    plotPoints: {}
+    plotPoints: {},
+    selectedModel: 'claude-3-5-sonnet-20241022' // Default to high-quality model
+};
+
+// Model pricing information
+const modelPricing = {
+    'claude-3-5-sonnet-20241022': { input: 3, output: 15, description: 'Best Quality' },
+    'claude-3-5-haiku-20241022': { input: 0.25, output: 1.25, description: 'Fast & Cheap' },
+    'claude-3-haiku-20240307': { input: 0.25, output: 1.25, description: 'Cheapest' }
 };
 
 // DOM Elements
@@ -90,6 +98,36 @@ function buildInfluencePrompt() {
     }
     
     return prompt;
+}
+
+// Model selection functions
+function setupModelSelector() {
+    const modelSelect = document.getElementById('modelSelect');
+    const modelCost = document.getElementById('modelCost');
+    
+    // Set initial model
+    modelSelect.value = appState.selectedModel;
+    updateModelCost();
+    
+    // Add event listener for model changes
+    modelSelect.addEventListener('change', function() {
+        appState.selectedModel = this.value;
+        updateModelCost();
+        saveToLocalStorage();
+        showToast(`Switched to ${modelPricing[this.value].description} model`, 'success');
+    });
+}
+
+function updateModelCost() {
+    const modelCost = document.getElementById('modelCost');
+    const pricing = modelPricing[appState.selectedModel];
+    if (pricing) {
+        modelCost.textContent = `~$${pricing.input}/$${pricing.output} per million tokens`;
+    }
+}
+
+function getSelectedModel() {
+    return appState.selectedModel;
 }
 
 // Auto-generation for debugging
@@ -183,6 +221,7 @@ async function autoGenerate() {
 document.addEventListener('DOMContentLoaded', async function() {
     await initializeApp();
     setupEventListeners();
+    setupModelSelector();
     loadTemplates();
 });
 
@@ -295,6 +334,10 @@ function displayTemplates(groupedTemplates) {
     const container = document.getElementById('templateOptions');
     container.innerHTML = '';
     
+    // Ensure container starts in expanded state
+    container.classList.add('template-options-expanded');
+    container.classList.remove('template-options-collapsed');
+    
     Object.entries(groupedTemplates).forEach(([categoryKey, category]) => {
         // Create category section
         const categorySection = document.createElement('div');
@@ -333,6 +376,13 @@ function displayTemplates(groupedTemplates) {
 
 // Select template
 function selectTemplate(templateId) {
+    // Add visual feedback for selection
+    const clickedTemplate = document.querySelector(`[data-template-id="${templateId}"]`);
+    if (clickedTemplate) {
+        clickedTemplate.classList.add('selecting');
+        setTimeout(() => clickedTemplate.classList.remove('selecting'), 100);
+    }
+    
     // Remove previous selection
     document.querySelectorAll('.template-option').forEach(el => {
         el.classList.remove('selected');
@@ -343,7 +393,83 @@ function selectTemplate(templateId) {
     
     appState.selectedTemplate = templateId;
     document.getElementById('selectTemplateBtn').disabled = false;
-    document.getElementById('previewPromptBtn').disabled = false;
+    
+    // Find and display the selected template immediately
+    let selectedTemplateData = null;
+    Object.values(appState.availableTemplates).forEach(category => {
+        if (category.templates) {
+            const found = category.templates.find(template => template.id === templateId);
+            if (found) {
+                selectedTemplateData = found;
+            }
+        }
+    });
+    
+    if (selectedTemplateData) {
+        displaySelectedTemplate(selectedTemplateData);
+        
+        // Collapse template options and update UI
+        setTimeout(() => {
+            collapseTemplateOptions();
+            updateTemplatePageForSelection();
+        }, 200);
+    }
+    
+    saveToLocalStorage();
+}
+
+// Collapse template options after selection
+function collapseTemplateOptions() {
+    const templateOptions = document.getElementById('templateOptions');
+    templateOptions.classList.add('template-options-collapsed');
+    templateOptions.classList.remove('template-options-expanded');
+}
+
+// Expand template options for browsing
+function expandTemplateOptions() {
+    const templateOptions = document.getElementById('templateOptions');
+    templateOptions.classList.add('template-options-expanded');
+    templateOptions.classList.remove('template-options-collapsed');
+}
+
+// Update page UI for selected state
+function updateTemplatePageForSelection() {
+    const stepDescription = document.getElementById('templateStepDescription');
+    stepDescription.textContent = 'Selected template:';
+    
+    // Scroll to show the selected template
+    document.getElementById('selectedTemplateDisplay').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+    });
+}
+
+// Change template function (expand options again)
+function changeTemplate() {
+    const stepDescription = document.getElementById('templateStepDescription');
+    stepDescription.textContent = 'Select a story structure template that best fits your narrative:';
+    
+    // Hide selected template display
+    document.getElementById('selectedTemplateDisplay').style.display = 'none';
+    
+    // Clear selection
+    document.querySelectorAll('.template-option').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    // Clear app state
+    appState.selectedTemplate = null;
+    document.getElementById('selectTemplateBtn').disabled = true;
+    
+    // Expand template options
+    expandTemplateOptions();
+    
+    // Scroll to template options
+    document.getElementById('templateOptions').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+    });
+    
     saveToLocalStorage();
 }
 
@@ -443,7 +569,8 @@ async function generateStructureWithCustomPrompt() {
             body: JSON.stringify({
                 storyInput: appState.storyInput,
                 template: appState.selectedTemplate,
-                customPrompt: appState.customPrompt
+                customPrompt: appState.customPrompt,
+                model: getSelectedModel()
             })
         });
         
@@ -498,7 +625,8 @@ async function generateStructure() {
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
-                template: appState.selectedTemplate
+                template: appState.selectedTemplate,
+                model: getSelectedModel()
             })
         });
         
@@ -575,6 +703,15 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             container.appendChild(structureElement);
         }
     });
+    
+    // Show regenerate and approve buttons after structure is displayed
+    const regenerateBtn = document.getElementById('regenerateBtn');
+    const approveBtn = document.getElementById('approveBtn');
+    
+    if (regenerateBtn && approveBtn) {
+        regenerateBtn.style.display = 'inline-block';
+        approveBtn.style.display = 'inline-block';
+    }
 }
 
 // Show the prompt that was used for the current structure
@@ -716,11 +853,11 @@ async function regenerateStructure() {
 async function approveStructure() {
     console.log('Structure approved, proceeding to plot points generation');
     goToStep(4); // Go to plot points step
-    displayPlotPointsGeneration();
+    await displayPlotPointsGeneration();
 }
 
 // Display plot points generation interface
-function displayPlotPointsGeneration() {
+async function displayPlotPointsGeneration() {
     const container = document.getElementById('plotPointsContent');
     
     if (!appState.generatedStructure) {
@@ -729,18 +866,30 @@ function displayPlotPointsGeneration() {
     }
 
     let html = '<div class="plot-points-generation">';
-            html += '<p class="generation-info"><strong>Generate plot points for each story act.</strong> These will create the causal narrative spine that guides scene creation.</p>';
-        
-        // Display each story act with plot points generation
-        Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
+    html += '<p class="generation-info"><strong>Generate plot points for each story act.</strong> These will create the causal narrative spine that guides scene creation.</p>';
+    
+    // First, try to load existing plot points from the project
+    await loadExistingPlotPoints();
+    
+    // Display each story act with plot points generation
+    Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
         html += `
             <div class="structure-element-card" id="plotPoints-${structureKey}">
                 <div class="element-header">
                     <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
                     <div class="element-actions">
-                        <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
-                            📋 Generate Plot Points
-                        </button>
+                        <div class="plot-points-controls">
+                            <select class="plot-points-count-select" id="plotPointsCount-${structureKey}">
+                                <option value="2">2 Plot Points</option>
+                                <option value="3">3 Plot Points</option>
+                                <option value="4" selected>4 Plot Points</option>
+                                <option value="5">5 Plot Points</option>
+                                <option value="6">6 Plot Points</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
+                                📋 Generate Plot Points
+                            </button>
+                        </div>
                         <button class="btn btn-outline" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for plot points generation">
                             🔍 Preview Prompt
                         </button>
@@ -759,6 +908,36 @@ function displayPlotPointsGeneration() {
     
     html += '</div>';
     container.innerHTML = html;
+    
+    // Display any existing plot points that were loaded
+    if (appState.plotPoints) {
+        Object.entries(appState.plotPoints).forEach(([structureKey, plotPoints]) => {
+            displayElementPlotPoints(structureKey, plotPoints);
+        });
+    }
+}
+
+// Load existing plot points from the project
+async function loadExistingPlotPoints() {
+    if (!appState.projectPath) {
+        console.log('No project path available for loading plot points');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/load-plot-points/${encodeURIComponent(appState.projectPath)}`);
+        if (response.ok) {
+            const data = await response.json();
+            if (data.plotPoints && Object.keys(data.plotPoints).length > 0) {
+                appState.plotPoints = data.plotPoints;
+                console.log('Loaded existing plot points:', data.plotPoints);
+            }
+        } else {
+            console.log('No existing plot points found');
+        }
+    } catch (error) {
+        console.log('Failed to load existing plot points:', error);
+    }
 }
 
 // Generate plot points for a specific story act
@@ -768,7 +947,9 @@ async function generateElementPlotPoints(structureKey) {
         return;
     }
 
-    const desiredSceneCount = 3; // Default to 3 scenes per act
+    // Get the desired plot point count from the dropdown
+    const plotPointsCountSelect = document.getElementById(`plotPointsCount-${structureKey}`);
+    const desiredSceneCount = plotPointsCountSelect ? parseInt(plotPointsCountSelect.value) : 4; // Default to 4 plot points per act
     
     try {
         showLoading(`Generating plot points for ${structureKey}...`);
@@ -779,7 +960,8 @@ async function generateElementPlotPoints(structureKey) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                desiredSceneCount: desiredSceneCount
+                desiredSceneCount: desiredSceneCount,
+                model: getSelectedModel()
             })
         });
         
@@ -828,6 +1010,9 @@ function displayElementPlotPoints(structureKey, plotPoints) {
                     <button class="btn btn-sm btn-outline" onclick="regenerateElementPlotPoint('${structureKey}', ${index})" title="Regenerate this plot point">
                         🔄
                     </button>
+                    <button class="btn btn-sm btn-outline" onclick="previewIndividualPlotPointPrompt('${structureKey}', ${index})" title="Preview the prompt for regenerating this plot point">
+                        🔍
+                    </button>
                 </div>
             </div>
         `;
@@ -835,6 +1020,150 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     
     html += '</div>';
     container.innerHTML = html;
+}
+
+// Regenerate a single plot point within an act
+async function regenerateElementPlotPoint(structureKey, plotPointIndex) {
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+
+    if (!appState.plotPoints || !appState.plotPoints[structureKey]) {
+        showToast('No plot points found for this act. Please generate plot points first.', 'error');
+        return;
+    }
+
+    try {
+        showLoading(`Regenerating plot point ${plotPointIndex + 1}...`);
+        
+        const response = await fetch(`/api/regenerate-plot-point/${appState.projectPath}/${structureKey}/${plotPointIndex}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Plot point regenerated:', data);
+            
+            // Update the specific plot point in app state (OVERWRITES the single plot point)
+            appState.plotPoints[structureKey][plotPointIndex] = data.plotPoint;
+            
+            // Refresh the display to show the updated plot point
+            displayElementPlotPoints(structureKey, appState.plotPoints[structureKey]);
+            
+            showToast(`Plot point ${plotPointIndex + 1} regenerated successfully!`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to regenerate plot point');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error regenerating plot point:', error);
+        showToast('Error regenerating plot point. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Preview individual plot point regeneration prompt
+async function previewIndividualPlotPointPrompt(structureKey, plotPointIndex) {
+    if (!appState.generatedStructure || !appState.storyInput || !appState.projectPath) {
+        showToast('No structure, story data, or project available for prompt preview.', 'error');
+        return;
+    }
+
+    if (!appState.plotPoints || !appState.plotPoints[structureKey]) {
+        showToast('No plot points found for this act. Please generate plot points first.', 'error');
+        return;
+    }
+
+    const storyAct = appState.generatedStructure[structureKey];
+    const existingPlotPoints = appState.plotPoints[structureKey];
+    
+    if (!storyAct) {
+        showToast('Story act not found.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating individual plot point prompt preview...');
+        
+        const response = await fetch('/api/preview-individual-plot-point-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectPath: appState.projectPath,
+                structureKey: structureKey,
+                plotPointIndex: plotPointIndex,
+                existingPlotPoints: existingPlotPoints
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store the prompt data for the modal
+            appState.currentIndividualPlotPointPrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                storyAct: data.storyAct,
+                structureKey: structureKey,
+                plotPointIndex: plotPointIndex,
+                targetPlotPoint: existingPlotPoints[plotPointIndex],
+                hierarchicalPrompt: data.hierarchicalPrompt
+            };
+            
+            // Show the individual plot point prompt modal
+            showIndividualPlotPointPromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate individual plot point prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating individual plot point prompt preview:', error);
+        showToast('Error generating individual plot point prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Show individual plot point prompt modal
+function showIndividualPlotPointPromptModal() {
+    const modal = document.getElementById('individualPlotPointPromptModal');
+    const prompt = appState.currentIndividualPlotPointPrompt;
+    
+    if (!prompt) {
+        showToast('No individual plot point prompt data available.', 'error');
+        return;
+    }
+    
+    // Populate modal content
+    document.getElementById('individualPlotPointPromptSystemMessage').textContent = prompt.systemMessage;
+    document.getElementById('individualPlotPointPromptUserPrompt').textContent = prompt.userPrompt;
+    
+    // Update modal title
+    const modalTitle = document.querySelector('#individualPlotPointPromptModal .modal-header h3');
+    const plotPointNumber = prompt.plotPointIndex + 1;
+    const actName = prompt.storyAct?.name || prompt.structureKey.replace(/_/g, ' ').toUpperCase();
+    modalTitle.textContent = `Plot Point ${plotPointNumber} Regeneration Prompt - ${actName}`;
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+// Hide individual plot point prompt modal
+function hideIndividualPlotPointPromptModal() {
+    document.getElementById('individualPlotPointPromptModal').classList.remove('show');
+    document.body.style.overflow = 'auto';
 }
 
 // Preview plot points generation prompt for an element
@@ -862,7 +1191,10 @@ async function previewElementPlotPointsPrompt(structureKey) {
             body: JSON.stringify({
                 projectPath: appState.projectPath,
                 structureKey: structureKey,
-                desiredSceneCount: 3 // Default to 3 scenes per element
+                desiredSceneCount: (() => {
+                    const plotPointsCountSelect = document.getElementById(`plotPointsCount-${structureKey}`);
+                    return plotPointsCountSelect ? parseInt(plotPointsCountSelect.value) : 4;
+                })()
             })
         });
         
@@ -920,10 +1252,81 @@ function checkPlotPointsCompletion() {
     return allGenerated;
 }
 
+// Preview scene generation prompt for an element
+async function previewElementScenesPrompt(structureKey) {
+    if (!appState.generatedStructure || !appState.storyInput) {
+        showToast('No structure or story data available for prompt preview.', 'error');
+        return;
+    }
+
+    const structureElement = appState.generatedStructure[structureKey];
+    
+    if (!structureElement) {
+        showToast('Structure element not found.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating scene generation prompt preview...');
+        
+        const response = await fetch('/api/preview-scene-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                storyInput: appState.storyInput,
+                structureElement: structureElement,
+                sceneIndex: null, // null for multiple scenes generation
+                sceneCount: 3, // Default scene count per act
+                projectPath: appState.projectPath // Include project path for hierarchical context
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store the prompt data for the modal
+            appState.currentScenePrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                structureElement: data.structureElement,
+                structureKey: structureKey,
+                isElementGeneration: true
+            };
+            
+            // Show the scene prompt modal
+            showScenePromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate scene prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating scene prompt preview:', error);
+        showToast('Error generating scene prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
 // Generate scenes for a specific story act
+// Check if plot points exist for a structural element
+function hasPlotPointsForElement(structureKey) {
+    return appState.plotPoints && 
+           appState.plotPoints[structureKey] && 
+           Array.isArray(appState.plotPoints[structureKey]) && 
+           appState.plotPoints[structureKey].length > 0;
+}
+
 async function generateScenesForElement(structureKey) {
     if (!appState.projectPath) {
         showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+
+    // Check if plot points exist first
+    if (!hasPlotPointsForElement(structureKey)) {
+        showToast('Please generate plot points for this structural element first in Step 4.', 'error');
         return;
     }
 
@@ -938,7 +1341,8 @@ async function generateScenesForElement(structureKey) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                sceneCount: sceneCount
+                sceneCount: sceneCount,
+                model: getSelectedModel()
             })
         });
         
@@ -970,6 +1374,152 @@ async function generateScenesForElement(structureKey) {
     }
 }
 
+// Generate scenes for all acts that have plot points
+async function generateAllScenes() {
+    console.log('generateAllScenes() called!');
+    
+    if (!appState.generatedStructure || !appState.projectPath) {
+        showToast('No structure available to generate scenes for.', 'error');
+        return;
+    }
+    
+    if (!appState.plotPoints) {
+        showToast('No plot points found. Please generate plot points first in Step 4.', 'error');
+        return;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    
+    if (structureKeys.length === 0) {
+        showToast('No structural elements found.', 'error');
+        return;
+    }
+    
+    // Filter to only include acts that have plot points
+    const actsWithPlotPoints = structureKeys.filter(key => hasPlotPointsForElement(key));
+    
+    if (actsWithPlotPoints.length === 0) {
+        showToast('No acts have plot points yet. Please generate plot points first in Step 4.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(`Generating scenes for ${actsWithPlotPoints.length} acts with plot points...`);
+        
+        // Generate scenes for each structural element that has plot points sequentially
+        for (const structureKey of actsWithPlotPoints) {
+            console.log(`Generating scenes for: ${structureKey}`);
+            
+            const response = await fetch(`/api/generate-scene/${appState.projectPath}/${structureKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    sceneCount: 3, // Default scenes per act
+                    model: getSelectedModel()
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                console.log(`Scenes generated for ${structureKey}:`, data);
+                
+                // Store scenes in app state
+                if (!appState.generatedScenes) {
+                    appState.generatedScenes = {};
+                }
+                appState.generatedScenes[structureKey] = data.scenes;
+            } else {
+                throw new Error(`Failed to generate scenes for ${structureKey}: ${data.error}`);
+            }
+        }
+        
+        // Refresh the scenes display after all scenes are generated
+        displayScenes(appState.generatedScenes);
+        
+        hideLoading();
+        showToast(`Successfully generated scenes for ${actsWithPlotPoints.length} acts!`, 'success');
+        
+        saveToLocalStorage();
+        
+    } catch (error) {
+        console.error('Error generating all scenes:', error);
+        showToast(`Error generating scenes: ${error.message}`, 'error');
+        hideLoading();
+    }
+}
+
+// Preview all scenes generation prompts
+async function previewAllScenesPrompt() {
+    if (!appState.generatedStructure || !appState.storyInput || !appState.projectPath) {
+        showToast('No structure, story data, or project available for prompt preview.', 'error');
+        return;
+    }
+    
+    if (!appState.plotPoints) {
+        showToast('No plot points found. Please generate plot points first in Step 4.', 'error');
+        return;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    const actsWithPlotPoints = structureKeys.filter(key => hasPlotPointsForElement(key));
+    
+    if (actsWithPlotPoints.length === 0) {
+        showToast('No acts have plot points yet. Please generate plot points first in Step 4.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating all scenes prompts preview...');
+        
+        // For simplicity, we'll preview the prompt for the first act with plot points
+        // In a more complete implementation, you might show all prompts or let user select
+        const firstActKey = actsWithPlotPoints[0];
+        const structureElement = appState.generatedStructure[firstActKey];
+        
+        const response = await fetch('/api/preview-scene-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                storyInput: appState.storyInput,
+                structureElement: structureElement,
+                sceneIndex: null, // null for multiple scenes generation
+                sceneCount: 3, // Default scene count per act
+                projectPath: appState.projectPath
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store the prompt data for the modal
+            appState.currentScenePrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                structureElement: structureElement,
+                sceneCount: 3,
+                hierarchicalPrompt: data.hierarchicalPrompt,
+                previewNote: `This shows the prompt structure for generating scenes. This example is for "${structureElement.name || firstActKey}" - similar prompts will be used for all ${actsWithPlotPoints.length} acts with plot points.`
+            };
+            
+            // Show the scene prompt modal
+            showScenePromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate scenes prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating all scenes prompt preview:', error);
+        showToast('Error generating scenes prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
 // Update the scenes generation to use plot points
 function displayScenes(scenes) {
     const container = document.getElementById('scenesContent');
@@ -997,12 +1547,25 @@ function displayScenes(scenes) {
             groupElement.className = 'scene-group';
             groupElement.id = `scene-group-${structureKey}`;
             
+            // Check if this element has plot points for scene generation
+            const canGenerateScenes = hasPlotPointsForElement(structureKey);
+            const generateButtonClass = canGenerateScenes ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
+            const generateButtonTitle = canGenerateScenes ? 
+                'Generate scenes for this act' : 
+                'Generate plot points first in Step 4 to enable scene generation';
+            const generateButtonOnClick = canGenerateScenes ? 
+                `generateScenesForElement('${structureKey}')` : 
+                'showToast("Please generate plot points for this element first in Step 4.", "error")';
+
             groupElement.innerHTML = `
                 <div class="scene-group-header">
                     <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
                     <div class="scene-group-actions">
-                        <button class="btn btn-primary" onclick="generateScenesForElement('${structureKey}')" title="Generate scenes for this act">
+                        <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateScenes ? '' : 'disabled'}>
                             🎬 Generate Scenes
+                        </button>
+                        <button class="btn btn-outline" onclick="previewElementScenesPrompt('${structureKey}')" title="Preview the prompt for scene generation">
+                            🔍 Preview Prompt
                         </button>
                     </div>
                 </div>
@@ -1020,6 +1583,7 @@ function displayScenes(scenes) {
                 ` : `
                     <div class="plot-points-warning">
                         <p><strong>⚠️ No plot points found.</strong> Please generate plot points first in Step 4 for better scene coherence.</p>
+                        <p><em>Scene generation will be disabled until plot points are created.</em></p>
                     </div>
                 `}
                 <div id="scenes-${structureKey}" class="scenes-container">
@@ -1046,66 +1610,69 @@ function displayScenes(scenes) {
 // Generate plot points for all scenes with causal connections
 async function generateAllPlotPoints() {
     console.log('generateAllPlotPoints() called!');
-    console.log('appState.generatedScenes:', appState.generatedScenes);
-    console.log('appState.projectPath:', appState.projectPath);
     
-    if (!appState.generatedScenes || !appState.projectPath) {
-        showToast('No scenes available to generate plot points for.', 'error');
+    if (!appState.generatedStructure || !appState.projectPath) {
+        showToast('No structure available to generate plot points for.', 'error');
+        return;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    
+    if (structureKeys.length === 0) {
+        showToast('No structural elements found.', 'error');
         return;
     }
     
     try {
-        showLoading('Generating connected plot points for all scenes...');
+        showLoading(`Generating plot points for all ${structureKeys.length} structural elements...`);
         
-        const response = await fetch(`/api/generate-plot-points/${appState.projectPath}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log('Plot points response:', data);
-            console.log('data.plotPoints structure:', data.plotPoints);
-            console.log('data.plotPoints keys:', Object.keys(data.plotPoints || {}));
-            console.log('Current scenes structure:', appState.generatedScenes);
-            console.log('Type of data.plotPoints:', typeof data.plotPoints);
+        // Generate plot points for each structural element sequentially
+        for (const structureKey of structureKeys) {
+            console.log(`Generating plot points for: ${structureKey}`);
             
-            // Update all scenes with their plot points
-            Object.entries(data.plotPoints || {}).forEach(([structureKey, plotPoints]) => {
-                console.log(`Processing ${structureKey}:`, plotPoints);
-                console.log(`Is plotPoints an array?`, Array.isArray(plotPoints));
-                console.log(`appState.generatedScenes[${structureKey}] exists?`, !!appState.generatedScenes[structureKey]);
-                
-                if (appState.generatedScenes[structureKey] && Array.isArray(plotPoints)) {
-                    plotPoints.forEach((plotPoint, index) => {
-                        if (appState.generatedScenes[structureKey][index]) {
-                            console.log(`Setting plot point for ${structureKey}[${index}]:`, plotPoint);
-                            appState.generatedScenes[structureKey][index].plot_point = plotPoint;
-                        } else {
-                            console.log(`Scene not found: ${structureKey}[${index}]`);
-                        }
-                    });
-                } else {
-                    console.log(`Structure key ${structureKey} not found or plotPoints not array:`, plotPoints);
-                }
+            // Get the desired plot point count from the dropdown (or use default)
+            const plotPointsCountSelect = document.getElementById(`plotPointsCount-${structureKey}`);
+            const desiredSceneCount = plotPointsCountSelect ? parseInt(plotPointsCountSelect.value) : 4;
+            
+            const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    desiredSceneCount: desiredSceneCount,
+                    model: getSelectedModel()
+                })
             });
             
-            // Refresh the display
-            displayScenes(appState.generatedScenes);
+            const data = await response.json();
             
-            showToast('Plot points generated successfully with causal connections!', 'success');
-            saveToLocalStorage();
-        } else {
-            throw new Error(data.error || 'Failed to generate plot points');
+            if (response.ok) {
+                console.log(`Plot points generated for ${structureKey}:`, data);
+                
+                // Store plot points in app state
+                if (!appState.plotPoints) {
+                    appState.plotPoints = {};
+                }
+                appState.plotPoints[structureKey] = data.plotPoints;
+                
+                // Display the generated plot points immediately
+                displayElementPlotPoints(structureKey, data.plotPoints);
+            } else {
+                throw new Error(`Failed to generate plot points for ${structureKey}: ${data.error}`);
+            }
         }
         
         hideLoading();
+        showToast(`Successfully generated plot points for all ${structureKeys.length} structural elements!`, 'success');
+        
+        // Update the completion check
+        checkPlotPointsCompletion();
+        saveToLocalStorage();
+        
     } catch (error) {
-        console.error('Error generating plot points:', error);
-        showToast('Error generating plot points. Please try again.', 'error');
+        console.error('Error generating all plot points:', error);
+        showToast(`Error generating plot points: ${error.message}`, 'error');
         hideLoading();
     }
 }
@@ -1124,7 +1691,10 @@ async function generatePlotPoint(structureKey, sceneIndex) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
         });
         
         const data = await response.json();
@@ -1173,7 +1743,10 @@ async function generateIndividualScene(structureKey, sceneIndex) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
-            }
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
         });
         
         const data = await response.json();
@@ -1235,7 +1808,8 @@ async function previewScenePrompt(structureKey, sceneIndex) {
                 structureElement: structureElement,
                 existingScene: existingScene,
                 sceneIndex: sceneIndex,
-                sceneCount: 3
+                sceneCount: 3,
+                projectPath: appState.projectPath // Include project path for hierarchical context
             })
         });
         
@@ -1348,6 +1922,7 @@ function showProjectHeader(projectData) {
     const templateEl = document.getElementById('projectTemplate');
     const scenesEl = document.getElementById('projectScenes');
     const idEl = document.getElementById('projectId');
+    const headerActions = document.getElementById('headerActions');
     
     if (projectData) {
         titleEl.textContent = projectData.title || 'Untitled Project';
@@ -1359,12 +1934,24 @@ function showProjectHeader(projectData) {
         updateProjectStatus();
         
         header.style.display = 'flex';
+        
+        // Hide header actions when project is loaded
+        if (headerActions) {
+            headerActions.style.display = 'none';
+        }
     }
 }
 
 function hideProjectHeader() {
     const header = document.getElementById('projectHeader');
+    const headerActions = document.getElementById('headerActions');
+    
     header.style.display = 'none';
+    
+    // Show header actions when no project is loaded
+    if (headerActions) {
+        headerActions.style.display = 'flex';
+    }
 }
 
 function updateProjectStatus() {
@@ -1513,9 +2100,14 @@ function displayDialogueGeneration() {
                 sceneElement.innerHTML = `
                     <h4>
                         ${scene.title || scene.name || 'Untitled Scene'}
-                        <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
-                            ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
-                        </button>
+                        <div class="scene-actions">
+                            <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
+                                ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
+                            </button>
+                            <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
+                                🔍 Dialogue Prompt
+                            </button>
+                        </div>
                     </h4>
                     <div id="${elementId}" class="script-content">
                         ${hasExistingDialogue ? dialogueContent : dialogueContent}
@@ -1547,7 +2139,8 @@ async function generateDialogue(structureKey, sceneIndex) {
                 scene: scene,
                 storyInput: appState.storyInput,
                 context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
-                projectPath: appState.projectPath
+                projectPath: appState.projectPath,
+                model: getSelectedModel()
             })
         });
         
@@ -1570,6 +2163,166 @@ async function generateDialogue(structureKey, sceneIndex) {
     }
 }
 
+// Generate dialogue for all scenes that exist
+async function generateAllDialogue() {
+    console.log('generateAllDialogue() called!');
+    
+    if (!appState.generatedScenes || !appState.projectPath) {
+        showToast('No scenes available to generate dialogue for.', 'error');
+        return;
+    }
+    
+    // Collect all scenes that exist
+    const allScenes = [];
+    Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
+        if (Array.isArray(sceneGroup)) {
+            sceneGroup.forEach((scene, index) => {
+                allScenes.push({
+                    structureKey: structureKey,
+                    sceneIndex: index,
+                    scene: scene,
+                    sceneId: `${structureKey}-${index}`
+                });
+            });
+        }
+    });
+    
+    if (allScenes.length === 0) {
+        showToast('No scenes found. Please generate scenes first in Step 5.', 'error');
+        return;
+    }
+    
+    // Initialize generatedDialogues if it doesn't exist
+    if (!appState.generatedDialogues) {
+        appState.generatedDialogues = {};
+    }
+    
+    try {
+        showLoading(`Generating dialogue for ${allScenes.length} scenes...`);
+        
+        // Generate dialogue for each scene sequentially
+        for (const sceneData of allScenes) {
+            const { structureKey, sceneIndex, scene, sceneId } = sceneData;
+            
+            console.log(`Generating dialogue for scene: ${scene.title || 'Untitled'} (${sceneId})`);
+            
+            const response = await fetch('/api/generate-dialogue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    scene: scene,
+                    storyInput: appState.storyInput,
+                    context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
+                    projectPath: appState.projectPath,
+                    model: getSelectedModel()
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                console.log(`Dialogue generated for ${sceneId}:`, data.dialogue);
+                
+                // Store dialogue in app state
+                appState.generatedDialogues[sceneId] = data.dialogue;
+            } else {
+                throw new Error(`Failed to generate dialogue for scene "${scene.title || 'Untitled'}": ${data.error}`);
+            }
+        }
+        
+        // Refresh the dialogue display after all dialogues are generated
+        displayDialogueGeneration();
+        
+        hideLoading();
+        showToast(`Successfully generated dialogue for ${allScenes.length} scenes!`, 'success');
+        
+        saveToLocalStorage();
+        
+    } catch (error) {
+        console.error('Error generating all dialogue:', error);
+        showToast(`Error generating dialogue: ${error.message}`, 'error');
+        hideLoading();
+    }
+}
+
+// Preview all dialogue generation prompts
+async function previewAllDialoguePrompts() {
+    if (!appState.generatedScenes || !appState.storyInput || !appState.projectPath) {
+        showToast('No scenes, story data, or project available for prompt preview.', 'error');
+        return;
+    }
+    
+    // Collect all scenes that exist
+    const allScenes = [];
+    Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
+        if (Array.isArray(sceneGroup)) {
+            sceneGroup.forEach((scene, index) => {
+                allScenes.push({
+                    structureKey: structureKey,
+                    sceneIndex: index,
+                    scene: scene
+                });
+            });
+        }
+    });
+    
+    if (allScenes.length === 0) {
+        showToast('No scenes found. Please generate scenes first in Step 5.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating all dialogue prompts preview...');
+        
+        // For simplicity, we'll preview the prompt for the first scene
+        // In a more complete implementation, you might show all prompts or let user select
+        const firstScene = allScenes[0];
+        
+        const response = await fetch('/api/preview-dialogue-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                scene: firstScene.scene,
+                storyInput: appState.storyInput,
+                context: `This scene is part of the ${firstScene.structureKey.replace(/_/g, ' ')} section of the story.`,
+                projectPath: appState.projectPath,
+                structureKey: Object.keys(appState.generatedStructure).indexOf(firstScene.structureKey),
+                sceneIndex: firstScene.sceneIndex
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store the prompt data for the modal
+            appState.currentDialoguePrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                scene: firstScene.scene,
+                structureKey: firstScene.structureKey,
+                sceneIndex: firstScene.sceneIndex,
+                hierarchicalPrompt: data.hierarchicalPrompt,
+                previewNote: `This shows the prompt structure for generating dialogue. This example is for "${firstScene.scene.title || 'Untitled Scene'}" - similar prompts will be used for all ${allScenes.length} scenes.`
+            };
+            
+            // Show the dialogue prompt modal
+            showDialoguePromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate dialogue prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating all dialogue prompts preview:', error);
+        showToast('Error generating dialogue prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
 // Finalize script
 function finalizeScript() {
     if (Object.keys(appState.generatedDialogues).length === 0) {
@@ -1579,36 +2332,242 @@ function finalizeScript() {
     
     assembleScript();
     goToStep(7); // Go to final script step (now step 7)
-    showToast('Script completed!', 'success');
+    showToast('Script assembled with your generated scenes!', 'success');
 }
 
-// Assemble final script
+// Assemble final script in professional format
 function assembleScript() {
-    let script = `${appState.storyInput.title}\n`;
-    script += `Written by: [Author Name]\n\n`;
-    script += `LOGLINE: ${appState.storyInput.logline}\n\n`;
-    script += `TONE: ${appState.storyInput.tone}\n\n`;
-    script += `CHARACTERS: ${appState.storyInput.characters}\n\n`;
-    script += `FADE IN:\n\n`;
+    let script = '';
+    let sceneNumber = 1;
+    let totalGeneratedScenes = 0;
+    let totalScenes = 0;
     
-    // Add all dialogue scenes
-    Object.values(appState.generatedDialogues).forEach(dialogue => {
-        script += dialogue + '\n\n';
-    });
+    // Debug logging
+    console.log('=== ASSEMBLE SCRIPT DEBUG ===');
+    console.log('appState.generatedScenes:', appState.generatedScenes);
+    console.log('appState.generatedDialogues:', appState.generatedDialogues);
+    console.log('Keys in generatedDialogues:', Object.keys(appState.generatedDialogues || {}));
     
-    script += `FADE OUT.\n\nTHE END`;
+    // Professional title page
+    script += generateTitlePage();
+    
+    // Start screenplay content
+    script += '\n\n\nFADE IN:\n\n';
+    
+    // Count total available dialogues first
+    const totalDialogues = Object.keys(appState.generatedDialogues || {}).length;
+    console.log('Total dialogues available:', totalDialogues);
+    
+    // Iterate through all scenes in story order
+    if (appState.generatedScenes) {
+        Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
+            if (Array.isArray(sceneGroup)) {
+                sceneGroup.forEach((scene, index) => {
+                    const sceneId = `${structureKey}-${index}`;
+                    totalScenes++;
+                    
+                    console.log(`Checking scene ${sceneId}, scene title: ${scene.title}`);
+                    
+                    // Check if dialogue exists for this scene (try multiple key formats)
+                    let dialogueFound = false;
+                    let dialogueContent = null;
+                    
+                    // Try position-based key first
+                    if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
+                        dialogueContent = appState.generatedDialogues[sceneId];
+                        dialogueFound = true;
+                        console.log(`Found dialogue with position key: ${sceneId}`);
+                    }
+                    // Try scene title as key
+                    else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
+                        dialogueContent = appState.generatedDialogues[scene.title];
+                        dialogueFound = true;
+                        console.log(`Found dialogue with title key: ${scene.title}`);
+                    }
+                    // Try normalized scene title
+                    else if (appState.generatedDialogues && scene.title) {
+                        const normalizedTitle = scene.title.replace(/\s+/g, '_');
+                        if (appState.generatedDialogues[normalizedTitle]) {
+                            dialogueContent = appState.generatedDialogues[normalizedTitle];
+                            dialogueFound = true;
+                            console.log(`Found dialogue with normalized title key: ${normalizedTitle}`);
+                        }
+                    }
+                    
+                    if (dialogueFound) {
+                        // Scene has dialogue - format it professionally
+                        script += formatSceneForScreenplay(dialogueContent, sceneNumber);
+                        totalGeneratedScenes++;
+                        console.log(`Added dialogue for scene: ${scene.title}`);
+                    } else {
+                        // Scene doesn't have dialogue yet - show professional placeholder
+                        script += formatPlaceholderScene(scene, sceneNumber);
+                        console.log(`Added placeholder for scene: ${scene.title}`);
+                    }
+                    
+                    sceneNumber++;
+                });
+            }
+        });
+    } else {
+        // Fallback: if no scene structure, just add generated dialogues
+        console.log('No scene structure, using fallback dialogue method');
+        Object.values(appState.generatedDialogues || {}).forEach(dialogue => {
+            script += formatSceneForScreenplay(dialogue, sceneNumber);
+            totalGeneratedScenes++;
+            sceneNumber++;
+        });
+        totalScenes = totalGeneratedScenes;
+    }
+    
+    script += '\n\nFADE OUT.\n\nTHE END';
     
     // Display script preview
     document.getElementById('scriptPreview').textContent = script;
     
-    // Update statistics
-    const totalScenes = Object.keys(appState.generatedDialogues).length;
-    const estimatedPages = Math.ceil(script.length / 250); // Rough estimate
+    // Update statistics with better page estimation
+    const estimatedPages = Math.ceil(script.split('\n').length / 55); // ~55 lines per page
     
-    document.getElementById('totalScenes').textContent = totalScenes;
-    document.getElementById('estimatedPages').textContent = estimatedPages;
+    console.log(`Final counts - Generated: ${totalGeneratedScenes}, Total: ${totalScenes}`);
+    
+    // Update DOM elements with correct IDs for final script display
+    const totalScenesElement = document.getElementById('totalScenesDisplay');
+    const estimatedPagesElement = document.getElementById('estimatedPagesDisplay');
+    
+    console.log('totalScenesDisplay element:', totalScenesElement);
+    console.log('estimatedPagesDisplay element:', estimatedPagesElement);
+    
+    if (totalScenesElement) {
+        totalScenesElement.textContent = `${totalGeneratedScenes}/${totalScenes} scenes`;
+        console.log(`Updated totalScenesDisplay to: ${totalGeneratedScenes}/${totalScenes} scenes`);
+    } else {
+        console.error('totalScenesDisplay element not found!');
+    }
+    
+    if (estimatedPagesElement) {
+        estimatedPagesElement.textContent = estimatedPages;
+        console.log(`Updated estimatedPagesDisplay to: ${estimatedPages}`);
+    } else {
+        console.error('estimatedPagesDisplay element not found!');
+    }
     
     saveToLocalStorage();
+}
+
+// Generate professional title page
+function generateTitlePage() {
+    const title = appState.storyInput?.title || 'UNTITLED';
+    const author = '[Author Name]';
+    const date = new Date().toLocaleDateString();
+    
+    return `
+
+
+
+
+                                    ${title.toUpperCase()}
+
+
+                                      by
+
+                                   ${author}
+
+
+
+
+                                Based on a true story
+                                    (if applicable)
+
+
+
+
+                                     ${date}
+
+
+
+
+                              Contact Information:
+                              [Your Name]
+                              [Your Address]
+                              [Your Phone]
+                              [Your Email]
+
+
+
+
+                                   FIRST DRAFT`;
+}
+
+// Format scene for professional screenplay layout
+function formatSceneForScreenplay(dialogue, sceneNumber) {
+    // Add page break suggestion every few scenes
+    let formatted = '';
+    
+    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
+        formatted += '\n\n                         [PAGE BREAK]\n\n';
+    }
+    
+    // Clean up and format the dialogue
+    const lines = dialogue.split('\n');
+    let inDialogue = false;
+    let currentCharacter = '';
+    
+    for (let line of lines) {
+        line = line.trim();
+        if (!line) {
+            formatted += '\n';
+            continue;
+        }
+        
+        // Scene headings (INT./EXT.)
+        if (line.match(/^(INT\.|EXT\.)/i)) {
+            formatted += `\n${line.toUpperCase()}\n\n`;
+        }
+        // Character names (all caps, no colon)
+        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
+            currentCharacter = line.replace(':', '').trim();
+            formatted += `                    ${currentCharacter}\n`;
+            inDialogue = true;
+        }
+        // Parentheticals
+        else if (line.match(/^\(.+\)$/)) {
+            formatted += `                  ${line}\n`;
+        }
+        // Dialogue lines
+        else if (inDialogue && !line.match(/^(INT\.|EXT\.)/i)) {
+            // Center dialogue text
+            formatted += `          ${line}\n`;
+        }
+        // Action lines
+        else {
+            formatted += `${line}\n`;
+            inDialogue = false;
+        }
+    }
+    
+    formatted += '\n\n';
+    return formatted;
+}
+
+// Format placeholder scene professionally
+function formatPlaceholderScene(scene, sceneNumber) {
+    const location = scene.location || 'LOCATION NOT SPECIFIED';
+    const time = scene.time_of_day || scene.time || 'TIME NOT SPECIFIED';
+    const sceneHeading = `INT. ${location.toUpperCase()} - ${time.toUpperCase()}`;
+    
+    let formatted = '';
+    
+    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
+        formatted += '\n\n                         [PAGE BREAK]\n\n';
+    }
+    
+    formatted += `${sceneHeading}\n\n`;
+    formatted += `${scene.description || 'Scene description not available.'}\n\n`;
+    formatted += `                    [DIALOGUE NOT GENERATED]\n\n`;
+    formatted += `          This scene requires dialogue generation\n`;
+    formatted += `          to complete the screenplay.\n\n\n`;
+    
+    return formatted;
 }
 
 // Export script
@@ -1694,7 +2653,7 @@ function downloadFile(content, filename, contentType) {
 }
 
 // Navigation functions
-function goToStep(stepNumber) {
+async function goToStep(stepNumber) {
     // Hide all steps
     document.querySelectorAll('.workflow-step').forEach(step => {
         step.classList.remove('active');
@@ -1704,11 +2663,14 @@ function goToStep(stepNumber) {
     document.getElementById(`step${stepNumber}`).classList.add('active');
     
     // Refresh content for specific steps when navigating to them
-    if (stepNumber === 4) {
+    if (stepNumber === 3) {
+        // Step 3: Acts Generation - Focus on acts generation
+        console.log('Step 3 - Acts Generation');
+    } else if (stepNumber === 4) {
         // Step 4: Plot Points Generation
         console.log('Step 4 - Plot Points Generation');
         if (appState.generatedStructure) {
-            displayPlotPointsGeneration();
+            await displayPlotPointsGeneration();
         }
     } else if (stepNumber === 5) {
         // Step 5: Scene Generation
@@ -1726,6 +2688,14 @@ function goToStep(stepNumber) {
     } else if (stepNumber === 6 && appState.generatedScenes) {
         // Step 6: Dialogue Generation
         displayDialogueGeneration();
+    } else if (stepNumber === 7) {
+        // Step 7: Final Script - Auto-assemble script with whatever dialogue we have
+        if (Object.keys(appState.generatedDialogues || {}).length > 0) {
+            // Add a small delay to ensure DOM is fully rendered
+            setTimeout(() => {
+                assembleScript();
+            }, 100);
+        }
     }
     
     appState.currentStep = stepNumber;
@@ -1756,7 +2726,7 @@ function canNavigateToStep(stepNumber) {
         case 6:
             return appState.generatedScenes; // Need scenes generated
         case 7:
-            return Object.keys(appState.generatedDialogues || {}).length > 0; // Need dialogue generated
+            return Object.keys(appState.generatedDialogues || {}).length > 0; // Need at least some dialogue generated
         default:
             return false;
     }
@@ -1818,6 +2788,127 @@ function startOver() {
         localStorage.removeItem('filmScriptGenerator');
         location.reload();
     }
+}
+
+// New Project function that auto-saves current work
+async function startNewProject() {
+    // Check if there's any work to save
+    const hasWork = appState.projectId || appState.storyInput.title || appState.generatedStructure;
+    
+    if (hasWork) {
+        const confirmMessage = appState.projectId 
+            ? `Save current project "${appState.storyInput.title || 'Untitled'}" and start fresh?`
+            : 'Save your current work and start a new project?';
+            
+        if (!confirm(confirmMessage)) {
+            return; // User cancelled
+        }
+        
+        // Auto-save current project
+        try {
+            showLoading('Saving current project...');
+            await saveProject();
+            showToast('Current project saved successfully!', 'success');
+        } catch (error) {
+            console.error('Error saving project:', error);
+            const proceedAnyway = confirm('Failed to save current project. Start new project anyway?');
+            if (!proceedAnyway) {
+                hideLoading();
+                return;
+            }
+        }
+        
+        hideLoading();
+    }
+    
+    // Clear app state for fresh start
+    clearAppState();
+    
+    // Reset UI to step 1
+    resetUIToStep1();
+    
+    showToast('Ready to create a new project!', 'success');
+}
+
+// Helper function to clear app state
+function clearAppState() {
+    // Reset all state
+    appState.currentStep = 1;
+    appState.storyInput = {};
+    appState.selectedTemplate = null;
+    appState.templateData = null;
+    appState.generatedStructure = null;
+    appState.generatedScenes = null;
+    appState.generatedDialogues = {};
+    appState.projectId = null;
+    appState.projectPath = null;
+    appState.influences = {
+        directors: [],
+        screenwriters: [],
+        films: []
+    };
+    appState.customPrompt = null;
+    appState.originalPrompt = null;
+    appState.isEditMode = false;
+    appState.plotPoints = {};
+    
+    // Clear localStorage
+    localStorage.removeItem('filmScriptGenerator');
+    localStorage.removeItem('currentProject');
+}
+
+// Helper function to reset UI to step 1
+function resetUIToStep1() {
+    // Hide project header
+    hideProjectHeader();
+    
+    // Clear all form fields
+    const storyForm = document.getElementById('storyForm');
+    if (storyForm) {
+        storyForm.reset();
+        document.getElementById('totalScenes').value = 70; // Reset to default
+    }
+    
+    // Clear influence tags
+    ['director', 'screenwriter', 'film'].forEach(type => {
+        const tagContainer = document.getElementById(`${type}Tags`);
+        if (tagContainer) {
+            tagContainer.innerHTML = '';
+        }
+    });
+    
+    // Reset step indicators and progress
+    goToStep(1);
+    
+    // Hide all workflow steps except step 1
+    document.querySelectorAll('.workflow-step').forEach(step => {
+        step.classList.remove('active');
+    });
+    const step1 = document.getElementById('step1');
+    if (step1) {
+        step1.classList.add('active');
+    }
+    
+    // Reset model selector to default
+    appState.selectedModel = 'claude-3-5-sonnet-20241022';
+    const modelSelect = document.getElementById('modelSelect');
+    if (modelSelect) {
+        modelSelect.value = appState.selectedModel;
+        updateModelCost();
+    }
+    
+    // Clear any existing content areas
+    const stepContainers = ['step2', 'step3', 'step4', 'step5', 'step6', 'step7'];
+    stepContainers.forEach(stepId => {
+        const container = document.getElementById(stepId);
+        if (container) {
+            // Find any dynamic content containers and clear them
+            const dynamicContent = container.querySelector('.generated-content, .structure-display, .scenes-display, .dialogue-display');
+            if (dynamicContent) {
+                dynamicContent.innerHTML = '';
+            }
+        }
+    });
 }
 
 // Loading functions
@@ -1993,6 +3084,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.projectId = projectData.projectId;
     appState.projectPath = projectData.projectPath;
     
+    // Initialize dialogue state
+    appState.generatedDialogues = appState.generatedDialogues || {};
+    
     // Determine which step to show based on available data
     let targetStep = 1;
     let maxAvailableStep = 1;
@@ -2000,7 +3094,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     if (projectData.structure) {
         maxAvailableStep = 3; // Structure available
         if (projectData.scenes) {
-            maxAvailableStep = 4; // Scenes available
+            maxAvailableStep = 5; // Scenes available - should be step 5, not 4!
             console.log('Raw scenes data:', projectData.scenes);
             // Convert scenes format for app state
             const scenesForState = {};
@@ -2020,7 +3114,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
             console.log('Final scenes for app state:', scenesForState);
             
             if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
-                maxAvailableStep = 5; // Dialogue available
+                maxAvailableStep = 6; // Dialogue available - should be step 6!
                 console.log('Dialogue data:', projectData.dialogue);
                 appState.generatedDialogues = projectData.dialogue;
             }
@@ -2098,8 +3192,8 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         console.log('Scenes display completed');
     }
     
-    // If we have dialogue and we're going to step 5, display dialogue generation interface
-    if (targetStep >= 5) {
+    // If we have dialogue and we're going to step 6, display dialogue generation interface
+    if (targetStep >= 6) {
         console.log('Displaying dialogue generation interface');
         displayDialogueGeneration();
         console.log('Dialogue generation interface displayed');
@@ -2138,12 +3232,17 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
                             console.log(`Comparing scene "${rawSceneTitle}" -> "${sceneTitle}" with dialogue "${sceneId}" -> "${dialogueTitle}" for element ${expectedElementId}`);
                             
                             if (sceneTitle === dialogueTitle || sceneTitle.includes(dialogueTitle) || dialogueTitle.includes(sceneTitle)) {
+                                // Store dialogue in app state with the correct key format
+                                const correctSceneId = `${structureKey}-${index}`;
+                                appState.generatedDialogues[correctSceneId] = dialogue;
+                                
                                 if (dialogueElement) {
                                     dialogueElement.textContent = dialogue;
-                                    console.log(`✅ Populated dialogue for scene: ${structureKey}-${index} (${sceneId})`);
+                                    console.log(`✅ Populated dialogue for scene: ${correctSceneId} (original: ${sceneId})`);
                                     found = true;
                                 } else {
-                                    console.log(`❌ Element ${expectedElementId} not found`);
+                                    console.log(`❌ Element ${expectedElementId} not found, but dialogue stored in app state`);
+                                    found = true; // Still count as found since we stored it
                                 }
                             }
                         });
@@ -2189,7 +3288,38 @@ function showScenePromptModal() {
     
     // Update modal title
     const modalTitle = document.querySelector('#scenePromptModal .modal-header h3');
-    modalTitle.textContent = `Scene Generation Prompt - ${prompt.structureElement.name}`;
+    
+    if (prompt.previewNote) {
+        // This is for "Generate All Scenes" preview
+        modalTitle.textContent = 'All Scenes Generation Prompt Preview';
+        
+        // Add or update preview note
+        let previewNoteElement = document.getElementById('scenePromptPreviewNote');
+        if (!previewNoteElement) {
+            previewNoteElement = document.createElement('div');
+            previewNoteElement.id = 'scenePromptPreviewNote';
+            previewNoteElement.className = 'prompt-preview-note';
+            previewNoteElement.style.cssText = 'background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 0.9rem; color: #1565c0;';
+            
+            const modalBody = document.querySelector('#scenePromptModal .modal-body');
+            modalBody.insertBefore(previewNoteElement, modalBody.firstChild);
+        }
+        previewNoteElement.textContent = `ℹ️ ${prompt.previewNote}`;
+        previewNoteElement.style.display = 'block';
+    } else {
+        // This is for individual scene prompt
+        if (prompt.isElementGeneration) {
+            modalTitle.textContent = `Scene Generation Prompt - ${prompt.structureElement.name}`;
+        } else {
+            modalTitle.textContent = `Scene Generation Prompt - ${prompt.structureElement.name} (Scene ${prompt.sceneIndex + 1})`;
+        }
+        
+        // Hide preview note if it exists
+        const previewNoteElement = document.getElementById('scenePromptPreviewNote');
+        if (previewNoteElement) {
+            previewNoteElement.style.display = 'none';
+        }
+    }
     
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
@@ -2407,4 +3537,145 @@ function displayScenesForElement(structureKey, sceneGroup) {
             container.appendChild(sceneElement);
         });
     }
-} 
+}
+
+// Continue to next step after template selection
+function goToNextStep() {
+    if (!appState.selectedTemplate) {
+        showToast('Please select a template first.', 'error');
+        return;
+    }
+    
+    // Navigate to Acts page
+    goToStep(3);
+    saveToLocalStorage();
+}
+
+// Display selected template on Acts page
+function displaySelectedTemplate(templateData) {
+    const display = document.getElementById('selectedTemplateDisplay');
+    const name = document.getElementById('selectedTemplateName');
+    const description = document.getElementById('selectedTemplateDescription');
+    const category = document.getElementById('selectedTemplateCategory');
+    
+    name.textContent = templateData.name;
+    description.textContent = templateData.description;
+    category.textContent = templateData.category ? templateData.category.replace('_', ' ').toUpperCase() : '';
+    
+    display.style.display = 'block';
+}
+
+// Preview dialogue generation prompt
+async function previewDialoguePrompt(structureKey, sceneIndex) {
+    if (!appState.generatedScenes || !appState.storyInput) {
+        showToast('No scenes or story data available for prompt preview.', 'error');
+        return;
+    }
+
+    const scene = appState.generatedScenes[structureKey]?.[sceneIndex];
+    
+    if (!scene) {
+        showToast('Scene not found.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating dialogue prompt preview...');
+        
+        const response = await fetch('/api/preview-dialogue-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                scene: scene,
+                storyInput: appState.storyInput,
+                context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
+                projectPath: appState.projectPath,
+                structureKey: Object.keys(appState.generatedStructure).indexOf(structureKey),
+                sceneIndex: sceneIndex
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Store the prompt data for the modal
+            appState.currentDialoguePrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                scene: data.scene,
+                structureKey: structureKey,
+                sceneIndex: sceneIndex,
+                hierarchicalPrompt: data.hierarchicalPrompt
+            };
+            
+            // Show the dialogue prompt modal
+            showDialoguePromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate dialogue prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating dialogue prompt preview:', error);
+        showToast('Error generating dialogue prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Show dialogue prompt modal
+function showDialoguePromptModal() {
+    const modal = document.getElementById('dialoguePromptModal');
+    const prompt = appState.currentDialoguePrompt;
+    
+    if (!prompt) {
+        showToast('No dialogue prompt data available.', 'error');
+        return;
+    }
+    
+    // Populate modal content
+    document.getElementById('dialoguePromptSystemMessage').textContent = prompt.systemMessage;
+    document.getElementById('dialoguePromptUserPrompt').textContent = prompt.userPrompt;
+    
+    // Update modal title
+    const modalTitle = document.querySelector('#dialoguePromptModal .modal-header h3');
+    
+    if (prompt.previewNote) {
+        // This is for "Generate All Dialogue" preview
+        modalTitle.textContent = 'All Dialogue Generation Prompt Preview';
+        
+        // Add or update preview note
+        let previewNoteElement = document.getElementById('dialoguePromptPreviewNote');
+        if (!previewNoteElement) {
+            previewNoteElement = document.createElement('div');
+            previewNoteElement.id = 'dialoguePromptPreviewNote';
+            previewNoteElement.className = 'prompt-preview-note';
+            previewNoteElement.style.cssText = 'background: #e8f5e8; border: 1px solid #4caf50; border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 0.9rem; color: #2e7d32;';
+            
+            const modalBody = document.querySelector('#dialoguePromptModal .modal-body');
+            modalBody.insertBefore(previewNoteElement, modalBody.firstChild);
+        }
+        previewNoteElement.textContent = `ℹ️ ${prompt.previewNote}`;
+        previewNoteElement.style.display = 'block';
+    } else {
+        // This is for individual dialogue prompt
+        const sceneName = prompt.scene?.title || prompt.scene?.name || 'Untitled Scene';
+        modalTitle.textContent = `Dialogue Generation Prompt - ${sceneName}`;
+        
+        // Hide preview note if it exists
+        const previewNoteElement = document.getElementById('dialoguePromptPreviewNote');
+        if (previewNoteElement) {
+            previewNoteElement.style.display = 'none';
+        }
+    }
+    
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+// Hide dialogue prompt modal
+function hideDialoguePromptModal() {
+    document.getElementById('dialoguePromptModal').classList.remove('show');
+    document.body.style.overflow = 'auto';
+}

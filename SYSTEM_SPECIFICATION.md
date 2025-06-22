@@ -25,12 +25,12 @@ The system operates on a **5-level hierarchical context architecture** where eac
   - Story act relationships and flow
 - **Context Role**: Provides the architectural framework for story development
 
-### Level 3: Generated Plot Structure
-- **Purpose**: Creates the specific plot structure for this story
+### Level 3: Generated Story Acts
+- **Purpose**: Creates the specific story acts for this story
 - **Contains**:
   - Detailed story acts with titles and descriptions
   - Character development arcs within each act
-  - Thematic progression through the structure
+  - Thematic progression through the acts
 - **Context Role**: Establishes the specific narrative spine that guides all scene development
 
 ### Level 4: Plot Points
@@ -59,7 +59,7 @@ Each prompt includes **all previous levels** of context, creating a progressive 
 Level 5 Scene Prompt = 
   Story Foundation + 
   Structure Template + 
-  Generated Plot Structure + 
+  Generated Story Acts + 
   Assigned Plot Points + 
   Scene-Specific Requirements
 ```
@@ -81,15 +81,15 @@ Level 5 Scene Prompt =
 - Each template provides proven narrative frameworks
 - **Output**: Level 2 context established
 
-### Step 3: Structure Generation
-- System generates specific plot structure using Levels 1+2
-- User can review, edit, and regenerate structure
+### Step 3: Act Generation
+- System generates specific story acts using Levels 1+2
+- User can review, edit, and regenerate acts
 - **Output**: Level 3 context established
 
 ### Step 4: Plot Points Generation (Critical Step)
 - System generates causal plot points for each story act
 - Uses ONLY structural context (no existing scenes referenced)
-- Creates "and then" / "therefore" causal chains
+- Creates "but and therefore" causal chains (avoiding weak "and then" chronological sequencing)
 - **Output**: Level 4 context established
 - **Why Critical**: Without this step, scenes lack causal coherence
 
@@ -119,8 +119,8 @@ class HierarchicalContext {
   // Level 2: Structure Template  
   buildStructureTemplateContext()
   
-  // Level 3: Generated Structure
-  buildGeneratedStructureContext()
+  // Level 3: Generated Story Acts
+  buildGeneratedActsContext()
   
   // Level 4: Plot Points
   buildPlotPointsContext()
@@ -134,7 +134,7 @@ class HierarchicalContext {
 ```
 
 ### API Endpoints
-- `/api/generate-structure` - Generates Level 3 from Levels 1+2
+- `/api/generate-structure` - Generates Level 3 story acts from Levels 1+2
 - `/api/generate-plot-points-for-act/:projectPath/:actKey` - Generates Level 4 from Levels 1+2+3
 - `/api/generate-scene/:projectPath/:actKey` - Generates Level 5 from Levels 1+2+3+4
 - `/api/generate-dialogue` - Generates screenplay from all levels
@@ -146,7 +146,7 @@ generated/
     01_context/
       context.json          # Complete hierarchical context
       story-input.json      # Level 1 data
-      structure.json        # Level 3 data
+      story-acts.json       # Level 3 data
     02_plot-points/
       [act].json            # Level 4 data per story act
     03_scenes/
@@ -186,7 +186,7 @@ Every generation must include the complete context chain from Level 1 through th
 Generated content must respect the selected story structure template while incorporating the specific story acts.
 
 ### 4. Causal Logic
-Plot points must use explicit causal connectors ("and then", "therefore", "because") to create logical story progression.
+Plot points must use explicit causal connectors ("BUT" for conflict/complications, "THEREFORE" for consequences/progress) to create logical story progression, avoiding weak "and then" chronological sequencing.
 
 ## User Experience Goals
 

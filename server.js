@@ -6,6 +6,19 @@ const { v4: uuidv4 } = require('uuid');
 const Anthropic = require('@anthropic-ai/sdk');
 require('dotenv').config();
 
+// Add comprehensive error handling to prevent server crashes
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  console.error('Stack:', error.stack);
+  // Don't exit - keep server running
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  console.error('Stack:', reason?.stack);
+  // Don't exit - keep server running
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -342,6 +355,169 @@ class HierarchicalContext {
     const contextName = levelNames[level];
     return this.contexts[contextName];
   }
+
+  // Helper function to generate scenes for a plot point (extracted from the endpoint)
+  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-3-5-sonnet-20241022") {
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    
+    // Load plot points data with scene distribution
+    const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+    const plotPointIndexNum = parseInt(plotPointIndex);
+    const sceneDistribution = plotPointsData.sceneDistribution || [];
+    const plotPointInfo = sceneDistribution[plotPointIndexNum];
+    
+    if (!plotPointInfo) {
+      throw new Error('Scene distribution not found. Please regenerate plot points.');
+    }
+    
+    const sceneCount = plotPointInfo.sceneCount;
+    const plotPoint = plotPointInfo.plotPoint;
+    
+    // Initialize and load hierarchical context
+    const context = new HierarchicalContext();
+    await context.loadFromProject(projectPath);
+    
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    // Rebuild context if needed
+    if (!context.contexts.story) {
+      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectData.template);
+    }
+    
+    // Build act context
+    const actPosition = Object.keys(structure).indexOf(actKey) + 1;
+    context.buildActContext(actKey, structure[actKey], actPosition);
+    
+    // Build plot points context
+    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    
+    // Build scene context for this specific plot point
+    context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
+    
+    // Generate hierarchical prompt for multiple scenes from one plot point
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
+1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
+2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
+3. Each scene should advance this plot point's dramatic purpose step-by-step
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Create a natural flow between scenes in this sequence
+6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+7. Scenes should feel like organic parts of a sequence, not isolated fragments
+
+This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+    
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+
+    const completion = await anthropic.messages.create({
+      model: model,
+      max_tokens: 3000,
+      temperature: 0.7,
+      system: "You are a professional screenwriter generating scene sequences within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+    });
+
+    const scenesData = JSON.parse(completion.content[0].text);
+
+    // Save scenes to a dedicated file
+    const scenesDir = path.join(projectDir, '03_scenes', actKey);
+    await fs.mkdir(scenesDir, { recursive: true });
+    
+    const scenesFile = path.join(scenesDir, `plot_point_${plotPointIndexNum}_scenes.json`);
+    await fs.writeFile(scenesFile, JSON.stringify({
+      actKey: actKey,
+      plotPointIndex: plotPointIndexNum,
+      plotPoint: plotPoint,
+      sceneCount: sceneCount,
+      scenes: scenesData.scenes,
+      isKeyPlot: plotPointInfo.isKeyPlot,
+      generatedAt: new Date().toISOString()
+    }, null, 2));
+
+    return {
+      success: true,
+      actKey: actKey,
+      plotPointIndex: plotPointIndexNum,
+      plotPoint: plotPoint,
+      scenes: scenesData.scenes,
+      sceneCount: scenesData.scenes.length,
+      message: `Generated ${scenesData.scenes.length} scenes for plot point: "${plotPoint}"`
+    };
+  }
+
+  // Calculate intelligent scene distribution across plot points
+  calculateSceneDistribution(plotPoints, totalScenesForAct, actKey) {
+    const totalPlotPoints = plotPoints.length;
+    const baseScenesPerPlot = Math.floor(totalScenesForAct / totalPlotPoints);
+    const extraScenes = totalScenesForAct % totalPlotPoints;
+    
+    // Define key plot point patterns that deserve more scenes
+    const keyPlotPatterns = [
+      'catalyst', 'crisis', 'climax', 'transformation', 'confrontation', 
+      'revelation', 'inciting', 'turning point', 'moment of truth'
+    ];
+    
+    const sceneDistribution = plotPoints.map((plotPoint, index) => {
+      const plotText = plotPoint.toLowerCase();
+      const actName = actKey.toLowerCase();
+      
+      // Determine if this is a key plot point deserving extra scenes
+      const isKeyPlot = keyPlotPatterns.some(pattern => 
+        plotText.includes(pattern) || actName.includes(pattern)
+      ) || index === 0 || index === plotPoints.length - 1; // First and last are usually key
+      
+      // Distribute extra scenes to key plot points first
+      const extraSceneBonus = isKeyPlot && index < extraScenes ? 1 : 
+                             !isKeyPlot && (index >= totalPlotPoints - extraScenes) ? 1 : 0;
+      
+      const sceneCount = Math.max(1, baseScenesPerPlot + extraSceneBonus); // Minimum 1 scene per plot point
+      
+      return {
+        plotPoint,
+        sceneCount,
+        isKeyPlot,
+        plotPointIndex: index
+      };
+    });
+    
+    // Verify total scenes match target
+    const totalDistributed = sceneDistribution.reduce((sum, dist) => sum + dist.sceneCount, 0);
+    
+    // Adjust if there's a mismatch (shouldn't happen, but safety check)
+    if (totalDistributed !== totalScenesForAct) {
+      console.log(`Scene distribution mismatch: ${totalDistributed} distributed vs ${totalScenesForAct} target`);
+      // Add remaining scenes to the last plot point
+      const difference = totalScenesForAct - totalDistributed;
+      sceneDistribution[sceneDistribution.length - 1].sceneCount += difference;
+    }
+    
+    return sceneDistribution;
+  }
 }
 
 // API Routes
@@ -483,7 +659,7 @@ Example format:
 app.post('/api/generate-structure-custom', async (req, res) => {
   try {
     console.log('Received custom structure generation request:', req.body);
-    const { storyInput, template, customPrompt } = req.body;
+    const { storyInput, template, customPrompt, model = "claude-3-5-sonnet-20241022" } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -497,7 +673,7 @@ app.post('/api/generate-structure-custom', async (req, res) => {
     
     console.log('Sending custom request to Claude API...');
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 2000,
       temperature: 0.7,
       system: customPrompt.systemMessage,
@@ -657,7 +833,7 @@ Project ID: ${projectId}
 app.post('/api/generate-structure', async (req, res) => {
   try {
     console.log('Received structure generation request:', req.body);
-    const { storyInput, template } = req.body;
+    const { storyInput, template, model = "claude-3-5-sonnet-20241022" } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -719,7 +895,7 @@ Example format:
 
     console.log('Sending request to Claude API...');
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 2000,
       temperature: 0.7,
       system: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON.",
@@ -912,7 +1088,7 @@ For each structural element, create 2-3 scenes that show the progression. Each s
 Return as JSON with each structural element containing an array of scenes. IMPORTANT: Complete the entire JSON for ALL structural elements.`;
 
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: req.body.model || "claude-3-5-sonnet-20241022",
       max_tokens: 4000,
       temperature: 0.7,
       system: "You are a professional screenwriter. Break down plot structures into detailed, filmable scenes. Always respond with valid JSON. Complete the entire JSON structure for all elements.",
@@ -982,7 +1158,7 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
 // Generate dialogue for approved scenes
 app.post('/api/generate-dialogue', async (req, res) => {
   try {
-    const { scene, storyInput, context, projectPath } = req.body;
+    const { scene, storyInput, context, projectPath, model = "claude-3-5-sonnet-20241022" } = req.body;
     
     const prompt = `Write full screenplay dialogue for this scene:
 
@@ -1007,7 +1183,7 @@ Write the scene in proper screenplay format with:
 Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue.`;
 
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 2000,
       temperature: 0.8,
       system: "You are a professional screenwriter. Write engaging, properly formatted screenplay dialogue and action. Follow standard screenplay format conventions.",
@@ -1048,6 +1224,149 @@ Make the dialogue authentic, character-specific, and genre-appropriate. Include 
   } catch (error) {
     console.error('Error generating dialogue:', error);
     res.status(500).json({ error: 'Failed to generate dialogue' });
+  }
+});
+
+// Preview dialogue generation prompt
+app.post('/api/preview-dialogue-prompt', async (req, res) => {
+  console.log('Dialogue prompt preview endpoint called!');
+  try {
+    const { scene, storyInput, context, projectPath, structureKey, sceneIndex } = req.body;
+    console.log('Request body:', { scene: !!scene, storyInput: !!storyInput, context, projectPath, structureKey, sceneIndex });
+    
+    let prompt, systemMessage, hierarchicalPrompt = null;
+    
+    // Try to build hierarchical context if we have project information
+    if (projectPath && storyInput && structureKey !== undefined && sceneIndex !== undefined) {
+      try {
+        // Initialize and load hierarchical context
+        const hierarchicalContext = new HierarchicalContext();
+        
+        // Build story context
+        hierarchicalContext.buildStoryContext(storyInput);
+        
+        // Try to load project structure and template
+        try {
+          const projectDir = path.join(__dirname, 'generated', projectPath);
+          const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+          const contextFile = path.join(projectDir, '01_context', 'context.json');
+          
+          const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+          
+          // Load context if available
+          if (await fs.access(contextFile).then(() => true).catch(() => false)) {
+            await hierarchicalContext.loadFromProject(projectPath);
+          }
+          
+          // Build structure context
+          hierarchicalContext.buildStructureContext(projectData.structure, projectData.template);
+          
+          // Find the current structural element
+          const structureElementKey = Object.keys(projectData.structure)[structureKey];
+          const structureElement = projectData.structure[structureElementKey];
+          
+          if (structureElement) {
+            // Build act context
+            const actPosition = Object.keys(projectData.structure).indexOf(structureElementKey) + 1;
+            hierarchicalContext.buildActContext(structureElementKey, structureElement, actPosition);
+            
+            // Try to load plot points for this act
+            try {
+              const plotPointsFile = path.join(projectDir, '02_plot-points', `${structureElementKey}.json`);
+              const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+              hierarchicalContext.buildPlotPointsContext(plotPointsData);
+            } catch (error) {
+              console.log('No plot points found for this act');
+            }
+            
+            // Build scene context
+            hierarchicalContext.buildSceneContext(sceneIndex, null, scene, 1);
+          }
+        } catch (error) {
+          console.log('Error loading project structure:', error);
+        }
+        
+        // Generate hierarchical prompt for dialogue generation
+        const customInstructions = `DIALOGUE GENERATION REQUIREMENTS:
+1. Write the scene in proper screenplay format with:
+   - Scene heading (INT./EXT. LOCATION - TIME)
+   - Character names (in CAPS) 
+   - Dialogue
+   - Action lines
+   - Parentheticals when necessary
+
+2. Make the dialogue authentic, character-specific, and genre-appropriate
+3. Include necessary action lines between dialogue
+4. Follow standard screenplay format conventions
+5. Ensure dialogue serves the story's hierarchical structure and character development
+6. The dialogue should feel organic to the established tone and influences
+
+Scene to write dialogue for:
+${JSON.stringify(scene, null, 2)}`;
+        
+        hierarchicalPrompt = hierarchicalContext.generateHierarchicalPrompt(5, customInstructions);
+        
+        prompt = `${hierarchicalPrompt}
+
+Additional Context: ${context || 'None provided'}
+
+Write full screenplay dialogue for this scene following all the requirements above.`;
+        
+        systemMessage = "You are a professional screenwriter generating dialogue within a hierarchical story structure. Write engaging, properly formatted screenplay dialogue and action that serves the overall narrative architecture.";
+        
+      } catch (contextError) {
+        console.log('Failed to build hierarchical context, falling back to simple prompt:', contextError);
+        hierarchicalPrompt = null;
+      }
+    }
+    
+    // Fallback to simple prompt if hierarchical context failed
+    if (!hierarchicalPrompt) {
+      // Validate storyInput exists before using it
+      if (!storyInput) {
+        return res.status(400).json({ 
+          error: 'Missing required data: storyInput is required for dialogue prompt preview' 
+        });
+      }
+      
+      prompt = `Write full screenplay dialogue for this scene:
+
+Story Context:
+- Title: ${storyInput.title || 'Untitled'}
+- Tone: ${storyInput.tone || 'Not specified'}
+- Characters: ${storyInput.characters || 'Not specified'}
+
+Scene Details:
+${JSON.stringify(scene, null, 2)}
+
+Additional Context:
+${context || 'None provided'}
+
+Write the scene in proper screenplay format with:
+- Scene heading (INT./EXT. LOCATION - TIME)
+- Action lines
+- Character names (in CAPS)
+- Dialogue
+- Parentheticals when necessary
+
+Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue.`;
+
+      systemMessage = "You are a professional screenwriter. Write engaging, properly formatted screenplay dialogue and action. Follow standard screenplay format conventions.";
+    }
+
+    res.json({
+      prompt: prompt,
+      systemMessage: systemMessage,
+      promptType: 'dialogue',
+      scene: scene,
+      structureKey: structureKey,
+      sceneIndex: sceneIndex,
+      hierarchicalPrompt: hierarchicalPrompt
+    });
+
+  } catch (error) {
+    console.error('Error generating dialogue prompt preview:', error);
+    res.status(500).json({ error: 'Failed to generate dialogue prompt preview', details: error.message });
   }
 });
 
@@ -1218,13 +1537,121 @@ app.delete('/api/project/:projectPath', async (req, res) => {
 // Preview scene generation prompt
 app.post('/api/preview-scene-prompt', async (req, res) => {
   try {
-    const { storyInput, structureElement, sceneCount = 3, existingScene = null, sceneIndex = null } = req.body;
+    const { storyInput, structureElement, sceneCount = 3, existingScene = null, sceneIndex = null, projectPath = null } = req.body;
     
-    let prompt, systemMessage;
+    let prompt, systemMessage, hierarchicalPrompt = null;
     
-    if (existingScene && sceneIndex !== null) {
-      // Individual scene regeneration prompt
-      prompt = `Regenerate a single scene for "${storyInput.title}".
+    // Try to build hierarchical context if we have project information
+    if (projectPath && storyInput) {
+      try {
+        // Initialize and load hierarchical context
+        const context = new HierarchicalContext();
+        
+        // Build story context
+        context.buildStoryContext(storyInput);
+        
+        // Try to load project structure and template
+        try {
+          const projectDir = path.join(__dirname, 'generated', projectPath);
+          const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+          const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+          
+          if (projectData.structure && projectData.template) {
+            context.buildStructureContext(projectData.structure, projectData.template);
+            
+            // Find the structure key for this element
+            const structureKey = Object.keys(projectData.structure).find(key => 
+              projectData.structure[key].name === structureElement.name ||
+              key === structureElement.key
+            );
+            
+            if (structureKey) {
+              const actPosition = Object.keys(projectData.structure).indexOf(structureKey) + 1;
+              context.buildActContext(structureKey, structureElement, actPosition);
+              
+              // Try to load plot points for this act
+              try {
+                const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
+                const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+                if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                  context.buildPlotPointsContext(plotPointsData.plotPoints, sceneCount);
+                  
+                  // If generating an individual scene, build scene context
+                  if (existingScene && sceneIndex !== null) {
+                    context.buildSceneContext(sceneIndex, sceneIndex, existingScene, sceneCount);
+                  }
+                }
+              } catch (plotError) {
+                console.log(`No plot points found for this act (${structureKey}), using basic context`);
+              }
+            }
+          }
+        } catch (projectError) {
+          console.log('Could not load full project context, using basic story context');
+        }
+        
+        // Generate hierarchical prompt
+        const customInstructions = existingScene && sceneIndex !== null ? 
+          `SCENE REGENERATION REQUIREMENTS:
+- Position: Scene ${sceneIndex + 1} in this structural element
+- Current title: ${existingScene.title || 'New Scene'}
+- Create a single scene that fits this structural element
+- Make it cinematic and specific, not just a plot summary
+- Scene should advance the plot and character development described above
+- Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats` :
+          `SCENE GENERATION REQUIREMENTS:
+1. Create exactly ${sceneCount} scenes that develop this structural element
+2. Each scene should advance the plot and character development described above
+3. Make scenes cinematic and specific, not just plot summaries
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Use any available plot points as guidance for narrative flow`;
+        
+        hierarchicalPrompt = context.generateHierarchicalPrompt(5, customInstructions);
+        
+        if (existingScene && sceneIndex !== null) {
+          prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location", 
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+}`;
+        } else {
+          prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
+        }
+        
+        systemMessage = "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
+        
+      } catch (contextError) {
+        console.log('Failed to build hierarchical context, falling back to simple prompt:', contextError);
+        hierarchicalPrompt = null;
+      }
+    }
+    
+    // Fallback to simple prompt if hierarchical context failed
+    if (!hierarchicalPrompt) {
+      if (existingScene && sceneIndex !== null) {
+        // Individual scene regeneration prompt
+        prompt = `Regenerate a single scene for "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -1256,11 +1683,9 @@ Return ONLY valid JSON in this exact format:
   "characters": ["Character1", "Character2"],
   "emotional_beats": ["primary emotion", "secondary emotion"]
 }`;
-      
-      systemMessage = "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
-    } else {
-      // Multiple scenes generation prompt
-      prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+      } else {
+        // Multiple scenes generation prompt
+        prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -1293,6 +1718,7 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
+      }
       
       systemMessage = "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
     }
@@ -1301,7 +1727,9 @@ Return ONLY valid JSON in this exact format:
       prompt: prompt,
       systemMessage: systemMessage,
       promptType: existingScene ? 'individual_scene' : 'multiple_scenes',
-      structureElement: structureElement
+      structureElement: structureElement,
+      hierarchicalPrompt: hierarchicalPrompt,
+      usedHierarchicalContext: !!hierarchicalPrompt
     });
   } catch (error) {
     console.error('Error generating scene prompt preview:', error);
@@ -1345,7 +1773,7 @@ ${nextScene ? `Next Scene: ${nextScene.title} - ${nextScene.description}` : 'Thi
 TASK: Generate a single plot point for the target scene that:
 
 1. Is a clear, concise sentence capturing the scene's key story beat
-2. ${previousScene ? 'Connects causally to the previous scene (using "and then", "therefore", "because of this", etc.)' : 'Establishes the initial situation clearly'}
+2. ${previousScene ? 'Connects causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")' : 'Establishes the initial situation clearly'}
 3. ${nextScene ? 'Sets up the next scene logically' : 'Provides satisfying closure'}
 4. Maintains narrative momentum and character development
 5. Is specific to this scene's content and purpose
@@ -1374,10 +1802,10 @@ Scene ${index + 1} (${scene.structureElement}): ${scene.title}
 - Location: ${scene.location}
 `).join('')}
 
-TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "and then" or "therefore" logic. Each plot point should:
+TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "BUT" and "THEREFORE" logic (avoid weak "and then" sequencing). Each plot point should:
 
 1. Be a single, clear sentence that captures the scene's key story beat
-2. Connect causally to the previous scene (using "and then", "therefore", "because of this", etc.)
+2. Connect causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")
 3. Set up the next scene logically
 4. Maintain narrative momentum and character development
 5. Be specific to the scene's content and purpose
@@ -1386,13 +1814,13 @@ Return ONLY a JSON object with this structure:
 {
   "plotPoints": [
     "Scene 1 plot point that establishes the initial situation",
-    "And then Scene 2 plot point that follows causally from Scene 1",
-    "Therefore Scene 3 plot point that results from Scene 2",
+    "But Scene 2 plot point that introduces conflict or complication from Scene 1",
+    "Therefore Scene 3 plot point that shows the consequence or progress from Scene 2",
     // ... continue for all ${allScenes.length} scenes
   ]
 }
 
-Focus on creating a strong narrative spine where each scene leads logically to the next.`;
+Focus on creating a strong narrative spine where each scene leads logically to the next through conflict and consequence.`;
       
       systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that connect scenes logically.";
     }
@@ -1447,12 +1875,12 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
 PLOT POINTS GENERATION REQUIREMENTS:
 1. Break down this story act into ${desiredSceneCount} causally connected plot points
 2. Each plot point should be a single, clear sentence that captures a key story beat
-3. Plot points should connect causally using "and then", "therefore", "because of this" logic
+3. Plot points should connect causally using "BUT" (introducing conflict/complications) and "THEREFORE" (showing consequences/progress) - AVOID "and then" chronological sequencing
 4. They should advance the character development specified for this act
 5. They should serve the overall story structure and move the narrative forward
 6. Do NOT reference specific scene content - these plot points will guide scene creation
 
-Create ${desiredSceneCount} plot points that break down this story act into dramatic beats.`);
+Create ${desiredSceneCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
     const prompt = `${hierarchicalPrompt}
 
@@ -1460,8 +1888,8 @@ Return ONLY a JSON object with this exact structure:
 {
   "plotPoints": [
     "Plot point 1 that establishes the situation for this act",
-    "And then plot point 2 that follows causally from point 1", 
-    "Therefore plot point 3 that results from point 2"
+    "But plot point 2 that introduces conflict or complication", 
+    "Therefore plot point 3 that shows the consequence or progress"
   ]
 }`;
 
@@ -1483,11 +1911,159 @@ Return ONLY a JSON object with this exact structure:
   }
 });
 
+// Generate multiple scenes for a specific plot point
+app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointIndex', async (req, res) => {
+  try {
+    const { projectPath, actKey, plotPointIndex } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    
+    // Load plot points data with scene distribution
+    let plotPointsData;
+    try {
+      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+    } catch (error) {
+      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+    }
+    
+    const plotPointIndexNum = parseInt(plotPointIndex);
+    if (plotPointIndexNum < 0 || plotPointIndexNum >= plotPointsData.plotPoints.length) {
+      return res.status(400).json({ error: 'Invalid plot point index' });
+    }
+    
+    const sceneDistribution = plotPointsData.sceneDistribution || [];
+    const plotPointInfo = sceneDistribution[plotPointIndexNum];
+    
+    if (!plotPointInfo) {
+      return res.status(400).json({ error: 'Scene distribution not found. Please regenerate plot points.' });
+    }
+    
+    const sceneCount = plotPointInfo.sceneCount;
+    const plotPoint = plotPointInfo.plotPoint;
+    
+    console.log(`Generating ${sceneCount} scenes for plot point ${plotPointIndexNum + 1}: "${plotPoint}"`);
+    
+    // Initialize and load hierarchical context
+    const context = new HierarchicalContext();
+    await context.loadFromProject(projectPath);
+    
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    // Rebuild context if needed
+    if (!context.contexts.story) {
+      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectData.template);
+    }
+    
+    // Build act context
+    const actPosition = Object.keys(structure).indexOf(actKey) + 1;
+    context.buildActContext(actKey, structure[actKey], actPosition);
+    
+    // Build plot points context
+    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    
+    // Build scene context for this specific plot point
+    context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
+    
+    // Generate hierarchical prompt for multiple scenes from one plot point
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
+1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
+2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
+3. Each scene should advance this plot point's dramatic purpose step-by-step
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Create a natural flow between scenes in this sequence
+6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+7. Scenes should feel like organic parts of a sequence, not isolated fragments
+
+This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+    
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+
+    console.log(`Calling Anthropic API for ${sceneCount} scenes from plot point...`);
+    
+    const completion = await anthropic.messages.create({
+      model: model,
+      max_tokens: 3000,
+      temperature: 0.7,
+      system: "You are a professional screenwriter generating scene sequences within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+    });
+
+    let scenesData;
+    try {
+      scenesData = JSON.parse(completion.content[0].text);
+      console.log(`Generated ${scenesData.scenes.length} scenes for plot point`);
+    } catch (error) {
+      return res.status(500).json({ 
+        error: 'Failed to parse AI response', 
+        rawResponse: completion.content[0].text.substring(0, 500) + "..."
+      });
+    }
+
+    // Save scenes to a dedicated file
+    const scenesDir = path.join(projectDir, '03_scenes', actKey);
+    await fs.mkdir(scenesDir, { recursive: true });
+    
+    const scenesFile = path.join(scenesDir, `plot_point_${plotPointIndexNum}_scenes.json`);
+    await fs.writeFile(scenesFile, JSON.stringify({
+      actKey: actKey,
+      plotPointIndex: plotPointIndexNum,
+      plotPoint: plotPoint,
+      sceneCount: sceneCount,
+      scenes: scenesData.scenes,
+      isKeyPlot: plotPointInfo.isKeyPlot,
+      generatedAt: new Date().toISOString()
+    }, null, 2));
+
+    console.log(`Saved ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum + 1} to: ${scenesFile}`);
+
+    res.json({
+      success: true,
+      actKey: actKey,
+      plotPointIndex: plotPointIndexNum,
+      plotPoint: plotPoint,
+      scenes: scenesData.scenes,
+      sceneCount: scenesData.scenes.length,
+      message: `Generated ${scenesData.scenes.length} scenes for plot point: "${plotPoint}"`
+    });
+
+  } catch (error) {
+    console.error('Error generating scenes for plot point:', error);
+    res.status(500).json({ error: 'Failed to generate scenes for plot point', details: error.message });
+  }
+});
+
 // Generate scenes for a specific structural element
 app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
   try {
     const { projectPath, structureKey } = req.params;
-    const { sceneCount = 3 } = req.body; // Default to 3 scenes per element
+    const { sceneCount = 3, model = "claude-3-5-sonnet-20241022" } = req.body; // Default to 3 scenes per element
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -1503,7 +2079,91 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     const structureElement = structure[structureKey];
     console.log(`Generating ${sceneCount} scenes for ${structureKey} in project: ${projectPath}`);
     
-    const prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+    let prompt;
+    let useHierarchicalContext = false;
+    
+    // Try to use hierarchical context, but fall back to simple prompt if it fails
+    try {
+      // Initialize and load hierarchical context for this project
+      const context = new HierarchicalContext();
+      await context.loadFromProject(projectPath);
+      
+      // If context doesn't exist, rebuild it from project data
+      if (!context.contexts.story) {
+        console.log('Rebuilding context from project data...');
+        context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
+        context.buildStructureContext(structure, projectData.template);
+      }
+      
+      // Build act context for this specific structural element
+      const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
+      context.buildActContext(structureKey, structureElement, actPosition);
+      
+      // Try to load plot points for this act
+      let plotPoints = [];
+      try {
+        const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
+        const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+        if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+          plotPoints = plotPointsData.plotPoints;
+          console.log(`Loaded ${plotPoints.length} plot points for ${structureKey}`);
+        }
+      } catch (plotError) {
+        console.log(`No plot points found for this act (${structureKey}), generating scenes without plot point guidance`);
+        console.log(`Looked for file: ${path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`)}`);
+        // Use placeholder plot points
+        plotPoints = Array(sceneCount).fill(0).map((_, i) => `Scene ${i + 1} plot point for ${structureElement.name}`);
+      }
+      
+      // Build plot points context
+      context.buildPlotPointsContext(plotPoints, sceneCount);
+      
+      // Generate hierarchical prompt using context system
+      console.log('About to generate hierarchical prompt...');
+      const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+SCENE GENERATION REQUIREMENTS:
+1. Create exactly ${sceneCount} scenes that develop this structural element
+2. Each scene should advance the plot and character development described above
+3. Make scenes cinematic and specific, not just plot summaries
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Use the available plot points as guidance for narrative flow and causal connections
+
+The scenes you generate should feel like organic parts of the complete story structure, not isolated fragments.`);
+      
+      console.log('Hierarchical prompt generated successfully');
+      
+      prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
+      
+      console.log('About to save context to project...');
+      
+      // Save updated context to project
+      await context.saveToProject(projectPath);
+      
+      console.log('Context saved successfully');
+      
+      useHierarchicalContext = true;
+      console.log('Using hierarchical context for scene generation');
+      
+    } catch (contextError) {
+      console.error('Failed to build hierarchical context, falling back to simple prompt:', contextError);
+      
+      // Fallback to simple prompt
+      prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -1536,26 +2196,72 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
+    }
 
-    const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
-      max_tokens: 2000,
-      temperature: 0.7,
-      system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-    });
+    console.log('About to call Anthropic API for scene generation...');
+    console.log('Prompt length:', prompt.length);
+    console.log('Model:', model);
+    console.log('Anthropic client configured:', !!anthropic);
+    console.log('API key available:', !!process.env.ANTHROPIC_API_KEY);
+    
+    // Add timeout and better error handling
+    let completion;
+    try {
+      console.log('Creating Anthropic API request...');
+      
+      const apiRequest = {
+        model: model,
+        max_tokens: 2000,
+        temperature: 0.7,
+        system: useHierarchicalContext ? 
+          "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON." :
+          "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+      };
+      
+      console.log('API request configured, making call...');
+      
+      // Add a timeout wrapper
+      completion = await Promise.race([
+        anthropic.messages.create(apiRequest),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('API call timed out after 30 seconds')), 30000)
+        )
+      ]);
+      
+      console.log('Anthropic API call completed successfully');
+      console.log('Response received, content length:', completion.content?.[0]?.text?.length || 0);
+      
+    } catch (apiError) {
+      console.error('Anthropic API call failed:', apiError);
+      console.error('Error name:', apiError.name);
+      console.error('Error message:', apiError.message);
+      console.error('Error stack:', apiError.stack);
+      
+      return res.status(500).json({ 
+        error: 'Failed to call Anthropic API', 
+        details: apiError.message,
+        errorName: apiError.name,
+        promptLength: prompt.length,
+        hasApiKey: !!process.env.ANTHROPIC_API_KEY
+      });
+    }
 
     let scenesData;
     try {
+      console.log('About to parse AI response...');
+      console.log('Response length:', completion.content[0].text.length);
+      
       scenesData = JSON.parse(completion.content[0].text);
       console.log(`Generated ${scenesData.scenes.length} scenes for ${structureKey}`);
     } catch (error) {
-      console.log('Failed to parse AI response:', error);
+      console.error('Failed to parse AI response:', error);
+      console.error('Raw response:', completion.content[0].text.substring(0, 1000));
       return res.status(500).json({ 
         error: "Failed to parse AI response", 
         details: error.message,
@@ -1563,16 +2269,22 @@ Return ONLY valid JSON in this exact format:
       });
     }
 
+    console.log('About to save scenes to file...');
+    
     // Load existing scenes file or create new one
     const scenesDir = path.join(projectDir, '02_scenes');
     const scenesFile = path.join(scenesDir, 'scenes.json');
+    
+    console.log('Scenes directory:', scenesDir);
+    console.log('Scenes file:', scenesFile);
     
     let allScenes = { scenes: {}, storyInput };
     try {
       const existingContent = await fs.readFile(scenesFile, 'utf8');
       allScenes = JSON.parse(existingContent);
+      console.log('Loaded existing scenes file');
     } catch (error) {
-      // File doesn't exist yet, use default structure
+      console.log('No existing scenes file, creating new one');
     }
 
     // Update the specific structural element
@@ -1581,6 +2293,8 @@ Return ONLY valid JSON in this exact format:
     };
     allScenes.lastUpdated = new Date().toISOString();
 
+    console.log('About to write scenes file...');
+    
     // Save updated scenes
     await fs.writeFile(scenesFile, JSON.stringify(allScenes, null, 2));
     
@@ -1602,6 +2316,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
   try {
     const { projectPath, structureKey, sceneIndex } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
@@ -1642,9 +2357,9 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
       context.buildStructureContext(structure, projectData.template);
     }
     
-    // Build element context for this specific structural element
+    // Build act context for this specific structural element
     const elementPosition = Object.keys(structure).indexOf(structureKey) + 1;
-    context.buildElementContext(structureKey, structureElement, elementPosition);
+    context.buildActContext(structureKey, structureElement, elementPosition);
     
     // First, we need plot points for this element (if they don't exist, we'll need to generate them)
     // For now, let's create a placeholder plot points context
@@ -1683,7 +2398,7 @@ Return ONLY valid JSON in this exact format:
     await context.saveToProject(projectPath);
 
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 1000,
       temperature: 0.7,
       system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
@@ -1748,6 +2463,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-plot-points/:projectPath', async (req, res) => {
   try {
     const { projectPath } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -1802,10 +2518,10 @@ Scene ${index + 1} (${scene.structureElement}): ${scene.title}
 - Location: ${scene.location}
 `).join('')}
 
-TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "and then" or "therefore" logic. Each plot point should:
+TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "BUT" and "THEREFORE" logic (avoid weak "and then" sequencing). Each plot point should:
 
 1. Be a single, clear sentence that captures the scene's key story beat
-2. Connect causally to the previous scene (using "and then", "therefore", "because of this", etc.)
+2. Connect causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")
 3. Set up the next scene logically
 4. Maintain narrative momentum and character development
 5. Be specific to the scene's content and purpose
@@ -1814,13 +2530,13 @@ Return ONLY a JSON object with this structure:
 {
   "plotPoints": [
     "Scene 1 plot point that establishes the initial situation",
-    "And then Scene 2 plot point that follows causally from Scene 1",
-    "Therefore Scene 3 plot point that results from Scene 2",
+    "But Scene 2 plot point that introduces conflict or complication from Scene 1",
+    "Therefore Scene 3 plot point that shows the consequence or progress from Scene 2",
     // ... continue for all ${allScenes.length} scenes
   ]
 }
 
-Focus on creating a strong narrative spine where each scene leads logically to the next.`;
+Focus on creating a strong narrative spine where each scene leads logically to the next through conflict and consequence.`;
 
     console.log('Sending plot points request to Claude API...');
     console.log('Number of scenes found:', allScenes.length);
@@ -1828,7 +2544,7 @@ Focus on creating a strong narrative spine where each scene leads logically to t
     console.log('Prompt being sent (first 1000 chars):', prompt.substring(0, 1000));
     
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: model,
       max_tokens: 4000,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -1888,6 +2604,7 @@ Focus on creating a strong narrative spine where each scene leads logically to t
 app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
   try {
     const { projectPath, structureKey, sceneIndex } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
@@ -1960,7 +2677,7 @@ ${nextScene ? `Next Scene: ${nextScene.title} - ${nextScene.description}` : 'Thi
 TASK: Generate a single plot point for the target scene that:
 
 1. Is a clear, concise sentence capturing the scene's key story beat
-2. ${previousScene ? 'Connects causally to the previous scene (using "and then", "therefore", "because of this", etc.)' : 'Establishes the initial situation clearly'}
+2. ${previousScene ? 'Connects causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")' : 'Establishes the initial situation clearly'}
 3. ${nextScene ? 'Sets up the next scene logically' : 'Provides satisfying closure'}
 4. Maintains narrative momentum and character development
 5. Is specific to this scene's content and purpose
@@ -1972,7 +2689,7 @@ Return ONLY a JSON object:
 
     console.log(`Generating individual plot point for ${structureKey} scene ${sceneIndexNum}`);
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: model,
       max_tokens: 1000,
       messages: [{ role: 'user', content: prompt }]
     });
@@ -2147,7 +2864,7 @@ For each structural element, create 1-2 scenes with:
 Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "description": "...", "characters": [...], "emotional_beats": [...]}]}}`;
 
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: req.body.model || "claude-3-5-sonnet-20241022",
       max_tokens: 8000,
       temperature: 0.7,
       system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON. Do not truncate the JSON. Complete all structural elements.",
@@ -2218,7 +2935,7 @@ Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "descri
   }
 });
 
-// Export final script
+// Export final script with professional formatting
 app.post('/api/export', async (req, res) => {
   try {
     const { projectData, format = 'text', projectPath } = req.body;
@@ -2271,54 +2988,293 @@ app.post('/api/export', async (req, res) => {
       }
     }
     
-    // Assemble the full script
-    let script = `${fullProjectData.storyInput.title}\n`;
-    script += `Written by: [Author Name]\n\n`;
-    script += `LOGLINE: ${fullProjectData.storyInput.logline}\n\n`;
-    script += `GENRE: ${fullProjectData.storyInput.genre || fullProjectData.storyInput.tone || 'Drama'}\n\n`;
-    script += `CHARACTERS: ${fullProjectData.storyInput.characters}\n\n`;
-    script += `FADE IN:\n\n`;
-    
-    // Add structure overview if available
-    if (fullProjectData.structure) {
-      script += `=== STORY STRUCTURE ===\n\n`;
-      Object.entries(fullProjectData.structure).forEach(([key, element]) => {
-        script += `${element.name || key.replace(/_/g, ' ').toUpperCase()}\n`;
-        script += `${element.description}\n\n`;
-      });
-      script += `\n`;
+    // Generate script based on format
+    let script;
+    switch (format) {
+      case 'screenplay':
+        script = generateProfessionalScreenplay(fullProjectData);
+        break;
+      case 'fountain':
+        script = generateFountainFormat(fullProjectData);
+        break;
+      case 'fdx':
+        script = generateFinalDraftFormat(fullProjectData);
+        break;
+      case 'pdf-ready':
+        script = generatePDFReadyFormat(fullProjectData);
+        break;
+      case 'production':
+        script = generateProductionPackage(fullProjectData);
+        break;
+      default:
+        script = generateBasicScript(fullProjectData);
     }
     
-    // Add scenes if available
-    if (fullProjectData.scenes && fullProjectData.scenes.scenes) {
-      script += `=== SCENES BREAKDOWN ===\n\n`;
-      Object.entries(fullProjectData.scenes.scenes).forEach(([structureKey, structureScenes]) => {
-        script += `${structureKey.replace(/_/g, ' ').toUpperCase()}\n\n`;
-        if (structureScenes.scenes) {
-          structureScenes.scenes.forEach((scene, index) => {
-            script += `Scene ${scene.scene_number || index + 1}: ${scene.title}\n`;
-            script += `Location: ${scene.location}\n`;
-            script += `Characters: ${Array.isArray(scene.characters) ? scene.characters.join(', ') : scene.characters}\n\n`;
-            script += `${scene.description}\n\n`;
-            if (scene.emotional_beats) {
-              script += `Emotional Beats: ${Array.isArray(scene.emotional_beats) ? scene.emotional_beats.join(', ') : scene.emotional_beats}\n\n`;
-            }
-            script += `---\n\n`;
-          });
+    function generateBasicScript(data) {
+      let script = `${data.storyInput.title}\n`;
+      script += `Written by: [Author Name]\n\n`;
+      script += `LOGLINE: ${data.storyInput.logline}\n\n`;
+      script += `GENRE: ${data.storyInput.genre || data.storyInput.tone || 'Drama'}\n\n`;
+      script += `CHARACTERS: ${data.storyInput.characters}\n\n`;
+      script += `FADE IN:\n\n`;
+      return script;
+    }
+    
+    function generateProfessionalScreenplay(data) {
+      let script = generateTitlePage(data);
+      script += '\n\n\nFADE IN:\n\n';
+      
+      // Add dialogue content in professional format
+      if (data.dialogueContent && data.dialogueContent.length > 0) {
+        data.dialogueContent.forEach((dialogue, index) => {
+          script += formatDialogueForScreenplay(dialogue);
+          if (index > 0 && (index + 1) % 3 === 0) {
+            script += '\n\n                         [PAGE BREAK]\n\n';
+          }
+        });
+      }
+      
+      script += '\n\nFADE OUT.\n\nTHE END';
+      return script;
+    }
+    
+    function generateTitlePage(data) {
+      const title = data.storyInput?.title || 'UNTITLED';
+      const author = '[Author Name]';
+      const date = new Date().toLocaleDateString();
+      
+      return `
+
+
+
+
+                                    ${title.toUpperCase()}
+
+
+                                      by
+
+                                   ${author}
+
+
+
+
+                                Based on a true story
+                                    (if applicable)
+
+
+
+
+                                     ${date}
+
+
+
+
+                              Contact Information:
+                              [Your Name]
+                              [Your Address]
+                              [Your Phone]
+                              [Your Email]
+
+
+
+
+                                   FIRST DRAFT`;
+    }
+    
+    function formatDialogueForScreenplay(dialogue) {
+      const lines = dialogue.split('\n');
+      let formatted = '';
+      let inDialogue = false;
+      
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) {
+          formatted += '\n';
+          continue;
         }
-      });
+        
+        // Scene headings (INT./EXT.)
+        if (line.match(/^(INT\.|EXT\.)/i)) {
+          formatted += `\n${line.toUpperCase()}\n\n`;
+        }
+        // Character names (all caps, no colon)
+        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
+          const character = line.replace(':', '').trim();
+          formatted += `                    ${character}\n`;
+          inDialogue = true;
+        }
+        // Parentheticals
+        else if (line.match(/^\(.+\)$/)) {
+          formatted += `                  ${line}\n`;
+        }
+        // Dialogue lines
+        else if (inDialogue && !line.match(/^(INT\.|EXT\.)/i)) {
+          formatted += `          ${line}\n`;
+        }
+        // Action lines
+        else {
+          formatted += `${line}\n`;
+          inDialogue = false;
+        }
+      }
+      
+      return formatted + '\n\n';
     }
     
-    // Add all dialogue content
-    if (fullProjectData.dialogueContent && fullProjectData.dialogueContent.length > 0) {
-      script += `=== DIALOGUE SCENES ===\n\n`;
-      fullProjectData.dialogueContent.forEach((dialogue, index) => {
-        script += `${dialogue}\n\n`;
-        script += `---\n\n`;
-      });
+    function generateFountainFormat(data) {
+      let fountain = `Title: ${data.storyInput?.title || 'UNTITLED'}\n`;
+      fountain += `Author: [Author Name]\n`;
+      fountain += `Draft date: ${new Date().toLocaleDateString()}\n\n`;
+      fountain += 'FADE IN:\n\n';
+      
+      if (data.dialogueContent && data.dialogueContent.length > 0) {
+        data.dialogueContent.forEach(dialogue => {
+          fountain += convertToFountain(dialogue) + '\n\n';
+        });
+      }
+      
+      fountain += 'FADE OUT.\n\nTHE END';
+      return fountain;
     }
     
-    script += `FADE OUT.\n\nTHE END`;
+    function convertToFountain(dialogue) {
+      const lines = dialogue.split('\n');
+      let fountain = '';
+      
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) {
+          fountain += '\n';
+          continue;
+        }
+        
+        // Scene headings - Fountain auto-detects INT./EXT.
+        if (line.match(/^(INT\.|EXT\.)/)) {
+          fountain += line + '\n\n';
+        }
+        // Character names - no special formatting needed
+        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
+          fountain += line.replace(':', '') + '\n';
+        }
+        // Everything else
+        else {
+          fountain += line + '\n';
+        }
+      }
+      
+      return fountain;
+    }
+    
+    function generateFinalDraftFormat(data) {
+      const title = data.storyInput?.title || 'UNTITLED';
+      
+      let fdx = `<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<FinalDraft DocumentType="Script" Template="No" Version="1">
+    <Content>
+        <Paragraph Type="Scene Heading">
+            <Text>${title}</Text>
+        </Paragraph>
+`;
+      
+      if (data.dialogueContent && data.dialogueContent.length > 0) {
+        data.dialogueContent.forEach(dialogue => {
+          fdx += convertToFinalDraft(dialogue);
+        });
+      }
+      
+      fdx += `    </Content>
+</FinalDraft>`;
+      
+      return fdx;
+    }
+    
+    function convertToFinalDraft(dialogue) {
+      const lines = dialogue.split('\n');
+      let fdx = '';
+      
+      for (let line of lines) {
+        line = line.trim();
+        if (!line) continue;
+        
+        if (line.match(/^(INT\.|EXT\.)/)) {
+          fdx += `        <Paragraph Type="Scene Heading">
+            <Text>${line}</Text>
+        </Paragraph>\n`;
+        } else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
+          fdx += `        <Paragraph Type="Character">
+            <Text>${line.replace(':', '')}</Text>
+        </Paragraph>\n`;
+        } else if (line.match(/^\(.+\)$/)) {
+          fdx += `        <Paragraph Type="Parenthetical">
+            <Text>${line}</Text>
+        </Paragraph>\n`;
+        } else if (line.length > 0) {
+          const type = line.match(/^[A-Z]/) ? 'Action' : 'Dialogue';
+          fdx += `        <Paragraph Type="${type}">
+            <Text>${line}</Text>
+        </Paragraph>\n`;
+        }
+      }
+      
+      return fdx;
+    }
+    
+    function generatePDFReadyFormat(data) {
+      let pdfScript = `PDF CONVERSION INSTRUCTIONS:
+============================
+1. Use Courier 12pt font
+2. Set margins: Left 1.5", Right 1", Top/Bottom 1"
+3. Page numbers top-right
+4. Page breaks at [PAGE BREAK] markers
+
+============================
+
+${generateProfessionalScreenplay(data)}
+
+============================
+END OF SCREENPLAY
+============================`;
+      
+      return pdfScript;
+    }
+    
+    function generateProductionPackage(data) {
+      const title = data.storyInput?.title || 'UNTITLED';
+      
+      let productionScript = `PRODUCTION PACKAGE: ${title.toUpperCase()}
+${'='.repeat(50)}
+
+SCRIPT STATISTICS:
+• Genre: ${data.storyInput?.genre || data.storyInput?.tone || 'Not specified'}
+• Estimated Pages: ${Math.ceil((data.dialogueContent?.length || 0) * 3)}
+• Total Scenes: ${data.dialogueContent?.length || 0}
+
+CHARACTER BREAKDOWN:
+${data.storyInput?.characters || 'Characters not specified'}
+
+LOGLINE:
+${data.storyInput?.logline || 'Logline not provided'}
+
+PRODUCTION NOTES:
+• This script was generated using AI assistance
+• Review all dialogue for consistency and character voice
+• Consider script coverage and professional review
+• Verify all scene locations and time requirements
+• Check for continuity and pacing issues
+
+${'='.repeat(50)}
+SCREENPLAY BEGINS BELOW
+${'='.repeat(50)}
+
+${generateProfessionalScreenplay(data)}
+
+${'='.repeat(50)}
+END OF PRODUCTION PACKAGE
+${'='.repeat(50)}`;
+
+      return productionScript;
+    }
+
     
     // Save final script to local folder if projectPath is provided
     if (projectPath) {
@@ -2335,11 +3291,42 @@ app.post('/api/export', async (req, res) => {
       console.log(`Final script saved to: ${scriptFile}`);
     }
     
+    // Set appropriate content type and filename based on format
+    const title = fullProjectData.storyInput.title || 'script';
+    const cleanTitle = title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
+    
     if (format === 'json') {
       res.json({ script, fullProjectData });
     } else {
-      res.setHeader('Content-Type', 'text/plain');
-      res.setHeader('Content-Disposition', `attachment; filename="${fullProjectData.storyInput.title || 'script'}.txt"`);
+      let contentType = 'text/plain';
+      let fileExtension = '.txt';
+      let filename = `${cleanTitle}`;
+      
+      switch (format) {
+        case 'screenplay':
+          filename += '_SCREENPLAY';
+          break;
+        case 'fountain':
+          fileExtension = '.fountain';
+          filename += '_FOUNTAIN';
+          break;
+        case 'fdx':
+          contentType = 'application/xml';
+          fileExtension = '.fdx';
+          filename += '_FINAL_DRAFT';
+          break;
+        case 'pdf-ready':
+          filename += '_PDF_READY';
+          break;
+        case 'production':
+          filename += '_PRODUCTION_PACKAGE';
+          break;
+        default:
+          filename += '_SCRIPT';
+      }
+      
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}${fileExtension}"`);
       res.send(script);
     }
   } catch (error) {
@@ -2367,7 +3354,7 @@ const startServer = async () => {
 app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { desiredSceneCount = 3 } = req.body;
+    const { desiredSceneCount = null, model = "claude-3-5-sonnet-20241022" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -2396,17 +3383,37 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     const actPosition = Object.keys(structure).indexOf(actKey) + 1;
     context.buildActContext(actKey, storyAct, actPosition);
     
+    // Calculate intelligent scene distribution based on total scene count
+    const totalScenes = context.contexts.story.data.totalScenes || 70;
+    const totalActs = Object.keys(structure).length;
+    const baseScenesPerAct = Math.floor(totalScenes / totalActs);
+    const extraScenes = totalScenes % totalActs;
+    
+    // Give certain acts more scenes based on their narrative importance
+    const keyActPatterns = ['catalyst', 'crisis', 'climax', 'transformation', 'confrontation'];
+    const isKeyAct = keyActPatterns.some(pattern => actKey.toLowerCase().includes(pattern));
+    const actSceneBonus = isKeyAct && actPosition <= extraScenes ? 1 : 0;
+    const scenesForThisAct = Math.max(3, baseScenesPerAct + actSceneBonus); // Minimum 3 scenes per act
+    
+    // Use provided desiredSceneCount or calculated value
+    const finalSceneCount = desiredSceneCount || scenesForThisAct;
+    
+    console.log(`Calculating scenes for ${actKey}: ${finalSceneCount} scenes (${totalScenes} total across ${totalActs} acts)`);
+    console.log(`Act ${actPosition}/${totalActs} - Key act: ${isKeyAct} - Scene bonus: ${actSceneBonus}`);
+    
+    
     // Generate hierarchical prompt for plot points generation (Level 4)
     const hierarchicalPrompt = context.generateHierarchicalPrompt(3, `
 PLOT POINTS GENERATION REQUIREMENTS:
-1. Break down this story act into ${desiredSceneCount} causally connected plot points
+1. Break down this story act into 4 causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
 2. Each plot point should be a single, clear sentence that captures a key story beat
-3. Plot points should connect causally using "and then", "therefore", "because of this" logic
+3. Plot points should connect causally using "BUT" (introducing conflict/complications) and "THEREFORE" (showing consequences/progress) - AVOID "and then" chronological sequencing
 4. They should advance the character development specified for this act
 5. They should serve the overall story structure and move the narrative forward
 6. Do NOT reference specific scene content - these plot points will guide scene creation
+7. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
 
-Create ${desiredSceneCount} plot points that break down this story act into dramatic beats.`);
+Create 4 plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
     const prompt = `${hierarchicalPrompt}
 
@@ -2414,15 +3421,16 @@ Return ONLY a JSON object with this exact structure:
 {
   "plotPoints": [
     "Plot point 1 that establishes the situation for this act",
-    "And then plot point 2 that follows causally from point 1", 
-    "Therefore plot point 3 that results from point 2"
+    "But plot point 2 that introduces conflict or complication", 
+    "Therefore plot point 3 that shows the consequence or progress",
+    "Therefore plot point 4 that concludes this act's progression"
   ]
 }`;
 
-    console.log(`Generating ${desiredSceneCount} plot points for ${actKey}`);
+    console.log(`Generating 4 plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
     
     const completion = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: model,
       max_tokens: 1500,
       temperature: 0.7,
       system: "You are a professional screenwriter. Generate clear, causal plot points that break down story acts into dramatic beats. Always respond with valid JSON.",
@@ -2450,11 +3458,14 @@ Return ONLY a JSON object with this exact structure:
       return res.status(500).json({ error: 'Invalid plot points structure received' });
     }
 
-    // Build plot points context and save it
-    context.buildPlotPointsContext(plotPointsData.plotPoints, desiredSceneCount);
+    // Calculate scene distribution across plot points
+    const sceneDistribution = context.calculateSceneDistribution(plotPointsData.plotPoints, finalSceneCount, actKey);
+    
+    // Build plot points context with scene distribution
+    context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount);
     await context.saveToProject(projectPath);
 
-    // Save plot points to a dedicated file as well
+    // Save plot points to a dedicated file with scene distribution
     const plotPointsDir = path.join(projectDir, '02_plot_points');
     await fs.mkdir(plotPointsDir, { recursive: true });
     
@@ -2463,24 +3474,385 @@ Return ONLY a JSON object with this exact structure:
       actKey: actKey,
       storyAct: storyAct,
       plotPoints: plotPointsData.plotPoints,
-      desiredSceneCount: desiredSceneCount,
-      generatedAt: new Date().toISOString()
+      sceneDistribution: sceneDistribution,
+      totalScenesForAct: finalSceneCount,
+      totalPlotPoints: plotPointsData.plotPoints.length,
+      generatedAt: new Date().toISOString(),
+      lastRegenerated: new Date().toISOString()
     }, null, 2));
 
-    console.log(`Generated ${plotPointsData.plotPoints.length} plot points for ${actKey}`);
+    console.log(`Generated ${plotPointsData.plotPoints.length} plot points for ${actKey} with scene distribution:`);
+    sceneDistribution.forEach((dist, index) => {
+      console.log(`  Plot Point ${index + 1}: ${dist.sceneCount} scenes ${dist.isKeyPlot ? '(key plot)' : ''}`);
+    });
 
     res.json({
       success: true,
       actKey: actKey,
       plotPoints: plotPointsData.plotPoints,
+      sceneDistribution: sceneDistribution,
       totalPlotPoints: plotPointsData.plotPoints.length,
-      desiredSceneCount: desiredSceneCount,
-      message: `Generated ${plotPointsData.plotPoints.length} plot points for ${storyAct.name}`
+      totalScenesForAct: finalSceneCount,
+      message: `Generated ${plotPointsData.plotPoints.length} plot points for ${storyAct.name} (${finalSceneCount} scenes total)`
     });
 
   } catch (error) {
     console.error('Error generating plot points for act:', error);
     res.status(500).json({ error: 'Failed to generate plot points for act', details: error.message });
+  }
+});
+
+// Load existing plot points for a project
+app.get('/api/load-plot-points/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const plotPointsDir = path.join(projectDir, '02_plot_points');
+    
+    console.log(`Loading plot points for project: ${projectPath}`);
+    console.log(`Looking in directory: ${plotPointsDir}`);
+    
+    let plotPoints = {};
+    
+    try {
+      // Check if plot points directory exists
+      await fs.access(plotPointsDir);
+      
+      // Read all plot point files
+      const files = await fs.readdir(plotPointsDir);
+      console.log(`Found plot point files:`, files);
+      
+      for (const file of files) {
+        if (file.endsWith('_plot_points.json')) {
+          const structureKey = file.replace('_plot_points.json', '');
+          const plotPointsFile = path.join(plotPointsDir, file);
+          
+          try {
+            const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+            if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+              plotPoints[structureKey] = plotPointsData.plotPoints;
+              console.log(`Loaded ${plotPointsData.plotPoints.length} plot points for ${structureKey}`);
+            }
+          } catch (fileError) {
+            console.error(`Error reading plot points file ${file}:`, fileError);
+          }
+        }
+      }
+    } catch (dirError) {
+      console.log(`Plot points directory doesn't exist: ${plotPointsDir}`);
+    }
+    
+    res.json({ 
+      plotPoints: plotPoints,
+      projectPath: projectPath,
+      totalStructures: Object.keys(plotPoints).length
+    });
+    
+  } catch (error) {
+    console.error('Error loading plot points:', error);
+    res.status(500).json({ error: 'Failed to load plot points', details: error.message });
+  }
+});
+
+// Regenerate a single plot point within an act
+app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex', async (req, res) => {
+  try {
+    const { projectPath, structureKey, plotPointIndex } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    if (!structure[structureKey]) {
+      return res.status(400).json({ error: 'Invalid structure key' });
+    }
+    
+    // Load existing plot points
+    let plotPointsData;
+    try {
+      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+    } catch (error) {
+      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+    }
+    
+    const plotPointIndexNum = parseInt(plotPointIndex);
+    if (plotPointIndexNum < 0 || plotPointIndexNum >= plotPointsData.plotPoints.length) {
+      return res.status(400).json({ error: 'Invalid plot point index' });
+    }
+    
+    const storyAct = structure[structureKey];
+    const existingPlotPoints = plotPointsData.plotPoints;
+    const targetPlotPoint = existingPlotPoints[plotPointIndexNum];
+    
+    // Initialize and load hierarchical context
+    const context = new HierarchicalContext();
+    await context.loadFromProject(projectPath);
+    
+    // Rebuild context if needed
+    if (!context.contexts.story) {
+      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectData.template);
+    }
+    
+    // Build act context
+    const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
+    context.buildActContext(structureKey, storyAct, actPosition);
+    
+    // Build context with existing plot points
+    context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
+    
+    // Generate hierarchical prompt for individual plot point regeneration
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+INDIVIDUAL PLOT POINT REGENERATION:
+1. You are regenerating plot point #${plotPointIndexNum + 1} of ${existingPlotPoints.length} in this story act
+2. The current plot point is: "${targetPlotPoint}"
+3. This plot point must maintain causal connections with the surrounding plot points
+4. Use "BUT" and "THEREFORE" logic to ensure dramatic flow
+5. Consider the plot points that come before and after this one
+6. The new plot point should serve the same structural purpose but with fresh execution
+
+Existing plot points context:
+${existingPlotPoints.map((pp, idx) => `${idx + 1}. ${pp}${idx === plotPointIndexNum ? ' ← REGENERATING THIS ONE' : ''}`).join('\n')}
+
+Generate a single replacement plot point that maintains narrative causality and dramatic tension.`);
+    
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY a JSON object with this exact structure:
+{
+  "plotPoint": "The new plot point that replaces the existing one while maintaining causal flow"
+}`;
+
+    console.log(`Regenerating plot point ${plotPointIndexNum + 1} for ${structureKey}`);
+    
+    const completion = await anthropic.messages.create({
+      model: model,
+      max_tokens: 800,
+      temperature: 0.7,
+      system: "You are a professional screenwriter. Generate a single causally-connected plot point that maintains narrative flow. Always respond with valid JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+    });
+
+    let responseData;
+    try {
+      responseData = JSON.parse(completion.content[0].text);
+    } catch (error) {
+      console.log('Failed to parse plot point response:', error);
+      return res.status(500).json({ 
+        error: "Failed to parse AI response", 
+        details: error.message,
+        rawResponse: completion.content[0].text.substring(0, 500) + "..."
+      });
+    }
+
+    if (!responseData.plotPoint || typeof responseData.plotPoint !== 'string') {
+      return res.status(500).json({ error: 'Invalid plot point structure received' });
+    }
+
+    // Update the plot points array (OVERWRITES the specific plot point)
+    plotPointsData.plotPoints[plotPointIndexNum] = responseData.plotPoint;
+    plotPointsData.lastRegenerated = new Date().toISOString();
+    
+    // Save updated plot points back to file
+    await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
+    
+    // Update hierarchical context with new plot points
+    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length);
+    await context.saveToProject(projectPath);
+
+    console.log(`Regenerated plot point ${plotPointIndexNum + 1} for ${structureKey}: "${responseData.plotPoint}"`);
+
+    res.json({
+      success: true,
+      structureKey: structureKey,
+      plotPointIndex: plotPointIndexNum,
+      plotPoint: responseData.plotPoint,
+      message: `Regenerated plot point ${plotPointIndexNum + 1} for ${storyAct.name}`
+    });
+
+  } catch (error) {
+    console.error('Error regenerating individual plot point:', error);
+    res.status(500).json({ error: 'Failed to regenerate plot point', details: error.message });
+  }
+});
+
+// Preview individual plot point regeneration prompt
+app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
+  try {
+    const { projectPath, structureKey, plotPointIndex, existingPlotPoints } = req.body;
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    if (!structure[structureKey]) {
+      return res.status(400).json({ error: 'Invalid structure key' });
+    }
+    
+    const plotPointIndexNum = parseInt(plotPointIndex);
+    if (plotPointIndexNum < 0 || plotPointIndexNum >= existingPlotPoints.length) {
+      return res.status(400).json({ error: 'Invalid plot point index' });
+    }
+    
+    const storyAct = structure[structureKey];
+    const targetPlotPoint = existingPlotPoints[plotPointIndexNum];
+    
+    // Initialize and load hierarchical context
+    const context = new HierarchicalContext();
+    await context.loadFromProject(projectPath);
+    
+    // Rebuild context if needed
+    if (!context.contexts.story) {
+      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectData.template);
+    }
+    
+    // Build act context
+    const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
+    context.buildActContext(structureKey, storyAct, actPosition);
+    
+    // Build context with existing plot points
+    context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
+    
+    // Generate hierarchical prompt for individual plot point regeneration
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+INDIVIDUAL PLOT POINT REGENERATION:
+1. You are regenerating plot point #${plotPointIndexNum + 1} of ${existingPlotPoints.length} in this story act
+2. The current plot point is: "${targetPlotPoint}"
+3. This plot point must maintain causal connections with the surrounding plot points
+4. Use "BUT" and "THEREFORE" logic to ensure dramatic flow
+5. Consider the plot points that come before and after this one
+6. The new plot point should serve the same structural purpose but with fresh execution
+
+Existing plot points context:
+${existingPlotPoints.map((pp, idx) => `${idx + 1}. ${pp}${idx === plotPointIndexNum ? ' ← REGENERATING THIS ONE' : ''}`).join('\n')}
+
+Generate a single replacement plot point that maintains narrative causality and dramatic tension.`);
+    
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY a JSON object with this exact structure:
+{
+  "plotPoint": "The new plot point that replaces the existing one while maintaining causal flow"
+}`;
+
+    const systemMessage = "You are a professional screenwriter. Generate a single causally-connected plot point that maintains narrative flow. Always respond with valid JSON.";
+
+    res.json({
+      systemMessage: systemMessage,
+      prompt: prompt,
+      promptType: 'individual-plot-point-regeneration',
+      storyAct: storyAct,
+      structureKey: structureKey,
+      plotPointIndex: plotPointIndexNum,
+      targetPlotPoint: targetPlotPoint,
+      hierarchicalPrompt: hierarchicalPrompt
+    });
+
+  } catch (error) {
+    console.error('Error generating individual plot point prompt preview:', error);
+    res.status(500).json({ error: 'Failed to generate prompt preview', details: error.message });
+  }
+});
+
+// Generate all scenes for an entire act using scene distribution
+app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', async (req, res) => {
+  try {
+    const { projectPath, actKey } = req.params;
+    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    
+    // Load plot points data with scene distribution
+    let plotPointsData;
+    try {
+      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+    } catch (error) {
+      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+    }
+    
+    if (!plotPointsData.sceneDistribution) {
+      return res.status(400).json({ error: 'Scene distribution not found. Please regenerate plot points with the new system.' });
+    }
+    
+    console.log(`Generating all scenes for act: ${actKey}`);
+    console.log(`Scene distribution:`, plotPointsData.sceneDistribution.map((dist, i) => 
+      `Plot Point ${i + 1}: ${dist.sceneCount} scenes ${dist.isKeyPlot ? '(key)' : ''}`
+    ));
+    
+    const allGeneratedScenes = [];
+    let totalScenesGenerated = 0;
+    
+    // Generate scenes for each plot point according to distribution
+    for (let plotPointIndex = 0; plotPointIndex < plotPointsData.sceneDistribution.length; plotPointIndex++) {
+      const plotPointInfo = plotPointsData.sceneDistribution[plotPointIndex];
+      const sceneCount = plotPointInfo.sceneCount;
+      const plotPoint = plotPointInfo.plotPoint;
+      
+      console.log(`\nGenerating ${sceneCount} scenes for Plot Point ${plotPointIndex + 1}: "${plotPoint}"`);
+      
+      try {
+        // Generate scenes for this plot point directly
+        const context = new HierarchicalContext();
+        const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model);
+        allGeneratedScenes.push({
+          plotPointIndex: plotPointIndex,
+          plotPoint: plotPoint,
+          sceneCount: plotPointResult.sceneCount,
+          scenes: plotPointResult.scenes,
+          isKeyPlot: plotPointInfo.isKeyPlot
+        });
+        
+        totalScenesGenerated += plotPointResult.sceneCount;
+        console.log(`✓ Generated ${plotPointResult.sceneCount} scenes for plot point ${plotPointIndex + 1}`);
+        
+      } catch (error) {
+        console.error(`Error generating scenes for plot point ${plotPointIndex}:`, error);
+        // Continue with other plot points even if one fails
+      }
+    }
+    
+    // Save comprehensive act scenes summary
+    const actScenesDir = path.join(projectDir, '03_scenes', actKey);
+    await fs.mkdir(actScenesDir, { recursive: true });
+    
+    const actSummaryFile = path.join(actScenesDir, `${actKey}_act_scenes_summary.json`);
+    await fs.writeFile(actSummaryFile, JSON.stringify({
+      actKey: actKey,
+      totalScenesGenerated: totalScenesGenerated,
+      targetScenes: plotPointsData.totalScenesForAct,
+      plotPointScenes: allGeneratedScenes,
+      generatedAt: new Date().toISOString()
+    }, null, 2));
+    
+    console.log(`\n✅ Act ${actKey} complete: Generated ${totalScenesGenerated} scenes across ${allGeneratedScenes.length} plot points`);
+    
+    res.json({
+      success: true,
+      actKey: actKey,
+      totalScenesGenerated: totalScenesGenerated,
+      targetScenes: plotPointsData.totalScenesForAct,
+      plotPointScenes: allGeneratedScenes,
+      message: `Generated ${totalScenesGenerated} scenes for act: ${actKey}`
+    });
+
+  } catch (error) {
+    console.error('Error generating all scenes for act:', error);
+    res.status(500).json({ error: 'Failed to generate all scenes for act', details: error.message });
   }
 });
 
