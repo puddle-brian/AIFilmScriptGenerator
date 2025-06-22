@@ -219,14 +219,32 @@
         <!-- Step 4: Scenes Review -->
         <section class="workflow-step" id="step4">
             <div class="card">
-                <h2>Step 4: Review Scenes</h2>
-                <p class="step-description">Review the scene breakdown for each structural element:</p>
+                <h2>Step 4: Generate Scenes</h2>
+                <p class="step-description">Generate scenes for each structural element individually. This approach gives you more control and avoids token limits.</p>
+                
+                <!-- Scene Generation Options -->
+                <div class="scene-generation-options" id="sceneGenerationOptions" style="margin-bottom: 20px;">
+                    <h3>Scene & Plot Management</h3>
+                    
+                    <div class="plot-generation-section" style="margin-bottom: 15px;">
+                        <button class="btn btn-primary" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
+                            📋 Generate All Plot Points
+                        </button>
+                        <span class="plot-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
+                            Creates causal connections between scenes using "and then" / "therefore" logic
+                        </span>
+                    </div>
+
+                    <p class="generation-info">
+                        <strong>Tip:</strong> Generate plot points to create a strong narrative thread connecting your scenes with clear causal relationships.
+                    </p>
+                </div>
+                
                 <div id="scenesContent">
                     <!-- Generated scenes will appear here -->
                 </div>
                 <div class="step-actions">
                     <button class="btn btn-secondary" onclick="goToStep(3)">Back</button>
-                    <button class="btn btn-outline" onclick="regenerateScenes()">Regenerate Scenes</button>
                     <button class="btn btn-primary" onclick="approveScenes()">Approve & Generate Dialogue</button>
                 </div>
             </div>

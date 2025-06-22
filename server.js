@@ -613,6 +613,520 @@ app.delete('/api/project/:projectPath', async (req, res) => {
   }
 });
 
+// Generate scenes for a specific structural element
+app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
+  try {
+    const { projectPath, structureKey } = req.params;
+    const { sceneCount = 3 } = req.body; // Default to 3 scenes per element
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    if (!structure[structureKey]) {
+      return res.status(400).json({ error: 'Invalid structure key' });
+    }
+    
+    const structureElement = structure[structureKey];
+    console.log(`Generating ${sceneCount} scenes for ${structureKey} in project: ${projectPath}`);
+    
+    const prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+
+STORY CONTEXT:
+- Title: ${storyInput.title}
+- Logline: ${storyInput.logline}
+- Characters: ${storyInput.characters}
+- Genre/Tone: ${storyInput.genre || storyInput.tone}
+
+STRUCTURAL ELEMENT TO DEVELOP:
+- Name: ${structureElement.name}
+- Description: ${structureElement.description}
+- Character Development: ${structureElement.character_development || 'Not specified'}
+
+REQUIREMENTS:
+1. Create exactly ${sceneCount} scenes that develop this structural element
+2. Each scene should advance the plot and character development described above
+3. Make scenes cinematic and specific, not just plot summaries
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
+
+    const completion = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 2000,
+      temperature: 0.7,
+      system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+    });
+
+    let scenesData;
+    try {
+      scenesData = JSON.parse(completion.content[0].text);
+      console.log(`Generated ${scenesData.scenes.length} scenes for ${structureKey}`);
+    } catch (error) {
+      console.log('Failed to parse AI response:', error);
+      return res.status(500).json({ 
+        error: "Failed to parse AI response", 
+        details: error.message,
+        rawResponse: completion.content[0].text.substring(0, 500) + "..."
+      });
+    }
+
+    // Load existing scenes file or create new one
+    const scenesDir = path.join(projectDir, '02_scenes');
+    const scenesFile = path.join(scenesDir, 'scenes.json');
+    
+    let allScenes = { scenes: {}, storyInput };
+    try {
+      const existingContent = await fs.readFile(scenesFile, 'utf8');
+      allScenes = JSON.parse(existingContent);
+    } catch (error) {
+      // File doesn't exist yet, use default structure
+    }
+
+    // Update the specific structural element
+    allScenes.scenes[structureKey] = {
+      scenes: scenesData.scenes
+    };
+    allScenes.lastUpdated = new Date().toISOString();
+
+    // Save updated scenes
+    await fs.writeFile(scenesFile, JSON.stringify(allScenes, null, 2));
+    
+    console.log(`Scenes for ${structureKey} saved to: ${scenesDir}`);
+
+    res.json({ 
+      scenes: scenesData.scenes,
+      structureKey,
+      projectPath,
+      message: `Scenes generated successfully for ${structureElement.name}`
+    });
+  } catch (error) {
+    console.error('Error generating scene:', error);
+    res.status(500).json({ error: 'Failed to generate scene', details: error.message });
+  }
+});
+
+// Generate a single scene for a specific structural element and scene index
+app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
+  try {
+    const { projectPath, structureKey, sceneIndex } = req.params;
+    const sceneIndexNum = parseInt(sceneIndex);
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    if (!structure[structureKey]) {
+      return res.status(400).json({ error: 'Invalid structure key' });
+    }
+    
+    // Load existing scenes to get context
+    let existingScenes = {};
+    try {
+      const scenesData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
+      existingScenes = scenesData.scenes || {};
+    } catch (error) {
+      console.log('No existing scenes found, generating fresh scene');
+    }
+    
+    const structureElement = structure[structureKey];
+    const elementScenes = existingScenes[structureKey]?.scenes || [];
+    const existingScene = elementScenes[sceneIndexNum];
+    
+    console.log(`Regenerating scene ${sceneIndexNum + 1} for ${structureKey} in project: ${projectPath}`);
+    
+    const prompt = `Regenerate a single scene for "${storyInput.title}".
+
+STORY CONTEXT:
+- Title: ${storyInput.title}
+- Logline: ${storyInput.logline}
+- Characters: ${storyInput.characters}
+- Genre/Tone: ${storyInput.genre || storyInput.tone}
+
+STRUCTURAL ELEMENT:
+- Name: ${structureElement.name}
+- Description: ${structureElement.description}
+- Character Development: ${structureElement.character_development || 'Not specified'}
+
+SCENE TO REGENERATE:
+- Position: Scene ${sceneIndexNum + 1} of ${elementScenes.length} in this structural element
+- Current title: ${existingScene?.title || 'New Scene'}
+
+REQUIREMENTS:
+1. Create a single scene that fits this structural element
+2. Make it cinematic and specific, not just a plot summary
+3. Scene should advance the plot and character development described above
+4. Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location",
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+}`;
+
+    const completion = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1000,
+      temperature: 0.7,
+      system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+      messages: [
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+    });
+
+    let sceneData;
+    try {
+      sceneData = JSON.parse(completion.content[0].text);
+      console.log(`Generated individual scene: ${sceneData.title}`);
+    } catch (error) {
+      console.log('Failed to parse AI response:', error);
+      return res.status(500).json({ 
+        error: "Failed to parse AI response", 
+        details: error.message,
+        rawResponse: completion.content[0].text.substring(0, 500) + "..."
+      });
+    }
+
+    // Load existing scenes file or create new structure
+    let allScenes = { scenes: {}, storyInput };
+    try {
+      const existingContent = await fs.readFile(scenesFile, 'utf8');
+      allScenes = JSON.parse(existingContent);
+    } catch (error) {
+      // File doesn't exist yet, use default structure
+    }
+
+    // Ensure the structure exists
+    if (!allScenes.scenes[structureKey]) {
+      allScenes.scenes[structureKey] = { scenes: [] };
+    }
+
+    // Update the specific scene
+    allScenes.scenes[structureKey].scenes[sceneIndexNum] = sceneData;
+    allScenes.lastUpdated = new Date().toISOString();
+
+    // Save updated scenes
+    await fs.writeFile(scenesFile, JSON.stringify(allScenes, null, 2));
+    
+    console.log(`Individual scene ${sceneIndexNum + 1} for ${structureKey} saved`);
+
+    res.json({ 
+      scene: sceneData,
+      structureKey,
+      sceneIndex: sceneIndexNum,
+      projectPath,
+      message: `Scene ${sceneIndexNum + 1} regenerated successfully`
+    });
+  } catch (error) {
+    console.error('Error generating individual scene:', error);
+    res.status(500).json({ error: 'Failed to generate individual scene', details: error.message });
+  }
+});
+
+// Generate plot points for all scenes with causal connections
+app.post('/api/generate-plot-points/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    // Load existing scenes
+    const scenesFileData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
+    console.log('Loaded scenes data structure:', Object.keys(scenesFileData));
+    console.log('Sample scenes data:', JSON.stringify(scenesFileData, null, 2).substring(0, 500));
+    
+    // Extract the actual scenes data (handle nested structure)
+    const scenesData = scenesFileData.scenes || scenesFileData;
+    
+    // Create a comprehensive context for plot point generation
+    const allScenes = [];
+    const sceneStructureMap = [];
+    
+    Object.entries(scenesData).forEach(([structureKey, sceneGroup]) => {
+      // Handle both formats: direct array or nested object with scenes property
+      let scenes = Array.isArray(sceneGroup) ? sceneGroup : sceneGroup.scenes;
+      
+      if (scenes && Array.isArray(scenes)) {
+        scenes.forEach((scene, index) => {
+          allScenes.push({
+            title: scene.title || scene.name || 'Untitled Scene',
+            description: scene.description || '',
+            location: scene.location || '',
+            structureElement: structure[structureKey]?.name || structureKey
+          });
+          sceneStructureMap.push({ structureKey, sceneIndex: index });
+        });
+      }
+    });
+    
+    const prompt = `You are a master screenwriter creating plot points that connect scenes with clear causal relationships.
+
+STORY CONTEXT:
+Title: ${storyInput.title}
+Logline: ${storyInput.logline}
+Characters: ${storyInput.characters}
+Genre: ${storyInput.genre || storyInput.tone}
+Tone: ${storyInput.tone}
+
+SCENES TO CONNECT:
+${allScenes.map((scene, index) => `
+Scene ${index + 1} (${scene.structureElement}): ${scene.title}
+- Description: ${scene.description}
+- Location: ${scene.location}
+`).join('')}
+
+TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "and then" or "therefore" logic. Each plot point should:
+
+1. Be a single, clear sentence that captures the scene's key story beat
+2. Connect causally to the previous scene (using "and then", "therefore", "because of this", etc.)
+3. Set up the next scene logically
+4. Maintain narrative momentum and character development
+5. Be specific to the scene's content and purpose
+
+Return ONLY a JSON object with this structure:
+{
+  "plotPoints": [
+    "Scene 1 plot point that establishes the initial situation",
+    "And then Scene 2 plot point that follows causally from Scene 1",
+    "Therefore Scene 3 plot point that results from Scene 2",
+    // ... continue for all ${allScenes.length} scenes
+  ]
+}
+
+Focus on creating a strong narrative spine where each scene leads logically to the next.`;
+
+    console.log('Sending plot points request to Claude API...');
+    console.log('Number of scenes found:', allScenes.length);
+    console.log('First few scenes:', allScenes.slice(0, 3));
+    console.log('Prompt being sent (first 1000 chars):', prompt.substring(0, 1000));
+    
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 4000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    console.log('Received plot points response from Claude API');
+    const rawResponse = response.content[0].text;
+    console.log('Raw AI response:', rawResponse.substring(0, 500) + '...');
+    
+    let plotPointsData;
+    try {
+      // Try to extract JSON from the response
+      let jsonString = rawResponse;
+      
+      // Look for JSON object in the response
+      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[0];
+      }
+      
+      plotPointsData = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Failed to parse plot points response:', parseError);
+      console.error('Raw response was:', rawResponse);
+      throw new Error('Invalid response format from AI');
+    }
+    
+    if (!plotPointsData.plotPoints || !Array.isArray(plotPointsData.plotPoints)) {
+      throw new Error('Invalid plot points structure received');
+    }
+    
+    // Map plot points back to their structural elements
+    const plotPointsByStructure = {};
+    plotPointsData.plotPoints.forEach((plotPoint, index) => {
+      const mapping = sceneStructureMap[index];
+      if (mapping) {
+        if (!plotPointsByStructure[mapping.structureKey]) {
+          plotPointsByStructure[mapping.structureKey] = [];
+        }
+        plotPointsByStructure[mapping.structureKey][mapping.sceneIndex] = plotPoint;
+      }
+    });
+    
+    console.log('Plot points generated successfully');
+    res.json({
+      success: true,
+      message: `Generated ${plotPointsData.plotPoints.length} connected plot points`,
+      plotPoints: plotPointsByStructure
+    });
+    
+  } catch (error) {
+    console.error('Error generating plot points:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate plot points' });
+  }
+});
+
+// Generate a single plot point for a specific scene
+app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
+  try {
+    const { projectPath, structureKey, sceneIndex } = req.params;
+    const sceneIndexNum = parseInt(sceneIndex);
+    
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    
+    // Load existing project data
+    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    const { structure, storyInput } = projectData;
+    
+    // Load existing scenes
+    const scenesFileData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
+    
+    // Extract the actual scenes data (handle nested structure)
+    const scenesData = scenesFileData.scenes || scenesFileData;
+    
+    // Handle both formats: direct array or nested object with scenes property
+    let scenes = Array.isArray(scenesData[structureKey]) ? scenesData[structureKey] : scenesData[structureKey]?.scenes;
+    
+    if (!scenes || !Array.isArray(scenes) || !scenes[sceneIndexNum]) {
+      return res.status(400).json({ error: 'Scene not found' });
+    }
+    
+    const targetScene = scenes[sceneIndexNum];
+    const structureElement = structure[structureKey];
+    
+    // Get context from surrounding scenes
+    const allScenes = [];
+    Object.entries(scenesData).forEach(([key, sceneGroup]) => {
+      // Handle both formats: direct array or nested object with scenes property
+      let scenes = Array.isArray(sceneGroup) ? sceneGroup : sceneGroup.scenes;
+      
+      if (scenes && Array.isArray(scenes)) {
+        scenes.forEach((scene, index) => {
+          allScenes.push({
+            title: scene.title || scene.name || 'Untitled Scene',
+            description: scene.description || '',
+            isTarget: key === structureKey && index === sceneIndexNum,
+            structureElement: structure[key]?.name || key
+          });
+        });
+      }
+    });
+    
+    const targetSceneIndex = allScenes.findIndex(scene => scene.isTarget);
+    const previousScene = targetSceneIndex > 0 ? allScenes[targetSceneIndex - 1] : null;
+    const nextScene = targetSceneIndex < allScenes.length - 1 ? allScenes[targetSceneIndex + 1] : null;
+    
+    const prompt = `You are a master screenwriter creating a plot point that connects scenes with clear causal relationships.
+
+STORY CONTEXT:
+Title: ${storyInput.title}
+Logline: ${storyInput.logline}
+Characters: ${storyInput.characters}
+Genre: ${storyInput.genre || storyInput.tone}
+
+STRUCTURAL CONTEXT:
+This scene belongs to: ${structureElement.name}
+Purpose: ${structureElement.description}
+
+TARGET SCENE:
+Title: ${targetScene.title || targetScene.name}
+Description: ${targetScene.description}
+Location: ${targetScene.location || 'Not specified'}
+
+CONTEXT:
+${previousScene ? `Previous Scene: ${previousScene.title} - ${previousScene.description}` : 'This is the first scene'}
+${nextScene ? `Next Scene: ${nextScene.title} - ${nextScene.description}` : 'This is the final scene'}
+
+TASK: Generate a single plot point for the target scene that:
+
+1. Is a clear, concise sentence capturing the scene's key story beat
+2. ${previousScene ? 'Connects causally to the previous scene (using "and then", "therefore", "because of this", etc.)' : 'Establishes the initial situation clearly'}
+3. ${nextScene ? 'Sets up the next scene logically' : 'Provides satisfying closure'}
+4. Maintains narrative momentum and character development
+5. Is specific to this scene's content and purpose
+
+Return ONLY a JSON object:
+{
+  "plotPoint": "Your single plot point sentence here"
+}`;
+
+    console.log(`Generating individual plot point for ${structureKey} scene ${sceneIndexNum}`);
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: prompt }]
+    });
+
+    const rawResponse = response.content[0].text;
+    console.log('Raw plot point response:', rawResponse.substring(0, 200) + '...');
+    
+    let plotPointData;
+    try {
+      // Try to extract JSON from the response
+      let jsonString = rawResponse;
+      
+      // Look for JSON object in the response
+      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonString = jsonMatch[0];
+      }
+      
+      plotPointData = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error('Failed to parse plot point response:', parseError);
+      console.error('Raw response was:', rawResponse);
+      throw new Error('Invalid response format from AI');
+    }
+    
+    if (!plotPointData.plotPoint) {
+      throw new Error('No plot point received from AI');
+    }
+    
+    console.log(`Generated plot point: ${plotPointData.plotPoint}`);
+    res.json({
+      success: true,
+      message: `Plot point generated for scene`,
+      plotPoint: plotPointData.plotPoint
+    });
+    
+  } catch (error) {
+    console.error('Error generating individual plot point:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate plot point' });
+  }
+});
+
 // Regenerate scenes from existing project (simple approach - generate fewer scenes)
 app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
   try {
@@ -626,22 +1140,40 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     
     console.log(`Regenerating scenes (simple) for project: ${projectPath}`);
     
-    // Generate a simple scene breakdown with just one scene per structural element
+    // Generate scenes distributed across structural elements based on totalScenes
+    const totalScenes = storyInput.totalScenes || 70;
+    const structureKeys = Object.keys(structure);
+    const scenesPerElement = Math.floor(totalScenes / structureKeys.length);
+    const extraScenes = totalScenes % structureKeys.length;
+    
+    console.log(`Distributing ${totalScenes} scenes across ${structureKeys.length} structural elements`);
+    console.log(`Base scenes per element: ${scenesPerElement}, Extra scenes: ${extraScenes}`);
+    
     const scenesData = {};
+    let globalSceneNumber = 1;
     
     Object.entries(structure).forEach(([key, element], index) => {
-      scenesData[key] = {
-        scenes: [
-          {
-            scene_number: `${index + 1}`,
-            title: element.name || key.replace(/_/g, ' '),
-            location: "Location TBD",
-            description: element.description || "Scene description TBD",
-            characters: Array.isArray(storyInput.characters) ? storyInput.characters : [storyInput.characters || "Main Character"],
-            emotional_beats: element.character_development ? [element.character_development] : ["TBD"]
-          }
-        ]
-      };
+      // Calculate scenes for this element (some elements get +1 extra scene)
+      const scenesForThisElement = scenesPerElement + (index < extraScenes ? 1 : 0);
+      
+      console.log(`${key}: ${scenesForThisElement} scenes`);
+      
+      const scenes = [];
+      for (let i = 0; i < scenesForThisElement; i++) {
+        scenes.push({
+          scene_number: globalSceneNumber,
+          title: `${element.name || key.replace(/_/g, ' ')} - Part ${i + 1}`,
+          location: "Location TBD",
+          description: `${element.description || "Scene description TBD"} (Part ${i + 1} of ${scenesForThisElement})`,
+          characters: Array.isArray(storyInput.characters) ? storyInput.characters : [storyInput.characters || "Main Character"],
+          emotional_beats: element.character_development ? [element.character_development] : ["TBD"],
+          structural_element: key,
+          part_of_element: `${i + 1}/${scenesForThisElement}`
+        });
+        globalSceneNumber++;
+      }
+      
+      scenesData[key] = { scenes };
     });
 
     // Save scenes to local folder
@@ -659,7 +1191,8 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     // Create readable markdown breakdown
     let scenesOverview = `# Scenes Breakdown - ${storyInput.title}\n\n`;
     scenesOverview += `**Generated:** ${new Date().toLocaleString()}\n`;
-    scenesOverview += `**Method:** Simple generation (1 scene per structural element)\n\n`;
+    scenesOverview += `**Method:** Simple generation (${totalScenes} scenes distributed across ${structureKeys.length} structural elements)\n`;
+    scenesOverview += `**Distribution:** ${scenesPerElement} base scenes per element, ${extraScenes} elements get +1 extra scene\n\n`;
     
     Object.entries(scenesData).forEach(([structureKey, structureScenes]) => {
       scenesOverview += `## ${structureKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}\n\n`;
@@ -677,6 +1210,13 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     await fs.writeFile(scenesOverviewFile, scenesOverview);
     
     console.log(`Simple scenes generated and saved to: ${scenesDir}`);
+    
+    // Count total scenes for debugging
+    const totalGeneratedScenes = Object.values(scenesData).reduce((total, element) => {
+      return total + (element.scenes ? element.scenes.length : 0);
+    }, 0);
+    console.log(`Total scenes in response: ${totalGeneratedScenes}`);
+    console.log('Scene structure keys:', Object.keys(scenesData));
 
     res.json({ 
       scenes: scenesData,

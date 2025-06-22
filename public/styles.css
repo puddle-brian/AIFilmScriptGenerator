@@ -522,6 +522,23 @@ body {
     font-size: 0.9rem;
 }
 
+.generate-scene-btn {
+    margin-left: 15px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    background: #28a745;
+    border: none;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.generate-scene-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
 /* Dialogue Content */
 .dialogue-scene {
     background: #f7fafc;
@@ -945,4 +962,153 @@ body {
     color: #2d3748;
     font-weight: 600;
     font-size: 0.9rem;
-} 
+}
+
+/* Scene Generation Options */
+.scene-generation-options {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.scene-generation-options h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.generation-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.generation-buttons .btn {
+    flex: 1;
+    min-width: 200px;
+}
+
+.generation-info {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.5;
+    margin: 0;
+}
+
+.generation-info strong {
+    color: #333;
+}
+
+#totalScenesDisplay {
+    font-weight: bold;
+    color: #007bff;
+}
+
+/* Scene Group Styles for Individual Generation */
+.scene-group-header {
+    background: #e9ecef;
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.scene-group-header h3 {
+    margin: 0;
+    color: #333;
+}
+
+.scene-group-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.structure-description {
+    padding: 15px;
+    border-bottom: 1px solid #dee2e6;
+    background: white;
+}
+
+.structure-description p {
+    margin: 5px 0;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.scenes-container {
+    padding: 15px;
+    background: white;
+}
+
+.no-scenes {
+    color: #6c757d;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+}
+
+.scene-emotions {
+    font-size: 0.9em;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+/* Plot Point Styles */
+.scene-actions {
+    display: flex;
+    gap: 10px;
+    margin-left: 15px;
+}
+
+.generate-plot-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    background: #6c757d;
+    border: none;
+    color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.generate-plot-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+}
+
+.scene-plot-point {
+    margin-top: 10px;
+    padding: 10px;
+    background: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+    font-style: italic;
+}
+
+.scene-plot-point-placeholder {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8f9fa;
+    border-left: 4px solid #dee2e6;
+    border-radius: 4px;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.plot-generation-section {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.plot-info {
+    font-style: italic;
+}

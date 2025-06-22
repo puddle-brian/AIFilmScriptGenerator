@@ -462,48 +462,316 @@ async function approveStructure() {
     }
 }
 
-// Display generated scenes
+// Display generated scenes with individual generation buttons
 function displayScenes(scenes) {
+    console.log('displayScenes called with:', scenes);
+    console.log('appState.generatedStructure:', appState.generatedStructure);
+    
     const container = document.getElementById('scenesContent');
+    if (!container) {
+        console.error('scenesContent container not found!');
+        return;
+    }
+    console.log('Found scenesContent container, clearing it');
     container.innerHTML = '';
     
-    Object.entries(scenes).forEach(([structureKey, sceneGroup]) => {
-        if (Array.isArray(sceneGroup)) {
+    // If we have a structure, show each structural element with generate buttons
+    if (appState.generatedStructure) {
+        console.log('Creating scene groups for structure elements...');
+        Object.entries(appState.generatedStructure).forEach(([structureKey, structureElement]) => {
+            console.log(`Processing structure element: ${structureKey}`, structureElement);
+            
             const groupElement = document.createElement('div');
             groupElement.className = 'scene-group';
-            groupElement.innerHTML = `<h3>${structureKey.replace(/_/g, ' ').toUpperCase()}</h3>`;
             
-            sceneGroup.forEach((scene, index) => {
-                const sceneElement = document.createElement('div');
-                sceneElement.className = 'scene-item';
-                sceneElement.innerHTML = `
-                    <h4>
-                        <span class="scene-number">Scene ${index + 1}</span>
-                        ${scene.title || scene.name || 'Untitled Scene'}
-                    </h4>
-                    <div class="scene-meta">
-                        <span><strong>Location:</strong> ${scene.location || 'Not specified'}</span>
-                        <span><strong>Time:</strong> ${scene.time || 'Not specified'}</span>
-                    </div>
-                    <div class="scene-description">${scene.description || 'No description available'}</div>
-                    ${scene.characters ? `
-                        <div class="scene-characters">
-                            ${scene.characters.map(char => `<span class="character-tag">${char}</span>`).join('')}
-                        </div>
-                    ` : ''}
-                `;
-                
-                groupElement.appendChild(sceneElement);
-            });
+            const hasScenes = scenes[structureKey] && Array.isArray(scenes[structureKey]);
+            const sceneCount = hasScenes ? scenes[structureKey].length : 0;
             
+            console.log(`${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}`);
+            
+            groupElement.innerHTML = `
+                <div class="scene-group-header">
+                    <h3>${structureElement.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
+                </div>
+                <div class="structure-description">
+                    <p><strong>Description:</strong> ${structureElement.description}</p>
+                    ${structureElement.character_development ? `<p><strong>Character Development:</strong> ${structureElement.character_development}</p>` : ''}
+                </div>
+                <div id="scenes-${structureKey}" class="scenes-container">
+                    ${hasScenes ? '' : '<p class="no-scenes">No scenes generated yet. Individual scenes will appear here as you generate them.</p>'}
+                </div>
+            `;
+            
+            console.log(`Appending group element for ${structureKey} to container`);
             container.appendChild(groupElement);
-        }
-    });
+            
+            // Display existing scenes if any
+            if (hasScenes) {
+                console.log(`Displaying ${sceneCount} scenes for ${structureKey}`);
+                displayScenesForElement(structureKey, scenes[structureKey]);
+            }
+        });
+        console.log('Finished creating all scene groups');
+    } else {
+        console.log('No structure available - showing fallback message');
+        container.innerHTML = '<p>No structure available. Please generate a structure first.</p>';
+    }
 }
 
-// Regenerate scenes
-async function regenerateScenes() {
-    await approveStructure();
+// Display scenes for a specific structural element
+function displayScenesForElement(structureKey, sceneGroup) {
+    const container = document.getElementById(`scenes-${structureKey}`);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    if (Array.isArray(sceneGroup)) {
+        sceneGroup.forEach((scene, index) => {
+            const sceneElement = document.createElement('div');
+            sceneElement.className = 'scene-item';
+            sceneElement.innerHTML = `
+                <h4>
+                    <span class="scene-number">Scene ${index + 1}</span>
+                    ${scene.title || scene.name || 'Untitled Scene'}
+                    <div class="scene-actions">
+                        <button class="btn btn-primary btn-sm generate-scene-btn" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
+                            🔄 Regenerate Scene
+                        </button>
+                        <button class="btn btn-secondary btn-sm generate-plot-btn" onclick="generatePlotPoint('${structureKey}', ${index})" title="Generate plot point for this scene">
+                            📋 ${scene.plot_point ? 'Regenerate Plot Point' : 'Generate Plot Point'}
+                        </button>
+                    </div>
+                </h4>
+                <div class="scene-meta">
+                    <span><strong>Location:</strong> ${scene.location || 'Not specified'}</span>
+                    <span><strong>Time:</strong> ${scene.time_of_day || scene.time || 'Not specified'}</span>
+                </div>
+                <div class="scene-description">${scene.description || 'No description available'}</div>
+                ${scene.plot_point ? `
+                    <div class="scene-plot-point">
+                        <strong>Plot Point:</strong> ${scene.plot_point}
+                    </div>
+                ` : `
+                    <div class="scene-plot-point-placeholder">
+                        <em>No plot point generated yet. Click "Generate Plot Point" to create a causal connection for this scene.</em>
+                    </div>
+                `}
+            `;
+            
+            container.appendChild(sceneElement);
+        });
+    }
+}
+
+
+
+// Generate plot points for all scenes with causal connections
+async function generateAllPlotPoints() {
+    console.log('generateAllPlotPoints() called!');
+    console.log('appState.generatedScenes:', appState.generatedScenes);
+    console.log('appState.projectPath:', appState.projectPath);
+    
+    if (!appState.generatedScenes || !appState.projectPath) {
+        showToast('No scenes available to generate plot points for.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading('Generating connected plot points for all scenes...');
+        
+        const response = await fetch(`/api/generate-plot-points/${appState.projectPath}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Plot points response:', data);
+            console.log('data.plotPoints structure:', data.plotPoints);
+            console.log('data.plotPoints keys:', Object.keys(data.plotPoints || {}));
+            console.log('Current scenes structure:', appState.generatedScenes);
+            console.log('Type of data.plotPoints:', typeof data.plotPoints);
+            
+            // Update all scenes with their plot points
+            Object.entries(data.plotPoints || {}).forEach(([structureKey, plotPoints]) => {
+                console.log(`Processing ${structureKey}:`, plotPoints);
+                console.log(`Is plotPoints an array?`, Array.isArray(plotPoints));
+                console.log(`appState.generatedScenes[${structureKey}] exists?`, !!appState.generatedScenes[structureKey]);
+                
+                if (appState.generatedScenes[structureKey] && Array.isArray(plotPoints)) {
+                    plotPoints.forEach((plotPoint, index) => {
+                        if (appState.generatedScenes[structureKey][index]) {
+                            console.log(`Setting plot point for ${structureKey}[${index}]:`, plotPoint);
+                            appState.generatedScenes[structureKey][index].plot_point = plotPoint;
+                        } else {
+                            console.log(`Scene not found: ${structureKey}[${index}]`);
+                        }
+                    });
+                } else {
+                    console.log(`Structure key ${structureKey} not found or plotPoints not array:`, plotPoints);
+                }
+            });
+            
+            // Refresh the display
+            displayScenes(appState.generatedScenes);
+            
+            showToast('Plot points generated successfully with causal connections!', 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate plot points');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating plot points:', error);
+        showToast('Error generating plot points. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Generate a plot point for a specific scene
+async function generatePlotPoint(structureKey, sceneIndex) {
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(`Generating plot point for Scene ${sceneIndex + 1}...`);
+        
+        const response = await fetch(`/api/generate-plot-point/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Individual plot point response:', data);
+            console.log(`Looking for scene ${structureKey}[${sceneIndex}]:`, appState.generatedScenes[structureKey]?.[sceneIndex]);
+            
+            // Update the specific scene with its plot point
+            if (appState.generatedScenes[structureKey] && appState.generatedScenes[structureKey][sceneIndex]) {
+                console.log(`Setting individual plot point:`, data.plotPoint);
+                appState.generatedScenes[structureKey][sceneIndex].plot_point = data.plotPoint;
+                console.log('Scene after update:', appState.generatedScenes[structureKey][sceneIndex]);
+            } else {
+                console.log(`Scene not found for individual plot point: ${structureKey}[${sceneIndex}]`);
+            }
+            
+            // Refresh the display for this structural element
+            displayScenesForElement(structureKey, appState.generatedScenes[structureKey]);
+            
+            showToast(`Plot point generated for Scene ${sceneIndex + 1}!`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate plot point');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating plot point:', error);
+        showToast('Error generating plot point. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Generate a single scene for a specific structural element and scene index
+async function generateIndividualScene(structureKey, sceneIndex) {
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(`Regenerating Scene ${sceneIndex + 1}...`);
+        
+        const response = await fetch(`/api/generate-individual-scene/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update the specific scene in the app state
+            if (!appState.generatedScenes) {
+                appState.generatedScenes = {};
+            }
+            if (!appState.generatedScenes[structureKey]) {
+                appState.generatedScenes[structureKey] = [];
+            }
+            
+            // Replace the specific scene
+            appState.generatedScenes[structureKey][sceneIndex] = data.scene;
+            
+            // Refresh the display for this structural element
+            displayScenesForElement(structureKey, appState.generatedScenes[structureKey]);
+            
+            showToast(`Scene ${sceneIndex + 1} regenerated successfully!`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate scene');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating individual scene:', error);
+        showToast('Error regenerating scene. Please try again.', 'error');
+        hideLoading();
+    }
+}
+
+// Simple scene distribution (kept for compatibility)
+async function regenerateScenes(method = 'simple') {
+    if (!appState.generatedStructure || !appState.projectPath) {
+        showToast('No structure or project to regenerate scenes for.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading('Generating simple scene distribution...');
+        
+        const response = await fetch(`/api/regenerate-scenes-simple/${appState.projectPath}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Convert the scenes format to the format expected by displayScenes
+            const convertedScenes = {};
+            Object.entries(data.scenes).forEach(([key, value]) => {
+                convertedScenes[key] = value.scenes; // Extract the scenes array from the nested structure
+            });
+            
+            appState.generatedScenes = convertedScenes;
+            displayScenes(convertedScenes);
+            
+            // Count total scenes for display
+            const totalScenes = Object.values(convertedScenes).reduce((total, scenes) => total + scenes.length, 0);
+            showToast(`Simple scenes generated successfully! (${totalScenes} scenes)`, 'success');
+        } else {
+            throw new Error(data.error || 'Failed to regenerate scenes');
+        }
+        
+        hideLoading();
+        saveToLocalStorage();
+    } catch (error) {
+        console.error('Error regenerating scenes:', error);
+        showToast('Error regenerating scenes. Please try again.', 'error');
+        hideLoading();
+    }
 }
 
 // Approve scenes and go to dialogue generation
@@ -747,7 +1015,24 @@ function goToStep(stepNumber) {
     document.getElementById(`step${stepNumber}`).classList.add('active');
     
     // Refresh content for specific steps when navigating to them
-    if (stepNumber === 5 && appState.generatedScenes) {
+    if (stepNumber === 4) {
+        // Update total scenes display
+        if (appState.storyInput) {
+            const totalScenesElement = document.getElementById('totalScenesDisplay');
+            if (totalScenesElement) {
+                totalScenesElement.textContent = appState.storyInput.totalScenes || 70;
+            }
+        }
+        
+        // Display the scene generation interface
+        console.log('Step 4 - appState.generatedScenes:', appState.generatedScenes);
+        console.log('Step 4 - appState.generatedStructure:', appState.generatedStructure);
+        
+        if (appState.generatedStructure) {
+            // Always show the new interface when going to Step 4
+            displayScenes(appState.generatedScenes || {});
+        }
+    } else if (stepNumber === 5 && appState.generatedScenes) {
         // Refresh dialogue interface to restore existing dialogue content
         displayDialogueGeneration();
     }
