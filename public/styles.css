@@ -39,26 +39,6 @@ body {
     font-weight: 300;
 }
 
-.header-actions {
-    margin-top: 20px;
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-.header-actions .btn {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: white;
-    backdrop-filter: blur(10px);
-}
-
-.header-actions .btn:hover {
-    background: rgba(255, 255, 255, 0.2);
-    border-color: rgba(255, 255, 255, 0.5);
-    transform: translateY(-1px);
-}
-
 /* Project Header */
 .project-header {
     background: rgba(255, 255, 255, 0.95);
@@ -529,21 +509,6 @@ body {
 .btn-primary {
     background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     color: white;
-}
-
-/* Special styling for New Project button */
-.project-actions .btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    font-weight: 600;
-    transition: all 0.2s ease;
-}
-
-.project-actions .btn-primary:hover {
-    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
-    transform: translateY(-1px);
 }
 
 .btn-primary:hover {

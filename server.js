@@ -408,6 +408,7 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 5. Create a natural flow between scenes in this sequence
 6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
+8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
 This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
     
@@ -1300,6 +1301,10 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
 4. Follow standard screenplay format conventions
 5. Ensure dialogue serves the story's hierarchical structure and character development
 6. The dialogue should feel organic to the established tone and influences
+7. Write dialogue where characters never say what they're really thinking.
+8. Each line should have two layers: what they literally say and what they're actually trying to communicate underneath.
+9. Characters speak around their true feelings using deflection, subtext, and emotional armor.
+10. Always surprise the audience with unpredictable lines and novel ways of moving scenes forward - avoid static or predictable language that feel formulaic
 
 Scene to write dialogue for:
 ${JSON.stringify(scene, null, 2)}`;
@@ -1605,7 +1610,8 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
 3. Make scenes cinematic and specific, not just plot summaries
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
-6. Use any available plot points as guidance for narrative flow`;
+6. Use any available plot points as guidance for narrative flow
+7. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic`;
         
         hierarchicalPrompt = context.generateHierarchicalPrompt(5, customInstructions);
         
@@ -1704,6 +1710,7 @@ REQUIREMENTS:
 3. Make scenes cinematic and specific, not just plot summaries
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
 Return ONLY valid JSON in this exact format:
 {
@@ -1879,6 +1886,7 @@ PLOT POINTS GENERATION REQUIREMENTS:
 4. They should advance the character development specified for this act
 5. They should serve the overall story structure and move the narrative forward
 6. Do NOT reference specific scene content - these plot points will guide scene creation
+7. Make the plot points unpredictable, novel, unique, and surprising for the audience while maintaining the story's overall structure and character development.
 
 Create ${desiredSceneCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
@@ -1979,6 +1987,7 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 5. Create a natural flow between scenes in this sequence
 6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
+8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
 This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
     
@@ -2063,7 +2072,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
   try {
     const { projectPath, structureKey } = req.params;
-    const { sceneCount = 3, model = "claude-3-5-sonnet-20241022" } = req.body; // Default to 3 scenes per element
+    const { sceneCount = null, model = "claude-3-5-sonnet-20241022" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -2077,7 +2086,34 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     }
     
     const structureElement = structure[structureKey];
-    console.log(`Generating ${sceneCount} scenes for ${structureKey} in project: ${projectPath}`);
+    
+    // Try to get intelligent scene count from multiple sources
+    let finalSceneCount = sceneCount; // Use provided count if given
+    
+    // 1. Check if we have scene distribution from plot points
+    try {
+      const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
+      const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+      if (plotPointsData.totalScenesForAct) {
+        finalSceneCount = plotPointsData.totalScenesForAct;
+        console.log(`📈 Using scene count from plot points distribution: ${finalSceneCount} scenes`);
+      }
+    } catch (plotError) {
+      // 2. Check if story structure has predefined scene count
+      const preDefinedSceneCount = structureElement.scene_count || structure[structureKey]?.scene_count;
+      if (preDefinedSceneCount && !finalSceneCount) {
+        finalSceneCount = preDefinedSceneCount;
+        console.log(`🎭 Using predefined scene count from story structure: ${finalSceneCount} scenes`);
+      }
+    }
+    
+    // 3. Fallback to default
+    if (!finalSceneCount) {
+      finalSceneCount = 3;
+      console.log(`⚠️  No scene distribution found, using default: ${finalSceneCount} scenes`);
+    }
+    
+    console.log(`🎬 Generating ${finalSceneCount} scenes for ${structureKey} in project: ${projectPath}`);
     
     let prompt;
     let useHierarchicalContext = false;
@@ -2112,22 +2148,23 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
         console.log(`No plot points found for this act (${structureKey}), generating scenes without plot point guidance`);
         console.log(`Looked for file: ${path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`)}`);
         // Use placeholder plot points
-        plotPoints = Array(sceneCount).fill(0).map((_, i) => `Scene ${i + 1} plot point for ${structureElement.name}`);
+        plotPoints = Array(finalSceneCount).fill(0).map((_, i) => `Scene ${i + 1} plot point for ${structureElement.name}`);
       }
       
       // Build plot points context
-      context.buildPlotPointsContext(plotPoints, sceneCount);
+      context.buildPlotPointsContext(plotPoints, finalSceneCount);
       
       // Generate hierarchical prompt using context system
       console.log('About to generate hierarchical prompt...');
       const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
 SCENE GENERATION REQUIREMENTS:
-1. Create exactly ${sceneCount} scenes that develop this structural element
+1. Create exactly ${finalSceneCount} scenes that develop this structural element
 2. Each scene should advance the plot and character development described above
 3. Make scenes cinematic and specific, not just plot summaries
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
 6. Use the available plot points as guidance for narrative flow and causal connections
+7. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
 The scenes you generate should feel like organic parts of the complete story structure, not isolated fragments.`);
       
@@ -2163,7 +2200,7 @@ Return ONLY valid JSON in this exact format:
       console.error('Failed to build hierarchical context, falling back to simple prompt:', contextError);
       
       // Fallback to simple prompt
-      prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+      prompt = `Create ${finalSceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2177,11 +2214,12 @@ STRUCTURAL ELEMENT TO DEVELOP:
 - Character Development: ${structureElement.character_development || 'Not specified'}
 
 REQUIREMENTS:
-1. Create exactly ${sceneCount} scenes that develop this structural element
+1. Create exactly ${finalSceneCount} scenes that develop this structural element
 2. Each scene should advance the plot and character development described above
 3. Make scenes cinematic and specific, not just plot summaries
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
 Return ONLY valid JSON in this exact format:
 {
@@ -3383,23 +3421,39 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     const actPosition = Object.keys(structure).indexOf(actKey) + 1;
     context.buildActContext(actKey, storyAct, actPosition);
     
-    // Calculate intelligent scene distribution based on total scene count
+    // Calculate intelligent scene distribution based on story structure
     const totalScenes = context.contexts.story.data.totalScenes || 70;
-    const totalActs = Object.keys(structure).length;
-    const baseScenesPerAct = Math.floor(totalScenes / totalActs);
-    const extraScenes = totalScenes % totalActs;
     
-    // Give certain acts more scenes based on their narrative importance
-    const keyActPatterns = ['catalyst', 'crisis', 'climax', 'transformation', 'confrontation'];
-    const isKeyAct = keyActPatterns.some(pattern => actKey.toLowerCase().includes(pattern));
-    const actSceneBonus = isKeyAct && actPosition <= extraScenes ? 1 : 0;
-    const scenesForThisAct = Math.max(3, baseScenesPerAct + actSceneBonus); // Minimum 3 scenes per act
+    // First, check if the story structure already has scene_count specified for this act
+    const preDefinedSceneCount = storyAct.scene_count || structure[actKey]?.scene_count;
     
-    // Use provided desiredSceneCount or calculated value
-    const finalSceneCount = desiredSceneCount || scenesForThisAct;
+    // If no predefined count, calculate based on total scenes and act importance
+    let calculatedSceneCount = null;
+    if (!preDefinedSceneCount) {
+      const totalActs = Object.keys(structure).length;
+      const baseScenesPerAct = Math.floor(totalScenes / totalActs);
+      const extraScenes = totalScenes % totalActs;
+      
+      // Give certain acts more scenes based on their narrative importance
+      const keyActPatterns = ['catalyst', 'crisis', 'climax', 'transformation', 'confrontation'];
+      const isKeyAct = keyActPatterns.some(pattern => actKey.toLowerCase().includes(pattern));
+      const actSceneBonus = isKeyAct && actPosition <= extraScenes ? 1 : 0;
+      calculatedSceneCount = Math.max(3, baseScenesPerAct + actSceneBonus); // Minimum 3 scenes per act
+    }
     
-    console.log(`Calculating scenes for ${actKey}: ${finalSceneCount} scenes (${totalScenes} total across ${totalActs} acts)`);
-    console.log(`Act ${actPosition}/${totalActs} - Key act: ${isKeyAct} - Scene bonus: ${actSceneBonus}`);
+    const scenesForThisAct = preDefinedSceneCount || calculatedSceneCount;
+    
+    // Use intelligent scene distribution instead of user input when available
+    // Priority: 1) Intelligent calculation, 2) User input, 3) Default minimum
+    const finalSceneCount = scenesForThisAct || desiredSceneCount || 4;
+    
+    console.log(`🎬 Scene Distribution for ${actKey}:`);
+    console.log(`  📊 Total story scenes: ${totalScenes}`);
+    console.log(`  🎭 Predefined scene count: ${preDefinedSceneCount || 'none'}`);
+    console.log(`  🧮 Calculated scene count: ${calculatedSceneCount || 'none'}`);
+    console.log(`  👤 User requested: ${desiredSceneCount || 'none'}`);
+    console.log(`  ✅ Final scene count: ${finalSceneCount} scenes`);
+    console.log(`  📈 Will expand 4 plot points into ${finalSceneCount} scenes`);
     
     
     // Generate hierarchical prompt for plot points generation (Level 4)

@@ -1922,7 +1922,6 @@ function showProjectHeader(projectData) {
     const templateEl = document.getElementById('projectTemplate');
     const scenesEl = document.getElementById('projectScenes');
     const idEl = document.getElementById('projectId');
-    const headerActions = document.getElementById('headerActions');
     
     if (projectData) {
         titleEl.textContent = projectData.title || 'Untitled Project';
@@ -1934,24 +1933,12 @@ function showProjectHeader(projectData) {
         updateProjectStatus();
         
         header.style.display = 'flex';
-        
-        // Hide header actions when project is loaded
-        if (headerActions) {
-            headerActions.style.display = 'none';
-        }
     }
 }
 
 function hideProjectHeader() {
     const header = document.getElementById('projectHeader');
-    const headerActions = document.getElementById('headerActions');
-    
     header.style.display = 'none';
-    
-    // Show header actions when no project is loaded
-    if (headerActions) {
-        headerActions.style.display = 'flex';
-    }
 }
 
 function updateProjectStatus() {
@@ -2788,127 +2775,6 @@ function startOver() {
         localStorage.removeItem('filmScriptGenerator');
         location.reload();
     }
-}
-
-// New Project function that auto-saves current work
-async function startNewProject() {
-    // Check if there's any work to save
-    const hasWork = appState.projectId || appState.storyInput.title || appState.generatedStructure;
-    
-    if (hasWork) {
-        const confirmMessage = appState.projectId 
-            ? `Save current project "${appState.storyInput.title || 'Untitled'}" and start fresh?`
-            : 'Save your current work and start a new project?';
-            
-        if (!confirm(confirmMessage)) {
-            return; // User cancelled
-        }
-        
-        // Auto-save current project
-        try {
-            showLoading('Saving current project...');
-            await saveProject();
-            showToast('Current project saved successfully!', 'success');
-        } catch (error) {
-            console.error('Error saving project:', error);
-            const proceedAnyway = confirm('Failed to save current project. Start new project anyway?');
-            if (!proceedAnyway) {
-                hideLoading();
-                return;
-            }
-        }
-        
-        hideLoading();
-    }
-    
-    // Clear app state for fresh start
-    clearAppState();
-    
-    // Reset UI to step 1
-    resetUIToStep1();
-    
-    showToast('Ready to create a new project!', 'success');
-}
-
-// Helper function to clear app state
-function clearAppState() {
-    // Reset all state
-    appState.currentStep = 1;
-    appState.storyInput = {};
-    appState.selectedTemplate = null;
-    appState.templateData = null;
-    appState.generatedStructure = null;
-    appState.generatedScenes = null;
-    appState.generatedDialogues = {};
-    appState.projectId = null;
-    appState.projectPath = null;
-    appState.influences = {
-        directors: [],
-        screenwriters: [],
-        films: []
-    };
-    appState.customPrompt = null;
-    appState.originalPrompt = null;
-    appState.isEditMode = false;
-    appState.plotPoints = {};
-    
-    // Clear localStorage
-    localStorage.removeItem('filmScriptGenerator');
-    localStorage.removeItem('currentProject');
-}
-
-// Helper function to reset UI to step 1
-function resetUIToStep1() {
-    // Hide project header
-    hideProjectHeader();
-    
-    // Clear all form fields
-    const storyForm = document.getElementById('storyForm');
-    if (storyForm) {
-        storyForm.reset();
-        document.getElementById('totalScenes').value = 70; // Reset to default
-    }
-    
-    // Clear influence tags
-    ['director', 'screenwriter', 'film'].forEach(type => {
-        const tagContainer = document.getElementById(`${type}Tags`);
-        if (tagContainer) {
-            tagContainer.innerHTML = '';
-        }
-    });
-    
-    // Reset step indicators and progress
-    goToStep(1);
-    
-    // Hide all workflow steps except step 1
-    document.querySelectorAll('.workflow-step').forEach(step => {
-        step.classList.remove('active');
-    });
-    const step1 = document.getElementById('step1');
-    if (step1) {
-        step1.classList.add('active');
-    }
-    
-    // Reset model selector to default
-    appState.selectedModel = 'claude-3-5-sonnet-20241022';
-    const modelSelect = document.getElementById('modelSelect');
-    if (modelSelect) {
-        modelSelect.value = appState.selectedModel;
-        updateModelCost();
-    }
-    
-    // Clear any existing content areas
-    const stepContainers = ['step2', 'step3', 'step4', 'step5', 'step6', 'step7'];
-    stepContainers.forEach(stepId => {
-        const container = document.getElementById(stepId);
-        if (container) {
-            // Find any dynamic content containers and clear them
-            const dynamicContent = container.querySelector('.generated-content, .structure-display, .scenes-display, .dialogue-display');
-            if (dynamicContent) {
-                dynamicContent.innerHTML = '';
-            }
-        }
-    });
 }
 
 // Loading functions
