@@ -2777,6 +2777,108 @@ function startOver() {
     }
 }
 
+// New Project - Save current project and start fresh
+async function newProject() {
+    // If there's no current project data, just start fresh
+    if (!appState.storyInput || !appState.storyInput.title) {
+        showToast('Starting new project...', 'info');
+        startFreshProject();
+        return;
+    }
+    
+    // Confirm with user
+    if (!confirm('Save current project and start a new one? This will save your current progress and clear the workspace.')) {
+        return;
+    }
+    
+    try {
+        // Save current project first
+        showLoading('Saving current project...');
+        
+        const response = await fetch('/api/save-project', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                ...appState,
+                timestamp: new Date().toISOString()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            showToast(`Current project saved! (ID: ${data.projectId}) Starting new project...`, 'success');
+            
+            // Start fresh project after successful save
+            setTimeout(() => {
+                startFreshProject();
+            }, 1000); // Give user time to see the success message
+        } else {
+            throw new Error(data.error || 'Failed to save current project');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error saving current project:', error);
+        hideLoading();
+        
+        // Ask user if they want to proceed without saving
+        if (confirm('Failed to save current project. Would you like to start a new project anyway? (Current progress will be lost)')) {
+            startFreshProject();
+        }
+    }
+}
+
+// Helper function to start a fresh project
+function startFreshProject() {
+    // Clear all app state
+    Object.assign(appState, {
+        currentStep: 1,
+        storyInput: {},
+        selectedTemplate: null,
+        templateData: null,
+        generatedStructure: null,
+        generatedScenes: null,
+        generatedDialogues: {},
+        projectId: null,
+        projectPath: null,
+        influences: {
+            directors: [],
+            screenwriters: [],
+            films: []
+        },
+        customPrompt: null,
+        originalPrompt: null,
+        isEditMode: false,
+        plotPoints: {}
+    });
+    
+    // Clear form fields
+    document.getElementById('title').value = '';
+    document.getElementById('logline').value = '';
+    document.getElementById('characters').value = '';
+    document.getElementById('totalScenes').value = '70';
+    document.getElementById('tone').value = '';
+    
+    // Clear influence tags
+    updateInfluenceTags('director');
+    updateInfluenceTags('screenwriter');
+    updateInfluenceTags('film');
+    
+    // Hide project header
+    hideProjectHeader();
+    
+    // Go to step 1
+    goToStep(1);
+    
+    // Clear localStorage
+    localStorage.removeItem('filmScriptGenerator');
+    
+    showToast('Ready to create your new project!', 'success');
+}
+
 // Loading functions
 function showLoading(message = 'Loading...') {
     elements.loadingText.textContent = message;
