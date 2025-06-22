@@ -729,16 +729,16 @@ function displayPlotPointsGeneration() {
     }
 
     let html = '<div class="plot-points-generation">';
-    html += '<p class="generation-info"><strong>Generate plot points for each structural element.</strong> These will create the causal narrative spine that guides scene creation.</p>';
-    
-    // Display each structural element with plot points generation
-    Object.entries(appState.generatedStructure).forEach(([structureKey, structureElement]) => {
+            html += '<p class="generation-info"><strong>Generate plot points for each story act.</strong> These will create the causal narrative spine that guides scene creation.</p>';
+        
+        // Display each story act with plot points generation
+        Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
         html += `
             <div class="structure-element-card" id="plotPoints-${structureKey}">
                 <div class="element-header">
-                    <h3>${structureElement.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
+                    <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
                     <div class="element-actions">
-                        <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this element">
+                        <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
                             📋 Generate Plot Points
                         </button>
                         <button class="btn btn-outline" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for plot points generation">
@@ -747,11 +747,11 @@ function displayPlotPointsGeneration() {
                     </div>
                 </div>
                 <div class="element-description">
-                    <p><strong>Purpose:</strong> ${structureElement.description}</p>
-                    ${structureElement.character_development ? `<p><strong>Character Development:</strong> ${structureElement.character_development}</p>` : ''}
+                    <p><strong>Purpose:</strong> ${storyAct.description}</p>
+                    ${storyAct.character_development ? `<p><strong>Character Development:</strong> ${storyAct.character_development}</p>` : ''}
                 </div>
                 <div class="plot-points-container" id="plotPoints-container-${structureKey}">
-                    <p class="no-plot-points">No plot points generated yet. Click "Generate Plot Points" to create causal story beats for this element.</p>
+                    <p class="no-plot-points">No plot points generated yet. Click "Generate Plot Points" to create causal story beats for this act.</p>
                 </div>
             </div>
         `;
@@ -761,19 +761,19 @@ function displayPlotPointsGeneration() {
     container.innerHTML = html;
 }
 
-// Generate plot points for a specific structural element
+// Generate plot points for a specific story act
 async function generateElementPlotPoints(structureKey) {
     if (!appState.projectPath) {
         showToast('No project loaded. Please create or load a project first.', 'error');
         return;
     }
 
-    const desiredSceneCount = 3; // Default to 3 scenes per element
+    const desiredSceneCount = 3; // Default to 3 scenes per act
     
     try {
         showLoading(`Generating plot points for ${structureKey}...`);
         
-        const response = await fetch(`/api/generate-plot-points-for-element/${appState.projectPath}/${structureKey}`, {
+        const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -811,7 +811,7 @@ async function generateElementPlotPoints(structureKey) {
     }
 }
 
-// Display plot points for a specific element
+// Display plot points for a specific act
 function displayElementPlotPoints(structureKey, plotPoints) {
     const container = document.getElementById(`plotPoints-container-${structureKey}`);
     if (!container) return;
@@ -839,8 +839,61 @@ function displayElementPlotPoints(structureKey, plotPoints) {
 
 // Preview plot points generation prompt for an element
 async function previewElementPlotPointsPrompt(structureKey) {
-    // This would call a preview endpoint similar to the scene prompt preview
-    showToast('Plot points prompt preview coming soon!', 'info');
+    if (!appState.generatedStructure || !appState.storyInput || !appState.projectPath) {
+        showToast('No structure, story data, or project available for prompt preview.', 'error');
+        return;
+    }
+
+    const storyAct = appState.generatedStructure[structureKey];
+    
+    if (!storyAct) {
+        showToast('Story act not found.', 'error');
+        return;
+    }
+
+    try {
+        showLoading('Generating plot points prompt preview...');
+        
+        const response = await fetch('/api/preview-act-plot-points-prompt', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                projectPath: appState.projectPath,
+                structureKey: structureKey,
+                desiredSceneCount: 3 // Default to 3 scenes per element
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Clear any existing plot prompt to avoid conflicts
+            appState.currentPlotPrompt = null;
+            
+            // Store the prompt data for the modal
+            appState.currentPlotPointsPrompt = {
+                systemMessage: data.systemMessage,
+                userPrompt: data.prompt,
+                promptType: data.promptType,
+                storyAct: data.storyAct,
+                structureKey: structureKey,
+                desiredSceneCount: data.desiredSceneCount,
+                hierarchicalPrompt: data.hierarchicalPrompt
+            };
+            
+            // Show the plot points prompt modal
+            showPlotPointPromptModal();
+            hideLoading();
+        } else {
+            throw new Error(data.error || 'Failed to generate plot points prompt preview');
+        }
+    } catch (error) {
+        console.error('Error generating plot points prompt preview:', error);
+        showToast('Error generating plot points prompt preview. Please try again.', 'error');
+        hideLoading();
+    }
 }
 
 // Check if all plot points are generated and enable continue button
@@ -867,14 +920,14 @@ function checkPlotPointsCompletion() {
     return allGenerated;
 }
 
-// Generate scenes for a specific structural element
+// Generate scenes for a specific story act
 async function generateScenesForElement(structureKey) {
     if (!appState.projectPath) {
         showToast('No project loaded. Please create or load a project first.', 'error');
         return;
     }
 
-    const sceneCount = 3; // Default scenes per element
+    const sceneCount = 3; // Default scenes per act
     
     try {
         showLoading(`Generating scenes for ${structureKey}...`);
@@ -931,7 +984,7 @@ function displayScenes(scenes) {
     if (appState.generatedStructure) {
         console.log('Displaying scenes with structure:', appState.generatedStructure);
         
-        Object.entries(appState.generatedStructure).forEach(([structureKey, structureElement]) => {
+        Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
             const sceneGroup = scenes ? scenes[structureKey] : null;
             const plotPoints = appState.plotPoints ? appState.plotPoints[structureKey] : null;
             const hasScenes = sceneGroup && Array.isArray(sceneGroup) && sceneGroup.length > 0;
@@ -946,20 +999,20 @@ function displayScenes(scenes) {
             
             groupElement.innerHTML = `
                 <div class="scene-group-header">
-                    <h3>${structureElement.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
+                    <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
                     <div class="scene-group-actions">
-                        <button class="btn btn-primary" onclick="generateScenesForElement('${structureKey}')" title="Generate scenes for this element">
+                        <button class="btn btn-primary" onclick="generateScenesForElement('${structureKey}')" title="Generate scenes for this act">
                             🎬 Generate Scenes
                         </button>
                     </div>
                 </div>
                 <div class="structure-description">
-                    <p><strong>Description:</strong> ${structureElement.description}</p>
-                    ${structureElement.character_development ? `<p><strong>Character Development:</strong> ${structureElement.character_development}</p>` : ''}
+                    <p><strong>Description:</strong> ${storyAct.description}</p>
+                    ${storyAct.character_development ? `<p><strong>Character Development:</strong> ${storyAct.character_development}</p>` : ''}
                 </div>
                 ${hasPlotPoints ? `
                     <div class="plot-points-reference">
-                        <h4>Plot Points for this Element:</h4>
+                        <h4>Plot Points for this Act:</h4>
                         <ol>
                             ${plotPoints.map(point => `<li>${point}</li>`).join('')}
                         </ol>
@@ -2151,7 +2204,17 @@ function hideScenePromptModal() {
 // Show plot point prompt modal
 function showPlotPointPromptModal() {
     const modal = document.getElementById('plotPointPromptModal');
-    const prompt = appState.currentPlotPrompt;
+    const prompt = appState.currentPlotPointsPrompt || appState.currentPlotPrompt;
+    
+    console.log('showPlotPointPromptModal called');
+    console.log('appState.currentPlotPointsPrompt:', appState.currentPlotPointsPrompt);
+    console.log('appState.currentPlotPrompt:', appState.currentPlotPrompt);
+    console.log('Using prompt:', prompt);
+    
+    if (!prompt) {
+        showToast('No prompt data available.', 'error');
+        return;
+    }
     
     // Populate modal content
     document.getElementById('plotPointPromptSystemMessage').textContent = prompt.systemMessage;
@@ -2159,10 +2222,19 @@ function showPlotPointPromptModal() {
     
     // Update modal title
     const modalTitle = document.querySelector('#plotPointPromptModal .modal-header h3');
-    if (prompt.isAllPlotPoints) {
+    console.log('prompt.promptType:', prompt.promptType);
+    console.log('prompt.storyAct:', prompt.storyAct);
+    console.log('prompt.isAllPlotPoints:', prompt.isAllPlotPoints);
+    
+    if (prompt.promptType === 'act_plot_points') {
+        modalTitle.textContent = `Plot Points Generation Prompt - ${prompt.storyAct.name}`;
+        console.log('Set title to act:', prompt.storyAct.name);
+    } else if (prompt.isAllPlotPoints) {
         modalTitle.textContent = 'Plot Point Generation Prompt - All Scenes';
+        console.log('Set title to All Scenes');
     } else {
         modalTitle.textContent = `Plot Point Generation Prompt - Scene ${prompt.actualSceneIndex + 1}`;
+        console.log('Set title to Scene:', prompt.actualSceneIndex + 1);
     }
     
     modal.classList.add('show');

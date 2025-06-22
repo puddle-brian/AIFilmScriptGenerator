@@ -21,22 +21,22 @@ The system operates on a **5-level hierarchical context architecture** where eac
 - **Purpose**: Applies a proven narrative structure framework
 - **Contains**:
   - Selected story structure template (Hero's Journey, Three-Act, Save the Cat, etc.)
-  - Template-specific structural elements and their purposes
-  - Structural element relationships and flow
+  - Template-specific story acts and their purposes
+  - Story act relationships and flow
 - **Context Role**: Provides the architectural framework for story development
 
 ### Level 3: Generated Plot Structure
 - **Purpose**: Creates the specific plot structure for this story
 - **Contains**:
-  - Detailed structural elements with titles and descriptions
-  - Character development arcs within each element
+  - Detailed story acts with titles and descriptions
+  - Character development arcs within each act
   - Thematic progression through the structure
 - **Context Role**: Establishes the specific narrative spine that guides all scene development
 
-### Level 4: Plot Points (NEW - Critical Addition)
-- **Purpose**: Creates causal story beats that connect structural elements
+### Level 4: Plot Points
+- **Purpose**: Creates causal story beats that connect story acts
 - **Contains**:
-  - Specific plot points for each structural element
+  - Specific plot points for each story act
   - Causal connections using "and then" / "therefore" logic
   - Character actions and consequences at beat level
 - **Context Role**: Provides the causal narrative thread that ensures scene coherence
@@ -87,7 +87,7 @@ Level 5 Scene Prompt =
 - **Output**: Level 3 context established
 
 ### Step 4: Plot Points Generation (Critical Step)
-- System generates causal plot points for each structural element
+- System generates causal plot points for each story act
 - Uses ONLY structural context (no existing scenes referenced)
 - Creates "and then" / "therefore" causal chains
 - **Output**: Level 4 context established
@@ -135,8 +135,8 @@ class HierarchicalContext {
 
 ### API Endpoints
 - `/api/generate-structure` - Generates Level 3 from Levels 1+2
-- `/api/generate-plot-points-for-element/:projectPath/:structureKey` - Generates Level 4 from Levels 1+2+3
-- `/api/generate-scene/:projectPath/:structureKey` - Generates Level 5 from Levels 1+2+3+4
+- `/api/generate-plot-points-for-act/:projectPath/:actKey` - Generates Level 4 from Levels 1+2+3
+- `/api/generate-scene/:projectPath/:actKey` - Generates Level 5 from Levels 1+2+3+4
 - `/api/generate-dialogue` - Generates screenplay from all levels
 
 ### File Structure
@@ -148,12 +148,12 @@ generated/
       story-input.json      # Level 1 data
       structure.json        # Level 3 data
     02_plot-points/
-      [element].json        # Level 4 data per structural element
+      [act].json            # Level 4 data per story act
     03_scenes/
-      [element]/            # Level 5 data per structural element
+      [act]/                # Level 5 data per story act
         scene-[n].json
     04_dialogue/
-      [element]/
+      [act]/
         scene-[n].json
 ```
 
@@ -183,7 +183,7 @@ The system MUST generate plot points before scenes. Attempting to generate plot 
 Every generation must include the complete context chain from Level 1 through the current level.
 
 ### 3. Template Adherence
-Generated content must respect the selected story structure template while incorporating the specific story elements.
+Generated content must respect the selected story structure template while incorporating the specific story acts.
 
 ### 4. Causal Logic
 Plot points must use explicit causal connectors ("and then", "therefore", "because") to create logical story progression.

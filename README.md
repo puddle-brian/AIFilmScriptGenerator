@@ -13,6 +13,39 @@ A hierarchical film script generator that breaks down story ideas into structure
 - **Export Functionality**: Download completed scripts in text or JSON format
 - **Project Persistence**: Save and load projects for continued work
 
+### Hierarchical Story Development
+- **Story Foundation**: Define your story concept, characters, tone, and creative influences
+- **Template Selection**: Choose from proven narrative structure templates (Hero's Journey, Three-Act, Save the Cat, etc.)  
+- **Structure Generation**: Generate a detailed plot structure tailored to your story
+- **Plot Points Preview**: **NEW!** Preview and understand the context/prompt used to generate plot points for each structural element
+- **Plot Points Generation**: Create causal story beats that connect structural elements
+- **Scene Generation**: Generate detailed scenes based on plot points
+- **Dialogue Creation**: Generate screenplay-format dialogue for each scene
+- **Script Export**: Export your completed screenplay in multiple formats
+
+### Plot Points Context Preview
+
+You can now preview the exact hierarchical context and prompt that will be used to generate plot points for any structural element:
+
+1. **Navigate to Step 4: Plot Points**
+2. **Click "🔍 Preview Prompt"** next to any structural element
+3. **View the complete hierarchical context** including:
+   - Story Foundation (title, logline, characters, tone, influences)
+   - Overall Story Structure (selected template and generated structure)
+   - Current Structural Element (purpose, character development)
+   - Specific generation requirements for plot points
+4. **Understand the AI instructions** that ensure causal "and then"/"therefore" logic
+5. **See how the context builds hierarchically** from story concept to specific plot beats
+
+This preview helps you understand:
+- How your story foundation influences plot point generation
+- What creative influences and tone are being applied
+- How the structural element's purpose guides the plot points
+- The specific requirements for causal narrative flow
+- The complete context that ensures hierarchical coherence
+
+The preview shows the exact same prompt and system message that will be sent to the AI, giving you full transparency into the generation process.
+
 ## Installation
 
 1. **Clone or create the project directory**
