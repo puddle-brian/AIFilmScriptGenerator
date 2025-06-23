@@ -5334,6 +5334,42 @@ app.post('/api/admin/create-user', authenticateApiKey, async (req, res) => {
   }
 });
 
+// Manual database migration endpoint (for production debugging)
+app.post('/api/admin/migrate-database', async (req, res) => {
+  try {
+    // Add columns one by one to avoid syntax issues
+    const columnsToAdd = [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)'
+    ];
+    
+    const results = [];
+    for (const sql of columnsToAdd) {
+      try {
+        await dbClient.query(sql);
+        results.push(`✅ ${sql}`);
+      } catch (columnError) {
+        results.push(`ℹ️ ${sql} - ${columnError.message}`);
+      }
+    }
+    
+    res.json({
+      message: 'Database migration completed',
+      results: results
+    });
+  } catch (error) {
+    console.error('Manual migration error:', error);
+    res.status(500).json({ error: 'Migration failed', details: error.message });
+  }
+});
+
 // Get model pricing information
 app.get('/api/model-pricing', authenticateApiKey, async (req, res) => {
   try {
