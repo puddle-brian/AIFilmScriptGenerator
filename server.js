@@ -121,6 +121,25 @@ async function initializeDatabase() {
     await dbClient.query(CREATE_USAGE_TRACKING_TABLES);
     console.log('✅ Usage tracking tables initialized');
     
+    // Add missing columns if they don't exist (for existing databases)
+    try {
+      await dbClient.query(`
+        ALTER TABLE users 
+        ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0,
+        ADD COLUMN IF NOT EXISTS email VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS last_login TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP,
+        ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)
+      `);
+      console.log('✅ Database schema updated with missing columns');
+    } catch (error) {
+      console.log('ℹ️ Database schema already up to date');
+    }
+    
     // Create admin user if it doesn't exist
     const adminUser = await dbClient.query(
       'SELECT * FROM users WHERE username = $1',
