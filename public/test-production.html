@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Database Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; margin: 10px; background: #007cba; color: white; border: none; cursor: pointer; }
+        button:hover { background: #005a8a; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-left: 4px solid #007cba; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+    </style>
+</head>
+<body>
+    <h1>Production Database Test - SCREENPLAY GENIE</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Database Migration</h3>
+        <button onclick="testMigration()">Run Database Migration</button>
+        <div id="migration-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Registration</h3>
+        <button onclick="testRegistration()">Test User Registration</button>
+        <div id="registration-result" class="result" style="display: none;"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Check Database Schema</h3>
+        <button onclick="checkSchema()">Check Users Table Schema</button>
+        <div id="schema-result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function testMigration() {
+            const resultDiv = document.getElementById('migration-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Running migration...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await fetch('/api/admin/migrate-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>Migration completed!</strong><br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <strong>Migration failed:</strong><br>
+                        ${data.error || 'Unknown error'}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Network error:</strong> ${error.message}`;
+            }
+        }
+        
+        async function testRegistration() {
+            const resultDiv = document.getElementById('registration-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Testing registration...';
+            resultDiv.className = 'result';
+            
+            const testUser = {
+                username: 'testuser' + Date.now(),
+                email: 'test' + Date.now() + '@example.com',
+                password: 'testpassword123'
+            };
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testUser)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <strong>Registration successful!</strong><br>
+                        User: ${data.user.username}<br>
+                        Credits: ${data.user.credits_remaining}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `
+                        <strong>Registration failed:</strong><br>
+                        ${data.error || 'Unknown error'}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `<strong>Network error:</strong> ${error.message}`;
+            }
+        }
+        
+        async function checkSchema() {
+            const resultDiv = document.getElementById('schema-result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Checking schema...';
+            resultDiv.className = 'result';
+            
+            // This would need a dedicated endpoint to check schema
+            resultDiv.innerHTML = 'Schema check endpoint not implemented yet. Use migration test instead.';
+        }
+    </script>
+</body>
+</html> 
