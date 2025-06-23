@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V2 Endpoints Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>V2 Endpoints Test</h1>
+    
+    <div>
+        <h2>1. Health Check</h2>
+        <button onclick="testHealth()">Test Health</button>
+        <div id="healthResult"></div>
+    </div>
+    
+    <div>
+        <h2>2. Database Migration</h2>
+        <button onclick="testMigration()">Run Migration</button>
+        <div id="migrationResult"></div>
+    </div>
+    
+    <div>
+        <h2>3. Registration Test</h2>
+        <input type="text" id="testUsername" placeholder="Test Username" value="testuser123">
+        <input type="email" id="testEmail" placeholder="test@example.com" value="test@example.com">
+        <input type="password" id="testPassword" placeholder="Password" value="testpass123">
+        <button onclick="testRegistration()">Test Registration</button>
+        <div id="registrationResult"></div>
+    </div>
+    
+    <div>
+        <h2>4. Login Test</h2>
+        <button onclick="testLogin()">Test Login (use registration above first)</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <script>
+        function showResult(elementId, message, isError = false, isLoading = false) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = message;
+            element.className = 'test-result ' + (isLoading ? 'loading' : (isError ? 'error' : 'success'));
+        }
+        
+        async function testHealth() {
+            showResult('healthResult', 'Testing health...', false, true);
+            try {
+                const response = await fetch('/api/v2/health');
+                const result = await response.json();
+                if (response.ok) {
+                    showResult('healthResult', `✅ Health check passed: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    showResult('healthResult', `❌ Health check failed: ${JSON.stringify(result, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult('healthResult', `❌ Health check error: ${error.message}`, true);
+            }
+        }
+        
+        async function testMigration() {
+            showResult('migrationResult', 'Running migration...', false, true);
+            try {
+                const response = await fetch('/api/v2/migrate-database', { method: 'POST' });
+                const result = await response.json();
+                if (response.ok) {
+                    showResult('migrationResult', `✅ Migration completed: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    showResult('migrationResult', `❌ Migration failed: ${JSON.stringify(result, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult('migrationResult', `❌ Migration error: ${error.message}`, true);
+            }
+        }
+        
+        async function testRegistration() {
+            const username = document.getElementById('testUsername').value;
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            
+            showResult('registrationResult', 'Testing registration...', false, true);
+            try {
+                const response = await fetch('/api/v2/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password, emailUpdates: false })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showResult('registrationResult', `✅ Registration successful: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    showResult('registrationResult', `❌ Registration failed: ${JSON.stringify(result, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult('registrationResult', `❌ Registration error: ${error.message}`, true);
+            }
+        }
+        
+        async function testLogin() {
+            const email = document.getElementById('testEmail').value;
+            const password = document.getElementById('testPassword').value;
+            
+            showResult('loginResult', 'Testing login...', false, true);
+            try {
+                const response = await fetch('/api/v2/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, rememberMe: false })
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showResult('loginResult', `✅ Login successful: ${JSON.stringify(result, null, 2)}`);
+                } else {
+                    showResult('loginResult', `❌ Login failed: ${JSON.stringify(result, null, 2)}`, true);
+                }
+            } catch (error) {
+                showResult('loginResult', `❌ Login error: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html> 

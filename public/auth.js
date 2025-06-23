@@ -135,7 +135,7 @@ async function handleRegistration(event) {
     setButtonLoading(submitBtn, true);
     
     try {
-        const response = await fetch('/api/auth/register', {
+        const response = await fetch('/api/v2/auth/register', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -190,7 +190,7 @@ async function handleLogin(event) {
     setButtonLoading(submitBtn, true);
     
     try {
-        const response = await fetch('/api/auth/login', {
+        const response = await fetch('/api/v2/auth/login', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
