@@ -195,6 +195,11 @@ if (process.env.NODE_ENV === 'production') {
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
+// Explicit root route for Vercel serverless
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Authentication middleware
 async function authenticateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'] || req.query.api_key;
@@ -5680,7 +5685,12 @@ app.get('/login.html', (req, res) => {
 });
 
 // Export for Vercel serverless deployment
-if (process.env.VERCEL) {
+if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+  // Initialize database connection for serverless
+  initializeDatabase().then(() => {
+    console.log('✅ Serverless function initialized');
+  }).catch(console.error);
+  
   module.exports = app;
 } else {
   // Local development
