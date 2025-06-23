@@ -221,10 +221,24 @@ body {
     }
 }
 
+.title-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0px;
+    margin-bottom: 10px;
+}
+
+.logo {
+    height: 120px;
+    width: auto;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.2));
+}
+
 .title {
     font-size: 3.5rem;
     font-weight: 900;
-    margin-bottom: 10px;
+    margin: 0;
     letter-spacing: -0.025em;
     color: #ffffff;
 }
@@ -1231,6 +1245,15 @@ body {
 @media (max-width: 768px) {
     .container {
         padding: 15px;
+    }
+    
+    .title-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .logo {
+        height: 80px;
     }
     
     .title {
