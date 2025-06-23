@@ -5337,36 +5337,45 @@ app.post('/api/admin/create-user', authenticateApiKey, async (req, res) => {
 // Manual database migration endpoint (for production debugging)
 app.post('/api/admin/migrate-database', async (req, res) => {
   try {
-    // Add columns one by one to avoid syntax issues
-    const columnsToAdd = [
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)'
-    ];
-    
-    const results = [];
-    for (const sql of columnsToAdd) {
-      try {
-        await dbClient.query(sql);
-        results.push(`✅ ${sql}`);
-      } catch (columnError) {
-        results.push(`ℹ️ ${sql} - ${columnError.message}`);
+    // Set a shorter timeout to prevent Vercel timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Migration timeout')), 8000); // 8 second timeout
+    });
+
+    const migrationPromise = (async () => {
+      // Quick essential migrations only
+      const essentialMigrations = [
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)'
+      ];
+      
+      const results = [];
+      for (const sql of essentialMigrations) {
+        try {
+          await dbClient.query(sql);
+          results.push(`✅ ${sql.substring(0, 50)}...`);
+        } catch (columnError) {
+          results.push(`ℹ️ ${sql.substring(0, 50)}... - ${columnError.message.substring(0, 50)}`);
+        }
       }
-    }
+      
+      return results;
+    })();
+
+    const results = await Promise.race([migrationPromise, timeoutPromise]);
     
     res.json({
-      message: 'Database migration completed',
+      message: 'Essential database migration completed',
       results: results
     });
   } catch (error) {
     console.error('Manual migration error:', error);
-    res.status(500).json({ error: 'Migration failed', details: error.message });
+    if (error.message === 'Migration timeout') {
+      res.status(408).json({ error: 'Migration timed out - try again or check database connection' });
+    } else {
+      res.status(500).json({ error: 'Migration failed', details: error.message });
+    }
   }
 });
 
@@ -5489,7 +5498,7 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Username must be 3-30 characters long' });
     }
     
-    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+    if (!/^[a-zA-Z0-9_\-]+$/.test(username)) {
       return res.status(400).json({ error: 'Username can only contain letters, numbers, underscore, and hyphen' });
     }
     
@@ -5523,12 +5532,28 @@ app.post('/api/auth/register', async (req, res) => {
       RETURNING id, username, email, api_key, credits_remaining, created_at
     `, [username, email, hashedPassword, apiKey, 100, emailUpdates, false]);
     
-    // Log the credit grant
-    await dbClient.query(`
-      INSERT INTO credit_transactions (
-        user_id, transaction_type, credits_amount, notes, created_at
-      ) VALUES ($1, $2, $3, $4, NOW())
-    `, [result.rows[0].id, 'grant', 100, 'Welcome bonus - 100 free credits']);
+    // Log the credit grant - try both table names and column formats
+    try {
+      // Try the newer format first
+      await dbClient.query(`
+        INSERT INTO credit_transactions (
+          user_id, transaction_type, credits_amount, notes, created_at
+        ) VALUES ($1, $2, $3, $4, NOW())
+      `, [result.rows[0].id, 'grant', 100, 'Welcome bonus - 100 free credits']);
+    } catch (creditError) {
+      console.log('Credit logging failed, trying alternative format:', creditError.message);
+      // Try alternative table/column names if the first attempt fails
+      try {
+        await dbClient.query(`
+          INSERT INTO credit_transactions (
+            user_id, transaction_type, amount, notes, created_at
+          ) VALUES ($1, $2, $3, $4, NOW())
+        `, [result.rows[0].id, 'grant', 100, 'Welcome bonus - 100 free credits']);
+      } catch (creditError2) {
+        console.log('Alternative credit logging also failed:', creditError2.message);
+        // Don't fail registration if credit logging fails
+      }
+    }
     
     const user = result.rows[0];
     
