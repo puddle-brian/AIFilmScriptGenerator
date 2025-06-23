@@ -4641,10 +4641,24 @@ let editingCharacterIndex = null;
 
 // Add character modal functions
 function addCharacter() {
+    console.log('AddCharacter: Function called');
     editingCharacterIndex = null;
-    document.getElementById('characterModalTitle').textContent = 'Add Character';
-    document.getElementById('characterName').value = '';
-    document.getElementById('characterDescription').value = '';
+    
+    const titleElement = document.getElementById('characterModalTitle');
+    const nameElement = document.getElementById('characterName');
+    const descElement = document.getElementById('characterDescription');
+    
+    console.log('AddCharacter: Elements found:', {
+        title: !!titleElement,
+        name: !!nameElement,
+        description: !!descElement
+    });
+    
+    if (titleElement) titleElement.textContent = 'Add Character';
+    if (nameElement) nameElement.value = '';
+    if (descElement) descElement.value = '';
+    
+    console.log('AddCharacter: Calling showCharacterModal');
     showCharacterModal();
 }
 
@@ -4666,7 +4680,16 @@ function deleteCharacter(index) {
 }
 
 function showCharacterModal() {
-    document.getElementById('addCharacterModal').classList.add('show');
+    console.log('ShowCharacterModal: Function called');
+    const modal = document.getElementById('addCharacterModal');
+    console.log('ShowCharacterModal: Modal element found:', !!modal);
+    
+    if (modal) {
+        modal.classList.add('show');
+        console.log('ShowCharacterModal: Added show class, modal classes:', modal.className);
+    } else {
+        console.error('ShowCharacterModal: Modal element not found!');
+    }
 }
 
 function hideCharacterModal() {
