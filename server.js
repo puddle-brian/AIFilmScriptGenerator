@@ -235,10 +235,25 @@ app.get('/', (req, res) => {
 async function authenticateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'] || req.query.api_key;
   
+  // DEMO MODE: Check for demo bypass
+  if (req.query.demo === 'true' || req.headers['x-demo-mode'] === 'true') {
+    // Create a demo user for the session
+    req.user = {
+      id: 999999,
+      username: 'demo-user',
+      email: 'demo@example.com',
+      api_key: 'demo-key',
+      credits_remaining: 1000,
+      is_admin: false
+    };
+    console.log('🎭 DEMO MODE: Bypassing authentication');
+    return next();
+  }
+  
   if (!apiKey) {
     return res.status(401).json({ 
       error: 'API key required', 
-      message: 'Please provide an API key in the X-API-Key header or api_key query parameter' 
+      message: 'Please provide an API key in the X-API-Key header or api_key query parameter. For demo, add ?demo=true to any URL.' 
     });
   }
 
@@ -263,12 +278,18 @@ async function authenticateApiKey(req, res, next) {
 // Credit checking middleware
 function checkCredits(estimatedCost = 1) {
   return async (req, res, next) => {
+    // DEMO MODE: Skip credit checks for demo users
+    if (req.user.username === 'demo-user' || req.query.demo === 'true') {
+      console.log('🎭 DEMO MODE: Bypassing credit check');
+      return next();
+    }
+    
     if (req.user.credits_remaining < estimatedCost) {
       return res.status(402).json({ 
         error: 'Insufficient credits',
         remaining: req.user.credits_remaining,
         required: estimatedCost,
-        message: 'Please purchase more credits to continue using the service'
+        message: 'Please purchase more credits to continue using the service. For demo, add ?demo=true to any URL.'
       });
     }
     next();
