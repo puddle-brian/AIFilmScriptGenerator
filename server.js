@@ -5457,11 +5457,10 @@ app.post('/api/auth/register', async (req, res) => {
     const result = await dbClient.query(`
       INSERT INTO users (
         username, email, password_hash, api_key, 
-        credits_remaining, total_credits_purchased, 
-        email_updates, email_verified, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        credits_remaining, email_updates, email_verified, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
       RETURNING id, username, email, api_key, credits_remaining, created_at
-    `, [username, email, hashedPassword, apiKey, 100, 100, emailUpdates, false]);
+    `, [username, email, hashedPassword, apiKey, 100, emailUpdates, false]);
     
     // Log the credit grant
     await dbClient.query(`
