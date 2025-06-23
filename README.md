@@ -1,6 +1,8 @@
 # Film Script Generator
 
-A hierarchical story development system that uses progressive prompt refinement to guide users from high-level story concepts to detailed screenplay content.
+<!-- Deployment trigger: 2025-01-23 -->
+
+A sophisticated AI-powered screenplay generator that creates detailed film scripts using various narrative structures and cinematic influences.
 
 ## Features
 
