@@ -224,12 +224,85 @@ if (process.env.NODE_ENV === 'production') {
 
 // Middleware
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
+app.use(express.static('public', {
+  maxAge: '1d', // Cache for 1 day
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    if (path.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+    if (path.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+  }
+}));
 
 // Explicit root route for Vercel serverless
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Explicit routes for static files (Vercel serverless compatibility)
+app.get('/styles.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'styles.css'));
+});
+
+app.get('/script.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'script.js'));
+});
+
+app.get('/credits.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'credits.css'));
+});
+
+app.get('/credits.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'credits.js'));
+});
+
+app.get('/credits-widget.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'credits-widget.css'));
+});
+
+app.get('/credits-widget.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'credits-widget.js'));
+});
+
+app.get('/data-loader.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'data-loader.js'));
+});
+
+app.get('/profile.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'profile.js'));
+});
+
+app.get('/profile.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'profile.css'));
+});
+
+app.get('/auth.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'auth.js'));
+});
+
+app.get('/auth.css', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'auth.css'));
+});
+
+// Image files
+app.get('/screenplayGenieLogoSmall.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'screenplayGenieLogoSmall.png'));
+});
+
+app.get('/screenplayGenieLogoSmall_invert.png', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'screenplayGenieLogoSmall_invert.png'));
+});
+
+app.get('/favicon.ico', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
+});
+
+// Data directory route
+app.use('/data', express.static('data'));
 
 // Authentication middleware
 async function authenticateApiKey(req, res, next) {

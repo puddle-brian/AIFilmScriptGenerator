@@ -1,0 +1,6 @@
+Static file serving fix deployed on: 2024-01-09 14:30:00
+Fixed issues:
+- Updated vercel.json to properly handle static files
+- Added explicit routes for CSS/JS files
+- Enhanced static file serving with proper headers
+- This should fix the layout issues on screenplaygenie.com 
