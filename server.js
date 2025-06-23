@@ -173,10 +173,18 @@ class HierarchicalContext {
     return this.contexts.act;
   }
 
-  // Build Level 4: Plot Points Context (builds on act)
-  buildPlotPointsContext(plotPoints, totalScenes = null) {
+  // Build Level 4: Plot Points Context (builds on act) - ENHANCED with previous acts' plot points
+  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null) {
     if (!this.contexts.act) {
       throw new Error('Act context must be built before plot points context');
+    }
+
+    // Load previous acts' plot points for inter-act causality
+    let previousPlotPoints = [];
+    if (projectPath) {
+      previousPlotPoints = await this.loadPreviousActsPlotPoints(projectPath);
+    } else {
+      console.log(`🔍 No projectPath provided, skipping previous acts loading`);
     }
 
     this.contexts.plotPoints = {
@@ -184,14 +192,74 @@ class HierarchicalContext {
       type: 'plotPoints',
       parentContext: this.contexts.act,
       data: {
-        plotPoints: plotPoints, // Array of plot point strings
+        plotPoints: plotPoints, // Array of plot point strings for current act
         totalPlotPoints: plotPoints.length,
         totalScenes: totalScenes || plotPoints.length,
-        sceneDistribution: totalScenes ? `${plotPoints.length} plot points for ${totalScenes} scenes` : '1:1 plot point to scene ratio'
+        sceneDistribution: totalScenes ? `${plotPoints.length} plot points for ${totalScenes} scenes` : '1:1 plot point to scene ratio',
+        previousPlotPoints: previousPlotPoints, // Plot points from all previous acts for causality
+        hasPreviousPlotPoints: previousPlotPoints.length > 0
       },
       generatedAt: new Date().toISOString()
     };
     return this.contexts.plotPoints;
+  }
+
+  // NEW METHOD: Load plot points from all previous acts for inter-act causality
+  async loadPreviousActsPlotPoints(projectPath) {
+    try {
+      if (!this.contexts.structure || !this.contexts.act) {
+        return [];
+      }
+
+      const projectDir = path.join(__dirname, 'generated', projectPath);
+      const plotPointsDir = path.join(projectDir, '02_plot_points');
+      const currentActKey = this.contexts.act.data.key;
+      const structureKeys = this.contexts.structure.data.actKeys;
+      
+      // Find the current act's position in the structure
+      const currentActIndex = structureKeys.indexOf(currentActKey);
+      if (currentActIndex <= 0) {
+        return []; // No previous acts or act not found
+      }
+      
+      // Get all previous acts in chronological order
+      const previousActKeys = structureKeys.slice(0, currentActIndex);
+      const previousPlotPoints = [];
+      
+      console.log(`🔗 Loading previous plot points for ${currentActKey}:`);
+      console.log(`  📝 Previous acts: ${previousActKeys.join(', ')}`);
+      
+      for (const actKey of previousActKeys) {
+        try {
+          const plotPointsFile = path.join(plotPointsDir, `${actKey}_plot_points.json`);
+          const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+          
+          if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+            // Add act context to each plot point for better understanding
+            const actPlotPoints = plotPointsData.plotPoints.map((plotPoint, index) => ({
+              actKey: actKey,
+              actName: this.contexts.structure.data.structure[actKey]?.name || actKey,
+              plotPoint: plotPoint,
+              plotPointIndex: index,
+              isLastInAct: index === plotPointsData.plotPoints.length - 1
+            }));
+            
+            previousPlotPoints.push(...actPlotPoints);
+            console.log(`  ✅ Loaded ${plotPointsData.plotPoints.length} plot points from ${actKey}`);
+          }
+        } catch (fileError) {
+          console.log(`  ⚠️  No plot points found for ${actKey} (${fileError.message})`);
+          // Continue loading other acts even if one fails
+        }
+      }
+      
+      console.log(`  🎯 Total previous plot points loaded: ${previousPlotPoints.length}`);
+      return previousPlotPoints;
+      
+    } catch (error) {
+      console.error('Error loading previous acts plot points:', error);
+      return [];
+    }
   }
 
   // Build Level 5: Scene Context (builds on plot points)
@@ -299,14 +367,42 @@ class HierarchicalContext {
       prompt += `- Character Development: ${act.characterDevelopment || 'Not specified'}\n\n`;
     }
 
-    // Level 4: Plot Points Context
+    // Level 4: Plot Points Context - ENHANCED with previous acts' plot points
     if (this.contexts.plotPoints && targetLevel >= 4) {
       const plotPoints = this.contexts.plotPoints.data;
-      prompt += `PLOT POINTS FOR THIS ACT:\n`;
-      plotPoints.plotPoints.forEach((point, index) => {
-        prompt += `${index + 1}. ${point}\n`;
-      });
-      prompt += `\nDistribution: ${plotPoints.sceneDistribution}\n\n`;
+      
+      // Include previous acts' plot points for inter-act causality
+      if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
+        prompt += `PREVIOUS ACTS' PLOT POINTS (for causal continuity):\n`;
+        
+        let currentActKey = '';
+        plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
+          // Group by act for better readability
+          if (prevPlotPoint.actKey !== currentActKey) {
+            currentActKey = prevPlotPoint.actKey;
+            prompt += `\n${prevPlotPoint.actName} (${prevPlotPoint.actKey}):\n`;
+          }
+          
+          const marker = prevPlotPoint.isLastInAct ? ' ← LAST IN ACT' : '';
+          prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
+        });
+        
+        // Highlight the last plot point from the previous act for direct causal connection
+        const lastPreviousPlotPoint = plotPoints.previousPlotPoints[plotPoints.previousPlotPoints.length - 1];
+        if (lastPreviousPlotPoint) {
+          prompt += `\n🔗 CONNECT FROM: "${lastPreviousPlotPoint.plotPoint}"\n`;
+          prompt += `The first plot point of this act should logically follow from this final plot point of the previous act.\n\n`;
+        }
+      }
+      
+      // Current act's plot points (if they exist)
+      if (plotPoints.plotPoints && plotPoints.plotPoints.length > 0) {
+        prompt += `PLOT POINTS FOR THIS ACT:\n`;
+        plotPoints.plotPoints.forEach((point, index) => {
+          prompt += `${index + 1}. ${point}\n`;
+        });
+        prompt += `\nDistribution: ${plotPoints.sceneDistribution}\n\n`;
+      }
     }
 
     // Level 5: Scene Context
@@ -357,7 +453,7 @@ class HierarchicalContext {
   }
 
   // Helper function to generate scenes for a plot point (extracted from the endpoint)
-  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-3-5-sonnet-20241022") {
+  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514") {
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
     
@@ -392,8 +488,8 @@ class HierarchicalContext {
     const actPosition = Object.keys(structure).indexOf(actKey) + 1;
     context.buildActContext(actKey, structure[actKey], actPosition);
     
-    // Build plot points context
-    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    // Build plot points context (scene generation doesn't need previous plot points)
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -621,13 +717,22 @@ Story Details:
 STRUCTURE OVERVIEW:
 ${structureDescription}
 
-    Template Story Acts: ${JSON.stringify(templateData.structure, null, 2)}
+Template Structure Elements: ${JSON.stringify(templateData.structure, null, 2)}
 
-Generate a detailed breakdown for each story act. Each act should have:
+CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
+1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology
+2. Describe what the audience will SEE happening on screen - external, visual story beats
+3. Show character development through ACTIONS and CHOICES, not internal monologue or emotional states
+4. Focus on plot events that connect causally - what happens BECAUSE of previous events
+5. Each act should describe key incidents, confrontations, discoveries, or turning points
+6. Avoid describing what characters "feel," "realize," or "understand" - instead describe what they DO
+7. Character development should be evident through their changing behavior and choices across acts
+
+Generate a detailed breakdown for each structural element. Each element should have:
 - A clear title
-- A 2-3 sentence description of what happens
-- Key character developments
-- Important plot points
+- A 2-3 sentence description of the KEY EVENTS and ACTIONS that occur in this act
+- Key character developments (shown through actions, not feelings)
+- Important plot points (concrete incidents that advance the story)
 
 Return the response as a valid JSON object with each structural element as a property. 
 
@@ -637,11 +742,11 @@ Example format:
 {
   "act1_setup": {
     "name": "Act 1: Setup",
-    "description": "Description of what happens"
+    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
   },
   "act1_inciting_incident": {
     "name": "Inciting Incident", 
-    "description": "Description of the incident"
+    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
   }
 }`;
 
@@ -660,7 +765,7 @@ Example format:
 app.post('/api/generate-structure-custom', async (req, res) => {
   try {
     console.log('Received custom structure generation request:', req.body);
-    const { storyInput, template, customPrompt, model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { storyInput, template, customPrompt, model = "claude-sonnet-4-20250514" } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -834,7 +939,7 @@ Project ID: ${projectId}
 app.post('/api/generate-structure', async (req, res) => {
   try {
     console.log('Received structure generation request:', req.body);
-    const { storyInput, template, model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { storyInput, template, model = "claude-sonnet-4-20250514" } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -872,11 +977,20 @@ ${structureDescription}
 
 Template Structure Elements: ${JSON.stringify(templateData.structure, null, 2)}
 
+CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
+1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology
+2. Describe what the audience will SEE happening on screen - external, visual story beats
+3. Show character development through ACTIONS and CHOICES, not internal monologue or emotional states
+4. Focus on plot events that connect causally - what happens BECAUSE of previous events
+5. Each act should describe key incidents, confrontations, discoveries, or turning points
+6. Avoid describing what characters "feel," "realize," or "understand" - instead describe what they DO
+7. Character development should be evident through their changing behavior and choices across acts
+
 Generate a detailed breakdown for each structural element. Each element should have:
 - A clear title
-- A 2-3 sentence description of what happens
-- Key character developments
-- Important plot points
+- A 2-3 sentence description of the KEY EVENTS and ACTIONS that occur in this act
+- Key character developments (shown through actions, not feelings)
+- Important plot points (concrete incidents that advance the story)
 
 Return the response as a valid JSON object with each structural element as a property. 
 
@@ -886,18 +1000,18 @@ Example format:
 {
   "act1_setup": {
     "name": "Act 1: Setup",
-    "description": "Description of what happens"
+    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
   },
   "act1_inciting_incident": {
     "name": "Inciting Incident", 
-    "description": "Description of the incident"
+    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
   }
 }`;
 
     console.log('Sending request to Claude API...');
     const completion = await anthropic.messages.create({
       model: model,
-      max_tokens: 2000,
+      max_tokens: 12000,
       temperature: 0.7,
       system: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON.",
       messages: [
@@ -1089,7 +1203,7 @@ For each structural element, create 2-3 scenes that show the progression. Each s
 Return as JSON with each structural element containing an array of scenes. IMPORTANT: Complete the entire JSON for ALL structural elements.`;
 
     const completion = await anthropic.messages.create({
-      model: req.body.model || "claude-3-5-sonnet-20241022",
+      model: req.body.model || "claude-sonnet-4-20250514",
       max_tokens: 4000,
       temperature: 0.7,
       system: "You are a professional screenwriter. Break down plot structures into detailed, filmable scenes. Always respond with valid JSON. Complete the entire JSON structure for all elements.",
@@ -1159,7 +1273,7 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
 // Generate dialogue for approved scenes
 app.post('/api/generate-dialogue', async (req, res) => {
   try {
-    const { scene, storyInput, context, projectPath, model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514" } = req.body;
     
     const prompt = `Write full screenplay dialogue for this scene:
 
@@ -1275,7 +1389,7 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
             try {
               const plotPointsFile = path.join(projectDir, '02_plot-points', `${structureElementKey}.json`);
               const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-              hierarchicalContext.buildPlotPointsContext(plotPointsData);
+              await hierarchicalContext.buildPlotPointsContext(plotPointsData);
             } catch (error) {
               console.log('No plot points found for this act');
             }
@@ -1579,7 +1693,7 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
                 const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
                 const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
                 if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
-                  context.buildPlotPointsContext(plotPointsData.plotPoints, sceneCount);
+                  await context.buildPlotPointsContext(plotPointsData.plotPoints, sceneCount);
                   
                   // If generating an individual scene, build scene context
                   if (existingScene && sceneIndex !== null) {
@@ -1877,17 +1991,27 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
     const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
     context.buildActContext(structureKey, storyAct, actPosition);
     
-    // Generate hierarchical prompt for plot points generation (Level 4)
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(3, `
-PLOT POINTS GENERATION REQUIREMENTS:
+    // Build plot points context to load previous acts' plot points for preview
+    await context.buildPlotPointsContext([], 0, projectPath);
+    
+    // Generate hierarchical prompt for plot points generation (Level 4) with inter-act causality
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 1. Break down this story act into ${desiredSceneCount} causally connected plot points
-2. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
-3. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
-4. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
-5. Show character development through ACTIONS and CHOICES, not internal monologue
-6. Each plot point should create a specific dramatic situation or encounter
-7. Make events unpredictable and cinematic while serving the character arc
-8. Do NOT reference specific scene content - these plot points will guide scene creation
+2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
+3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
+4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
+5. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
+6. Show character development through ACTIONS and CHOICES, not internal monologue
+7. Each plot point should create a specific dramatic situation or encounter
+8. Make events unpredictable and cinematic while serving the character arc
+9. Do NOT reference specific scene content - these plot points will guide scene creation
+
+INTER-ACT CAUSAL CONNECTION:
+- If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
+- Use "THEREFORE" to show how this act follows logically from the previous act's conclusion
+- Don't repeat previous events, but build upon their consequences
+- Maintain character momentum and story energy across act boundaries
 
 CHARACTER ARC THROUGH ACTION:
 - Show character growth through CHOICES under pressure
@@ -1945,7 +2069,7 @@ Return ONLY a JSON object with this exact structure:
 app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointIndex', async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
@@ -1994,7 +2118,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     context.buildActContext(actKey, structure[actKey], actPosition);
     
     // Build plot points context
-    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -2094,7 +2218,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
   try {
     const { projectPath, structureKey } = req.params;
-    const { sceneCount = null, model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { sceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -2174,7 +2298,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       }
       
       // Build plot points context
-      context.buildPlotPointsContext(plotPoints, finalSceneCount);
+      await context.buildPlotPointsContext(plotPoints, finalSceneCount);
       
       // Generate hierarchical prompt using context system
       console.log('About to generate hierarchical prompt...');
@@ -2376,7 +2500,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
   try {
     const { projectPath, structureKey, sceneIndex } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
@@ -2424,7 +2548,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     // First, we need plot points for this element (if they don't exist, we'll need to generate them)
     // For now, let's create a placeholder plot points context
     const existingPlotPoints = ['Placeholder plot point for this scene']; // This should come from actual plot points generation
-    context.buildPlotPointsContext(existingPlotPoints, elementScenes.length);
+    await context.buildPlotPointsContext(existingPlotPoints, elementScenes.length);
     
     // Build scene context with assigned plot point
     const plotPointIndex = sceneIndexNum; // Assuming 1:1 mapping for now
@@ -2523,7 +2647,7 @@ Return ONLY valid JSON in this exact format:
 app.post('/api/generate-plot-points/:projectPath', async (req, res) => {
   try {
     const { projectPath } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -2664,7 +2788,7 @@ Focus on creating a strong narrative spine where each scene leads logically to t
 app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
   try {
     const { projectPath, structureKey, sceneIndex } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
@@ -2924,7 +3048,7 @@ For each structural element, create 1-2 scenes with:
 Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "description": "...", "characters": [...], "emotional_beats": [...]}]}}`;
 
     const completion = await anthropic.messages.create({
-      model: req.body.model || "claude-3-5-sonnet-20241022",
+      model: req.body.model || "claude-sonnet-4-20250514",
       max_tokens: 8000,
       temperature: 0.7,
       system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON. Do not truncate the JSON. Complete all structural elements.",
@@ -3472,7 +3596,7 @@ const startServer = async () => {
 app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { desiredSceneCount = null, model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { desiredSceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -3536,17 +3660,26 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     console.log(`  📈 Will expand 4 plot points into ${finalSceneCount} scenes`);
     
     
-    // Generate hierarchical prompt for plot points generation (Level 4)
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(3, `
-PLOT POINTS GENERATION REQUIREMENTS:
+    // Generate hierarchical prompt for plot points generation (Level 4) with enhanced inter-act causality
+    // First, temporarily build plot points context to load previous acts' plot points
+    await context.buildPlotPointsContext([], 0, projectPath);
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 1. Break down this story act into 4 causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
-2. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
-3. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
-4. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
-5. Show character development through ACTIONS and CHOICES, not internal monologue
-6. Each plot point should create a specific dramatic situation or encounter
-7. Make events unpredictable and cinematic while serving the character arc
-8. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
+2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
+3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
+4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
+5. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
+6. Show character development through ACTIONS and CHOICES, not internal monologue
+7. Each plot point should create a specific dramatic situation or encounter
+8. Make events unpredictable and cinematic while serving the character arc
+9. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
+
+INTER-ACT CAUSAL CONNECTION:
+- If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
+- Use "THEREFORE" to show how this act follows logically from the previous act's conclusion
+- Don't repeat previous events, but build upon their consequences
+- Maintain character momentum and story energy across act boundaries
 
 CHARACTER ARC THROUGH ACTION:
 - Show character growth through CHOICES under pressure
@@ -3617,8 +3750,8 @@ Return ONLY a JSON object with this exact structure:
     // Calculate scene distribution across plot points
     const sceneDistribution = context.calculateSceneDistribution(plotPointsData.plotPoints, finalSceneCount, actKey);
     
-    // Build plot points context with scene distribution
-    context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount);
+    // Update plot points context with the generated plot points
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount, projectPath);
     await context.saveToProject(projectPath);
 
     // Save plot points to a dedicated file with scene distribution
@@ -3714,7 +3847,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
 app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex', async (req, res) => {
   try {
     const { projectPath, structureKey, plotPointIndex } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
@@ -3823,7 +3956,7 @@ Return ONLY a JSON object with this exact structure:
     await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
     
     // Update hierarchical context with new plot points
-    context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length);
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length);
     await context.saveToProject(projectPath);
 
     console.log(`Regenerated plot point ${plotPointIndexNum + 1} for ${structureKey}: "${responseData.plotPoint}"`);
@@ -3880,8 +4013,8 @@ app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
     const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
     context.buildActContext(structureKey, storyAct, actPosition);
     
-    // Build context with existing plot points
-    context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
+    // Build context with existing plot points (individual regeneration doesn't need previous acts)
+    await context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
     
     // Generate hierarchical prompt for individual plot point regeneration
     const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
@@ -3928,7 +4061,7 @@ Return ONLY a JSON object with this exact structure:
 app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { model = "claude-3-5-sonnet-20241022" } = req.body;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
     
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);

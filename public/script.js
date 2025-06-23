@@ -18,11 +18,12 @@ const appState = {
     originalPrompt: null,
     isEditMode: false,
     plotPoints: {},
-    selectedModel: 'claude-3-5-sonnet-20241022' // Default to high-quality model
+    selectedModel: 'claude-sonnet-4-20250514' // Default to latest model
 };
 
 // Model pricing information
 const modelPricing = {
+    'claude-sonnet-4-20250514': { input: 3, output: 15, description: 'Latest & Best' },
     'claude-3-5-sonnet-20241022': { input: 3, output: 15, description: 'Best Quality' },
     'claude-3-5-haiku-20241022': { input: 0.25, output: 1.25, description: 'Fast & Cheap' },
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25, description: 'Cheapest' }
