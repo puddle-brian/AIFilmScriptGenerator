@@ -1,6 +1,6 @@
-# External Data Files
+# Data Files
 
-This directory contains JSON files that define the dropdown options and influences used throughout the Film Script Generator. These files are much easier to edit than modifying the JavaScript code directly.
+This directory contains JSON files that define the dropdown options and influences used throughout the Film Script Generator. These files are served to the web application and can be edited to customize the available options.
 
 ## Files
 
@@ -39,7 +39,7 @@ Contains the list of tones/moods available in the tone dropdown.
    ]
    ```
 3. **Remove entries** by deleting the line (don't forget to remove the comma if it's the last item)
-4. **Save the file** - changes will be automatically loaded when the app restarts
+4. **Save the file** and deploy to production to see changes
 
 ## Important Notes
 
@@ -47,7 +47,7 @@ Contains the list of tones/moods available in the tone dropdown.
 - **Commas**: Each entry except the last one should end with a comma
 - **Quotes**: All entries must be wrapped in double quotes
 - **No trailing commas**: The last entry in the array should NOT have a comma
-- **Restart**: After making changes, restart the server to see updates
+- **Deployment**: After making changes, deploy to production to see updates
 
 ## Example Edit
 
@@ -77,4 +77,12 @@ If you make a syntax error, check the browser console for error messages. Common
 - Missing or extra commas
 - Unclosed brackets
 
-The app will fall back to empty arrays if it can't load a file due to syntax errors. 
+The app will fall back to empty arrays if it can't load a file due to syntax errors.
+
+## Location
+
+These files are located in the `public/data/` directory so they can be served by the web server at:
+- `https://yourdomain.com/data/directors.json`
+- `https://yourdomain.com/data/screenwriters.json`
+- `https://yourdomain.com/data/films.json`
+- `https://yourdomain.com/data/tones.json` 
