@@ -5,7 +5,7 @@
 // Credit System State
 let currentCredits = 0;
 let usageHistory = [];
-let modelPricing = {};
+let creditModelPricing = {};
 let isLoadingCredits = false;
 
 // API Configuration
@@ -57,7 +57,7 @@ async function loadCreditData() {
         
         if (pricingResponse.ok) {
             const pricingData = await pricingResponse.json();
-            modelPricing = pricingData;
+            creditModelPricing = pricingData;
             updateModelPricingDisplay(pricingData);
         }
         
