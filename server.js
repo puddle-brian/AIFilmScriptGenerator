@@ -1005,6 +1005,70 @@ app.get('/api/status', (req, res) => {
   });
 });
 
+// Fallback template data for serverless environments
+const FALLBACK_TEMPLATES = {
+  'hero-journey': {
+    name: "Hero's Journey",
+    description: "Joseph Campbell's monomyth structure following the archetypal hero's adventure",
+    category: 'uncategorized',
+    examples: 'Star Wars, The Matrix, Lord of the Rings'
+  },
+  'three-act': {
+    name: "Three-Act Structure",
+    description: "Classic Hollywood structure with setup, confrontation, and resolution",
+    category: 'uncategorized', 
+    examples: 'Most Hollywood films'
+  },
+  'save-the-cat': {
+    name: "Save the Cat",
+    description: "Blake Snyder's beat sheet structure for commercial screenwriting",
+    category: 'uncategorized',
+    examples: 'Commercial Hollywood films'
+  },
+  'booker-overcoming-monster': {
+    name: "Overcoming the Monster",
+    description: "Hero confronts and defeats a threatening force",
+    category: 'booker_7_plots',
+    examples: 'Jaws, Alien, Beowulf'
+  },
+  'booker-rags-to-riches': {
+    name: "Rags to Riches", 
+    description: "Humble protagonist achieves wealth, power, or success",
+    category: 'booker_7_plots',
+    examples: 'Cinderella, Pretty Woman, The Pursuit of Happyness'
+  },
+  'booker-quest': {
+    name: "The Quest",
+    description: "Hero journeys to obtain something important",
+    category: 'booker_7_plots', 
+    examples: 'Lord of the Rings, Finding Nemo, Raiders of the Lost Ark'
+  },
+  'booker-voyage-return': {
+    name: "Voyage and Return",
+    description: "Hero travels to strange world and returns transformed",
+    category: 'booker_7_plots',
+    examples: 'Alice in Wonderland, The Wizard of Oz, Spirited Away'
+  },
+  'booker-comedy': {
+    name: "Comedy",
+    description: "Light-hearted story with happy ending and character growth",
+    category: 'booker_7_plots',
+    examples: 'Pride and Prejudice, Some Like It Hot, The Grand Budapest Hotel'
+  },
+  'booker-tragedy': {
+    name: "Tragedy", 
+    description: "Protagonist's fatal flaw leads to downfall",
+    category: 'booker_7_plots',
+    examples: 'Macbeth, Scarface, There Will Be Blood'
+  },
+  'booker-rebirth': {
+    name: "Rebirth",
+    description: "Character transforms from negative to positive state",
+    category: 'booker_7_plots',
+    examples: 'A Christmas Carol, Beauty and the Beast, Groundhog Day'
+  }
+};
+
 // Get available plot structure templates
 app.get('/api/templates', async (req, res) => {
   try {
@@ -1015,34 +1079,39 @@ app.get('/api/templates', async (req, res) => {
       files = await fs.readdir(templateDir);
     } catch (readDirError) {
       console.error('Error reading template directory:', readDirError);
-      // Fallback: list known template files
-      files = [
-        '8-1-2-structure.json',
-        'bicycle-thieves-structure.json',
-        'booker-comedy.json',
-        'booker-overcoming-monster.json',
-        'booker-quest.json',
-        'booker-rags-to-riches.json',
-        'booker-rebirth.json',
-        'booker-tragedy.json',
-        'booker-voyage-return.json',
-        'breathless-structure.json',
-        'dogme-95-structure.json',
-        'hero-journey.json',
-        'memory-palace-structure.json',
-        'persona-structure.json',
-        'polti-sacrifice.json',
-        'polti-supplication.json',
-        'polti-vengeance.json',
-        'rashomon-structure.json',
-        'save-the-cat.json',
-        'three-act.json',
-        'tobias-escape.json',
-        'tobias-love.json',
-        'tobias-pursuit.json',
-        'tobias-revenge.json',
-        'tobias-transformation.json'
-      ];
+      console.log('Using fallback template data for serverless environment');
+      
+      // Use fallback template data directly
+      const templates = Object.entries(FALLBACK_TEMPLATES).map(([id, template]) => ({
+        id,
+        name: template.name,
+        description: template.description,
+        category: template.category,
+        examples: template.examples
+      }));
+      
+      // Group templates by category and return immediately
+      const groupedTemplates = {
+        booker_7_plots: {
+          title: "Booker's 7 Basic Plots",
+          description: "Christopher Booker's archetypal story patterns found throughout literature and film",
+          templates: templates.filter(t => t.category === 'booker_7_plots')
+        },
+        uncategorized: {
+          title: "Classic Structures",
+          description: "Essential narrative patterns and structures",
+          templates: templates.filter(t => t.category === 'uncategorized')
+        }
+      };
+      
+      // Remove empty categories
+      Object.keys(groupedTemplates).forEach(key => {
+        if (groupedTemplates[key].templates.length === 0) {
+          delete groupedTemplates[key];
+        }
+      });
+      
+      return res.json(groupedTemplates);
     }
     
     const templates = [];
