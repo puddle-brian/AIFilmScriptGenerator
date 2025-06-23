@@ -748,58 +748,106 @@ async function initializeApp() {
 
 // Populate dropdowns from JSON files and user libraries
 async function populateDropdowns() {
+    console.log('PopulateDropdowns: Starting...');
+    
     try {
+        // Check if dataLoader exists
+        if (!window.dataLoader) {
+            console.error('PopulateDropdowns: window.dataLoader not found!');
+            throw new Error('DataLoader not initialized');
+        }
+        
+        console.log('PopulateDropdowns: Loading data from dataLoader...');
         // Load default data from JSON files
         const { directors, screenwriters, films, tones } = await window.dataLoader.loadAllData();
         
+        console.log('PopulateDropdowns: Data loaded:', {
+            directors: directors?.length || 0,
+            screenwriters: screenwriters?.length || 0,
+            films: films?.length || 0,
+            tones: tones?.length || 0
+        });
+        
         // Load user's custom libraries
+        console.log('PopulateDropdowns: Loading user libraries...');
         const userLibraries = await loadUserLibraries();
         
-        // Populate directors dropdown (default + custom)
-        const directorSelect = document.getElementById('directorSelect');
-        const allDirectors = [...directors, ...userLibraries.directors];
-        allDirectors.forEach(director => {
-            const option = document.createElement('option');
-            option.value = director;
-            option.textContent = director;
-            directorSelect.appendChild(option);
+        console.log('PopulateDropdowns: User libraries loaded:', {
+            directors: userLibraries.directors?.length || 0,
+            screenwriters: userLibraries.screenwriters?.length || 0,
+            films: userLibraries.films?.length || 0,
+            tones: userLibraries.tones?.length || 0
         });
+        
+        // Populate directors dropdown (default + custom)
+        console.log('PopulateDropdowns: Populating directors dropdown...');
+        const directorSelect = document.getElementById('directorSelect');
+        if (!directorSelect) {
+            console.error('PopulateDropdowns: directorSelect element not found!');
+        } else {
+            const allDirectors = [...(directors || []), ...(userLibraries.directors || [])];
+            console.log(`PopulateDropdowns: Adding ${allDirectors.length} directors`);
+            allDirectors.forEach(director => {
+                const option = document.createElement('option');
+                option.value = director;
+                option.textContent = director;
+                directorSelect.appendChild(option);
+            });
+        }
         
         // Populate screenwriters dropdown (default + custom)
+        console.log('PopulateDropdowns: Populating screenwriters dropdown...');
         const screenwriterSelect = document.getElementById('screenwriterSelect');
-        const allScreenwriters = [...screenwriters, ...userLibraries.screenwriters];
-        allScreenwriters.forEach(screenwriter => {
-            const option = document.createElement('option');
-            option.value = screenwriter;
-            option.textContent = screenwriter;
-            screenwriterSelect.appendChild(option);
-        });
+        if (!screenwriterSelect) {
+            console.error('PopulateDropdowns: screenwriterSelect element not found!');
+        } else {
+            const allScreenwriters = [...(screenwriters || []), ...(userLibraries.screenwriters || [])];
+            console.log(`PopulateDropdowns: Adding ${allScreenwriters.length} screenwriters`);
+            allScreenwriters.forEach(screenwriter => {
+                const option = document.createElement('option');
+                option.value = screenwriter;
+                option.textContent = screenwriter;
+                screenwriterSelect.appendChild(option);
+            });
+        }
         
         // Populate films dropdown (default + custom)
+        console.log('PopulateDropdowns: Populating films dropdown...');
         const filmSelect = document.getElementById('filmSelect');
-        const allFilms = [...films, ...userLibraries.films];
-        allFilms.forEach(film => {
-            const option = document.createElement('option');
-            option.value = film;
-            option.textContent = film;
-            filmSelect.appendChild(option);
-        });
+        if (!filmSelect) {
+            console.error('PopulateDropdowns: filmSelect element not found!');
+        } else {
+            const allFilms = [...(films || []), ...(userLibraries.films || [])];
+            console.log(`PopulateDropdowns: Adding ${allFilms.length} films`);
+            allFilms.forEach(film => {
+                const option = document.createElement('option');
+                option.value = film;
+                option.textContent = film;
+                filmSelect.appendChild(option);
+            });
+        }
         
         // Populate tones dropdown (default + custom, remove duplicates)
+        console.log('PopulateDropdowns: Populating tones dropdown...');
         const toneSelect = document.getElementById('tone');
-        const allTones = [...tones, ...userLibraries.tones];
-        const uniqueTones = [...new Set(allTones)]; // Remove duplicates
-        uniqueTones.forEach(tone => {
-            const option = document.createElement('option');
-            option.value = tone;
-            option.textContent = tone;
-            toneSelect.appendChild(option);
-        });
+        if (!toneSelect) {
+            console.error('PopulateDropdowns: toneSelect element not found!');
+        } else {
+            const allTones = [...(tones || []), ...(userLibraries.tones || [])];
+            const uniqueTones = [...new Set(allTones)]; // Remove duplicates
+            console.log(`PopulateDropdowns: Adding ${uniqueTones.length} tones`);
+            uniqueTones.forEach(tone => {
+                const option = document.createElement('option');
+                option.value = tone;
+                option.textContent = tone;
+                toneSelect.appendChild(option);
+            });
+        }
         
-        console.log('Dropdowns populated successfully with default and custom entries');
+        console.log('PopulateDropdowns: Successfully completed!');
     } catch (error) {
-        console.error('Error populating dropdowns:', error);
-        showToast('Error loading dropdown options. Using default values.', 'warning');
+        console.error('PopulateDropdowns: Error occurred:', error);
+        showToast('Error loading dropdown options. Please refresh the page.', 'error');
     }
 }
 
