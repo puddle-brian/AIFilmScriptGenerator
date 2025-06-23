@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Migration - Screenplay Genie</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        .button:hover {
+            background-color: #0056b3;
+        }
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Production Migration Test</h1>
+        <p>Test the database migration endpoint in production environment.</p>
+        
+        <button id="testMigration" class="button">Test Migration Endpoint</button>
+        <button id="testRegistration" class="button">Test Registration</button>
+        
+        <div id="result" class="result" style="display: none;"></div>
+    </div>
+
+    <script>
+        const resultDiv = document.getElementById('result');
+        const testMigrationBtn = document.getElementById('testMigration');
+        const testRegistrationBtn = document.getElementById('testRegistration');
+
+        function showResult(message, type = 'success') {
+            resultDiv.textContent = message;
+            resultDiv.className = `result ${type}`;
+            resultDiv.style.display = 'block';
+        }
+
+        testMigrationBtn.addEventListener('click', async () => {
+            testMigrationBtn.disabled = true;
+            showResult('Testing migration endpoint...', 'loading');
+            
+            try {
+                const response = await fetch('/api/admin/migrate-database', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`Migration Test Success!\n\nStatus: ${response.status}\nMessage: ${data.message}\n\nResults:\n${data.results.join('\n')}`, 'success');
+                } else {
+                    showResult(`Migration Test Failed!\n\nStatus: ${response.status}\nError: ${data.error}\nDetails: ${data.details || 'None'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Migration Test Error!\n\nNetwork/Timeout Error: ${error.message}`, 'error');
+            } finally {
+                testMigrationBtn.disabled = false;
+            }
+        });
+
+        testRegistrationBtn.addEventListener('click', async () => {
+            testRegistrationBtn.disabled = true;
+            showResult('Testing registration endpoint...', 'loading');
+            
+            const testUser = {
+                username: `testuser${Date.now()}`,
+                email: `test${Date.now()}@example.com`,
+                password: 'testpassword123',
+                emailUpdates: false
+            };
+            
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testUser)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`Registration Test Success!\n\nStatus: ${response.status}\nMessage: ${data.message}\n\nUser Created:\n- ID: ${data.user.id}\n- Username: ${data.user.username}\n- Email: ${data.user.email}\n- Credits: ${data.user.credits_remaining}`, 'success');
+                } else {
+                    showResult(`Registration Test Failed!\n\nStatus: ${response.status}\nError: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Registration Test Error!\n\nNetwork/Timeout Error: ${error.message}`, 'error');
+            } finally {
+                testRegistrationBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html> 
