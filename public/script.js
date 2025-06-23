@@ -853,27 +853,36 @@ async function populateDropdowns() {
 
 // Load user's custom libraries for dropdowns
 async function loadUserLibraries() {
+    console.log('LoadUserLibraries: Starting...');
+    
     try {
         const libraryTypes = ['directors', 'screenwriters', 'films', 'tones'];
         const userLibraries = { directors: [], screenwriters: [], films: [], tones: [] };
         
         // Load each library type from the API
         for (const type of libraryTypes) {
+            console.log(`LoadUserLibraries: Attempting to load ${type}...`);
             try {
                 const response = await fetch(`/api/user-libraries/guest/${type}`);
+                console.log(`LoadUserLibraries: Response for ${type}: ${response.status}`);
+                
                 if (response.ok) {
                     const libraries = await response.json();
                     userLibraries[type] = libraries.map(lib => lib.entry_data.name);
+                    console.log(`LoadUserLibraries: Loaded ${userLibraries[type].length} ${type} from user library`);
+                } else {
+                    console.log(`LoadUserLibraries: ${type} API returned ${response.status}, using empty array`);
                 }
             } catch (error) {
-                console.log(`Could not load user ${type} library:`, error);
+                console.log(`LoadUserLibraries: Could not load user ${type} library:`, error);
                 // Continue with empty array for this type
             }
         }
         
+        console.log('LoadUserLibraries: Completed successfully:', userLibraries);
         return userLibraries;
     } catch (error) {
-        console.error('Error loading user libraries:', error);
+        console.error('LoadUserLibraries: Error occurred:', error);
         return { directors: [], screenwriters: [], films: [], tones: [] };
     }
 }
