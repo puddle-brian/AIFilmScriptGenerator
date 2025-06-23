@@ -25,8 +25,8 @@ jobs:
     - name: Check syntax
       run: node -c server.js
       
-    - name: Verify package.json
-      run: npm run start --if-present || echo "Start script verified"
+    - name: Verify dependencies
+      run: npm ls --depth=0
 
   deploy:
     needs: test
