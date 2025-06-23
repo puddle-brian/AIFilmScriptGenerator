@@ -25,7 +25,7 @@
     },
     {
       "src": "/data/(.*)",
-      "dest": "/data/$1"
+      "dest": "/public/data/$1"
     },
     {
       "src": "/(.*)",
