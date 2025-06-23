@@ -59,6 +59,8 @@ async function loadCreditData() {
             const pricingData = await pricingResponse.json();
             creditModelPricing = pricingData;
             updateModelPricingDisplay(pricingData);
+        } else {
+            console.warn('Failed to load model pricing:', await pricingResponse.text());
         }
         
     } catch (error) {
@@ -197,22 +199,33 @@ function updateUsageHistory(usage) {
 /**
  * Update Model Pricing Display
  */
-function updateModelPricingDisplay(pricing) {
+function updateModelPricingDisplay(pricingData) {
     const pricingCards = document.getElementById('pricingCards');
     if (!pricingCards) return;
     
-    const models = Object.entries(pricing).map(([model, data]) => ({
-        model,
-        ...data
-    }));
+    // Handle both object format and array format from server
+    let models;
+    if (pricingData.pricing && Array.isArray(pricingData.pricing)) {
+        // Server response format
+        models = pricingData.pricing;
+    } else if (Array.isArray(pricingData)) {
+        // Array format
+        models = pricingData;
+    } else {
+        // Object format
+        models = Object.entries(pricingData).map(([model, data]) => ({
+            model,
+            ...data
+        }));
+    }
     
     pricingCards.innerHTML = models.map(model => `
         <div class="pricing-card ${model.model.includes('sonnet') ? 'recommended' : ''}">
             <div class="pricing-model">${model.model}</div>
             <div class="pricing-description">${model.description || 'AI language model'}</div>
             <div class="pricing-cost">
-                Input: ${formatCredits(model.input_credits_per_1k)}/1K tokens<br>
-                Output: ${formatCredits(model.output_credits_per_1k)}/1K tokens
+                Input: ${formatCredits(model.inputCostPer1K || model.input_credits_per_1k || 0)}/1K tokens<br>
+                Output: ${formatCredits(model.outputCostPer1K || model.output_credits_per_1k || 0)}/1K tokens
             </div>
         </div>
     `).join('');

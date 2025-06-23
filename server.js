@@ -5574,8 +5574,8 @@ app.post('/api/admin/migrate-database', async (req, res) => {
   }
 });
 
-// Get model pricing information
-app.get('/api/model-pricing', authenticateApiKey, async (req, res) => {
+// Get model pricing information (public endpoint)
+app.get('/api/model-pricing', async (req, res) => {
   try {
     const pricing = trackedAnthropic.getAllModelPricing();
     

@@ -66,8 +66,8 @@ const authManager = {
             if (profileLink) profileLink.style.display = 'block';
             
             // Initialize credit widget if available
-            if (window.creditWidget) {
-                window.creditWidget.init();
+            if (window.creditWidget && typeof window.creditWidget.fetchBalance === 'function') {
+                window.creditWidget.fetchBalance();
             }
         } else {
             // Show guest UI
