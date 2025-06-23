@@ -8,6 +8,18 @@
   ],
   "routes": [
     {
+      "src": "/data/(.*)",
+      "dest": "/data/$1"
+    },
+    {
+      "src": "/public/(.*)",
+      "dest": "/public/$1"
+    },
+    {
+      "src": "/(.*\\.(css|js|ico|png|jpg|jpeg|gif|svg))",
+      "dest": "/public/$1"
+    },
+    {
       "src": "/(.*)",
       "dest": "/server.js"
     }
@@ -18,7 +30,7 @@
   "functions": {
     "server.js": {
       "maxDuration": 30,
-      "includeFiles": "templates/**,data/**"
+      "includeFiles": "templates/**,data/**,public/**"
     }
   }
 } 
