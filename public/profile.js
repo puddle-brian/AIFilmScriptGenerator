@@ -1,17 +1,60 @@
 // Profile page functionality
-let currentUser = 'guest'; // Default user
-let currentUserId = 1; // Default user ID
+let currentUser = null; // Will be set from authenticated user data
+let currentUserId = null; // Will be set from authenticated user data
 let currentLibraryType = '';
 let editingEntry = null;
+let isCurrentUserAdmin = false;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async function() {
-    await loadUsers();
-    await loadUserData();
+    await initializeProfilePage();
 });
 
-// User Management
+async function initializeProfilePage() {
+    // Check if user is authenticated and get their info
+    const apiKey = localStorage.getItem('apiKey');
+    const userData = localStorage.getItem('userData');
+    
+    if (apiKey && userData) {
+        try {
+            const user = JSON.parse(userData);
+            currentUser = user.username;
+            currentUserId = user.id;
+            isCurrentUserAdmin = user.is_admin || false;
+            
+            // Update UI based on admin status
+            if (isCurrentUserAdmin) {
+                document.getElementById('adminUserSelector').style.display = 'block';
+                document.getElementById('regularUserInfo').style.display = 'none';
+                await loadUsers();
+            } else {
+                document.getElementById('adminUserSelector').style.display = 'none';
+                document.getElementById('regularUserInfo').style.display = 'block';
+                document.getElementById('currentUserDisplay').textContent = `Welcome, ${user.username}`;
+            }
+            
+        } catch (error) {
+            console.error('Error parsing user data:', error);
+            // Redirect to login if user data is corrupted
+            window.location.href = 'login.html';
+            return;
+        }
+    } else {
+        // Not authenticated, redirect to login
+        window.location.href = 'login.html';
+        return;
+    }
+    
+    await loadUserData();
+}
+
+// User Management (Admin only)
 async function loadUsers() {
+    // Only load user list for admin users
+    if (!isCurrentUserAdmin) {
+        return;
+    }
+    
     try {
         const response = await fetch('/api/users');
         const users = await response.json();
@@ -34,6 +77,12 @@ async function loadUsers() {
 }
 
 async function switchUser() {
+    // Only allow admin users to switch users
+    if (!isCurrentUserAdmin) {
+        console.warn('Non-admin user attempted to switch users');
+        return;
+    }
+    
     const userSelect = document.getElementById('currentUser');
     currentUser = userSelect.value;
     
@@ -53,6 +102,12 @@ async function switchUser() {
 }
 
 async function createNewUser() {
+    // Only allow admin users to create new users
+    if (!isCurrentUserAdmin) {
+        console.warn('Non-admin user attempted to create new user');
+        return;
+    }
+    
     const userModal = document.getElementById('userCreationModal');
     const form = document.getElementById('userCreationForm');
     

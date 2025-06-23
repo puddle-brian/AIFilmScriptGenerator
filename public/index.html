@@ -87,39 +87,32 @@
             <div class="card">
                 <h2>Step 1: Story Concept & Influences</h2>
                 <form id="storyForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="title">Title</label>
-                            <input type="text" id="title" name="title" required placeholder="Enter your story title">
+                    <!-- Story Concept -->
+                    <div class="form-group">
+                        <label for="storyConceptSelect">Story Concept</label>
+                        <div id="storyConceptSelector" class="influence-container">
+                            <select id="storyConceptSelect" class="influence-select">
+                                <option value="">Select or create a story concept...</option>
+                                <!-- Options will be populated dynamically from story concept library -->
+                            </select>
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('storyconcept')" title="Load saved concept or create new">+ Add New</button>
                         </div>
-                        
-                        <div class="form-group">
-                            <label for="totalScenes">Total Scenes</label>
-                            <input type="number" id="totalScenes" name="totalScenes" value="70" min="20" max="150" required>
+                        <div id="storyConceptDisplay" class="story-concept-display" style="display: none;">
+                            <!-- Selected story concept will be displayed here -->
                         </div>
                     </div>
                     
-
-                    
+                    <!-- Main Characters -->
                     <div class="form-group">
-                        <label for="logline">Logline</label>
-                        <textarea id="logline" name="logline" required rows="3" 
-                                placeholder="A brief, compelling summary of your story in 1-2 sentences"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="characters">Main Characters</label>
-                        <div class="characters-container">
-                            <div class="characters-header">
-                                <button type="button" class="btn btn-outline btn-sm" onclick="addCharacter()">+ Add Character</button>
-                                <button type="button" class="btn btn-outline btn-sm" onclick="addCharacterFromLibrary()">📚 Add from Library</button>
-                            </div>
-                            <div class="characters-list" id="charactersList">
-                                <div class="characters-empty" id="charactersEmpty">
-                                    No characters added yet. Click "Add Character" to get started.
-                                </div>
-                            </div>
+                        <label for="mainCharacters">Main Characters</label>
+                        <div class="influence-container">
+                            <select id="characterSelect" class="influence-select">
+                                <option value="">Select a character...</option>
+                                <!-- Options will be populated dynamically from character library -->
+                            </select>
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('character')" title="Add from dropdown or create new">+ Add New</button>
                         </div>
+                        <div id="characterTags" class="influence-tags"></div>
                     </div>
 
                     <!-- Director Influences -->
@@ -130,8 +123,7 @@
                                 <option value="">Select a director...</option>
                                 <!-- Options will be populated dynamically from JSON -->
                             </select>
-                            <button type="button" class="add-influence-btn" onclick="addInfluence('director')">+</button>
-                            <input type="text" id="customDirector" placeholder="Or type custom director..." class="custom-input">
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('director')" title="Add from dropdown or create new">+ Add New</button>
                         </div>
                         <div id="directorTags" class="influence-tags"></div>
                     </div>
@@ -144,8 +136,7 @@
                                 <option value="">Select a screenwriter...</option>
                                 <!-- Options will be populated dynamically from JSON -->
                             </select>
-                            <button type="button" class="add-influence-btn" onclick="addInfluence('screenwriter')">+</button>
-                            <input type="text" id="customScreenwriter" placeholder="Or type custom screenwriter..." class="custom-input">
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('screenwriter')" title="Add from dropdown or create new">+ Add New</button>
                         </div>
                         <div id="screenwriterTags" class="influence-tags"></div>
                     </div>
@@ -158,8 +149,7 @@
                                 <option value="">Select a film...</option>
                                 <!-- Options will be populated dynamically from JSON -->
                             </select>
-                            <button type="button" class="add-influence-btn" onclick="addInfluence('film')">+</button>
-                            <input type="text" id="customFilm" placeholder="Or type custom film..." class="custom-input">
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('film')" title="Add from dropdown or create new">+ Add New</button>
                         </div>
                         <div id="filmTags" class="influence-tags"></div>
                     </div>
@@ -167,10 +157,13 @@
                     <!-- Tone/Style -->
                     <div class="form-group">
                         <label for="tone">Tone/Style</label>
-                        <select id="tone" name="tone" required>
-                            <option value="">Select tone</option>
-                            <!-- Options will be populated dynamically from JSON -->
-                        </select>
+                        <div class="influence-container">
+                            <select id="tone" name="tone">
+                                <option value="">Select tone</option>
+                                <!-- Options will be populated dynamically from JSON -->
+                            </select>
+                            <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('tone')" title="Add from dropdown or create new">+ Add New</button>
+                        </div>
                     </div>
                     
                     <div class="form-actions">
@@ -324,6 +317,13 @@
                 </div>
                 <h2>Step 5: Generate Scenes</h2>
                 <p class="step-description">Generate scenes for each story act using the plot points as guidance.</p>
+                
+                <!-- Scene Configuration -->
+                <div class="form-group" style="max-width: 300px; margin-bottom: 1.5rem;">
+                    <label for="totalScenes">Total Scenes Target</label>
+                    <input type="number" id="totalScenes" name="totalScenes" value="70" min="20" max="150" required>
+                    <small class="form-help">Target number of scenes for the entire script (used for generation calculations)</small>
+                </div>
                 
                 <!-- Scenes Generation Options -->
                 <div class="scenes-generation-options" id="scenesGenerationOptions" style="margin-bottom: 20px;">

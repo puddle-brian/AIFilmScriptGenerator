@@ -16,12 +16,15 @@
                 <h1 class="title">SCREENPLAY HACK</h1>
                 <nav class="nav">
                     <a href="index.html" class="nav-link">← Back to Generator</a>
-                    <div class="user-selector">
+                    <div class="user-selector" id="adminUserSelector" style="display: none;">
                         <label for="currentUser">User:</label>
                         <select id="currentUser" onchange="switchUser()">
                             <option value="guest">Guest</option>
                         </select>
                         <button class="btn btn-outline btn-sm" onclick="createNewUser()">+ New User</button>
+                    </div>
+                    <div class="user-info" id="regularUserInfo">
+                        <span id="currentUserDisplay">Loading...</span>
                     </div>
                 </nav>
             </div>

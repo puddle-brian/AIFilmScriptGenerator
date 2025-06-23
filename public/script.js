@@ -14,6 +14,8 @@ const appState = {
         screenwriters: [],
         films: []
     },
+    projectCharacters: [], // Add characters to appState for persistence
+    currentStoryConcept: null, // Current story concept (title + logline)
     customPrompt: null,
     originalPrompt: null,
     isEditMode: false,
@@ -153,6 +155,9 @@ const modelPricing = {
     'claude-3-5-haiku-20241022': { input: 0.25, output: 1.25, description: 'Fast & Cheap' },
     'claude-3-haiku-20240307': { input: 0.25, output: 1.25, description: 'Cheapest' }
 };
+
+// Global character management variables (projectCharacters moved to appState for persistence)
+let editingCharacterIndex = null;
 
 // Unified Editable Content Block System
 class EditableContentBlock {
@@ -477,22 +482,214 @@ const elements = {
 // Influence Management Functions
 function addInfluence(type) {
     const selectElement = document.getElementById(`${type}Select`);
-    const customInput = document.getElementById(`custom${type.charAt(0).toUpperCase() + type.slice(1)}`);
     
     let value = '';
-    if (selectElement.value) {
+    if (selectElement && selectElement.value) {
         value = selectElement.value;
         selectElement.value = '';
-    } else if (customInput.value.trim()) {
-        value = customInput.value.trim();
-        customInput.value = '';
     }
     
     if (value && !appState.influences[type + 's'].includes(value)) {
         appState.influences[type + 's'].push(value);
         updateInfluenceTags(type);
         saveToLocalStorage();
+        
+        // Check if this is a custom entry (not in default dropdown)
+        checkAndOfferLibrarySave(type, value);
     }
+}
+
+// Universal Library System Configuration
+const LIBRARY_TYPES = {
+    director: {
+        singular: 'director',
+        plural: 'directors',
+        displayName: 'Director',
+        placeholder: 'e.g., "Christopher Nolan", "classic film noir directors", "a cross between Kubrick and Wes Anderson"'
+    },
+    screenwriter: {
+        singular: 'screenwriter', 
+        plural: 'screenwriters',
+        displayName: 'Screenwriter',
+        placeholder: 'e.g., "Charlie Kaufman", "witty British comedy writers", "Shakespeare meets Tarantino"'
+    },
+    film: {
+        singular: 'film',
+        plural: 'films', 
+        displayName: 'Film',
+        placeholder: 'e.g., "Inception", "moody 1970s thrillers", "a blend of Casablanca and Blade Runner"'
+    },
+    character: {
+        singular: 'character',
+        plural: 'characters',
+        displayName: 'Character',
+        placeholder: 'Describe this character\'s role, personality, and background...'
+    },
+    tone: {
+        singular: 'tone',
+        plural: 'tones',
+        displayName: 'Tone',
+        placeholder: 'e.g., "dark comedy", "melancholic and introspective", "fast-paced thriller"'
+    },
+    storyconcept: {
+        singular: 'story concept',
+        plural: 'storyconcepts',
+        displayName: 'Story Concept',
+        placeholder: 'Write or paste your story idea here - be as brief or detailed as you like...'
+    }
+};
+
+// Universal library saving system
+async function checkAndOfferLibrarySave(type, value) {
+    // Re-check authentication status in case it wasn't initialized properly
+    authManager.checkAuthStatus();
+    
+    // Skip if user is not authenticated
+    if (!appState.isAuthenticated) {
+        console.log('Universal Library System: User not authenticated, skipping library save offer');
+        console.log('Authentication status:', appState.isAuthenticated);
+        console.log('User:', appState.user);
+        console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
+        console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
+        return;
+    }
+    
+    const config = LIBRARY_TYPES[type];
+    if (!config) {
+        console.warn(`Unknown library type: ${type}`);
+        return;
+    }
+    
+    try {
+        // Check if this value already exists in user's library
+        let userLibrary = [];
+        if (appState.isAuthenticated && appState.user) {
+            const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}`);
+            userLibrary = await response.json();
+        }
+        
+        const exists = userLibrary.some(item => 
+            item.entry_data.name === value || 
+            item.entry_key === value
+        );
+        
+        if (!exists) {
+            // Show universal save-to-library modal
+            showUniversalLibrarySaveModal(type, value, config);
+        }
+    } catch (error) {
+        console.warn('Could not check user library:', error);
+        // Show modal anyway if there's an error
+        showUniversalLibrarySaveModal(type, value, config);
+    }
+}
+
+
+
+function hideUniversalLibrarySaveModal() {
+    const modal = document.getElementById('universalLibrarySaveModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => modal.remove(), 300);
+    }
+}
+
+async function saveToLibraryAndContinue(type, isNewEntry = false) {
+    const name = document.getElementById('universalLibraryEntryName').value.trim();
+    const descriptionElement = document.getElementById('universalLibraryEntryDescription');
+    const description = descriptionElement ? descriptionElement.value.trim() : '';
+    const config = LIBRARY_TYPES[type];
+    
+    if (!name) {
+        showToast('Please provide a name', 'error');
+        return;
+    }
+    
+    try {
+        const entryKey = name.toLowerCase().replace(/\s+/g, '_');
+        
+        // For characters and story concepts, store both name and description
+        // For influences, store just the name (which is actually the full influence phrase)
+        const entryData = (type === 'character' || type === 'storyconcept') ? {
+            name, 
+            description: description || (type === 'character' ? `Main character: ${name}` : `Story concept: ${name}`)
+        } : {
+            name,
+            description: `${config.displayName} influence: ${name}` // Simple fallback for database
+        };
+        
+        const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(entryData)
+        });
+        
+        if (response.ok) {
+            showToast(`"${name}" saved to your ${config.plural} library!`, 'success');
+            
+            // For new entries, also add to the current form
+            if (isNewEntry) {
+                if (type === 'tone') {
+                    // Add to tone dropdown and select it
+                    const toneSelect = document.getElementById('tone');
+                    const option = document.createElement('option');
+                    option.value = name;
+                    option.textContent = name;
+                    option.selected = true;
+                    toneSelect.appendChild(option);
+                } else if (type === 'character') {
+                    // Add to main story characters (not influences)
+                    const existingCharacter = appState.projectCharacters.find(char => char.name === name);
+                    if (!existingCharacter) {
+                        appState.projectCharacters.push({
+                            name: name,
+                            description: description || `Main character: ${name}`,
+                            fromLibrary: true
+                        });
+                        // Update character tags display (similar to influences)
+                        updateCharacterTags();
+                        validateCharactersRequired();
+                        saveToLocalStorage();
+                    }
+                } else if (type === 'storyconcept') {
+                    // For story concepts, create concept display
+                    
+                    appState.currentStoryConcept = {
+                        title: name,
+                        logline: description || '',
+                        fromLibrary: true
+                    };
+                    
+                    updateStoryConceptDisplay();
+                    showToast(`Story concept "${name}" created`, 'success');
+                } else {
+                    // Add to influence tags
+                    if (!appState.influences[config.plural].includes(name)) {
+                        appState.influences[config.plural].push(name);
+                        updateInfluenceTags(type);
+                        saveToLocalStorage();
+                    }
+                }
+            }
+            
+            // Refresh dropdowns to include the new entry
+            await populateDropdowns();
+        } else {
+            showToast('Failed to save to library', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving to library:', error);
+        showToast('Error saving to library', 'error');
+    }
+    
+    hideUniversalLibrarySaveModal();
+}
+
+// Setup keyboard support for universal library system
+function setupUniversalLibraryKeyboardSupport() {
+    // The custom input fields have been removed in favor of direct "Add New" buttons
+    // Keyboard support is now handled by the modal forms directly
+    console.log('Universal Library System: Keyboard support initialized');
 }
 
 function removeInfluence(type, value) {
@@ -502,6 +699,241 @@ function removeInfluence(type, value) {
         updateInfluenceTags(type);
         saveToLocalStorage();
     }
+}
+
+function removeCharacter(index) {
+    if (index >= 0 && index < appState.projectCharacters.length) {
+        appState.projectCharacters.splice(index, 1);
+        updateCharacterTags();
+        validateCharactersRequired();
+        saveToLocalStorage();
+    }
+}
+
+// Handle custom tone addition
+function addCustomTone() {
+    const customInput = document.getElementById('customTone');
+    const toneSelect = document.getElementById('tone');
+    
+    let value = customInput.value.trim();
+    
+    if (value) {
+        // Set the tone in the dropdown
+        toneSelect.value = value;
+        
+        // Create option if it doesn't exist
+        if (!Array.from(toneSelect.options).some(option => option.value === value)) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value;
+            option.selected = true;
+            toneSelect.appendChild(option);
+        }
+        
+        // Clear the input
+        customInput.value = '';
+        
+        // Offer to save to library if authenticated
+        if (appState.isAuthenticated) {
+            checkAndOfferLibrarySave('tone', value);
+        }
+        
+        showToast(`Custom tone "${value}" added`, 'success');
+    }
+}
+
+// Smart unified function - adds from dropdown if selected, otherwise opens modal for new entry
+function addFromDropdownOrNew(type) {
+    const selectElement = document.getElementById(type === 'tone' ? 'tone' : (type === 'storyconcept' ? 'storyConceptSelect' : `${type}Select`));
+    
+    // If something is selected in dropdown, add it
+    if (selectElement && selectElement.value) {
+        const value = selectElement.value;
+        
+        if (type === 'tone') {
+            // For tone, just confirm and offer to save to library (keep selection)
+            showToast(`Tone "${value}" selected`, 'success');
+            checkAndOfferLibrarySave(type, value);
+        } else if (type === 'character') {
+            // For characters, add to main story characters (not influences)
+            selectElement.value = '';
+            
+            // Check if character already exists in project
+            const existingCharacter = appState.projectCharacters.find(char => char.name === value);
+            if (!existingCharacter) {
+                // Add character to project (with basic description)
+                appState.projectCharacters.push({
+                    name: value,
+                    description: `Main character: ${value}`,
+                    fromLibrary: true
+                                        });
+                        updateCharacterTags();
+                        validateCharactersRequired();
+                        saveToLocalStorage();
+                showToast(`Added "${value}" to your main characters`, 'success');
+                
+                // Check if this is a custom entry (not in default dropdown)
+                checkAndOfferLibrarySave(type, value);
+            } else {
+                showToast(`"${value}" is already in your characters`, 'warning');
+            }
+        } else if (type === 'storyconcept') {
+            // For story concepts, we need to get the full concept data from the library
+            selectElement.value = '';
+            
+            // Load the story concept from user library
+            loadUserLibraries().then(userLibraries => {
+                const storyConcepts = userLibraries.storyconcepts || [];
+                const conceptData = storyConcepts.find(concept => concept.name === value);
+                
+                if (conceptData) {
+                    // Store the concept data in appState
+                    appState.currentStoryConcept = {
+                        title: conceptData.name,
+                        logline: conceptData.description || '',
+                        fromLibrary: true
+                    };
+                    
+                    updateStoryConceptDisplay();
+                    saveToLocalStorage();
+                    showToast(`Story concept "${conceptData.name}" loaded`, 'success');
+                } else {
+                    showToast(`Could not find story concept data`, 'error');
+                }
+            });
+        } else {
+            // For influences, clear selection and add to tags
+            selectElement.value = '';
+            
+            if (value && !appState.influences[type + 's'].includes(value)) {
+                appState.influences[type + 's'].push(value);
+                updateInfluenceTags(type);
+                saveToLocalStorage();
+                showToast(`Added "${value}" to your influences`, 'success');
+                
+                // Check if this is a custom entry (not in default dropdown)
+                checkAndOfferLibrarySave(type, value);
+            }
+        }
+    } else {
+        // Nothing selected, open modal to create new entry
+        addNewToLibrary(type);
+    }
+}
+
+// Universal "Add New" function - directly opens modal for creating new library entries
+function addNewToLibrary(type) {
+    console.log('Universal Library System: Direct add new', type);
+    
+    // Re-check authentication status in case it wasn't initialized properly
+    authManager.checkAuthStatus();
+    
+    console.log('Authentication status:', appState.isAuthenticated);
+    console.log('User:', appState.user);
+    console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
+    console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
+    
+    if (!appState.isAuthenticated) {
+        showToast('Please log in to save items to your library', 'error');
+        return;
+    }
+    
+    const config = LIBRARY_TYPES[type];
+    if (!config) {
+        console.warn(`Unknown library type: ${type}`);
+        return;
+    }
+    
+    console.log('About to show modal for', type, 'with config:', config);
+    
+    // Show modal directly with empty values
+    showUniversalLibrarySaveModal(type, '', config, true);
+}
+
+// Enhanced universal modal to handle both save-existing and create-new flows
+function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
+    console.log('showUniversalLibrarySaveModal called with:', { type, value, config, isNewEntry });
+    
+    const modalTitle = isNewEntry ? `Add New ${config.displayName}` : `Save ${config.displayName} to Library`;
+    const modalMessage = isNewEntry ? 
+        `Create a new ${config.singular} for your library:` :
+        `Would you like to save "<strong>${value}</strong>" to your ${config.plural} library for future projects?`;
+    
+    // Create prompt context help text based on type
+    let promptHelpText = '';
+    if (type === 'director') {
+        promptHelpText = `This will appear in prompts as: "In the directorial style of <em>[what you enter]</em>, ..."`;
+    } else if (type === 'screenwriter') {
+        promptHelpText = `This will appear in prompts as: "with screenplay influences from <em>[what you enter]</em>, ..."`;
+    } else if (type === 'film') {
+        promptHelpText = `This will appear in prompts as: "drawing inspiration from films like <em>[what you enter]</em>, ..."`;
+    } else if (type === 'character') {
+        promptHelpText = `Characters use both name and description in prompts for detailed character development.`;
+    } else if (type === 'tone') {
+        promptHelpText = `This tone will be used throughout your story generation.`;
+    } else if (type === 'storyconcept') {
+                        promptHelpText = `This story description will be included in every AI prompt as your story develops, guiding all generated content.`;
+    }
+    
+    console.log('Modal title:', modalTitle);
+    
+    // For characters and story concepts, keep the name/description structure since they use both fields
+    // For influences (director/screenwriter/film), use single field that matches prompt usage
+    const isComplexType = type === 'character' || type === 'storyconcept';
+    
+    const modalHtml = `
+        <div class="modal universal-library-modal" id="universalLibrarySaveModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${modalTitle}</h3>
+                    <button class="modal-close" onclick="hideUniversalLibrarySaveModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>${modalMessage}</p>
+                    <form id="universalLibrarySaveForm">
+                        ${isComplexType ? `
+                            <div class="form-group">
+                                <label for="universalLibraryEntryName">${type === 'character' ? 'Character Name' : 'Story Title'}</label>
+                                <input type="text" id="universalLibraryEntryName" value="${value}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="universalLibraryEntryDescription">${type === 'character' ? 'Character Description' : 'Story Description'}</label>
+                                <textarea id="universalLibraryEntryDescription" rows="3" 
+                                    placeholder="${config.placeholder}"></textarea>
+                                ${type === 'storyconcept' ? `<small class="form-help">${promptHelpText}</small>` : ''}
+                            </div>
+                        ` : `
+                            <div class="form-group">
+                                <label for="universalLibraryEntryName">${config.displayName} Influence</label>
+                                <input type="text" id="universalLibraryEntryName" value="${value}" required 
+                                    placeholder="${config.placeholder}">
+                                <small class="form-help">${promptHelpText}</small>
+                            </div>
+                        `}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideUniversalLibrarySaveModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveToLibraryAndContinue('${type}', ${isNewEntry})">
+                        ${isNewEntry ? 'Add to Library' : 'Save to Library'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('universalLibrarySaveModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('universalLibrarySaveModal').classList.add('show');
+    
+    // Focus on the name input
+    setTimeout(() => {
+        document.getElementById('universalLibraryEntryName').focus();
+    }, 100);
 }
 
 function updateInfluenceTags(type) {
@@ -519,6 +951,89 @@ function updateInfluenceTags(type) {
     });
 }
 
+function updateCharacterTags() {
+    const container = document.getElementById('characterTags');
+    if (!container) return; // Handle case where element doesn't exist
+    
+    container.innerHTML = '';
+    
+    appState.projectCharacters.forEach((character, index) => {
+        const tag = document.createElement('div');
+        tag.className = 'influence-tag';
+        tag.innerHTML = `
+            <span>${character.name}</span>
+            <button type="button" class="remove-tag" onclick="removeCharacter(${index})" title="Remove character">×</button>
+        `;
+        container.appendChild(tag);
+    });
+}
+
+function updateStoryConceptDisplay() {
+    const displayContainer = document.getElementById('storyConceptDisplay');
+    const selectorContainer = document.getElementById('storyConceptSelector');
+    if (!displayContainer || !selectorContainer) return;
+    
+    if (appState.currentStoryConcept) {
+        // Hide the dropdown selector
+        selectorContainer.style.display = 'none';
+        
+        // Show the concept display
+        displayContainer.style.display = 'block';
+        displayContainer.innerHTML = `
+            <div class="story-concept-card">
+                <div class="story-concept-content">
+                    <div class="story-concept-title">${appState.currentStoryConcept.title}</div>
+                    <div class="story-concept-logline">${appState.currentStoryConcept.logline}</div>
+                </div>
+                <div class="story-concept-actions">
+                    <button type="button" class="btn edit-concept-btn" onclick="editStoryConcept()" title="Edit concept">✏️ Edit</button>
+                    <button type="button" class="btn remove-concept-btn" onclick="removeStoryConcept()" title="Remove concept">× Remove</button>
+                </div>
+            </div>
+        `;
+    } else {
+        // Show the dropdown selector
+        selectorContainer.style.display = 'flex';
+        
+        // Hide the concept display
+        displayContainer.style.display = 'none';
+        displayContainer.innerHTML = '';
+    }
+}
+
+function editStoryConcept() {
+    if (!appState.currentStoryConcept) return;
+    
+    const config = LIBRARY_TYPES.storyconcept;
+    showUniversalLibrarySaveModal('storyconcept', appState.currentStoryConcept.title, config, true);
+    
+    // Pre-populate the modal with current values
+    setTimeout(() => {
+        document.getElementById('universalLibraryEntryName').value = appState.currentStoryConcept.title;
+        document.getElementById('universalLibraryEntryDescription').value = appState.currentStoryConcept.logline;
+    }, 100);
+}
+
+function removeStoryConcept() {
+    appState.currentStoryConcept = null;
+    
+    // Reset the dropdown selection
+    const dropdown = document.getElementById('storyConceptSelect');
+    if (dropdown) {
+        dropdown.value = '';
+    }
+    
+    updateStoryConceptDisplay();
+    saveToLocalStorage();
+    showToast('Story concept removed', 'success');
+}
+
+function createNewStoryConcept() {
+    // Just open the modal to create a new story concept
+    const config = LIBRARY_TYPES.storyconcept;
+    showUniversalLibrarySaveModal('storyconcept', '', config, true);
+}
+
 function buildInfluencePrompt() {
     let prompt = '';
     
@@ -533,6 +1048,8 @@ function buildInfluencePrompt() {
     if (appState.influences.films.length > 0) {
         prompt += `drawing inspiration from films like ${appState.influences.films.join(', ')}, `;
     }
+    
+
     
     return prompt;
 }
@@ -634,11 +1151,24 @@ async function autoGenerate() {
     appState.influences.screenwriters = randomScreenwriters;
     appState.influences.films = randomFilms;
     
-    // Populate form fields
-    document.getElementById('title').value = title;
-    document.getElementById('logline').value = logline;
-    document.getElementById('characters').value = characters;
-    document.getElementById('totalScenes').value = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
+    // Create story concept
+    appState.currentStoryConcept = {
+        title: title,
+        logline: logline,
+        fromLibrary: false
+    };
+    updateStoryConceptDisplay();
+    
+    // Auto-generate sample characters
+    appState.projectCharacters = [
+        { name: "Protagonist", description: characters },
+        { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
+    ];
+    updateCharacterTags();
+    
+    // Set random total scenes (will be set when user reaches Step 5)
+    appState.storyInput.totalScenes = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
+    
     document.getElementById('tone').value = tones[Math.floor(Math.random() * tones.length)];
     
     // Update influence tags
@@ -660,6 +1190,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     setupEventListeners();
     setupModelSelector();
     loadTemplates();
+    setupUniversalLibraryKeyboardSupport();
 });
 
 // Initialize application
@@ -688,6 +1219,13 @@ async function initializeApp() {
             });
             
             Object.assign(appState, parsed);
+            
+            // Update character, influence, and story concept displays after restoring state
+            updateCharacterTags();
+            updateInfluenceTags('director');
+            updateInfluenceTags('screenwriter');
+            updateInfluenceTags('film');
+            updateStoryConceptDisplay();
             
             // If we have a loaded project path, restore the full project
             if (appState.projectPath && appState.isLoadedProject) {
@@ -844,6 +1382,38 @@ async function populateDropdowns() {
             });
         }
         
+        // Populate characters dropdown (user library only)
+        console.log('PopulateDropdowns: Populating characters dropdown...');
+        const characterSelect = document.getElementById('characterSelect');
+        if (!characterSelect) {
+            console.error('PopulateDropdowns: characterSelect element not found!');
+        } else {
+            const allCharacters = userLibraries.characters || [];
+            console.log(`PopulateDropdowns: Adding ${allCharacters.length} characters`);
+            allCharacters.forEach(character => {
+                const option = document.createElement('option');
+                option.value = character;
+                option.textContent = character;
+                characterSelect.appendChild(option);
+            });
+        }
+        
+        // Populate story concepts dropdown (user library only)
+        console.log('PopulateDropdowns: Populating story concepts dropdown...');
+        const storyConceptSelect = document.getElementById('storyConceptSelect');
+        if (!storyConceptSelect) {
+            console.error('PopulateDropdowns: storyConceptSelect element not found!');
+        } else {
+            const allStoryConcepts = userLibraries.storyconcepts || [];
+            console.log(`PopulateDropdowns: Adding ${allStoryConcepts.length} story concepts`);
+            allStoryConcepts.forEach(concept => {
+                const option = document.createElement('option');
+                option.value = concept;
+                option.textContent = concept;
+                storyConceptSelect.appendChild(option);
+            });
+        }
+        
         console.log('PopulateDropdowns: Successfully completed!');
     } catch (error) {
         console.error('PopulateDropdowns: Error occurred:', error);
@@ -855,15 +1425,22 @@ async function populateDropdowns() {
 async function loadUserLibraries() {
     console.log('LoadUserLibraries: Starting...');
     
+    // Re-check authentication status in case it wasn't initialized properly
+    authManager.checkAuthStatus();
+    
     // Skip user libraries for guest users (not authenticated)
     if (!appState.isAuthenticated) {
         console.log('LoadUserLibraries: User not authenticated, skipping user libraries');
-        return { directors: [], screenwriters: [], films: [], tones: [] };
+        console.log('Authentication status:', appState.isAuthenticated);
+        console.log('User:', appState.user);
+        console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
+        console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
+        return { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
     }
     
     try {
-        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones'];
-        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [] };
+        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
         
         // Load each library type from the API with timeout
         for (const type of libraryTypes) {
@@ -873,7 +1450,7 @@ async function loadUserLibraries() {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 5000);
                 
-                const response = await fetch(`/api/user-libraries/guest/${type}`, {
+                const response = await fetch(`/api/user-libraries/${appState.user.username}/${type}`, {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
@@ -901,7 +1478,7 @@ async function loadUserLibraries() {
         return userLibraries;
     } catch (error) {
         console.error('LoadUserLibraries: Error occurred:', error);
-        return { directors: [], screenwriters: [], films: [], tones: [] };
+        return { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
     }
 }
 
@@ -938,6 +1515,18 @@ function setupEventListeners() {
     formInputs.forEach(input => {
         input.addEventListener('change', saveToLocalStorage);
     });
+    
+    // Total scenes field update (on Step 5)
+    document.addEventListener('change', function(e) {
+        if (e.target.id === 'totalScenes') {
+            const newValue = parseInt(e.target.value) || 70;
+            if (appState.storyInput) {
+                appState.storyInput.totalScenes = newValue;
+                saveToLocalStorage();
+                console.log('Updated totalScenes to:', newValue);
+            }
+        }
+    });
 }
 
 // Handle story form submission
@@ -945,15 +1534,22 @@ function handleStorySubmission() {
     const form = document.getElementById('storyForm');
     const formData = new FormData(form);
     
+    // Get title and logline from story concept
+    if (!appState.currentStoryConcept) {
+        showToast('Please create a story concept first', 'error');
+        return;
+    }
+    
     appState.storyInput = {
-        title: formData.get('title'),
-        logline: formData.get('logline'),
+        title: appState.currentStoryConcept.title,
+        logline: appState.currentStoryConcept.logline,
         characters: getCharactersForPrompt(), // Use new character system
-        charactersData: projectCharacters, // Store structured character data
+        charactersData: appState.projectCharacters, // Store structured character data
         tone: formData.get('tone'),
-        totalScenes: parseInt(formData.get('totalScenes')) || 70,
+        totalScenes: 70, // Default value, will be configurable in scenes step
         influences: appState.influences,
-        influencePrompt: buildInfluencePrompt()
+        influencePrompt: buildInfluencePrompt(),
+        storyConcept: appState.currentStoryConcept // Store the full story concept
     };
     
     saveToLocalStorage();
@@ -1440,6 +2036,9 @@ function getInfluencesSummary() {
     }
     if (influences.films?.length > 0) {
         parts.push(`${influences.films.length} film(s)`);
+    }
+    if (influences.characters?.length > 0) {
+        parts.push(`${influences.characters.length} character(s)`);
     }
     
     return parts.length > 0 ? parts.join(', ') : 'None';
@@ -3551,7 +4150,15 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     document.getElementById(`step${stepNumber}`).classList.add('active');
     
     // Refresh content for specific steps when navigating to them
-    if (stepNumber === 3) {
+    if (stepNumber === 1) {
+        // Step 1: Story Input - Update character, influence, and story concept displays
+        console.log('Step 1 - Story Input');
+        updateCharacterTags();
+        updateInfluenceTags('director');
+        updateInfluenceTags('screenwriter');
+        updateInfluenceTags('film');
+        updateStoryConceptDisplay();
+    } else if (stepNumber === 3) {
         // Step 3: Acts Generation - Focus on acts generation
         console.log('Step 3 - Acts Generation');
     } else if (stepNumber === 4) {
@@ -3563,6 +4170,13 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     } else if (stepNumber === 5) {
         // Step 5: Scene Generation
         console.log('Step 5 - Scene Generation');
+        
+        // Update the totalScenes field with current value
+        const totalScenesField = document.getElementById('totalScenes');
+        if (totalScenesField && appState.storyInput) {
+            totalScenesField.value = appState.storyInput.totalScenes || 70;
+        }
+        
         if (appState.storyInput) {
             const totalScenesElement = document.getElementById('totalScenesDisplay');
             if (totalScenesElement) {
@@ -3773,10 +4387,12 @@ function startFreshProject() {
         plotPoints: {}
     });
     
-    // Clear form fields
-    document.getElementById('title').value = '';
-    document.getElementById('logline').value = '';
-    document.getElementById('characters').value = '';
+    // Clear story concept
+    appState.currentStoryConcept = null;
+    updateStoryConceptDisplay();
+    // Clear project characters
+    appState.projectCharacters = [];
+    updateCharacterTags();
     document.getElementById('totalScenes').value = '70';
     document.getElementById('tone').value = '';
     
@@ -3942,27 +4558,40 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Populate basic story info
     console.log('Populating basic story info...');
-    console.log('Title element:', document.getElementById('title'));
-    console.log('Setting title to:', projectData.storyInput.title);
-    document.getElementById('title').value = projectData.storyInput.title || '';
-    document.getElementById('logline').value = projectData.storyInput.logline || '';
+    console.log('Loading project with title:', projectData.storyInput.title);
+    
+    // Restore story concept if available
+    if (projectData.storyInput.storyConcept) {
+        appState.currentStoryConcept = projectData.storyInput.storyConcept;
+    } else if (projectData.storyInput.title && projectData.storyInput.logline) {
+        // Create story concept from legacy data
+        appState.currentStoryConcept = {
+            title: projectData.storyInput.title,
+            logline: projectData.storyInput.logline,
+            fromLibrary: false
+        };
+    }
+    updateStoryConceptDisplay();
     
     // Handle characters - use new structured format if available, fallback to old format
     if (projectData.storyInput.charactersData && Array.isArray(projectData.storyInput.charactersData)) {
-        projectCharacters = projectData.storyInput.charactersData;
+        appState.projectCharacters = projectData.storyInput.charactersData;
     } else if (projectData.storyInput.characters) {
         // Convert old format to new format
-        projectCharacters = [{
+        appState.projectCharacters = [{
             name: 'Imported Characters',
             description: projectData.storyInput.characters
         }];
     } else {
-        projectCharacters = [];
+        appState.projectCharacters = [];
     }
-    displayCharacters();
+    updateCharacterTags();
     validateCharactersRequired();
     
-    document.getElementById('totalScenes').value = projectData.storyInput.totalScenes || 70;
+    // Set totalScenes in storyInput (field is now on Step 5)
+    if (projectData.storyInput.totalScenes) {
+        appState.storyInput.totalScenes = projectData.storyInput.totalScenes;
+    }
     document.getElementById('tone').value = projectData.storyInput.tone || '';
     console.log('Basic story info populated');
     
@@ -4636,8 +5265,7 @@ function hideDialoguePromptModal() {
 }
 
 // Character Management System
-let projectCharacters = [];
-let editingCharacterIndex = null;
+// Note: projectCharacters and editingCharacterIndex are declared globally at the top of the file
 
 // Add character modal functions
 function addCharacter() {
@@ -4664,7 +5292,7 @@ function addCharacter() {
 
 function editCharacter(index) {
     editingCharacterIndex = index;
-    const character = projectCharacters[index];
+    const character = appState.projectCharacters[index];
     document.getElementById('characterModalTitle').textContent = 'Edit Character';
     document.getElementById('characterName').value = character.name;
     document.getElementById('characterDescription').value = character.description;
@@ -4673,8 +5301,8 @@ function editCharacter(index) {
 
 function deleteCharacter(index) {
     if (confirm('Are you sure you want to delete this character?')) {
-        projectCharacters.splice(index, 1);
-        displayCharacters();
+        appState.projectCharacters.splice(index, 1);
+        updateCharacterTags();
         validateCharactersRequired();
     }
 }
@@ -4700,14 +5328,14 @@ function displayCharacters() {
     const container = document.getElementById('charactersList');
     const emptyState = document.getElementById('charactersEmpty');
     
-    if (projectCharacters.length === 0) {
+    if (appState.projectCharacters.length === 0) {
         emptyState.style.display = 'block';
         return;
     }
     
     emptyState.style.display = 'none';
     
-    const charactersHtml = projectCharacters.map((character, index) => `
+    const charactersHtml = appState.projectCharacters.map((character, index) => `
         <div class="character-item">
             <div class="character-content">
                 <div class="character-name">${character.name}</div>
@@ -4763,14 +5391,14 @@ function displayCharacterLibrary(characters) {
 
 function selectCharacterFromLibrary(key, name, description) {
     // Add to project characters
-    projectCharacters.push({
+    appState.projectCharacters.push({
         name: name,
         description: description,
         fromLibrary: true,
         libraryKey: key
     });
     
-    displayCharacters();
+    updateCharacterTags();
     hideCharacterLibraryModal();
     validateCharactersRequired();
     showToast(`Added "${name}" to your project`);
@@ -4801,37 +5429,40 @@ document.getElementById('characterForm').onsubmit = function(e) {
     
     if (editingCharacterIndex !== null) {
         // Editing existing character
-        projectCharacters[editingCharacterIndex] = character;
+        appState.projectCharacters[editingCharacterIndex] = character;
         showToast('Character updated');
     } else {
         // Adding new character
-        projectCharacters.push(character);
+        appState.projectCharacters.push(character);
         showToast('Character added');
+        
+        // Offer to save to library if authenticated
+        if (appState.isAuthenticated) {
+            checkAndOfferLibrarySave('character', name);
+        }
     }
     
-    displayCharacters();
+    updateCharacterTags();
     hideCharacterModal();
     validateCharactersRequired();
     e.target.reset();
 };
 
-// Validate characters are required for form submission
+
+
+// Characters are now optional - validation disabled
 function validateCharactersRequired() {
+    // Characters are now optional, so always enable the continue button
     const continueBtn = document.querySelector('#step1 .btn-primary');
     if (continueBtn) {
-        if (projectCharacters.length === 0) {
-            continueBtn.disabled = true;
-            continueBtn.textContent = 'Add at least one character to continue';
-        } else {
             continueBtn.disabled = false;
             continueBtn.textContent = 'Continue to Act Selection';
-        }
     }
 }
 
 // Get characters as text for prompt generation (replaces old textarea value)
 function getCharactersForPrompt() {
-    return projectCharacters.map(char => `${char.name}: ${char.description}`).join('\n\n');
+    return appState.projectCharacters.map(char => `${char.name}: ${char.description}`).join('\n\n');
 }
 
 // Modal click outside to close (for character modals)
@@ -4846,6 +5477,6 @@ document.addEventListener('click', function(e) {
 
 // Initialize character system when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    displayCharacters();
+    updateCharacterTags();
     validateCharactersRequired();
 });
