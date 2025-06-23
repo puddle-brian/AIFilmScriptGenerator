@@ -617,41 +617,49 @@ async function initializeApp() {
     console.log('=== INITIALIZE APP COMPLETE ===');
 }
 
-// Populate dropdowns from JSON files
+// Populate dropdowns from JSON files and user libraries
 async function populateDropdowns() {
     try {
+        // Load default data from JSON files
         const { directors, screenwriters, films, tones } = await window.dataLoader.loadAllData();
         
-        // Populate directors dropdown
+        // Load user's custom libraries
+        const userLibraries = await loadUserLibraries();
+        
+        // Populate directors dropdown (default + custom)
         const directorSelect = document.getElementById('directorSelect');
-        directors.forEach(director => {
+        const allDirectors = [...directors, ...userLibraries.directors];
+        allDirectors.forEach(director => {
             const option = document.createElement('option');
             option.value = director;
             option.textContent = director;
             directorSelect.appendChild(option);
         });
         
-        // Populate screenwriters dropdown
+        // Populate screenwriters dropdown (default + custom)
         const screenwriterSelect = document.getElementById('screenwriterSelect');
-        screenwriters.forEach(screenwriter => {
+        const allScreenwriters = [...screenwriters, ...userLibraries.screenwriters];
+        allScreenwriters.forEach(screenwriter => {
             const option = document.createElement('option');
             option.value = screenwriter;
             option.textContent = screenwriter;
             screenwriterSelect.appendChild(option);
         });
         
-        // Populate films dropdown
+        // Populate films dropdown (default + custom)
         const filmSelect = document.getElementById('filmSelect');
-        films.forEach(film => {
+        const allFilms = [...films, ...userLibraries.films];
+        allFilms.forEach(film => {
             const option = document.createElement('option');
             option.value = film;
             option.textContent = film;
             filmSelect.appendChild(option);
         });
         
-        // Populate tones dropdown (remove duplicates first)
+        // Populate tones dropdown (default + custom, remove duplicates)
         const toneSelect = document.getElementById('tone');
-        const uniqueTones = [...new Set(tones)]; // Remove duplicates
+        const allTones = [...tones, ...userLibraries.tones];
+        const uniqueTones = [...new Set(allTones)]; // Remove duplicates
         uniqueTones.forEach(tone => {
             const option = document.createElement('option');
             option.value = tone;
@@ -659,10 +667,37 @@ async function populateDropdowns() {
             toneSelect.appendChild(option);
         });
         
-        console.log('Dropdowns populated successfully');
+        console.log('Dropdowns populated successfully with default and custom entries');
     } catch (error) {
         console.error('Error populating dropdowns:', error);
         showToast('Error loading dropdown options. Using default values.', 'warning');
+    }
+}
+
+// Load user's custom libraries for dropdowns
+async function loadUserLibraries() {
+    try {
+        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones'];
+        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [] };
+        
+        // Load each library type from the API
+        for (const type of libraryTypes) {
+            try {
+                const response = await fetch(`/api/user-libraries/guest/${type}`);
+                if (response.ok) {
+                    const libraries = await response.json();
+                    userLibraries[type] = libraries.map(lib => lib.entry_data.name);
+                }
+            } catch (error) {
+                console.log(`Could not load user ${type} library:`, error);
+                // Continue with empty array for this type
+            }
+        }
+        
+        return userLibraries;
+    } catch (error) {
+        console.error('Error loading user libraries:', error);
+        return { directors: [], screenwriters: [], films: [], tones: [] };
     }
 }
 
@@ -3647,6 +3682,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     console.log('=== START populateFormWithProject ===');
     console.log('Populating form with project data:', projectData);
     console.log('Is restore operation:', isRestore);
+    
+    // Refresh dropdowns to include any new custom library entries
+    await populateDropdowns();
     
     // Clear existing state
     console.log('Clearing existing state...');

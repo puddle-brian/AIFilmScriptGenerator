@@ -2411,3 +2411,70 @@ body {
     text-align: center;
     padding: 2rem;
 }
+
+/* Character Modal Specific Styling */
+#addCharacterModal .modal-content,
+#characterLibraryModal .modal-content {
+    padding: 0;
+    min-width: 500px;
+    max-width: 600px;
+}
+
+#addCharacterModal .modal-header,
+#characterLibraryModal .modal-header {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+
+#addCharacterModal .modal-body,
+#characterLibraryModal .modal-body {
+    padding: 2rem;
+}
+
+#addCharacterModal .form-group {
+    margin-bottom: 1.5rem;
+}
+
+#addCharacterModal .form-group:last-of-type {
+    margin-bottom: 0;
+}
+
+#addCharacterModal .form-actions,
+#characterLibraryModal .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid #e5e7eb;
+    background: #f9fafb;
+    margin: 0;
+}
+
+#addCharacterModal input,
+#addCharacterModal textarea {
+    padding: 0.75rem;
+    font-size: 0.95rem;
+}
+
+#addCharacterModal textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+/* Mobile responsiveness for character modals */
+@media (max-width: 768px) {
+    #addCharacterModal .modal-content,
+    #characterLibraryModal .modal-content {
+        min-width: auto;
+        margin: 1rem;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    
+    #addCharacterModal .modal-header,
+    #addCharacterModal .modal-body,
+    #addCharacterModal .form-actions,
+    #characterLibraryModal .modal-header,
+    #characterLibraryModal .modal-body,
+    #characterLibraryModal .modal-footer {
+        padding: 1rem;
+    }
+}
