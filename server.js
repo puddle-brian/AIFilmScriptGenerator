@@ -5679,4 +5679,10 @@ app.get('/login.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-startServer().catch(console.error);
+// Export for Vercel serverless deployment
+if (process.env.VERCEL) {
+  module.exports = app;
+} else {
+  // Local development
+  startServer().catch(console.error);
+}
