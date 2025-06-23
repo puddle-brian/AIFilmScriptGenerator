@@ -65,6 +65,7 @@
         
         <button id="testMigration" class="button">Test Migration Endpoint</button>
         <button id="testRegistration" class="button">Test Registration</button>
+        <button id="testDirectRegistration" class="button">Test Direct Registration (Bypass)</button>
         
         <div id="result" class="result" style="display: none;"></div>
     </div>
@@ -73,6 +74,7 @@
         const resultDiv = document.getElementById('result');
         const testMigrationBtn = document.getElementById('testMigration');
         const testRegistrationBtn = document.getElementById('testRegistration');
+        const testDirectRegistrationBtn = document.getElementById('testDirectRegistration');
 
         function showResult(message, type = 'success') {
             resultDiv.textContent = message;
@@ -137,6 +139,32 @@
                 showResult(`Registration Test Error!\n\nNetwork/Timeout Error: ${error.message}`, 'error');
             } finally {
                 testRegistrationBtn.disabled = false;
+            }
+        });
+
+        testDirectRegistrationBtn.addEventListener('click', async () => {
+            testDirectRegistrationBtn.disabled = true;
+            showResult('Testing direct registration endpoint (bypass)...', 'loading');
+            
+            try {
+                const response = await fetch('/api/admin/test-registration', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult(`Direct Registration Test Success!\n\nStatus: ${response.status}\nMessage: ${data.message}\n\nUser Created:\n- ID: ${data.user.id}\n- Username: ${data.user.username}\n- Email: ${data.user.email || 'Not set'}\n- Credits: ${data.user.credits_remaining}\n\nNote: ${data.note}`, 'success');
+                } else {
+                    showResult(`Direct Registration Test Failed!\n\nStatus: ${response.status}\nError: ${data.error}\n\nMinimal Error: ${data.minimalError || 'None'}\nFull Error: ${data.fullError || 'None'}\nSuggestion: ${data.suggestion || 'None'}`, 'error');
+                }
+            } catch (error) {
+                showResult(`Direct Registration Test Error!\n\nNetwork/Timeout Error: ${error.message}`, 'error');
+            } finally {
+                testDirectRegistrationBtn.disabled = false;
             }
         });
     </script>

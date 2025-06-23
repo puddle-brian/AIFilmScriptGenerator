@@ -5334,30 +5334,142 @@ app.post('/api/admin/create-user', authenticateApiKey, async (req, res) => {
   }
 });
 
+// Direct registration test endpoint (bypasses migration issues)
+app.post('/api/admin/test-registration', async (req, res) => {
+  try {
+    const testUser = {
+      username: `testuser${Date.now()}`,
+      email: `test${Date.now()}@example.com`,
+      password: 'testpassword123',
+      emailUpdates: false
+    };
+
+    // Validation
+    if (testUser.username.length < 3 || testUser.username.length > 30) {
+      return res.status(400).json({ error: 'Username must be 3-30 characters long' });
+    }
+    
+    if (!/^[a-zA-Z0-9_\-]+$/.test(testUser.username)) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, underscore, and hyphen' });
+    }
+    
+    if (testUser.password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+    
+    // Check if user already exists
+    const existingUser = await dbClient.query(
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [testUser.username, testUser.email]
+    );
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
+    
+    // Hash password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(testUser.password, saltRounds);
+    
+    // Generate API key
+    const apiKey = 'user_' + crypto.randomBytes(32).toString('hex');
+    
+    // Try minimal user creation first - only essential columns
+    let result;
+    try {
+      result = await dbClient.query(`
+        INSERT INTO users (
+          username, api_key, credits_remaining, created_at
+        ) VALUES ($1, $2, $3, NOW())
+        RETURNING id, username, api_key, credits_remaining, created_at
+      `, [testUser.username, apiKey, 100]);
+      
+      res.status(201).json({
+        message: 'Test registration successful (minimal columns)',
+        user: {
+          id: result.rows[0].id,
+          username: result.rows[0].username,
+          credits_remaining: result.rows[0].credits_remaining,
+          created_at: result.rows[0].created_at
+        },
+        note: 'This test used only the core columns that should exist in any version of the users table'
+      });
+      
+    } catch (minimalError) {
+      // If minimal fails, try with email and password_hash
+      try {
+        result = await dbClient.query(`
+          INSERT INTO users (
+            username, email, password_hash, api_key, 
+            credits_remaining, created_at
+          ) VALUES ($1, $2, $3, $4, $5, NOW())
+          RETURNING id, username, email, api_key, credits_remaining, created_at
+        `, [testUser.username, testUser.email, hashedPassword, apiKey, 100]);
+        
+        res.status(201).json({
+          message: 'Test registration successful (with email/password)',
+          user: {
+            id: result.rows[0].id,
+            username: result.rows[0].username,
+            email: result.rows[0].email,
+            credits_remaining: result.rows[0].credits_remaining,
+            created_at: result.rows[0].created_at
+          },
+          note: 'This test included email and password_hash columns'
+        });
+        
+      } catch (fullError) {
+        res.status(500).json({
+          error: 'Both minimal and full registration failed',
+          minimalError: minimalError.message,
+          fullError: fullError.message,
+          suggestion: 'Database schema may need manual fixes'
+        });
+      }
+    }
+    
+  } catch (error) {
+    console.error('Test registration error:', error);
+    res.status(500).json({ 
+      error: 'Test registration failed', 
+      details: error.message,
+      code: error.code 
+    });
+  }
+});
+
 // Manual database migration endpoint (for production debugging)
 app.post('/api/admin/migrate-database', async (req, res) => {
   try {
-    // Set a shorter timeout to prevent Vercel timeout
+    // Ultra-fast migration - only the absolute essentials
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Migration timeout')), 8000); // 8 second timeout
+      setTimeout(() => reject(new Error('Migration timeout')), 5000); // Even shorter 5-second timeout
     });
 
     const migrationPromise = (async () => {
-      // Quick essential migrations only
-      const essentialMigrations = [
-        'ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0',
-        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)',
-        'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)'
-      ];
-      
+      // Only add the columns that are causing registration to fail
       const results = [];
-      for (const sql of essentialMigrations) {
-        try {
-          await dbClient.query(sql);
-          results.push(`✅ ${sql.substring(0, 50)}...`);
-        } catch (columnError) {
-          results.push(`ℹ️ ${sql.substring(0, 50)}... - ${columnError.message.substring(0, 50)}`);
-        }
+      
+      try {
+        // Just add the missing columns that are breaking registration
+        await dbClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0');
+        results.push('✅ Added total_credits_purchased column');
+      } catch (e) {
+        results.push(`ℹ️ total_credits_purchased: ${e.message.substring(0, 30)}...`);
+      }
+
+      try {
+        await dbClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)');
+        results.push('✅ Added email column');
+      } catch (e) {
+        results.push(`ℹ️ email: ${e.message.substring(0, 30)}...`);
+      }
+
+      try {
+        await dbClient.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)');
+        results.push('✅ Added password_hash column');
+      } catch (e) {
+        results.push(`ℹ️ password_hash: ${e.message.substring(0, 30)}...`);
       }
       
       return results;
@@ -5366,13 +5478,17 @@ app.post('/api/admin/migrate-database', async (req, res) => {
     const results = await Promise.race([migrationPromise, timeoutPromise]);
     
     res.json({
-      message: 'Essential database migration completed',
-      results: results
+      message: 'Fast migration completed',
+      results: results,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Manual migration error:', error);
+    console.error('Fast migration error:', error);
     if (error.message === 'Migration timeout') {
-      res.status(408).json({ error: 'Migration timed out - try again or check database connection' });
+      res.status(408).json({ 
+        error: 'Migration timed out after 5 seconds', 
+        suggestion: 'Database connection may be slow. Try registering directly - the fallback logic should handle missing columns.'
+      });
     } else {
       res.status(500).json({ error: 'Migration failed', details: error.message });
     }
