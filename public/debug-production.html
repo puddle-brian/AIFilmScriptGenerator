@@ -17,19 +17,25 @@
     <h1>Production Debugging</h1>
     
     <div>
-        <h2>1. Test V2 Health Endpoint</h2>
+        <h2>1. Test Environment Variables</h2>
+        <button onclick="testEnvironment()">Check Environment</button>
+        <div id="environmentResult"></div>
+    </div>
+    
+    <div>
+        <h2>2. Test V2 Health Endpoint</h2>
         <button onclick="testHealth()">Test /api/v2/health</button>
         <div id="healthResult"></div>
     </div>
     
     <div>
-        <h2>2. Test Old Registration Endpoint</h2>
+        <h2>3. Test Old Registration Endpoint</h2>
         <button onclick="testOldRegister()">Test /api/auth/register</button>
         <div id="oldRegisterResult"></div>
     </div>
     
     <div>
-        <h2>3. Test New Registration Endpoint</h2>
+        <h2>4. Test New Registration Endpoint</h2>
         <button onclick="testNewRegister()">Test /api/v2/auth/register</button>
         <div id="newRegisterResult"></div>
     </div>
@@ -70,6 +76,17 @@
                     success: false
                 };
             }
+        }
+        
+        async function testEnvironment() {
+            const result = await testEndpoint('/api/v2/debug-env', {
+                method: 'GET'
+            });
+            showResult('environmentResult', 
+                'Environment Variables Check', 
+                result, 
+                !result.success
+            );
         }
         
         async function testHealth() {

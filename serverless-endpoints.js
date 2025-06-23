@@ -180,6 +180,34 @@ router.post('/api/v2/auth/login', async (req, res) => {
   }
 });
 
+// Debug environment endpoint
+router.get('/api/v2/debug-env', (req, res) => {
+  const dbUrl = process.env.DATABASE_URL;
+  const nodeEnv = process.env.NODE_ENV;
+  
+  // Extract hostname from DATABASE_URL for debugging
+  let hostname = 'unknown';
+  try {
+    if (dbUrl) {
+      const url = new URL(dbUrl);
+      hostname = url.hostname;
+    }
+  } catch (e) {
+    hostname = 'parse-error';
+  }
+  
+  res.json({
+    environment: {
+      NODE_ENV: nodeEnv,
+      DATABASE_URL_exists: !!dbUrl,
+      DATABASE_URL_length: dbUrl ? dbUrl.length : 0,
+      DATABASE_URL_hostname: hostname,
+      DATABASE_URL_preview: dbUrl ? dbUrl.substring(0, 50) + '...' : 'missing'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 router.get('/api/v2/health', async (req, res) => {
   const db = new ServerlessDB();
