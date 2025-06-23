@@ -28,13 +28,27 @@
     margin-bottom: 2rem;
 }
 
+.auth-logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 0.5rem;
+}
+
 .auth-logo {
     font-size: 2.5rem;
     font-weight: 900;
     color: white;
-    margin: 0 0 0.5rem 0;
+    margin: 0;
     text-shadow: 0 2px 4px rgba(0,0,0,0.1);
     letter-spacing: -0.02em;
+}
+
+.auth-logo-img {
+    height: 50px;
+    width: auto;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
 }
 
 .auth-subtitle {
