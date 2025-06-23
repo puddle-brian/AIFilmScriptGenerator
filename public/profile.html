@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - FAST SCREENPLAY</title>
+    <link rel="stylesheet" href="styles.css?v=1.3">
+    <link rel="stylesheet" href="profile.css?v=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">FAST SCREENPLAY</h1>
+                <nav class="nav">
+                    <a href="index.html" class="nav-link">← Back to Generator</a>
+                    <div class="user-selector">
+                        <label for="currentUser">User:</label>
+                        <select id="currentUser" onchange="switchUser()">
+                            <option value="guest">Guest</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm" onclick="createNewUser()">+ New User</button>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <div class="profile-container">
+            <!-- Left Panel: My Libraries -->
+            <div class="libraries-panel">
+                <h2>My Libraries</h2>
+                
+                <!-- Directors Library -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Directors</h3>
+                        <button class="add-btn" onclick="addLibraryEntry('directors')">+</button>
+                    </div>
+                    <div class="library-items" id="directors-library">
+                        <!-- Director entries will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Characters Library -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Characters</h3>
+                        <button class="add-btn" onclick="addLibraryEntry('characters')">+</button>
+                    </div>
+                    <div class="library-items" id="characters-library">
+                        <!-- Character entries will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Screenwriters Library -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Screenwriters</h3>
+                        <button class="add-btn" onclick="addLibraryEntry('screenwriters')">+</button>
+                    </div>
+                    <div class="library-items" id="screenwriters-library">
+                        <!-- Screenwriter entries will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Films Library -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Films</h3>
+                        <button class="add-btn" onclick="addLibraryEntry('films')">+</button>
+                    </div>
+                    <div class="library-items" id="films-library">
+                        <!-- Film entries will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Tones Library -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Tones</h3>
+                        <button class="add-btn" onclick="addLibraryEntry('tones')">+</button>
+                    </div>
+                    <div class="library-items" id="tones-library">
+                        <!-- Tone entries will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: My Projects -->
+            <div class="projects-panel">
+                <h2>My Projects</h2>
+                <div class="projects-grid" id="projects-grid">
+                    <!-- Project cards will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Library Entry Modal -->
+    <div class="modal" id="libraryEntryModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Add Library Entry</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="libraryEntryForm">
+                <div class="form-group">
+                    <label for="entryName">Name</label>
+                    <input type="text" id="entryName" name="entryName" required 
+                           placeholder="e.g., Cosmic Horror Favorites">
+                </div>
+                
+                <div class="form-group">
+                    <label for="entryDescription">Description</label>
+                    <textarea id="entryDescription" name="entryDescription" required rows="4"
+                              placeholder="Describe this library entry and how it should influence the story..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- User Creation Modal -->
+    <div class="modal" id="userCreationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New User</h3>
+                <button class="modal-close" onclick="closeUserModal()">&times;</button>
+            </div>
+            <form id="userCreationForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" name="newUsername" required 
+                           placeholder="Enter username">
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="profile.js?v=1.0"></script>
+</body>
+</html> 

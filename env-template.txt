@@ -1,0 +1,1 @@
+DATABASE_URL=postgresql://screenplay_db_owner:npg_lj7YbZI9HgXa@ep-twilight-flower-a5mz18ee-pooler.us-east-2.aws.neon.tech/screenplay_db?sslmode=require

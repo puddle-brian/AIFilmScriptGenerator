@@ -4,6 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Anthropic = require('@anthropic-ai/sdk');
+const { Client } = require('pg');
 require('dotenv').config();
 
 // Add comprehensive error handling to prevent server crashes
@@ -26,6 +27,21 @@ const PORT = process.env.PORT || 3000;
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Initialize PostgreSQL client
+const dbClient = new Client({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Connect to database
+async function connectToDatabase() {
+  try {
+    await dbClient.connect();
+    console.log('✅ Connected to Neon database');
+  } catch (error) {
+    console.error('❌ Failed to connect to database:', error);
+  }
+}
 
 // Middleware
 app.use(cors());
@@ -915,6 +931,49 @@ Project ID: ${projectId}
     console.log(`Project saved to: ${projectDir}`);
     console.log(`Project ID: ${projectId}`);
 
+    // Also save to database for profile page (use 'guest' as default user)
+    try {
+      const username = 'guest'; // TODO: Get from user session/auth
+      const projectContext = {
+        structure: structureData,
+        template: templateData,
+        storyInput,
+        projectId,
+        projectPath: projectFolderName,
+        customPromptUsed: true,
+        generatedAt: new Date().toISOString()
+      };
+      
+      const thumbnailData = {
+        title: storyInput.title,
+        genre: storyInput.genre || 'Unknown',
+        tone: storyInput.tone,
+        structure: templateData.name,
+        currentStep: 3, // Just completed structure generation
+        totalScenes: storyInput.totalScenes || 70
+      };
+
+      // Get user ID
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        // Save project to database
+        await dbClient.query(
+          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (user_id, project_name) 
+           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+        );
+        
+        console.log(`✅ Custom prompt project also saved to database for user: ${username}`);
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to save custom prompt project to database:', dbError);
+      // Don't fail the entire request if database save fails
+    }
+
     res.json({
       structure: structureData,
       template: templateData,
@@ -1156,6 +1215,48 @@ Project ID: ${projectId}
     
     console.log(`Project saved to: ${projectDir}`);
     console.log(`Project ID: ${projectId}`);
+
+    // Also save to database for profile page (use 'guest' as default user)
+    try {
+      const username = 'guest'; // TODO: Get from user session/auth
+      const projectContext = {
+        structure: structureData,
+        template: templateData,
+        storyInput,
+        projectId,
+        projectPath: projectFolderName,
+        generatedAt: new Date().toISOString()
+      };
+      
+      const thumbnailData = {
+        title: storyInput.title,
+        genre: storyInput.genre || 'Unknown',
+        tone: storyInput.tone,
+        structure: templateData.name,
+        currentStep: 3, // Just completed structure generation
+        totalScenes: storyInput.totalScenes || 70
+      };
+
+      // Get user ID
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        // Save project to database
+        await dbClient.query(
+          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (user_id, project_name) 
+           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+        );
+        
+        console.log(`✅ Project also saved to database for user: ${username}`);
+      }
+    } catch (dbError) {
+      console.error('❌ Failed to save project to database:', dbError);
+      // Don't fail the entire request if database save fails
+    }
 
     res.json({
       structure: structureData,
@@ -3583,9 +3684,251 @@ app.use((error, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// Profile and User Management API Endpoints
+// User Management
+app.get('/api/users', async (req, res) => {
+  try {
+    const result = await dbClient.query('SELECT id, username, created_at FROM users ORDER BY created_at DESC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const { username } = req.body;
+    if (!username || username.trim().length === 0) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+    
+    const result = await dbClient.query(
+      'INSERT INTO users (username) VALUES ($1) RETURNING id, username, created_at',
+      [username.trim()]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'Username already exists' });
+    } else {
+      console.error('Failed to create user:', error);
+      res.status(500).json({ error: 'Failed to create user' });
+    }
+  }
+});
+
+// User Libraries Management
+app.get('/api/user-libraries/:username/:type', async (req, res) => {
+  try {
+    const { username, type } = req.params;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Get libraries
+    const result = await dbClient.query(
+      'SELECT entry_key, entry_data, created_at FROM user_libraries WHERE user_id = $1 AND library_type = $2 ORDER BY created_at DESC',
+      [userId, type]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch user libraries:', error);
+    res.status(500).json({ error: 'Failed to fetch user libraries' });
+  }
+});
+
+app.post('/api/user-libraries/:username/:type/:key', async (req, res) => {
+  try {
+    const { username, type, key } = req.params;
+    const entryData = req.body;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Insert or update library entry
+    const result = await dbClient.query(
+      `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, library_type, entry_key) 
+       DO UPDATE SET entry_data = $4, created_at = NOW()
+       RETURNING *`,
+      [userId, type, key, JSON.stringify(entryData)]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to save library entry:', error);
+    res.status(500).json({ error: 'Failed to save library entry' });
+  }
+});
+
+app.put('/api/user-libraries/:username/:type/:key', async (req, res) => {
+  try {
+    const { username, type, key } = req.params;
+    const entryData = req.body;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Update library entry
+    const result = await dbClient.query(
+      'UPDATE user_libraries SET entry_data = $1, created_at = NOW() WHERE user_id = $2 AND library_type = $3 AND entry_key = $4 RETURNING *',
+      [JSON.stringify(entryData), userId, type, key]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Library entry not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to update library entry:', error);
+    res.status(500).json({ error: 'Failed to update library entry' });
+  }
+});
+
+app.delete('/api/user-libraries/:username/:type/:key', async (req, res) => {
+  try {
+    const { username, type, key } = req.params;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Delete library entry
+    const result = await dbClient.query(
+      'DELETE FROM user_libraries WHERE user_id = $1 AND library_type = $2 AND entry_key = $3 RETURNING *',
+      [userId, type, key]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Library entry not found' });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete library entry:', error);
+    res.status(500).json({ error: 'Failed to delete library entry' });
+  }
+});
+
+// User Projects Management
+app.get('/api/user-projects/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Get projects
+    const result = await dbClient.query(
+      'SELECT project_name, project_context, thumbnail_data, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
+      [userId]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Failed to fetch user projects:', error);
+    res.status(500).json({ error: 'Failed to fetch user projects' });
+  }
+});
+
+app.post('/api/user-projects/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const { projectName, projectContext, thumbnailData } = req.body;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Save project
+    const result = await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, project_name) 
+       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()
+       RETURNING *`,
+      [userId, projectName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Failed to save project:', error);
+    res.status(500).json({ error: 'Failed to save project' });
+  }
+});
+
+// Delete project endpoint
+app.delete('/api/users/:userId/projects', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { project_name } = req.body;
+    
+    if (!project_name) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+    
+    // Delete from database
+    const result = await dbClient.query(
+      'DELETE FROM user_projects WHERE user_id = $1 AND project_name = $2 RETURNING *',
+      [userId, project_name]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    // Also delete from filesystem
+    const projectDir = path.join(__dirname, 'generated', project_name);
+    try {
+      await fs.rm(projectDir, { recursive: true, force: true });
+    } catch (error) {
+      console.log('Project directory not found or already deleted:', error.message);
+    }
+    
+    res.json({ message: 'Project deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete project:', error);
+    res.status(500).json({ error: 'Failed to delete project' });
+  }
+});
+
 // Start server
 const startServer = async () => {
   await ensureDirectories();
+  await connectToDatabase();
   app.listen(PORT, () => {
     console.log(`Film Script Generator server running on port ${PORT}`);
     console.log(`http://localhost:${PORT}`);
