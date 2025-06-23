@@ -123,21 +123,29 @@ async function initializeDatabase() {
     
     // Add missing columns if they don't exist (for existing databases)
     try {
-      await dbClient.query(`
-        ALTER TABLE users 
-        ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0,
-        ADD COLUMN IF NOT EXISTS email VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE,
-        ADD COLUMN IF NOT EXISTS last_login TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255),
-        ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)
-      `);
+      // Add columns one by one to avoid syntax issues
+      const columnsToAdd = [
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS total_credits_purchased INTEGER DEFAULT 0',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMP',
+        'ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token VARCHAR(255)'
+      ];
+      
+      for (const sql of columnsToAdd) {
+        try {
+          await dbClient.query(sql);
+        } catch (columnError) {
+          // Column might already exist, continue
+        }
+      }
       console.log('✅ Database schema updated with missing columns');
     } catch (error) {
-      console.log('ℹ️ Database schema already up to date');
+      console.log('ℹ️ Database schema migration error:', error.message);
     }
     
     // Create admin user if it doesn't exist
@@ -5284,7 +5292,6 @@ app.get('/api/admin/usage-stats/:username', authenticateApiKey, async (req, res)
         id: user.rows[0].id,
         username: user.rows[0].username,
         credits_remaining: user.rows[0].credits_remaining,
-        total_credits_purchased: user.rows[0].total_credits_purchased,
         created_at: user.rows[0].created_at
       },
       usage: usage.rows[0],
@@ -5414,8 +5421,7 @@ app.get('/api/my-stats', authenticateApiKey, async (req, res) => {
     res.json({
       user: {
         username: req.user.username,
-        credits_remaining: req.user.credits_remaining,
-        total_credits_purchased: req.user.total_credits_purchased
+        credits_remaining: req.user.credits_remaining
       },
       usage: usage.rows[0],
       recentUsage: recentUsage.rows
@@ -5483,10 +5489,10 @@ app.post('/api/auth/register', async (req, res) => {
     
     // Log the credit grant
     await dbClient.query(`
-      INSERT INTO credit_transactions_v2 (
-        username, transaction_type, credits_amount, notes, created_at
+      INSERT INTO credit_transactions (
+        user_id, transaction_type, credits_amount, notes, created_at
       ) VALUES ($1, $2, $3, $4, NOW())
-    `, [username, 'grant', 100, 'Welcome bonus - 100 free credits']);
+    `, [result.rows[0].id, 'grant', 100, 'Welcome bonus - 100 free credits']);
     
     const user = result.rows[0];
     
@@ -5506,6 +5512,12 @@ app.post('/api/auth/register', async (req, res) => {
     
   } catch (error) {
     console.error('Registration error:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      detail: error.detail,
+      stack: error.stack
+    });
     if (error.code === '23505') { // Unique constraint violation
       res.status(400).json({ error: 'Username or email already exists' });
     } else {
