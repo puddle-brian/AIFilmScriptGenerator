@@ -855,15 +855,29 @@ async function populateDropdowns() {
 async function loadUserLibraries() {
     console.log('LoadUserLibraries: Starting...');
     
+    // Skip user libraries for guest users (not authenticated)
+    if (!appState.isAuthenticated) {
+        console.log('LoadUserLibraries: User not authenticated, skipping user libraries');
+        return { directors: [], screenwriters: [], films: [], tones: [] };
+    }
+    
     try {
         const libraryTypes = ['directors', 'screenwriters', 'films', 'tones'];
         const userLibraries = { directors: [], screenwriters: [], films: [], tones: [] };
         
-        // Load each library type from the API
+        // Load each library type from the API with timeout
         for (const type of libraryTypes) {
             console.log(`LoadUserLibraries: Attempting to load ${type}...`);
             try {
-                const response = await fetch(`/api/user-libraries/guest/${type}`);
+                // Add 5-second timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`/api/user-libraries/guest/${type}`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
                 console.log(`LoadUserLibraries: Response for ${type}: ${response.status}`);
                 
                 if (response.ok) {
@@ -874,7 +888,11 @@ async function loadUserLibraries() {
                     console.log(`LoadUserLibraries: ${type} API returned ${response.status}, using empty array`);
                 }
             } catch (error) {
-                console.log(`LoadUserLibraries: Could not load user ${type} library:`, error);
+                if (error.name === 'AbortError') {
+                    console.log(`LoadUserLibraries: ${type} request timed out, using empty array`);
+                } else {
+                    console.log(`LoadUserLibraries: Could not load user ${type} library:`, error);
+                }
                 // Continue with empty array for this type
             }
         }
