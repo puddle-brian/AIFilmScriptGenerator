@@ -12,11 +12,11 @@
       "dest": "/data/$1"
     },
     {
-      "src": "/public/(.*)",
-      "dest": "/public/$1"
+      "src": "/api/(.*)",
+      "dest": "/server.js"
     },
     {
-      "src": "/(.*\\.(css|js|ico|png|jpg|jpeg|gif|svg))",
+      "src": "/(.*\\.(css|js|ico|png|jpg|jpeg|gif|svg|html))",
       "dest": "/public/$1"
     },
     {
