@@ -709,7 +709,8 @@ function handleStorySubmission() {
     appState.storyInput = {
         title: formData.get('title'),
         logline: formData.get('logline'),
-        characters: formData.get('characters'),
+        characters: getCharactersForPrompt(), // Use new character system
+        charactersData: projectCharacters, // Store structured character data
         tone: formData.get('tone'),
         totalScenes: parseInt(formData.get('totalScenes')) || 70,
         influences: appState.influences,
@@ -3657,7 +3658,22 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     console.log('Setting title to:', projectData.storyInput.title);
     document.getElementById('title').value = projectData.storyInput.title || '';
     document.getElementById('logline').value = projectData.storyInput.logline || '';
-    document.getElementById('characters').value = projectData.storyInput.characters || '';
+    
+    // Handle characters - use new structured format if available, fallback to old format
+    if (projectData.storyInput.charactersData && Array.isArray(projectData.storyInput.charactersData)) {
+        projectCharacters = projectData.storyInput.charactersData;
+    } else if (projectData.storyInput.characters) {
+        // Convert old format to new format
+        projectCharacters = [{
+            name: 'Imported Characters',
+            description: projectData.storyInput.characters
+        }];
+    } else {
+        projectCharacters = [];
+    }
+    displayCharacters();
+    validateCharactersRequired();
+    
     document.getElementById('totalScenes').value = projectData.storyInput.totalScenes || 70;
     document.getElementById('tone').value = projectData.storyInput.tone || '';
     console.log('Basic story info populated');
@@ -4330,3 +4346,195 @@ function hideDialoguePromptModal() {
     document.getElementById('dialoguePromptModal').classList.remove('show');
     document.body.style.overflow = 'auto';
 }
+
+// Character Management System
+let projectCharacters = [];
+let editingCharacterIndex = null;
+
+// Add character modal functions
+function addCharacter() {
+    editingCharacterIndex = null;
+    document.getElementById('characterModalTitle').textContent = 'Add Character';
+    document.getElementById('characterName').value = '';
+    document.getElementById('characterDescription').value = '';
+    showCharacterModal();
+}
+
+function editCharacter(index) {
+    editingCharacterIndex = index;
+    const character = projectCharacters[index];
+    document.getElementById('characterModalTitle').textContent = 'Edit Character';
+    document.getElementById('characterName').value = character.name;
+    document.getElementById('characterDescription').value = character.description;
+    showCharacterModal();
+}
+
+function deleteCharacter(index) {
+    if (confirm('Are you sure you want to delete this character?')) {
+        projectCharacters.splice(index, 1);
+        displayCharacters();
+        validateCharactersRequired();
+    }
+}
+
+function showCharacterModal() {
+    document.getElementById('addCharacterModal').classList.add('show');
+}
+
+function hideCharacterModal() {
+    document.getElementById('addCharacterModal').classList.remove('show');
+}
+
+function displayCharacters() {
+    const container = document.getElementById('charactersList');
+    const emptyState = document.getElementById('charactersEmpty');
+    
+    if (projectCharacters.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    
+    const charactersHtml = projectCharacters.map((character, index) => `
+        <div class="character-item">
+            <div class="character-content">
+                <div class="character-name">${character.name}</div>
+                <div class="character-description">${character.description}</div>
+            </div>
+            <div class="character-actions">
+                <button class="character-edit-btn" onclick="editCharacter(${index})">Edit</button>
+                <button class="character-delete-btn" onclick="deleteCharacter(${index})">Delete</button>
+            </div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = `
+        <div class="characters-empty" id="charactersEmpty" style="display: none;">
+            No characters added yet. Click "Add Character" to get started.
+        </div>
+        ${charactersHtml}
+    `;
+}
+
+// Add character from library functionality
+async function addCharacterFromLibrary() {
+    try {
+        // Load user's character library
+        const response = await fetch('/api/user-libraries/guest/characters');
+        const characterLibrary = await response.json();
+        
+        displayCharacterLibrary(characterLibrary);
+        showCharacterLibraryModal();
+    } catch (error) {
+        console.error('Failed to load character library:', error);
+        showToast('Failed to load character library', 'error');
+    }
+}
+
+function displayCharacterLibrary(characters) {
+    const container = document.getElementById('characterLibraryList');
+    
+    if (characters.length === 0) {
+        container.innerHTML = '<div class="character-library-empty">No characters in your library yet. Create some in your <a href="profile.html">profile</a>.</div>';
+        return;
+    }
+    
+    const charactersHtml = characters.map(char => `
+        <div class="character-library-item" onclick="selectCharacterFromLibrary('${char.entry_key}', '${char.entry_data.name}', '${char.entry_data.description}')">
+            <div class="character-name">${char.entry_data.name}</div>
+            <div class="character-description">${char.entry_data.description}</div>
+        </div>
+    `).join('');
+    
+    container.innerHTML = charactersHtml;
+}
+
+function selectCharacterFromLibrary(key, name, description) {
+    // Add to project characters
+    projectCharacters.push({
+        name: name,
+        description: description,
+        fromLibrary: true,
+        libraryKey: key
+    });
+    
+    displayCharacters();
+    hideCharacterLibraryModal();
+    validateCharactersRequired();
+    showToast(`Added "${name}" to your project`);
+}
+
+function showCharacterLibraryModal() {
+    document.getElementById('characterLibraryModal').classList.add('show');
+}
+
+function hideCharacterLibraryModal() {
+    document.getElementById('characterLibraryModal').classList.remove('show');
+}
+
+// Character form submission
+document.getElementById('characterForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const name = formData.get('characterName').trim();
+    const description = formData.get('characterDescription').trim();
+    
+    if (!name || !description) {
+        showToast('Please fill in all fields', 'error');
+        return;
+    }
+    
+    const character = { name, description };
+    
+    if (editingCharacterIndex !== null) {
+        // Editing existing character
+        projectCharacters[editingCharacterIndex] = character;
+        showToast('Character updated');
+    } else {
+        // Adding new character
+        projectCharacters.push(character);
+        showToast('Character added');
+    }
+    
+    displayCharacters();
+    hideCharacterModal();
+    validateCharactersRequired();
+    e.target.reset();
+};
+
+// Validate characters are required for form submission
+function validateCharactersRequired() {
+    const continueBtn = document.querySelector('#step1 .btn-primary');
+    if (continueBtn) {
+        if (projectCharacters.length === 0) {
+            continueBtn.disabled = true;
+            continueBtn.textContent = 'Add at least one character to continue';
+        } else {
+            continueBtn.disabled = false;
+            continueBtn.textContent = 'Continue to Act Selection';
+        }
+    }
+}
+
+// Get characters as text for prompt generation (replaces old textarea value)
+function getCharactersForPrompt() {
+    return projectCharacters.map(char => `${char.name}: ${char.description}`).join('\n\n');
+}
+
+// Modal click outside to close (for character modals)
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'addCharacterModal') {
+        hideCharacterModal();
+    }
+    if (e.target.id === 'characterLibraryModal') {
+        hideCharacterLibraryModal();
+    }
+});
+
+// Initialize character system when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    displayCharacters();
+    validateCharactersRequired();
+});
