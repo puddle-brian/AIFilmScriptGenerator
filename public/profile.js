@@ -160,7 +160,7 @@ async function loadUserData() {
 
 // Library Management
 async function loadUserLibraries() {
-    const libraryTypes = ['directors', 'characters', 'screenwriters', 'films', 'tones'];
+    const libraryTypes = ['directors', 'storyconcepts', 'characters', 'screenwriters', 'films', 'tones'];
     
     for (const type of libraryTypes) {
         try {
@@ -200,7 +200,8 @@ function addLibraryEntry(type) {
     currentLibraryType = type;
     editingEntry = null;
     
-    document.getElementById('modalTitle').textContent = `Add ${type.charAt(0).toUpperCase() + type.slice(1, -1)} Entry`;
+    const displayName = type === 'storyconcepts' ? 'Story Concept' : type.charAt(0).toUpperCase() + type.slice(1, -1);
+    document.getElementById('modalTitle').textContent = `Add ${displayName} Entry`;
     document.getElementById('entryName').value = '';
     document.getElementById('entryDescription').value = '';
     
@@ -211,7 +212,8 @@ function editLibraryEntry(type, key, data) {
     currentLibraryType = type;
     editingEntry = key;
     
-    document.getElementById('modalTitle').textContent = `Edit ${type.charAt(0).toUpperCase() + type.slice(1, -1)} Entry`;
+    const displayName = type === 'storyconcepts' ? 'Story Concept' : type.charAt(0).toUpperCase() + type.slice(1, -1);
+    document.getElementById('modalTitle').textContent = `Edit ${displayName} Entry`;
     document.getElementById('entryName').value = data.name;
     document.getElementById('entryDescription').value = data.description;
     
