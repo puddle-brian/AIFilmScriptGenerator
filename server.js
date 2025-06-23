@@ -30,6 +30,9 @@ process.on('unhandledRejection', (reason, promise) => {
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Import serverless endpoints
+const serverlessEndpoints = require('./serverless-endpoints');
+
 // Initialize logger
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -416,6 +419,9 @@ const trackedAnthropic = new TrackedAnthropicAPI(anthropic, dbClient);
 
 // Serve data files
 app.use('/data', express.static('data'));
+
+// Add serverless-optimized endpoints
+app.use(serverlessEndpoints);
 
 // Serve test frontend credits file
 app.get('/test/frontend-credits', (req, res) => {

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Test - Screenplay Genie V2</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4a5568;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+        }
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .success {
+            background-color: #f0fff4;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        .error {
+            background-color: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #feb2b2;
+        }
+        .loading {
+            background-color: #fefcbf;
+            color: #744210;
+            border: 1px solid #f6e05e;
+        }
+        .input-group {
+            margin: 15px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-healthy { background-color: #48bb78; }
+        .status-unhealthy { background-color: #f56565; }
+        .status-checking { background-color: #ed8936; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Production Test Suite V2</h1>
+        <p style="text-align: center; color: #718096;">Testing serverless-optimized endpoints</p>
+        
+        <!-- Health Check Section -->
+        <div class="section">
+            <h3>🏥 System Health Check</h3>
+            <button id="healthCheck" class="button">Check System Health</button>
+            <div id="healthResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Migration Section -->
+        <div class="section">
+            <h3>🔧 Database Migration</h3>
+            <p>Test the improved serverless migration endpoint:</p>
+            <button id="testMigration" class="button">Run V2 Migration</button>
+            <div id="migrationResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Registration Section -->
+        <div class="section">
+            <h3>👤 User Registration</h3>
+            <p>Test the improved registration system:</p>
+            
+            <div class="input-group">
+                <label for="testUsername">Username:</label>
+                <input type="text" id="testUsername" placeholder="testuser123">
+            </div>
+            
+            <div class="input-group">
+                <label for="testEmail">Email:</label>
+                <input type="email" id="testEmail" placeholder="test@example.com">
+            </div>
+            
+            <div class="input-group">
+                <label for="testPassword">Password:</label>
+                <input type="password" id="testPassword" placeholder="password123">
+            </div>
+            
+            <button id="testRegistration" class="button">Test V2 Registration</button>
+            <button id="autoRegister" class="button">Auto-Generate Test User</button>
+            <div id="registrationResult" class="result" style="display: none;"></div>
+        </div>
+
+        <!-- Login Section -->
+        <div class="section">
+            <h3>🔐 User Login</h3>
+            <p>Test login with registered user:</p>
+            
+            <div class="input-group">
+                <label for="loginEmail">Email:</label>
+                <input type="email" id="loginEmail" placeholder="test@example.com">
+            </div>
+            
+            <div class="input-group">
+                <label for="loginPassword">Password:</label>
+                <input type="password" id="loginPassword" placeholder="password123">
+            </div>
+            
+            <button id="testLogin" class="button">Test V2 Login</button>
+            <div id="loginResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const resultDivs = {
+            health: document.getElementById('healthResult'),
+            migration: document.getElementById('migrationResult'),
+            registration: document.getElementById('registrationResult'),
+            login: document.getElementById('loginResult')
+        };
+
+        function showResult(type, message, status = 'success') {
+            const div = resultDivs[type];
+            div.textContent = message;
+            div.className = `result ${status}`;
+            div.style.display = 'block';
+        }
+
+        // Health Check
+        document.getElementById('healthCheck').addEventListener('click', async function() {
+            this.disabled = true;
+            showResult('health', 'Checking system health...', 'loading');
+            
+            try {
+                const response = await fetch('/api/v2/health');
+                const data = await response.json();
+                
+                const statusIndicator = response.ok ? '🟢' : '🔴';
+                const message = `${statusIndicator} Health Check Results:\n\nStatus: ${data.status}\nDatabase: ${data.database}\nTimestamp: ${data.timestamp}\n\nHTTP Status: ${response.status}`;
+                
+                showResult('health', message, response.ok ? 'success' : 'error');
+            } catch (error) {
+                showResult('health', `❌ Health Check Failed:\n\n${error.message}`, 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        // Migration Test
+        document.getElementById('testMigration').addEventListener('click', async function() {
+            this.disabled = true;
+            showResult('migration', 'Running V2 migration...', 'loading');
+            
+            try {
+                const response = await fetch('/api/v2/migrate-database', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const message = `✅ Migration V2 Success!\n\nResults:\n${data.results.join('\n')}\n\nTimestamp: ${data.timestamp}`;
+                    showResult('migration', message, 'success');
+                } else {
+                    showResult('migration', `❌ Migration V2 Failed:\n\nError: ${data.error}\nTimestamp: ${data.timestamp}`, 'error');
+                }
+            } catch (error) {
+                showResult('migration', `❌ Migration V2 Error:\n\n${error.message}`, 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        // Auto-generate test user
+        document.getElementById('autoRegister').addEventListener('click', function() {
+            const timestamp = Date.now();
+            document.getElementById('testUsername').value = `testuser${timestamp}`;
+            document.getElementById('testEmail').value = `test${timestamp}@example.com`;
+            document.getElementById('testPassword').value = 'testpassword123';
+            
+            // Also populate login fields
+            document.getElementById('loginEmail').value = `test${timestamp}@example.com`;
+            document.getElementById('loginPassword').value = 'testpassword123';
+        });
+
+        // Registration Test
+        document.getElementById('testRegistration').addEventListener('click', async function() {
+            this.disabled = true;
+            showResult('registration', 'Testing V2 registration...', 'loading');
+            
+            const userData = {
+                username: document.getElementById('testUsername').value,
+                email: document.getElementById('testEmail').value,
+                password: document.getElementById('testPassword').value,
+                emailUpdates: false
+            };
+            
+            if (!userData.username || !userData.email || !userData.password) {
+                showResult('registration', '❌ Please fill in all fields', 'error');
+                this.disabled = false;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v2/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const message = `✅ Registration V2 Success!\n\nUser: ${data.user.username}\nEmail: ${data.user.email}\nCredits: ${data.user.credits_remaining}\nMethod: ${data.registrationMethod}\nCreated: ${data.user.created_at}`;
+                    showResult('registration', message, 'success');
+                } else {
+                    showResult('registration', `❌ Registration V2 Failed:\n\n${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('registration', `❌ Registration V2 Error:\n\n${error.message}`, 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        // Login Test
+        document.getElementById('testLogin').addEventListener('click', async function() {
+            this.disabled = true;
+            showResult('login', 'Testing V2 login...', 'loading');
+            
+            const loginData = {
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            };
+            
+            if (!loginData.email || !loginData.password) {
+                showResult('login', '❌ Please fill in email and password', 'error');
+                this.disabled = false;
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/v2/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(loginData)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const message = `✅ Login V2 Success!\n\nUser: ${data.user.username}\nEmail: ${data.user.email}\nCredits: ${data.user.credits_remaining}\nAPI Key: ${data.apiKey.substring(0, 20)}...`;
+                    showResult('login', message, 'success');
+                } else {
+                    showResult('login', `❌ Login V2 Failed:\n\n${data.error}`, 'error');
+                }
+            } catch (error) {
+                showResult('login', `❌ Login V2 Error:\n\n${error.message}`, 'error');
+            } finally {
+                this.disabled = false;
+            }
+        });
+
+        // Auto-check health on page load
+        window.addEventListener('load', function() {
+            document.getElementById('healthCheck').click();
+        });
+    </script>
+</body>
+</html> 
