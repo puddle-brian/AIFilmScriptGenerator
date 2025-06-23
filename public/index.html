@@ -3,17 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAST SCREENPLAY</title>
+    <title>SCREENPLAY HACK</title>
     <link rel="stylesheet" href="styles.css?v=1.2">
+    <link rel="stylesheet" href="credits.css?v=1.0">
+    <link rel="stylesheet" href="credits-widget.css?v=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <h1 class="title">FAST SCREENPLAY</h1>
+                <h1 class="title">SCREENPLAY HACK</h1>
                 <nav class="header-nav">
-                    <a href="profile.html" class="nav-link">👤 Profile</a>
+                    <!-- Authentication Status -->
+                    <div class="auth-status" id="authStatus" style="display: none;">
+                        <div class="user-info">
+                            <span class="user-name" id="userName">User</span>
+                            <button class="btn btn-outline btn-xs" onclick="logout()">Sign Out</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Guest Actions -->
+                    <div class="guest-actions" id="guestActions">
+                        <a href="login.html" class="nav-link">Sign In</a>
+                        <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
+                    </div>
+                    
+                    <!-- Credits Display (for authenticated users) -->
+                    <div class="credits-display" id="creditsDisplay" style="display: none;">
+                        <div class="credits-badge" id="creditsBadge">
+                            <span class="credits-icon">💳</span>
+                            <span class="credits-amount" id="creditsAmount">--</span>
+                            <span class="credits-text">credits</span>
+                        </div>
+                        <div class="credits-tooltip" id="creditsTooltip">
+                            <div class="tooltip-content">
+                                <div class="tooltip-row">
+                                    <span>Current Balance:</span>
+                                    <span id="tooltipBalance">--</span>
+                                </div>
+                                <div class="tooltip-row">
+                                    <span>Last 7 days:</span>
+                                    <span id="tooltipUsage">-- used</span>
+                                </div>
+                                <div class="tooltip-row">
+                                    <span>Est. cost/generation:</span>
+                                    <span id="tooltipEstimate">10-50 credits</span>
+                                </div>
+                                <div class="tooltip-action">
+                                    <a href="profile.html#credits">Manage Credits →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Profile Link (for authenticated users) -->
+                    <a href="profile.html" class="nav-link" id="profileLink" style="display: none;">👤 Profile</a>
                 </nav>
             </div>
         </header>
@@ -689,6 +734,8 @@
     </div>
 
     <script src="data-loader.js"></script>
+    <script src="credits.js?v=1.0"></script>
+    <script src="credits-widget.js?v=1.0"></script>
     <script src="script.js?v=1.3"></script>
 </body>
 </html> 

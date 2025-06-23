@@ -1,0 +1,151 @@
+/* Credit Widget - Minimal, self-contained styles */
+
+/* Integration with existing credits display */
+.credits-badge.low {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%) !important;
+  animation: pulse 2s infinite;
+}
+
+.credits-badge.medium {
+  background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%) !important;
+}
+
+.credits-badge.high {
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%) !important;
+}
+
+/* Fallback widget styles (if existing display not found) */
+#credit-widget {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.credit-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.credit-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.credit-badge.low {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+  animation: pulse 2s infinite;
+}
+
+.credit-badge.medium {
+  background: linear-gradient(135deg, #ffa726 0%, #ff9800 100%);
+}
+
+.credit-badge.high {
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.credit-icon {
+  font-size: 16px;
+}
+
+.credit-amount {
+  font-weight: 600;
+  min-width: 30px;
+  text-align: center;
+}
+
+.credit-label {
+  font-size: 12px;
+  opacity: 0.9;
+}
+
+/* Modal styles */
+.credit-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.credit-modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.credit-modal h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.credit-balance-large {
+  font-size: 48px;
+  font-weight: bold;
+  color: #667eea;
+  margin: 16px 0;
+}
+
+.credit-actions {
+  margin-top: 20px;
+}
+
+.credit-actions button {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.2s ease;
+}
+
+.credit-actions button:hover {
+  background: #5a67d8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #credit-widget {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .credit-badge {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  
+  .credit-label {
+    display: none;
+  }
+} 

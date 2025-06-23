@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Integration Demo</title>
+    <link rel="stylesheet" href="credits-widget.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .demo-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .demo-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 8px;
+            transition: background 0.2s ease;
+        }
+        .demo-button:hover {
+            background: #5a67d8;
+        }
+        .demo-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .api-key-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        .status {
+            padding: 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>🎬 Credit Integration Demo</h1>
+    <p>This demo shows how the credit widget integrates with your existing generation functions.</p>
+
+    <div class="demo-card">
+        <h3>1. Setup API Key</h3>
+        <input type="text" 
+               class="api-key-input" 
+               id="apiKeyInput" 
+               placeholder="Enter your API key (admin_bfc0179645e270e4b8806c7206ee36a09b4625305cba978b73e6e45d2c416028)"
+               value="admin_bfc0179645e270e4b8806c7206ee36a09b4625305cba978b73e6e45d2c416028">
+        <button class="demo-button" onclick="setupApiKey()">Setup API Key</button>
+        <div id="setupStatus"></div>
+    </div>
+
+    <div class="demo-card">
+        <h3>2. Credit Widget</h3>
+        <p>The credit widget appears in the top-right corner and shows your current balance.</p>
+        <button class="demo-button" onclick="refreshCredits()">Refresh Credits</button>
+        <button class="demo-button" onclick="showCreditDetails()">Show Details</button>
+    </div>
+
+    <div class="demo-card">
+        <h3>3. Integration Examples</h3>
+        <p>These buttons simulate your generation functions with credit checks:</p>
+        
+        <button class="demo-button" onclick="simulateStructureGeneration()">
+            📖 Generate Structure (25 credits)
+        </button>
+        
+        <button class="demo-button" onclick="simulateSceneGeneration()">
+            🎬 Generate Scenes (50 credits)
+        </button>
+        
+        <button class="demo-button" onclick="simulateDialogueGeneration()">
+            💬 Generate Dialogue (30 credits)
+        </button>
+        
+        <div id="generationStatus"></div>
+    </div>
+
+    <div class="demo-card">
+        <h3>4. Cost Estimation</h3>
+        <p>Test the cost estimation feature:</p>
+        <textarea id="promptInput" placeholder="Enter a sample prompt..." rows="3" style="width: 100%; margin-bottom: 12px;"></textarea>
+        <button class="demo-button" onclick="estimateCost()">💰 Estimate Cost</button>
+        <div id="estimateStatus"></div>
+    </div>
+
+    <div class="demo-card">
+        <h3>5. Integration Code</h3>
+        <p>Here's exactly what you add to your existing functions:</p>
+        <pre style="background: #f8f8f8; padding: 16px; border-radius: 6px; overflow-x: auto;"><code>// Your existing function
+async function generateStructure() {
+    // 🔥 ADD THIS: Credit check (1 line)
+    if (!await window.creditWidget.canAfford(25)) return;
+    
+    showLoading('Generating structure...');
+    
+    try {
+        const response = await fetch('/api/generate-structure', {
+            // ... your existing API call
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            
+            // 🔥 ADD THIS: Refresh balance (1 line)  
+            window.creditWidget.refreshAfterOperation();
+            
+            // ... your existing success handling
+        }
+    } catch (error) {
+        // ... your existing error handling
+    }
+}</code></pre>
+    </div>
+
+    <div class="demo-card">
+        <h3>6. Testing Results</h3>
+        <div id="testResults"></div>
+    </div>
+
+    <script src="credits-widget.js"></script>
+    <script>
+        let testResults = [];
+
+        function setupApiKey() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (!apiKey) {
+                showStatus('setupStatus', 'Please enter an API key', 'error');
+                return;
+            }
+            
+            window.creditWidget.setApiKey(apiKey);
+            showStatus('setupStatus', '✅ API key configured! Credit widget should show your balance.', 'success');
+        }
+
+        function refreshCredits() {
+            window.creditWidget.refreshAfterOperation();
+            showStatus('generationStatus', '🔄 Credits refreshed', 'info');
+        }
+
+        function showCreditDetails() {
+            window.creditWidget.showDetailModal();
+        }
+
+        async function simulateStructureGeneration() {
+            addTestResult('Structure Generation', 'Starting...');
+            
+            const canAfford = await window.creditWidget.canAfford(25);
+            if (!canAfford) {
+                addTestResult('Structure Generation', '❌ Insufficient credits - operation blocked');
+                showStatus('generationStatus', '❌ Cannot afford structure generation (25 credits required)', 'error');
+                return;
+            }
+            
+            addTestResult('Structure Generation', '✅ Credit check passed');
+            showStatus('generationStatus', '✅ Structure generation would proceed (25 credits deducted)', 'success');
+            
+            // Simulate successful operation
+            setTimeout(() => {
+                window.creditWidget.refreshAfterOperation();
+                addTestResult('Structure Generation', '✅ Credits refreshed after operation');
+            }, 1000);
+        }
+
+        async function simulateSceneGeneration() {
+            addTestResult('Scene Generation', 'Starting...');
+            
+            const canAfford = await window.creditWidget.canAfford(50);
+            if (!canAfford) {
+                addTestResult('Scene Generation', '❌ Insufficient credits - operation blocked');
+                showStatus('generationStatus', '❌ Cannot afford scene generation (50 credits required)', 'error');
+                return;
+            }
+            
+            addTestResult('Scene Generation', '✅ Credit check passed');
+            showStatus('generationStatus', '✅ Scene generation would proceed (50 credits deducted)', 'success');
+            
+            setTimeout(() => {
+                window.creditWidget.refreshAfterOperation();
+                addTestResult('Scene Generation', '✅ Credits refreshed after operation');
+            }, 1000);
+        }
+
+        async function simulateDialogueGeneration() {
+            addTestResult('Dialogue Generation', 'Starting...');
+            
+            const canAfford = await window.creditWidget.canAfford(30);
+            if (!canAfford) {
+                addTestResult('Dialogue Generation', '❌ Insufficient credits - operation blocked');
+                showStatus('generationStatus', '❌ Cannot afford dialogue generation (30 credits required)', 'error');
+                return;
+            }
+            
+            addTestResult('Dialogue Generation', '✅ Credit check passed');
+            showStatus('generationStatus', '✅ Dialogue generation would proceed (30 credits deducted)', 'success');
+            
+            setTimeout(() => {
+                window.creditWidget.refreshAfterOperation();
+                addTestResult('Dialogue Generation', '✅ Credits refreshed after operation');
+            }, 1000);
+        }
+
+        async function estimateCost() {
+            const prompt = document.getElementById('promptInput').value;
+            if (!prompt) {
+                showStatus('estimateStatus', 'Please enter a prompt to estimate', 'error');
+                return;
+            }
+            
+            const canProceed = await window.creditWidget.showCostEstimate(prompt, 'demo operation');
+            if (canProceed) {
+                showStatus('estimateStatus', '✅ User approved the estimated cost', 'success');
+            } else {
+                showStatus('estimateStatus', '❌ User cancelled due to cost or insufficient credits', 'error');
+            }
+        }
+
+        function showStatus(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function addTestResult(operation, result) {
+            testResults.push({ operation, result, timestamp: new Date().toLocaleTimeString() });
+            updateTestResults();
+        }
+
+        function updateTestResults() {
+            const resultsElement = document.getElementById('testResults');
+            resultsElement.innerHTML = testResults.map(test => 
+                `<div style="margin: 4px 0; padding: 8px; background: #f8f8f8; border-radius: 4px;">
+                    <strong>${test.operation}</strong> (${test.timestamp}): ${test.result}
+                </div>`
+            ).join('');
+        }
+
+        // Auto-setup if API key is pre-filled
+        window.addEventListener('load', () => {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (apiKey) {
+                setTimeout(() => setupApiKey(), 1000);
+            }
+        });
+    </script>
+</body>
+</html> 

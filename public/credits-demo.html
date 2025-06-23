@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit System Demo - SCREENPLAY HACK</title>
+    <link rel="stylesheet" href="styles.css?v=1.2">
+    <link rel="stylesheet" href="credits.css?v=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        .demo-notice {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 16px;
+            text-align: center;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+        }
+        .profile-container {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="demo-notice">
+            🎬 Credit System Demo - This shows how your credit system will look once implemented
+        </div>
+        
+        <header class="header">
+            <div class="header-content">
+                <h1 class="title">SCREENPLAY HACK</h1>
+                <nav class="header-nav">
+                    <div class="credits-display" id="creditsDisplay">
+                        <div class="credits-badge high" id="creditsBadge">
+                            <span class="credits-icon">💳</span>
+                            <span class="credits-amount" id="creditsAmount">1,247</span>
+                            <span class="credits-text">credits</span>
+                        </div>
+                        <div class="credits-tooltip" id="creditsTooltip">
+                            <div class="tooltip-content">
+                                <div class="tooltip-row">
+                                    <span>Current Balance:</span>
+                                    <span id="tooltipBalance">1,247 credits</span>
+                                </div>
+                                <div class="tooltip-row">
+                                    <span>Last 7 days:</span>
+                                    <span id="tooltipUsage">128 used</span>
+                                </div>
+                                <div class="tooltip-row">
+                                    <span>Est. cost/generation:</span>
+                                    <span id="tooltipEstimate">10-50 credits</span>
+                                </div>
+                                <div class="tooltip-action">
+                                    <a href="#credits">Manage Credits →</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="#" class="nav-link">👤 Profile</a>
+                </nav>
+            </div>
+        </header>
+
+        <div class="profile-container">
+            <!-- Credits Dashboard -->
+            <div class="credits-dashboard" id="creditsDashboard">
+                <div class="credits-overview">
+                    <div class="credits-card main-balance">
+                        <div class="card-header">
+                            <h3>💳 Current Balance</h3>
+                            <div class="balance-status" id="balanceStatus">
+                                <span class="status-dot high" id="statusDot"></span>
+                                <span id="statusText">Good</span>
+                            </div>
+                        </div>
+                        <div class="balance-amount" id="mainBalance">
+                            <span class="amount-number" id="balanceNumber">1,247</span>
+                            <span class="amount-unit">credits</span>
+                        </div>
+                        <div class="balance-estimate" id="balanceEstimate">
+                            Estimated remaining generations: <span id="estimatedGenerations">41</span>
+                        </div>
+                        <div class="card-actions">
+                            <button class="btn btn-primary btn-sm" onclick="alert('Credit purchasing demo')">💰 Add Credits</button>
+                            <button class="btn btn-outline btn-sm" onclick="alert('Usage history demo')">📊 View History</button>
+                        </div>
+                    </div>
+                    
+                    <div class="credits-stats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="thisWeekUsage">128</div>
+                            <div class="stat-label">This Week</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalRequests">47</div>
+                            <div class="stat-label">Total Requests</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgCostPerRequest">23</div>
+                            <div class="stat-label">Avg/Request</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="usage-breakdown" id="usageBreakdown">
+                    <h4>Recent Usage</h4>
+                    <div class="usage-list" id="usageList">
+                        <div class="usage-item">
+                            <div class="usage-info">
+                                <div class="usage-endpoint">Generate Structure</div>
+                                <div class="usage-details">
+                                    Dec 15, 2:34 PM • 2,150 in, 890 out • claude-3-5-sonnet-20241022
+                                </div>
+                            </div>
+                            <div class="usage-cost">42.8 credits</div>
+                        </div>
+                        
+                        <div class="usage-item">
+                            <div class="usage-info">
+                                <div class="usage-endpoint">Generate Plot Points</div>
+                                <div class="usage-details">
+                                    Dec 15, 1:22 PM • 1,890 in, 650 out • claude-3-5-sonnet-20241022
+                                </div>
+                            </div>
+                            <div class="usage-cost">31.2 credits</div>
+                        </div>
+                        
+                        <div class="usage-item">
+                            <div class="usage-info">
+                                <div class="usage-endpoint">Generate Scene</div>
+                                <div class="usage-details">
+                                    Dec 14, 6:45 PM • 1,200 in, 420 out • claude-3-5-sonnet-20241022
+                                </div>
+                            </div>
+                            <div class="usage-cost">18.9 credits</div>
+                        </div>
+                        
+                        <div class="usage-item">
+                            <div class="usage-info">
+                                <div class="usage-endpoint">Generate Dialogue</div>
+                                <div class="usage-details">
+                                    Dec 14, 5:15 PM • 980 in, 380 out • claude-3-5-sonnet-20241022  
+                                </div>
+                            </div>
+                            <div class="usage-cost">15.4 credits</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="model-pricing-info" id="modelPricingInfo">
+                    <h4>💡 Model Pricing Guide</h4>
+                    <div class="pricing-cards" id="pricingCards">
+                        <div class="pricing-card">
+                            <div class="pricing-model">Claude 3 Haiku</div>
+                            <div class="pricing-description">Fast and economical for simple tasks</div>
+                            <div class="pricing-cost">
+                                Input: 0.25/1K tokens<br>
+                                Output: 1.25/1K tokens
+                            </div>
+                        </div>
+                        
+                        <div class="pricing-card recommended">
+                            <div class="pricing-model">Claude 3.5 Sonnet</div>
+                            <div class="pricing-description">Recommended balance of capability and speed</div>
+                            <div class="pricing-cost">
+                                Input: 3.00/1K tokens<br>
+                                Output: 15.00/1K tokens
+                            </div>
+                        </div>
+                        
+                        <div class="pricing-card">
+                            <div class="pricing-model">Claude 3 Opus</div>
+                            <div class="pricing-description">Most capable for complex creative tasks</div>
+                            <div class="pricing-cost">
+                                Input: 15.00/1K tokens<br>
+                                Output: 75.00/1K tokens
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Example Low Balance Warning -->
+            <div style="grid-column: 1 / -1; margin-bottom: 20px;">
+                <div class="low-credits-warning">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-content">
+                        <div class="warning-title">Low Credit Balance</div>
+                        <div class="warning-message">
+                            You have 47 credits remaining. Add credits to continue generating content.
+                        </div>
+                    </div>
+                    <div class="warning-action">
+                        <button class="btn btn-primary btn-sm" onclick="alert('Add credits demo')">Add Credits</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Placeholder for other content -->
+            <div style="background: #f9fafb; border-radius: 12px; padding: 24px; text-align: center; color: #64748b;">
+                <h3>Libraries Panel</h3>
+                <p>Your existing libraries panel would go here</p>
+            </div>
+            
+            <div style="background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; text-align: center; color: #64748b;">
+                <h3>Projects Panel</h3>
+                <p>Your existing projects panel would go here</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo credit status changes
+        let creditBalance = 1247;
+        let demoMode = 0;
+        
+        function cycleCreditDemo() {
+            const modes = [
+                { credits: 1247, status: 'high', text: 'Good' },
+                { credits: 150, status: 'medium', text: 'Medium' },
+                { credits: 35, status: 'low', text: 'Low' }
+            ];
+            
+            const mode = modes[demoMode % modes.length];
+            
+            // Update header
+            document.getElementById('creditsAmount').textContent = mode.credits;
+            document.getElementById('creditsBadge').className = `credits-badge ${mode.status}`;
+            
+            // Update main balance
+            document.getElementById('balanceNumber').textContent = mode.credits;
+            document.getElementById('statusDot').className = `status-dot ${mode.status}`;
+            document.getElementById('statusText').textContent = mode.text;
+            document.getElementById('estimatedGenerations').textContent = Math.floor(mode.credits / 30);
+            
+            demoMode++;
+        }
+        
+        // Change credit status every 3 seconds for demo
+        setInterval(cycleCreditDemo, 3000);
+        
+        console.log('Credit System Demo Loaded! 🎬');
+        console.log('- Credit badge changes color based on balance');
+        console.log('- Hover over the credit badge to see the tooltip');
+        console.log('- Full dashboard shows usage history and pricing');
+        console.log('- Low balance warnings appear automatically');
+    </script>
+</body>
+</html> 

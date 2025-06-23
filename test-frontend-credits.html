@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Credit System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .loading { color: blue; }
+        input[type="text"] { width: 100%; padding: 8px; margin: 5px 0; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Frontend Credit System Test</h1>
+    
+    <div class="test-section">
+        <h3>1. API Key Setup</h3>
+        <input type="text" id="apiKey" placeholder="Enter your API key here" value="admin_bfc0179645e270e4b8806c7206ee36a09b4625305cba978b73e6e45d2c416028">
+        <button onclick="saveApiKey()">Save API Key</button>
+        <div id="apiKeyStatus"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test My Stats Endpoint</h3>
+        <button onclick="testMyStats()">Get My Stats</button>
+        <div id="statsResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Model Pricing Endpoint</h3>
+        <button onclick="testModelPricing()">Get Model Pricing</button>
+        <div id="pricingResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Credit System Integration</h3>
+        <button onclick="testCreditSystemIntegration()">Test Full Integration</button>
+        <div id="integrationResult"></div>
+    </div>
+
+    <script>
+        let currentApiKey = 'admin_bfc0179645e270e4b8806c7206ee36a09b4625305cba978b73e6e45d2c416028';
+
+        function saveApiKey() {
+            currentApiKey = document.getElementById('apiKey').value;
+            localStorage.setItem('apiKey', currentApiKey);
+            document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✅ API Key saved to localStorage</span>';
+        }
+
+        async function testMyStats() {
+            const resultDiv = document.getElementById('statsResult');
+            resultDiv.innerHTML = '<span class="loading">🔄 Testing /api/my-stats...</span>';
+
+            try {
+                const response = await fetch('/api/my-stats', {
+                    headers: {
+                        'X-API-Key': currentApiKey
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <span class="success">✅ Success!</span>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<span class="error">❌ Error ${response.status}: ${error}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Network Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testModelPricing() {
+            const resultDiv = document.getElementById('pricingResult');
+            resultDiv.innerHTML = '<span class="loading">🔄 Testing /api/model-pricing...</span>';
+
+            try {
+                const response = await fetch('/api/model-pricing', {
+                    headers: {
+                        'X-API-Key': currentApiKey
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `
+                        <span class="success">✅ Success!</span>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<span class="error">❌ Error ${response.status}: ${error}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Network Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testCreditSystemIntegration() {
+            const resultDiv = document.getElementById('integrationResult');
+            resultDiv.innerHTML = '<span class="loading">🔄 Testing full credit system integration...</span>';
+
+            try {
+                // Test 1: Get user stats
+                const statsResponse = await fetch('/api/my-stats', {
+                    headers: { 'X-API-Key': currentApiKey }
+                });
+
+                if (!statsResponse.ok) {
+                    throw new Error(`Stats API failed: ${statsResponse.status}`);
+                }
+
+                const statsData = await statsResponse.json();
+
+                // Test 2: Get model pricing
+                const pricingResponse = await fetch('/api/model-pricing', {
+                    headers: { 'X-API-Key': currentApiKey }
+                });
+
+                if (!pricingResponse.ok) {
+                    throw new Error(`Pricing API failed: ${pricingResponse.status}`);
+                }
+
+                const pricingData = await pricingResponse.json();
+
+                // Test 3: Simulate credit system UI updates
+                const creditBalance = statsData.user.credits_remaining || statsData.user.credits || 0;
+                const weeklyUsage = statsData.usage.total_cost || 0;
+
+                resultDiv.innerHTML = `
+                    <span class="success">✅ Full Integration Test Passed!</span>
+                    <h4>📊 Credit System Data:</h4>
+                    <ul>
+                        <li><strong>Current Balance:</strong> ${creditBalance} credits</li>
+                        <li><strong>Weekly Usage:</strong> ${weeklyUsage} credits</li>
+                        <li><strong>Total Requests:</strong> ${statsData.usage.total_requests || 0}</li>
+                        <li><strong>Available Models:</strong> ${Object.keys(pricingData).length}</li>
+                    </ul>
+                    <h4>💰 Model Pricing (First 3):</h4>
+                    <pre>${JSON.stringify(Object.entries(pricingData).slice(0, 3), null, 2)}</pre>
+                `;
+
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Integration Test Failed: ${error.message}</span>`;
+            }
+        }
+
+        // Auto-save API key on page load
+        window.onload = function() {
+            const savedKey = localStorage.getItem('apiKey');
+            if (savedKey) {
+                currentApiKey = savedKey;
+                document.getElementById('apiKey').value = savedKey;
+                document.getElementById('apiKeyStatus').innerHTML = '<span class="success">✅ API Key loaded from localStorage</span>';
+            }
+        };
+    </script>
+</body>
+</html> 

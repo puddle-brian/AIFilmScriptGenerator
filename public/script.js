@@ -18,8 +18,133 @@ const appState = {
     originalPrompt: null,
     isEditMode: false,
     plotPoints: {},
-    selectedModel: 'claude-sonnet-4-20250514' // Default to latest model
+    selectedModel: 'claude-sonnet-4-20250514', // Default to latest model
+    // Authentication state
+    isAuthenticated: false,
+    user: null,
+    apiKey: null
 };
+
+// Authentication Management
+const authManager = {
+    init() {
+        this.checkAuthStatus();
+        this.updateUI();
+    },
+    
+    checkAuthStatus() {
+        const apiKey = localStorage.getItem('apiKey');
+        const userData = localStorage.getItem('userData');
+        
+        if (apiKey && userData) {
+            try {
+                appState.apiKey = apiKey;
+                appState.user = JSON.parse(userData);
+                appState.isAuthenticated = true;
+            } catch (error) {
+                console.error('Error parsing stored user data:', error);
+                this.clearAuth();
+            }
+        }
+    },
+    
+    updateUI() {
+        const authStatus = document.getElementById('authStatus');
+        const guestActions = document.getElementById('guestActions');
+        const creditsDisplay = document.getElementById('creditsDisplay');
+        const profileLink = document.getElementById('profileLink');
+        const userName = document.getElementById('userName');
+        
+        if (appState.isAuthenticated && appState.user) {
+            // Show authenticated user UI
+            if (authStatus) {
+                authStatus.style.display = 'flex';
+                if (userName) userName.textContent = appState.user.username;
+            }
+            if (guestActions) guestActions.style.display = 'none';
+            if (creditsDisplay) creditsDisplay.style.display = 'flex';
+            if (profileLink) profileLink.style.display = 'block';
+            
+            // Initialize credit widget if available
+            if (window.creditWidget) {
+                window.creditWidget.init();
+            }
+        } else {
+            // Show guest UI
+            if (authStatus) authStatus.style.display = 'none';
+            if (guestActions) guestActions.style.display = 'flex';
+            if (creditsDisplay) creditsDisplay.style.display = 'none';
+            if (profileLink) profileLink.style.display = 'none';
+            
+            // Show registration prompt for key actions
+            this.showRegistrationPrompts();
+        }
+    },
+    
+    showRegistrationPrompts() {
+        // Add visual indicators that registration is needed for generation
+        const generateButtons = document.querySelectorAll('.btn-primary');
+        generateButtons.forEach(button => {
+            if (button.textContent.includes('Continue') || 
+                button.textContent.includes('Generate') ||
+                button.textContent.includes('Create')) {
+                button.onclick = (e) => {
+                    e.preventDefault();
+                    this.showRegistrationModal();
+                };
+            }
+        });
+    },
+    
+    showRegistrationModal() {
+        const modalHtml = `
+            <div class="modal-overlay" id="registrationPromptModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>🚀 Ready to Generate Your Script?</h3>
+                        <button class="modal-close" onclick="authManager.hideRegistrationModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <p>To use AI-powered script generation, you'll need a free account with <strong>100 free credits</strong> to get started!</p>
+                        <div class="registration-benefits">
+                            <ul>
+                                <li>✨ <strong>100 free credits</strong> (worth $1.00)</li>
+                                <li>🎬 Generate complete film scripts</li>
+                                <li>💾 Save and manage your projects</li>
+                                <li>📊 Track your usage and costs</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="authManager.hideRegistrationModal()">Maybe Later</button>
+                        <a href="register.html" class="btn btn-primary">Create Free Account</a>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    },
+    
+    hideRegistrationModal() {
+        const modal = document.getElementById('registrationPromptModal');
+        if (modal) modal.remove();
+    },
+    
+    clearAuth() {
+        localStorage.removeItem('apiKey');
+        localStorage.removeItem('userData');
+        appState.isAuthenticated = false;
+        appState.user = null;
+        appState.apiKey = null;
+        this.updateUI();
+    }
+};
+
+// Global logout function
+function logout() {
+    authManager.clearAuth();
+    window.location.href = 'login.html';
+}
 
 // Model pricing information
 const modelPricing = {
@@ -540,6 +665,10 @@ document.addEventListener('DOMContentLoaded', async function() {
 // Initialize application
 async function initializeApp() {
     console.log('=== INITIALIZE APP DEBUG ===');
+    
+    // Initialize authentication first
+    authManager.init();
+    
     updateProgressBar();
     updateStepIndicators();
     
@@ -1059,13 +1188,26 @@ async function generateStructure() {
         return;
     }
     
+    // Check authentication first
+    if (!appState.isAuthenticated) {
+        authManager.showRegistrationModal();
+        return;
+    }
+    
+    // 🔥 Credit check before generation
+    if (!await window.creditWidget.canAfford(25)) {
+        showToast('Insufficient credits for structure generation (25 credits required)', 'error');
+        return;
+    }
+    
     try {
         showLoading('Generating plot structure...');
         
         const response = await fetch('/api/generate-structure', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
@@ -1077,6 +1219,9 @@ async function generateStructure() {
         const data = await response.json();
         
         if (response.ok) {
+            // 🔥 Refresh credits after successful generation
+            window.creditWidget.refreshAfterOperation();
+            
             appState.generatedStructure = data.structure;
             appState.templateData = data.template;
             appState.projectId = data.projectId;
@@ -1966,6 +2111,18 @@ async function generateAllScenes() {
         return;
     }
     
+    // Check authentication first
+    if (!appState.isAuthenticated) {
+        authManager.showRegistrationModal();
+        return;
+    }
+    
+    // 🔥 Credit check before generation
+    if (!await window.creditWidget.canAfford(50)) {
+        showToast('Insufficient credits for scene generation (50 credits required)', 'error');
+        return;
+    }
+    
     const structureKeys = Object.keys(appState.generatedStructure);
     
     if (structureKeys.length === 0) {
@@ -2016,6 +2173,9 @@ async function generateAllScenes() {
         
         // Refresh the scenes display after all scenes are generated
         displayScenes(appState.generatedScenes);
+        
+        // 🔥 Refresh credits after successful generation
+        window.creditWidget.refreshAfterOperation();
         
         hideLoading();
         showToast(`Successfully generated scenes for ${actsWithPlotPoints.length} acts!`, 'success');
@@ -2802,6 +2962,18 @@ async function generateAllDialogue() {
         return;
     }
     
+    // Check authentication first
+    if (!appState.isAuthenticated) {
+        authManager.showRegistrationModal();
+        return;
+    }
+    
+    // 🔥 Credit check before generation
+    if (!await window.creditWidget.canAfford(30)) {
+        showToast('Insufficient credits for dialogue generation (30 credits required)', 'error');
+        return;
+    }
+    
     // Initialize generatedDialogues if it doesn't exist
     if (!appState.generatedDialogues) {
         appState.generatedDialogues = {};
@@ -2844,6 +3016,9 @@ async function generateAllDialogue() {
         
         // Refresh the dialogue display after all dialogues are generated
         displayDialogueGeneration();
+        
+        // 🔥 Refresh credits after successful generation
+        window.creditWidget.refreshAfterOperation();
         
         hideLoading();
         showToast(`Successfully generated dialogue for ${allScenes.length} scenes!`, 'success');

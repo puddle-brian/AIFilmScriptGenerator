@@ -1,0 +1,479 @@
+/* =================================
+   CREDIT SYSTEM STYLES
+   ================================= */
+
+/* Header Credits Display */
+.credits-display {
+    position: relative;
+    margin-right: 15px;
+}
+
+.credits-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
+.credits-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.credits-badge.low {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    animation: subtle-pulse 2s infinite;
+}
+
+.credits-badge.medium {
+    background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);
+}
+
+.credits-badge.high {
+    background: linear-gradient(135deg, #48cae4 0%, #023e8a 100%);
+}
+
+@keyframes subtle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+.credits-icon {
+    font-size: 14px;
+}
+
+.credits-amount {
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.credits-text {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+/* Credits Tooltip */
+.credits-tooltip {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e1e8f0;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    min-width: 280px;
+}
+
+.credits-display:hover .credits-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.tooltip-content {
+    padding: 16px;
+}
+
+.tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f4f8;
+    font-size: 14px;
+}
+
+.tooltip-row:last-child {
+    border-bottom: none;
+}
+
+.tooltip-row span:first-child {
+    color: #64748b;
+    font-weight: 500;
+}
+
+.tooltip-row span:last-child {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.tooltip-action {
+    margin-top: 12px;
+    text-align: center;
+}
+
+.tooltip-action a {
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 13px;
+    transition: color 0.2s ease;
+}
+
+.tooltip-action a:hover {
+    color: #5a6acf;
+}
+
+/* Credits Dashboard */
+.credits-dashboard {
+    grid-column: 1 / -1;
+    margin-bottom: 30px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+}
+
+.credits-overview {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+/* Main Balance Card */
+.credits-card.main-balance {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.card-header h3 {
+    margin: 0;
+    color: #1e293b;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.balance-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+}
+
+.status-dot.low { background: #ef4444; }
+.status-dot.medium { background: #f59e0b; }
+.status-dot.high { background: #10b981; }
+
+#statusText {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.balance-amount {
+    margin-bottom: 12px;
+}
+
+.amount-number {
+    font-size: 36px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -1px;
+}
+
+.amount-unit {
+    font-size: 16px;
+    color: #64748b;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+.balance-estimate {
+    color: #64748b;
+    font-size: 14px;
+    margin-bottom: 20px;
+}
+
+.balance-estimate span {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.card-actions {
+    display: flex;
+    gap: 12px;
+}
+
+/* Stats Cards */
+.credits-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    min-width: 140px;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 4px;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Usage Breakdown */
+.usage-breakdown {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.usage-breakdown h4 {
+    margin: 0 0 16px 0;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.usage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.usage-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+}
+
+.usage-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.usage-endpoint {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+.usage-details {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.usage-cost {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 14px;
+}
+
+.usage-loading {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Model Pricing Info */
+.model-pricing-info {
+    background: white;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+}
+
+.model-pricing-info h4 {
+    margin: 0 0 16px 0;
+    color: #1e293b;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.pricing-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.pricing-card {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pricing-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.pricing-card.recommended {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.pricing-card.recommended .pricing-model,
+.pricing-card.recommended .pricing-description,
+.pricing-card.recommended .pricing-cost {
+    color: white;
+}
+
+.pricing-model {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 14px;
+    margin-bottom: 4px;
+}
+
+.pricing-description {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.pricing-cost {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 12px;
+}
+
+.pricing-loading {
+    text-align: center;
+    color: #64748b;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* Low Credits Warning */
+.low-credits-warning {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    border: 1px solid #fca5a5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.warning-icon {
+    font-size: 20px;
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-title {
+    font-weight: 600;
+    color: #991b1b;
+    margin-bottom: 4px;
+}
+
+.warning-message {
+    font-size: 14px;
+    color: #7f1d1d;
+}
+
+.warning-action {
+    margin-left: auto;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .credits-overview {
+        grid-template-columns: 1fr;
+    }
+    
+    .credits-stats {
+        flex-direction: row;
+        overflow-x: auto;
+    }
+    
+    .stat-card {
+        min-width: 120px;
+        flex-shrink: 0;
+    }
+    
+    .pricing-cards {
+        grid-template-columns: 1fr;
+    }
+    
+    .credits-tooltip {
+        right: -50px;
+        min-width: 250px;
+    }
+    
+    .credits-badge {
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+/* Animation Classes */
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+} 
