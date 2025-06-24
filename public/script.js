@@ -6123,8 +6123,7 @@ function generateProjectCard(project, context = 'modal') {
                 ${progressBadge}
             </div>
             <div class="project-meta">
-                <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}<br>
-                <strong>Tone:</strong> ${project.tone || 'Not specified'}
+                <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}
             </div>
             <div class="project-logline">"${project.logline}"</div>
             <div class="project-actions">
