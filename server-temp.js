@@ -976,22 +976,6 @@ app.get('/api/templates', async (req, res) => {
   }
 });
 
-// Get individual template data  
-app.get('/api/template/:templateId', async (req, res) => {
-  try {
-    const { templateId } = req.params;
-    const templatePath = path.join(__dirname, 'templates', `${templateId}.json`);
-    
-    const templateContent = await fs.readFile(templatePath, 'utf8');
-    const templateData = JSON.parse(templateContent);
-    
-    res.json(templateData);
-  } catch (error) {
-    console.error('Error loading template:', error);
-    res.status(404).json({ error: 'Template not found' });
-  }
-});
-
 // Preview the prompt that would be used for structure generation
 app.post('/api/preview-prompt', async (req, res) => {
   try {
@@ -1117,7 +1101,7 @@ app.post('/api/generate-structure-custom', async (req, res) => {
     }
 
     // Auto-save the generated structure locally
-    const customProjectId = uuidv4();
+    const projectId = uuidv4();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
     const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
@@ -1146,7 +1130,7 @@ app.post('/api/generate-structure-custom', async (req, res) => {
       structure: structureData,
       template: templateData,
       storyInput,
-      projectId: customProjectId,
+      projectId,
       customPrompt,
       generatedAt: new Date().toISOString()
     }, null, 2));
@@ -1216,13 +1200,13 @@ app.post('/api/generate-structure-custom', async (req, res) => {
 3. Generate dialogue for individual scenes
 4. Assemble the final script
 
-Project ID: ${customProjectId}
+Project ID: ${projectId}
 `;
     
     await fs.writeFile(readmeFile, readme);
     
     console.log(`Project saved to: ${projectDir}`);
-    console.log(`Project ID: ${customProjectId}`);
+    console.log(`Project ID: ${projectId}`);
 
     // Also save to database for profile page (use 'guest' as default user)
     try {
@@ -1231,7 +1215,7 @@ Project ID: ${customProjectId}
         structure: structureData,
         template: templateData,
         storyInput,
-        projectId: customProjectId,
+        projectId,
         projectPath: projectFolderName,
         customPromptUsed: true,
         generatedAt: new Date().toISOString()
@@ -1366,21 +1350,10 @@ Example format:
     const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
     const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
 
-    // Get appropriate max_tokens for the model
-    function getMaxTokensForModel(modelName) {
-      if (modelName.includes('haiku')) {
-        return 8192; // Claude 3.5 Haiku limit
-      } else if (modelName.includes('sonnet')) {
-        return 12000; // Claude 3.5 Sonnet can handle more
-      } else {
-        return 8192; // Safe default
-      }
-    }
-
     console.log('Sending request to Claude API...');
     const completion = await trackedAnthropic.messages({
       model: model,
-      max_tokens: getMaxTokensForModel(model),
+      max_tokens: 12000,
       temperature: 0.7,
       system: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON.",
       messages: [
@@ -1407,6 +1380,12 @@ Example format:
       };
     }
 
+    // Auto-save the generated structure locally
+    const projectId = uuidv4();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
+    const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+    
     const projectDir = path.join(__dirname, 'generated', projectFolderName);
     await fs.mkdir(projectDir, { recursive: true });
     

@@ -2425,59 +2425,102 @@ async function generateStructure() {
 // Display generated structure
 function displayStructure(structure, prompt = null, systemMessage = null) {
     const container = document.getElementById('structureContent');
-    container.innerHTML = '';
     
-    // Add prompt review section if available
-    if (prompt && systemMessage) {
-        const promptSection = document.createElement('div');
-        promptSection.className = 'prompt-review-section';
-        promptSection.innerHTML = `
-            <div class="prompt-review-header">
-                <h3>📋 Generated Using This Prompt</h3>
-                <button class="btn btn-outline btn-sm" onclick="showUsedPromptModal()">View Full Prompt</button>
-            </div>
-            <div class="prompt-summary">
-                <p><strong>Template:</strong> ${appState.templateData?.name || 'Unknown'}</p>
-                <p><strong>Story:</strong> ${appState.storyInput?.title || 'Untitled'}</p>
-                <p><strong>Influences:</strong> ${getInfluencesSummary()}</p>
-            </div>
-        `;
-        container.appendChild(promptSection);
-    }
-    
-    // Create editable content blocks for each act
-    Object.entries(structure).forEach(([key, element]) => {
-        if (typeof element === 'object' && element.name) {
-            const actContent = JSON.stringify(element);
-            
-            createEditableContentBlock({
-                id: `act-${key}`,
-                type: 'acts',
-                title: element.name || key.replace(/_/g, ' ').toUpperCase(),
-                content: actContent,
-                container: container,
-                metadata: { actKey: key },
-                onSave: async (newContent, block) => {
-                    // Save the edited act content
-                    await saveActContent(key, newContent);
-                    
-                    // Update the app state
-                    if (appState.generatedStructure && appState.generatedStructure[key]) {
-                        try {
-                            const updatedAct = JSON.parse(newContent);
-                            appState.generatedStructure[key] = { ...appState.generatedStructure[key], ...updatedAct };
-                        } catch (e) {
-                            // If not JSON, update description
-                            appState.generatedStructure[key].description = newContent;
-                        }
+    // Check if we already have a preview showing
+    const existingPreview = container.parentNode.querySelector('#templateStructurePreview');
+    if (existingPreview) {
+        // Update the existing preview cards with generated content
+        Object.entries(structure).forEach(([key, element]) => {
+            if (typeof element === 'object' && element.name) {
+                const previewCard = existingPreview.querySelector(`[data-act-key="${key}"]`);
+                if (previewCard) {
+                    const placeholder = previewCard.querySelector('.act-placeholder');
+                    if (placeholder) {
+                        // Replace placeholder with generated content
+                        placeholder.innerHTML = `
+                            <div class="generated-content">
+                                <p><strong>Generated Content:</strong></p>
+                                <p>${element.description || 'No description available'}</p>
+                                ${element.character_developments || element.character_development ? 
+                                    `<p><strong>Character Development:</strong> ${element.character_developments || element.character_development}</p>` : ''}
+                                ${element.important_plot_points ? 
+                                    `<p><strong>Key Plot Points:</strong> ${element.important_plot_points}</p>` : ''}
+                            </div>
+                        `;
+                        placeholder.style.background = 'rgba(79, 172, 254, 0.1)';
+                        placeholder.style.borderColor = '#4facfe';
+                        placeholder.style.borderStyle = 'solid';
                     }
-                    
-                    // Save to local storage
-                    saveToLocalStorage();
                 }
-            });
+            }
+        });
+        
+        // Update the preview header to show completion
+        const previewHint = existingPreview.querySelector('.structure-preview-hint');
+        if (previewHint) {
+            previewHint.innerHTML = '<strong>✅ Generated:</strong> Your story structure has been created successfully!';
+            previewHint.style.borderLeftColor = '#68d391';
+            previewHint.style.background = 'rgba(104, 211, 145, 0.1)';
         }
-    });
+        
+        // Don't create duplicate content in container
+        container.innerHTML = '';
+    } else {
+        // No preview exists, create the normal structure display
+        container.innerHTML = '';
+        
+        // Add prompt review section if available
+        if (prompt && systemMessage) {
+            const promptSection = document.createElement('div');
+            promptSection.className = 'prompt-review-section';
+            promptSection.innerHTML = `
+                <div class="prompt-review-header">
+                    <h3>📋 Generated Using This Prompt</h3>
+                    <button class="btn btn-outline btn-sm" onclick="showUsedPromptModal()">View Full Prompt</button>
+                </div>
+                <div class="prompt-summary">
+                    <p><strong>Template:</strong> ${appState.templateData?.name || 'Unknown'}</p>
+                    <p><strong>Story:</strong> ${appState.storyInput?.title || 'Untitled'}</p>
+                    <p><strong>Influences:</strong> ${getInfluencesSummary()}</p>
+                </div>
+            `;
+            container.appendChild(promptSection);
+        }
+        
+        // Create editable content blocks for each act
+        Object.entries(structure).forEach(([key, element]) => {
+            if (typeof element === 'object' && element.name) {
+                const actContent = JSON.stringify(element);
+                
+                createEditableContentBlock({
+                    id: `act-${key}`,
+                    type: 'acts',
+                    title: element.name || key.replace(/_/g, ' ').toUpperCase(),
+                    content: actContent,
+                    container: container,
+                    metadata: { actKey: key },
+                    onSave: async (newContent, block) => {
+                        // Save the edited act content
+                        await saveActContent(key, newContent);
+                        
+                        // Update the app state
+                        if (appState.generatedStructure && appState.generatedStructure[key]) {
+                            try {
+                                const updatedAct = JSON.parse(newContent);
+                                appState.generatedStructure[key] = { ...appState.generatedStructure[key], ...updatedAct };
+                            } catch (e) {
+                                // If not JSON, update description
+                                appState.generatedStructure[key].description = newContent;
+                            }
+                        }
+                        
+                        // Save to local storage
+                        saveToLocalStorage();
+                    }
+                });
+            }
+        });
+    }
     
     // Show regenerate and approve buttons after structure is displayed
     const regenerateBtn = document.getElementById('regenerateBtn');
@@ -4616,8 +4659,9 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         updateInfluenceTags('film');
         updateStoryConceptDisplay();
     } else if (stepNumber === 3) {
-        // Step 3: Acts Generation - Focus on acts generation
+        // Step 3: Acts Generation - Show template structure preview
         console.log('Step 3 - Acts Generation');
+        await displayTemplateStructurePreview();
     } else if (stepNumber === 4) {
         // Step 4: Plot Points Generation
         console.log('Step 4 - Plot Points Generation');
@@ -4833,6 +4877,47 @@ async function newProject() {
     }
 }
 
+// Clear all content containers when starting fresh
+function clearAllContentContainers() {
+    // Clear structure content
+    const structureContainer = document.getElementById('structureContent');
+    if (structureContainer) {
+        structureContainer.innerHTML = '';
+    }
+    
+    // Clear template structure preview
+    const previewContainer = document.getElementById('templateStructurePreview');
+    if (previewContainer) {
+        previewContainer.remove();
+    }
+    
+    // Clear plot points content
+    const plotPointsContainer = document.getElementById('plotPointsContent');
+    if (plotPointsContainer) {
+        plotPointsContainer.innerHTML = '';
+    }
+    
+    // Clear scenes content
+    const scenesContainer = document.getElementById('scenesContent');
+    if (scenesContainer) {
+        scenesContainer.innerHTML = '';
+    }
+    
+    // Clear dialogue content
+    const dialogueContainer = document.getElementById('dialogueContent');
+    if (dialogueContainer) {
+        dialogueContainer.innerHTML = '';
+    }
+    
+    // Hide action buttons
+    const regenerateBtn = document.getElementById('regenerateBtn');
+    const approveBtn = document.getElementById('approveBtn');
+    if (regenerateBtn) regenerateBtn.style.display = 'none';
+    if (approveBtn) approveBtn.style.display = 'none';
+    
+    console.log('✅ All content containers cleared');
+}
+
 // Helper function to start a fresh project
 function startFreshProject() {
     // Clear all app state
@@ -4841,8 +4926,8 @@ function startFreshProject() {
         storyInput: {},
         selectedTemplate: null,
         templateData: null,
-        generatedStructure: null,
-        generatedScenes: null,
+        generatedStructure: {},
+        generatedScenes: {},
         generatedDialogues: {},
         projectId: null,
         projectPath: null,
@@ -4873,6 +4958,9 @@ function startFreshProject() {
     
     // Hide project header
     hideProjectHeader();
+    
+    // Clear any existing content displays
+    clearAllContentContainers();
     
     // Go to step 1
     goToStep(1);
@@ -5022,183 +5110,38 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         fallbackLogline: projectData.storyInput.logline
     });
     
-    if (projectData.storyInput.storyConcept) {
-        appState.currentStoryConcept = projectData.storyInput.storyConcept;
-        console.log('✅ Restored story concept from saved data:', appState.currentStoryConcept);
-    } else if (projectData.storyInput.title && projectData.storyInput.logline) {
-        // Create story concept from legacy data
-        appState.currentStoryConcept = {
-            title: projectData.storyInput.title,
-            logline: projectData.storyInput.logline,
-            fromLibrary: false
-        };
-        console.log('✅ Created story concept from legacy data:', appState.currentStoryConcept);
-    }
-    updateStoryConceptDisplay();
-    
-    // Handle characters - check both unified format and legacy storyInput format
-    if (projectData.projectCharacters && Array.isArray(projectData.projectCharacters)) {
-        // Unified format - characters stored at top level
-        appState.projectCharacters = projectData.projectCharacters;
-        console.log('✅ Loaded characters from unified format:', projectData.projectCharacters.length);
-    } else if (projectData.storyInput.charactersData && Array.isArray(projectData.storyInput.charactersData)) {
-        // Legacy format - characters in storyInput.charactersData
-        appState.projectCharacters = projectData.storyInput.charactersData;
-        console.log('✅ Loaded characters from legacy charactersData format:', projectData.storyInput.charactersData.length);
-    } else if (projectData.storyInput.characters) {
-        // Very old format - convert old format to new format
-        appState.projectCharacters = [{
-            name: 'Imported Characters',
-            description: projectData.storyInput.characters
-        }];
-        console.log('✅ Converted characters from very old format');
-    } else {
-        appState.projectCharacters = [];
-        console.log('⚠️ No characters found in project data');
-    }
-    updateCharacterTags();
-    validateCharactersRequired();
-    
-    // Set totalScenes in storyInput (field is now on Step 5)
-    if (projectData.storyInput.totalScenes) {
-        appState.storyInput.totalScenes = projectData.storyInput.totalScenes;
-    }
-    document.getElementById('tone').value = projectData.storyInput.tone || '';
-    console.log('Basic story info populated');
-    
-    // Populate influences - check both unified format and legacy storyInput format
-    if (projectData.influences && typeof projectData.influences === 'object') {
-        // Unified format - influences stored at top level
-        appState.influences = {
-            directors: projectData.influences.directors || [],
-            screenwriters: projectData.influences.screenwriters || [],
-            films: projectData.influences.films || []
-        };
-        console.log('✅ Loaded influences from unified format:', {
-            directors: appState.influences.directors.length,
-            screenwriters: appState.influences.screenwriters.length,
-            films: appState.influences.films.length
-        });
-        
-        // Update influence tags
-        updateInfluenceTags('director');
-        updateInfluenceTags('screenwriter');
-        updateInfluenceTags('film');
-    } else if (projectData.storyInput.influences) {
-        // Legacy format - influences in storyInput
-        appState.influences = {
-            directors: projectData.storyInput.influences.directors || [],
-            screenwriters: projectData.storyInput.influences.screenwriters || [],
-            films: projectData.storyInput.influences.films || []
-        };
-        console.log('✅ Loaded influences from legacy storyInput format:', {
-            directors: appState.influences.directors.length,
-            screenwriters: appState.influences.screenwriters.length,
-            films: appState.influences.films.length
-        });
-        
-        // Update influence tags
-        updateInfluenceTags('director');
-        updateInfluenceTags('screenwriter');
-        updateInfluenceTags('film');
-    } else {
-        // No influences found in project data - initialize to empty if not already set
-        if (!appState.influences) {
-            appState.influences = { directors: [], screenwriters: [], films: [] };
-        }
-        console.log('⚠️ No influences found in project data - initialized to empty arrays');
-    }
-    
-    // Update app state with loaded data
-    appState.storyInput = projectData.storyInput;
-    
-    // Load template data - check both unified format and legacy format
-    if (projectData.selectedTemplate && projectData.templateData) {
-        // Unified format - template data stored at top level
-        appState.selectedTemplate = projectData.selectedTemplate;
-        appState.templateData = projectData.templateData;
-        console.log('✅ Loaded template from unified format:', projectData.selectedTemplate);
-    } else if (projectData.template) {
-        // Legacy format - convert template name to ID
-        appState.selectedTemplate = findTemplateIdByName(projectData.template.name);
-        appState.templateData = projectData.template;
-        console.log('✅ Loaded template from legacy format:', projectData.template.name);
-    } else {
-        appState.selectedTemplate = null;
-        appState.templateData = null;
-        console.log('⚠️ No template found in project data');
-    }
-    
-    // Load generated structure - check both unified format and legacy format
-    if (projectData.generatedStructure) {
-        // Unified format - structure stored as generatedStructure
-        appState.generatedStructure = projectData.generatedStructure;
-        console.log('✅ Loaded structure from unified format:', Object.keys(projectData.generatedStructure).length, 'keys');
-    } else if (projectData.structure) {
-        // Legacy format - structure stored as structure
-        appState.generatedStructure = projectData.structure;
-        console.log('✅ Loaded structure from legacy format:', Object.keys(projectData.structure).length, 'keys');
-    } else {
-        appState.generatedStructure = {};
-        console.log('⚠️ No structure found in project data');
-    }
-    
+    // Load project data (unified v2.0 format only)
+    appState.currentStoryConcept = projectData.storyInput?.storyConcept || {};
+    appState.projectCharacters = projectData.projectCharacters || [];
+    appState.influences = projectData.influences || { directors: [], screenwriters: [], films: [] };
+    appState.storyInput = projectData.storyInput || {};
+    appState.selectedTemplate = projectData.selectedTemplate;
+    appState.templateData = projectData.templateData;
+    appState.generatedStructure = projectData.generatedStructure || {};
+    appState.plotPoints = projectData.plotPoints || {};
+    appState.generatedScenes = projectData.generatedScenes || {};
+    appState.generatedDialogues = projectData.generatedDialogues || {};
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
     
-    console.log('App state after loading project data:');
-    console.log('  - selectedTemplate:', appState.selectedTemplate);
-    console.log('  - templateData:', appState.templateData);
-    console.log('  - generatedStructure exists:', !!appState.generatedStructure);
-    console.log('  - generatedStructure keys:', Object.keys(appState.generatedStructure || {}));
-    console.log('  - generatedStructure content:', appState.generatedStructure);
+    // Update UI
+    updateStoryConceptDisplay();
+    updateCharacterTags();
+    validateCharactersRequired();
+    updateInfluenceTags('director');
+    updateInfluenceTags('screenwriter');
+    updateInfluenceTags('film');
+    document.getElementById('tone').value = projectData.storyInput?.tone || '';
     
-    // Load plot points into appState if they exist
-    if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
-        appState.plotPoints = projectData.plotPoints;
-        console.log('✅ Loaded plot points:', Object.keys(projectData.plotPoints));
-    } else {
-        appState.plotPoints = {};
-        console.log('⚠️ No plot points found in project data');
-    }
-    
-    // Load generated scenes - check both unified format and legacy format
-    if (projectData.generatedScenes && Object.keys(projectData.generatedScenes).length > 0) {
-        // Unified format - scenes stored as generatedScenes
-        appState.generatedScenes = projectData.generatedScenes;
-        console.log('✅ Loaded scenes from unified format:', Object.keys(projectData.generatedScenes));
-    } else if (projectData.scenes && Object.keys(projectData.scenes).length > 0) {
-        // Legacy format - scenes stored as scenes, need to convert format
-        const scenesForState = {};
-        Object.entries(projectData.scenes).forEach(([key, value]) => {
-            if (value.scenes && Array.isArray(value.scenes)) {
-                // New format: {key: {scenes: [...]}}
-                scenesForState[key] = value.scenes;
-            } else if (Array.isArray(value)) {
-                // Old format: {key: [...]}
-                scenesForState[key] = value;
-            }
-        });
-        appState.generatedScenes = scenesForState;
-        console.log('✅ Loaded scenes from legacy format:', Object.keys(scenesForState));
-    } else {
-        appState.generatedScenes = {};
-        console.log('⚠️ No scenes found in project data');
-    }
-    
-    // Load generated dialogues - check both unified format and legacy format
-    if (projectData.generatedDialogues && Object.keys(projectData.generatedDialogues).length > 0) {
-        // Unified format - dialogues stored as generatedDialogues
-        appState.generatedDialogues = projectData.generatedDialogues;
-        console.log('✅ Loaded dialogues from unified format:', Object.keys(projectData.generatedDialogues));
-    } else if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
-        // Legacy format - dialogues stored as dialogue
-        appState.generatedDialogues = projectData.dialogue;
-        console.log('✅ Loaded dialogues from legacy format:', Object.keys(projectData.dialogue));
-    } else {
-        appState.generatedDialogues = {};
-        console.log('⚠️ No dialogues found in project data');
-    }
+    console.log('✅ Project loaded (unified v2.0):', {
+        storyConcept: !!appState.currentStoryConcept,
+        characters: appState.projectCharacters.length,
+        template: appState.selectedTemplate,
+        structure: Object.keys(appState.generatedStructure).length,
+        plotPoints: Object.keys(appState.plotPoints).length,
+        scenes: Object.keys(appState.generatedScenes).length,
+        dialogues: Object.keys(appState.generatedDialogues).length
+    });
     
     // Determine which step to show based on available data (using appState now that it's populated)
     let targetStep = 1;
@@ -5251,29 +5194,21 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
             await loadTemplates();
             console.log('Templates loaded successfully');
             
-            // Select the template if we have one - BEFORE navigation
-            if (projectData.template && projectData.template.name) {
-                console.log('Selecting template:', projectData.template.name);
-                // Ensure we have the template ID set in appState
-                const templateId = findTemplateIdByName(projectData.template.name);
-                if (templateId) {
-                    appState.selectedTemplate = templateId;
-                    appState.templateData = projectData.template;
-                    console.log('Template set in appState:', templateId);
-                    
-                    // Also update the UI
-                    const templateElements = document.querySelectorAll('.template-card');
-                    console.log('Found template elements:', templateElements.length);
-                    templateElements.forEach(element => {
-                        const templateName = element.querySelector('h3').textContent;
-                        if (templateName === projectData.template.name) {
-                            element.classList.add('selected');
-                            console.log('Template UI updated:', templateName);
-                        }
-                    });
-                } else {
-                    console.warn('Template ID not found for:', projectData.template.name);
-                }
+            // Restore template selection (unified v2.0 format only)
+            if (projectData.selectedTemplate) {
+                console.log('Restoring template:', projectData.selectedTemplate);
+                appState.selectedTemplate = projectData.selectedTemplate;
+                appState.templateData = projectData.templateData;
+                
+                // Update the UI
+                const templateElements = document.querySelectorAll('.template-card');
+                templateElements.forEach(element => {
+                    const templateIdAttr = element.getAttribute('data-template-id');
+                    if (templateIdAttr === projectData.selectedTemplate) {
+                        element.classList.add('selected');
+                        console.log('✅ Template UI restored:', projectData.selectedTemplate);
+                    }
+                });
             }
         } catch (error) {
             console.error('Error loading templates:', error);
@@ -5730,6 +5665,254 @@ function displaySelectedTemplate(templateData) {
     category.textContent = templateData.category ? templateData.category.replace('_', ' ').toUpperCase() : '';
     
     display.style.display = 'block';
+}
+
+// NEW: Display template structure preview in Step 3 (UNIFIED CONTAINERS)
+async function displayTemplateStructurePreview() {
+    if (!appState.selectedTemplate) {
+        console.log('No template selected for structure preview');
+        return;
+    }
+    
+    // Check if we already have generated structure - if so, don't show preview
+    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
+        console.log('Generated structure already exists, skipping preview');
+        return;
+    }
+    
+    try {
+        // Get template data from existing templates (no server call needed)
+        const templateData = await getTemplateDataFromExistingTemplates(appState.selectedTemplate);
+        if (!templateData) {
+            console.log('Template data not found, creating simple preview');
+            // Create a simple preview without full template data
+            createSimpleTemplatePreview();
+            return;
+        }
+        
+        console.log('Template data loaded for preview:', templateData.name);
+        
+        // Use the EXISTING structure container - unified approach!
+        const structureContainer = document.getElementById('structureContent');
+        if (!structureContainer) {
+            console.log('Structure container not found');
+            return;
+        }
+        
+        // Clear existing content
+        structureContainer.innerHTML = '';
+        
+        // Add preview header
+        const previewHeader = document.createElement('div');
+        previewHeader.className = 'structure-preview-header';
+        previewHeader.innerHTML = `
+            <h3>📐 ${templateData.name} Structure Preview</h3>
+            <p class="structure-preview-description">${templateData.description}</p>
+            <p class="structure-preview-hint">
+                <span class="preview-badge">PREVIEW</span> These containers will be filled when you generate acts
+            </p>
+        `;
+        structureContainer.appendChild(previewHeader);
+        
+        // Create preview structure using the SAME format as displayStructure()
+        if (templateData.structure) {
+            Object.entries(templateData.structure).forEach(([key, act], index) => {
+                const actElement = document.createElement('div');
+                actElement.className = 'structure-element';
+                actElement.setAttribute('data-act', key);
+                
+                const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                actElement.innerHTML = `
+                    <div class="structure-element-header">
+                        <h3>${actName}</h3>
+                        <div class="structure-element-meta">
+                            <span class="act-number">Act ${index + 1}</span>
+                            <span class="preview-status">Ready for generation</span>
+                        </div>
+                    </div>
+                    <div class="structure-element-content">
+                        <div class="template-description">
+                            <strong>Template Guide:</strong> ${act.description || 'No description available'}
+                        </div>
+                        <div class="content-placeholder">
+                            <div class="placeholder-content">
+                                <span class="placeholder-icon">📝</span>
+                                <span class="placeholder-text">Your generated content will appear here</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                structureContainer.appendChild(actElement);
+            });
+        }
+        
+        // Store template data for generation
+        appState.templateData = templateData;
+        
+    } catch (error) {
+        console.error('Error loading template structure preview:', error);
+        showToast('Could not load template structure preview', 'error');
+    }
+}
+
+// Helper function to get template data from already loaded templates
+async function getTemplateDataFromExistingTemplates(templateId) {
+    // Check if we have templates loaded
+    if (!window.loadedTemplates) {
+        console.log('Templates not loaded yet, loading...');
+        await loadTemplates();
+    }
+    
+    // Double-check templates are loaded and not null
+    if (!window.loadedTemplates || typeof window.loadedTemplates !== 'object') {
+        console.log('Failed to load templates, cannot get template data');
+        return null;
+    }
+    
+    // Search through all template groups
+    try {
+        for (const [groupKey, group] of Object.entries(window.loadedTemplates)) {
+            if (group && group.templates && Array.isArray(group.templates)) {
+                const template = group.templates.find(t => t.id === templateId);
+                if (template) {
+                    return template;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error searching templates:', error);
+        return null;
+    }
+    
+    console.log(`Template ${templateId} not found in loaded templates`);
+    return null;
+}
+
+// Fallback function to create template preview by loading template file directly
+async function createSimpleTemplatePreview() {
+    const structureContainer = document.getElementById('structureContent');
+    if (!structureContainer) {
+        console.log('Structure container not found');
+        return;
+    }
+    
+    try {
+        // Try to load template data from the API endpoint
+        const response = await fetch(`/api/template/${appState.selectedTemplate}`);
+        if (response.ok) {
+            const templateData = await response.json();
+            console.log('Loaded template data from API:', templateData.name);
+            
+            // Use the full template data to create proper preview
+            createFullTemplatePreview(templateData, structureContainer);
+            return;
+        }
+    } catch (error) {
+        console.log('Could not load template data from API, using basic preview');
+    }
+    
+    // If template file loading fails, show basic preview
+    createBasicTemplatePreview(structureContainer);
+}
+
+// Create full template preview with actual act structure
+function createFullTemplatePreview(templateData, structureContainer) {
+    // Clear existing content
+    structureContainer.innerHTML = '';
+    
+    // Add preview header
+    const previewHeader = document.createElement('div');
+    previewHeader.className = 'structure-preview-header';
+    previewHeader.innerHTML = `
+        <h3>📐 ${templateData.name} Structure Preview</h3>
+        <p class="structure-preview-description">${templateData.description}</p>
+        <p class="structure-preview-hint">
+            <span class="preview-badge">PREVIEW</span> These containers will be filled when you generate acts
+        </p>
+    `;
+    structureContainer.appendChild(previewHeader);
+    
+    // Create preview structure using the SAME format as displayStructure()
+    if (templateData.structure) {
+        Object.entries(templateData.structure).forEach(([key, act], index) => {
+            const actElement = document.createElement('div');
+            actElement.className = 'structure-element preview-mode';
+            actElement.setAttribute('data-act', key);
+            
+            const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            
+            actElement.innerHTML = `
+                <div class="structure-element-header">
+                    <h3>${actName}</h3>
+                    <div class="structure-element-meta">
+                        <span class="act-number">Act ${index + 1}</span>
+                        <span class="preview-status">Ready for generation</span>
+                    </div>
+                </div>
+                <div class="structure-element-content">
+                    <div class="template-description">
+                        <strong>Template Guide:</strong> ${act.description || 'No description available'}
+                    </div>
+                    <div class="content-placeholder">
+                        <div class="placeholder-content">
+                            <span class="placeholder-icon">📝</span>
+                            <span class="placeholder-text">Your generated content will appear here</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            structureContainer.appendChild(actElement);
+        });
+    }
+    
+    // Store template data for generation
+    appState.templateData = templateData;
+}
+
+// Basic fallback preview when no template data is available
+function createBasicTemplatePreview(structureContainer) {
+    // Clear existing content
+    structureContainer.innerHTML = '';
+    
+    // Add simple preview header
+    const previewHeader = document.createElement('div');
+    previewHeader.className = 'structure-preview-header';
+    previewHeader.innerHTML = `
+        <h3>📐 Template Structure Preview</h3>
+        <p class="structure-preview-description">Selected template: ${appState.selectedTemplate || 'Unknown'}</p>
+        <p class="structure-preview-hint">
+            <span class="preview-badge">PREVIEW</span> Template structure will be shown here when you generate acts
+        </p>
+    `;
+    structureContainer.appendChild(previewHeader);
+    
+    // Add a simple placeholder
+    const placeholderElement = document.createElement('div');
+    placeholderElement.className = 'structure-element preview-mode';
+    placeholderElement.innerHTML = `
+        <div class="structure-element-header">
+            <h3>Story Structure</h3>
+            <div class="structure-element-meta">
+                <span class="preview-status">Ready for generation</span>
+            </div>
+        </div>
+        <div class="structure-element-content">
+            <div class="template-description">
+                <strong>Template:</strong> ${appState.selectedTemplate || 'Unknown template'} structure will be generated based on your story.
+            </div>
+            <div class="content-placeholder">
+                <div class="placeholder-content">
+                    <span class="placeholder-icon">🎬</span>
+                    <span class="placeholder-text">Click "Generate Acts" to create your story structure</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    structureContainer.appendChild(placeholderElement);
 }
 
 // Preview dialogue generation prompt
