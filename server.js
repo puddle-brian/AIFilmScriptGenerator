@@ -1657,45 +1657,61 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
         // Build story context
         hierarchicalContext.buildStoryContext(storyInput);
         
-        // Try to load project structure and template
+        // Try to load project structure and template from database
         try {
-          const projectDir = path.join(__dirname, 'generated', projectPath);
-          const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-          const contextFile = path.join(projectDir, '01_context', 'context.json');
+          const username = 'guest'; // TODO: Get from user session/auth
+          const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
           
-          const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-          
-          // Load context if available
-          if (await fs.access(contextFile).then(() => true).catch(() => false)) {
-            await hierarchicalContext.loadFromProject(projectPath);
-          }
-          
-          // Build structure context
-          hierarchicalContext.buildStructureContext(projectData.structure, projectData.template);
-          
-          // Find the current structural element
-          const structureElementKey = Object.keys(projectData.structure)[structureKey];
-          const structureElement = projectData.structure[structureElementKey];
-          
-          if (structureElement) {
-            // Build act context
-            const actPosition = Object.keys(projectData.structure).indexOf(structureElementKey) + 1;
-            hierarchicalContext.buildActContext(structureElementKey, structureElement, actPosition);
+          if (userResult.rows.length > 0) {
+            const userId = userResult.rows[0].id;
             
-            // Try to load plot points for this act
-            try {
-              const plotPointsFile = path.join(projectDir, '02_plot-points', `${structureElementKey}.json`);
-              const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-              await hierarchicalContext.buildPlotPointsContext(plotPointsData);
-            } catch (error) {
-              console.log('No plot points found for this act');
+            // Get project context from database
+            const projectResult = await dbClient.query(
+              'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+              [userId, projectPath]
+            );
+            
+            if (projectResult.rows.length > 0) {
+              const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+              
+              // Load context if available
+              await hierarchicalContext.loadFromProject(projectPath);
+              
+              // Build structure context from database data
+              hierarchicalContext.buildStructureContext(projectContext.generatedStructure, projectContext.templateData);
+              
+              // Find the current structural element
+              const structureElementKey = Object.keys(projectContext.generatedStructure)[structureKey];
+              const structureElement = projectContext.generatedStructure[structureElementKey];
+              
+              if (structureElement) {
+                // Build act context
+                const actPosition = Object.keys(projectContext.generatedStructure).indexOf(structureElementKey) + 1;
+                hierarchicalContext.buildActContext(structureElementKey, structureElement, actPosition);
+                
+                // Try to load plot points for this act from database
+                try {
+                  if (projectContext.plotPoints && projectContext.plotPoints[structureElementKey]) {
+                    const plotPointsData = projectContext.plotPoints[structureElementKey];
+                    await hierarchicalContext.buildPlotPointsContext(plotPointsData.plotPoints || plotPointsData);
+                  } else {
+                    console.log('No plot points found for this act in database');
+                  }
+                } catch (error) {
+                  console.log('Error loading plot points from database:', error);
+                }
+                
+                // Build scene context
+                hierarchicalContext.buildSceneContext(sceneIndex, null, scene, 1);
+              }
+            } else {
+              console.log('Project not found in database');
             }
-            
-            // Build scene context
-            hierarchicalContext.buildSceneContext(sceneIndex, null, scene, 1);
+          } else {
+            console.log('User not found in database');
           }
         } catch (error) {
-          console.log('Error loading project structure:', error);
+          console.log('Error loading project structure from database:', error);
         }
         
         // Generate hierarchical prompt for dialogue generation
@@ -1878,47 +1894,89 @@ app.post('/api/save-project', async (req, res) => {
   }
 });
 
-// List existing projects (database-only version)
+// List existing projects (database-first with file system fallback)
 app.get('/api/list-projects', async (req, res) => {
   try {
     const username = req.query.username || 'guest';
+    const projects = [];
     
-    // Get user ID
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      return res.json([]); // Return empty array if user not found
+    // Load from database first (unified v2.0 format)
+    try {
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        const projectsResult = await dbClient.query(
+          'SELECT project_name, project_context, created_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
+          [userId]
+        );
+        
+        for (const row of projectsResult.rows) {
+          try {
+            const projectContext = parseProjectContext(row.project_context);
+            
+            if (projectContext.storyInput) {
+              projects.push({
+                path: row.project_name,
+                title: projectContext.storyInput.title,
+                tone: projectContext.storyInput.tone,
+                totalScenes: projectContext.storyInput.totalScenes,
+                createdAt: row.created_at,
+                logline: projectContext.storyInput.logline,
+                source: 'database'
+              });
+            }
+          } catch (error) {
+            console.log(`Skipping invalid database project: ${row.project_name}`, error.message);
+          }
+        }
+        
+        console.log(`📊 Loaded ${projects.length} projects from database for user: ${username}`);
+      } else {
+        console.log(`⚠️ User "${username}" not found in database`);
+      }
+    } catch (dbError) {
+      console.error('Error loading projects from database:', dbError);
     }
     
-    const userId = userResult.rows[0].id;
-    
-    // Get all projects for this user from database
-    const projectsResult = await dbClient.query(
-      'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
-      [userId]
-    );
-    
-    const projects = projectsResult.rows.map(row => {
+    // If no database projects found, check file system as fallback
+    if (projects.length === 0) {
       try {
-        const projectContext = parseProjectContext(row.project_context);
+        const generatedDir = path.join(__dirname, 'generated');
+        const projectFolders = await fs.readdir(generatedDir);
         
-        return {
-          path: row.project_name,
-          title: projectContext.storyInput?.title || 'Untitled Project',
-          tone: projectContext.storyInput?.tone || projectContext.storyInput?.genre || 'Unknown',
-          totalScenes: projectContext.storyInput?.totalScenes || 0,
-          createdAt: row.created_at,
-          logline: projectContext.storyInput?.logline || 'No logline available'
-        };
-      } catch (error) {
-        console.log(`Skipping invalid project: ${row.project_name}`, error.message);
-        return null;
+        for (const folder of projectFolders) {
+          try {
+            const structureFile = path.join(generatedDir, folder, '01_structure', 'plot_structure.json');
+            const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+            
+            projects.push({
+              path: folder,
+              title: projectData.storyInput.title,
+              tone: projectData.storyInput.tone,
+              totalScenes: projectData.storyInput.totalScenes,
+              createdAt: projectData.generatedAt,
+              logline: projectData.storyInput.logline,
+              source: 'filesystem'
+            });
+          } catch (error) {
+            console.log(`Skipping invalid project folder: ${folder}`);
+          }
+        }
+        
+        // Sort by creation date, newest first
+        projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        console.log(`📁 Loaded ${projects.length} projects from file system as fallback`);
+      } catch (fsError) {
+        console.error('Error reading file system projects:', fsError);
       }
-    }).filter(Boolean); // Remove null entries
+    }
     
-    console.log(`📋 Listed ${projects.length} projects for user "${username}"`);
     res.json(projects);
   } catch (error) {
-    console.error('Error listing projects from database:', error);
+    console.error('Error listing projects:', error);
     res.status(500).json({ error: 'Failed to list projects' });
   }
 });
@@ -2041,44 +2099,64 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
         // Build story context
         context.buildStoryContext(storyInput);
         
-        // Try to load project structure and template
+        // Try to load project structure and template from database
         try {
-          const projectDir = path.join(__dirname, 'generated', projectPath);
-          const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-          const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+          const username = 'guest'; // TODO: Get from user session/auth
+          const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
           
-          if (projectData.structure && projectData.template) {
-            context.buildStructureContext(projectData.structure, projectData.template);
+          if (userResult.rows.length > 0) {
+            const userId = userResult.rows[0].id;
             
-            // Find the structure key for this element
-            const structureKey = Object.keys(projectData.structure).find(key => 
-              projectData.structure[key].name === structureElement.name ||
-              key === structureElement.key
+            // Get project context from database
+            const projectResult = await dbClient.query(
+              'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+              [userId, projectPath]
             );
             
-            if (structureKey) {
-              const actPosition = Object.keys(projectData.structure).indexOf(structureKey) + 1;
-              context.buildActContext(structureKey, structureElement, actPosition);
+            if (projectResult.rows.length > 0) {
+              const projectContext = parseProjectContext(projectResult.rows[0].project_context);
               
-              // Try to load plot points for this act
-              try {
-                const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
-                const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-                if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
-                  await context.buildPlotPointsContext(plotPointsData.plotPoints, sceneCount);
+              if (projectContext.generatedStructure && projectContext.templateData) {
+                context.buildStructureContext(projectContext.generatedStructure, projectContext.templateData);
+                
+                // Find the structure key for this element
+                const structureKey = Object.keys(projectContext.generatedStructure).find(key => 
+                  projectContext.generatedStructure[key].name === structureElement.name ||
+                  key === structureElement.key
+                );
+                
+                if (structureKey) {
+                  const actPosition = Object.keys(projectContext.generatedStructure).indexOf(structureKey) + 1;
+                  context.buildActContext(structureKey, structureElement, actPosition);
                   
-                  // If generating an individual scene, build scene context
-                  if (existingScene && sceneIndex !== null) {
-                    context.buildSceneContext(sceneIndex, sceneIndex, existingScene, sceneCount);
+                  // Try to load plot points for this act from database
+                  try {
+                    if (projectContext.plotPoints && projectContext.plotPoints[structureKey]) {
+                      const plotPointsData = projectContext.plotPoints[structureKey];
+                      if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                        await context.buildPlotPointsContext(plotPointsData.plotPoints, sceneCount);
+                        
+                        // If generating an individual scene, build scene context
+                        if (existingScene && sceneIndex !== null) {
+                          context.buildSceneContext(sceneIndex, sceneIndex, existingScene, sceneCount);
+                        }
+                      }
+                    } else {
+                      console.log(`No plot points found for this act (${structureKey}) in database, using basic context`);
+                    }
+                  } catch (plotError) {
+                    console.log(`Error loading plot points from database for ${structureKey}:`, plotError.message);
                   }
                 }
-              } catch (plotError) {
-                console.log(`No plot points found for this act (${structureKey}), using basic context`);
               }
+            } else {
+              console.log('Project not found in database for scene preview');
             }
+          } else {
+            console.log('User not found in database for scene preview');
           }
         } catch (projectError) {
-          console.log('Could not load full project context, using basic story context');
+          console.log('Could not load project context from database, using basic story context:', projectError.message);
         }
         
         // Generate hierarchical prompt
@@ -2335,12 +2413,26 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
   try {
     const { projectPath, structureKey, desiredSceneCount = 3 } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const { generatedStructure: structure, storyInput } = projectContext;
     
     if (!structure[structureKey]) {
       return res.status(400).json({ error: 'Invalid structure key' });
@@ -2354,8 +2446,8 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-      context.buildStructureContext(structure, projectData.template);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectContext.templateData);
     }
     
     // Build act context
@@ -2442,15 +2534,35 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     const { projectPath, actKey, plotPointIndex } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load plot points data with scene distribution
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Load plot points data with scene distribution from database
     let plotPointsData;
     try {
-      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+      if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
+        return res.status(400).json({ error: 'Plot points not found. Please generate plot points for this act first.' });
+      }
+      plotPointsData = projectContext.plotPoints[actKey];
     } catch (error) {
-      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+      return res.status(400).json({ error: 'Plot points data not found. Please generate plot points for this act first.' });
     }
     
     const plotPointIndexNum = parseInt(plotPointIndex);
@@ -2474,14 +2586,13 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     const context = new HierarchicalContext();
     await context.loadFromProject(projectPath);
     
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-      context.buildStructureContext(structure, projectData.template);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectContext.templateData);
     }
     
     // Build act context
@@ -2552,12 +2663,15 @@ Return ONLY valid JSON in this exact format:
       });
     }
 
-    // Save scenes to a dedicated file
-    const scenesDir = path.join(projectDir, '03_scenes', actKey);
-    await fs.mkdir(scenesDir, { recursive: true });
+    // Save scenes to database
+    if (!projectContext.generatedScenes) {
+      projectContext.generatedScenes = {};
+    }
+    if (!projectContext.generatedScenes[actKey]) {
+      projectContext.generatedScenes[actKey] = {};
+    }
     
-    const scenesFile = path.join(scenesDir, `plot_point_${plotPointIndexNum}_scenes.json`);
-    await fs.writeFile(scenesFile, JSON.stringify({
+    projectContext.generatedScenes[actKey][`plot_point_${plotPointIndexNum}`] = {
       actKey: actKey,
       plotPointIndex: plotPointIndexNum,
       plotPoint: plotPoint,
@@ -2565,9 +2679,15 @@ Return ONLY valid JSON in this exact format:
       scenes: scenesData.scenes,
       isKeyPlot: plotPointInfo.isKeyPlot,
       generatedAt: new Date().toISOString()
-    }, null, 2));
+    };
+    
+    // Update database with new scenes
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
 
-    console.log(`Saved ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum + 1} to: ${scenesFile}`);
+    console.log(`Saved ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum + 1} to database`);
 
     res.json({
       success: true,
