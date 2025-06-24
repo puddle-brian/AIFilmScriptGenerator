@@ -2336,24 +2336,22 @@ app.post('/api/auto-save-project', async (req, res) => {
       return res.status(400).json({ error: 'Project path could not be determined' });
     }
     
-    // Save to file system (existing structure)
+    // Save to file system (hierarchical structure)
     const projectDir = path.join(__dirname, 'generated', projectPath);
     await fs.mkdir(projectDir, { recursive: true });
     
-    // Create context directory and save context
-    const contextDir = path.join(projectDir, '01_context');
-    await fs.mkdir(contextDir, { recursive: true });
+    // Create structure directory and save story concept (hierarchical format)
+    const structureDir = path.join(projectDir, '01_structure');
+    await fs.mkdir(structureDir, { recursive: true });
     
-    const contextFile = path.join(contextDir, 'context.json');
-    await fs.writeFile(contextFile, JSON.stringify({
+    // Save story concept first (always required for hierarchical projects)
+    const storyConceptFile = path.join(structureDir, 'story_concept.json');
+    await fs.writeFile(storyConceptFile, JSON.stringify({
       storyInput: projectData.storyInput,
-      selectedTemplate: projectData.selectedTemplate,
-      templateData: projectData.templateData,
-      generatedStructure: projectData.generatedStructure,
-      influences: projectData.influences,
-      projectCharacters: projectData.projectCharacters,
-      currentStep: projectData.currentStep,
-      timestamp: new Date().toISOString()
+      projectId: projectData.projectId,
+      projectPath: projectPath,
+      createdAt: new Date().toISOString(),
+      currentStep: projectData.currentStep || 1
     }, null, 2));
     
     // Save structure if it exists
@@ -2482,13 +2480,22 @@ async function detectProjectFormat(projectPath) {
   try {
     const projectDir = path.join(__dirname, 'generated', projectPath);
     
-    // Check for hierarchical format (new format)
+    // Check for hierarchical format - EITHER structure exists OR story concept exists in hierarchical location
     const hierarchicalStructureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    const hierarchicalStoryFile = path.join(projectDir, '01_structure', 'story_concept.json');
+    
     try {
+      // Full hierarchical with structure
       await fs.access(hierarchicalStructureFile);
       return 'hierarchical';
     } catch (error) {
-      // Continue checking other formats
+      try {
+        // Early hierarchical with just story concept
+        await fs.access(hierarchicalStoryFile);
+        return 'hierarchical';
+      } catch (error) {
+        // Continue checking other formats
+      }
     }
     
     // Check for legacy format (old format with project.json)
@@ -2603,14 +2610,27 @@ async function loadProjectByFormat(projectPath, format) {
  */
 async function loadHierarchicalProject(projectDir, projectPath) {
   const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-  const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  const storyFile = path.join(projectDir, '01_structure', 'story_concept.json');
+  
+  let projectData;
+  try {
+    // Try to load full structure first
+    projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  } catch (error) {
+    try {
+      // Fall back to story concept only
+      projectData = JSON.parse(await fs.readFile(storyFile, 'utf8'));
+    } catch (error) {
+      throw new Error('Hierarchical project missing both structure and story concept files');
+    }
+  }
   
   return {
     path: projectPath,
     title: projectData.storyInput.title,
     tone: projectData.storyInput.tone,
     totalScenes: projectData.storyInput.totalScenes,
-    createdAt: projectData.generatedAt,
+    createdAt: projectData.generatedAt || projectData.createdAt,
     logline: projectData.storyInput.logline,
     format: 'hierarchical',
     status: 'complete'
@@ -2622,12 +2642,24 @@ async function loadHierarchicalProject(projectDir, projectPath) {
  */
 async function loadHierarchicalProjectFull(projectDir, projectPath) {
   const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+  const storyFile = path.join(projectDir, '01_structure', 'story_concept.json');
   const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
   const dialogueDir = path.join(projectDir, '03_dialogue');
   const plotPointsDir = path.join(projectDir, '02_plot_points');
   
   // Load the main project data (REQUIRED - story concept)
-  const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  let projectData;
+  try {
+    // Try to load full structure first
+    projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  } catch (error) {
+    try {
+      // Fall back to story concept only
+      projectData = JSON.parse(await fs.readFile(storyFile, 'utf8'));
+    } catch (error) {
+      throw new Error('Hierarchical project missing both structure and story concept files');
+    }
+  }
   
   // Validate we have story concept
   if (!projectData.storyInput || !projectData.storyInput.title) {

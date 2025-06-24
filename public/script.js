@@ -4838,12 +4838,11 @@ async function showLoadProjectModal() {
             
             // Format progress information
             const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
-            const formatBadge = project.format ? `<span class="format-badge format-${project.format}">${project.format}</span>` : '';
             const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
             
             projectDiv.innerHTML = `
                 <div class="project-header">
-                    <h4>${project.title} ${formatBadge}</h4>
+                    <h4>${project.title}</h4>
                     ${progressBadge}
                 </div>
                 <div class="project-meta">

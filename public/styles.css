@@ -3158,35 +3158,7 @@ body {
     flex-wrap: wrap;
 }
 
-/* Format badges for project listings */
-.format-badge {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.125rem 0.5rem;
-    border-radius: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-    margin-left: 0.5rem;
-}
 
-.format-badge.format-hierarchical {
-    background: #dcfce7;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-}
-
-.format-badge.format-legacy {
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
-}
-
-.format-badge.format-partial {
-    background: #fce7f3;
-    color: #be185d;
-    border: 1px solid #f9a8d4;
-}
 
 /* Compact project header with progress badge */
 .project-item .project-header {
@@ -3206,7 +3178,7 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #4338ca;
+    background: #4facfe;
     color: white;
     border-radius: 50%;
     width: 2.25rem;
@@ -3219,7 +3191,7 @@ body {
 }
 
 .progress-badge:hover {
-    background: #3730a3;
+    background: #2e86de;
     transform: scale(1.05);
 }
 

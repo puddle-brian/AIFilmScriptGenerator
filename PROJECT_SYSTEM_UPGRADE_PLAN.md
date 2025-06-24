@@ -23,22 +23,36 @@
 ## Phase 1: Stop the Bleeding (Week 1)
 **Goal**: Fix immediate user-facing issues without architectural changes
 
-### Step 1.1: Robust Project Detection
-**What**: Make project listing handle both old and new formats gracefully
-**Why**: Eliminates "invalid project folder" errors immediately
-**Complexity**: Reduces (removes error spam, handles edge cases)
+### Step 1.1: Robust Project Detection + Story-Concept-First Hierarchical
+**What**: Make project listing handle both old and new formats gracefully + Fix new projects to start hierarchical
+**Why**: Eliminates "invalid project folder" errors + Ensures new projects use modern format from day one
+**Complexity**: Reduces (removes error spam, handles edge cases, fixes architectural flaw)
+
+**Critical Fix**: New projects with just story concept should be hierarchical, not partial/legacy!
 
 **Implementation**:
 ```javascript
 // Replace current rigid detection with flexible detection
 async function detectProjectFormat(projectPath) {
-  // Check for new format first
+  // Check for hierarchical format - EITHER structure OR story concept
   if (await fileExists('01_structure/plot_structure.json')) return 'hierarchical';
+  if (await fileExists('01_structure/story_concept.json')) return 'hierarchical'; // NEW!
   // Check for old format
   if (await fileExists('project.json')) return 'legacy';
   // Check for incomplete projects
   if (await fileExists('context.json')) return 'partial';
   return 'invalid';
+}
+
+// NEW: Auto-save creates hierarchical projects from the start
+async function autoSaveProject(projectData) {
+  // Save story concept to hierarchical location
+  await saveFile('01_structure/story_concept.json', {
+    storyInput: projectData.storyInput,
+    projectId: projectData.projectId,
+    createdAt: new Date().toISOString()
+  });
+  // Structure will be added later when generated
 }
 ```
 
