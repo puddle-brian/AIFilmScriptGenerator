@@ -710,6 +710,7 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     const titleSlug = title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
     appState.projectPath = `${titleSlug}_${timestamp}`;
     appState.projectId = null; // Will be set when saved to database
+    appState.currentStep = 1; // Set to step 1 since this is a new story concept
     
     // Show project header immediately
     showProjectHeader({
@@ -1906,7 +1907,8 @@ async function restoreLoadedProject() {
     }
     
     console.log('Restoring project:', appState.projectPath);
-    const response = await fetch(`/api/load-project/${encodeURIComponent(appState.projectPath)}`);
+    const username = appState.user?.username || 'guest';
+    const response = await fetch(`/api/load-project/${encodeURIComponent(appState.projectPath)}?username=${encodeURIComponent(username)}`);
     
     if (!response.ok) {
         throw new Error(`Failed to restore project: ${response.status} ${response.statusText}`);
@@ -4880,7 +4882,8 @@ async function loadProject(projectPath) {
         showLoading('Loading project...');
         
         console.log('Loading project:', projectPath);
-        const response = await fetch(`/api/load-project/${encodeURIComponent(projectPath)}`);
+        const username = appState.user?.username || 'guest';
+        const response = await fetch(`/api/load-project/${encodeURIComponent(projectPath)}?username=${encodeURIComponent(username)}`);
         console.log('Response status:', response.status, response.statusText);
         
         if (!response.ok) {
@@ -5053,15 +5056,19 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         }
     }
     
-    // Determine target step based on whether this is a restore operation
-    if (isRestore && appState.currentStep && appState.currentStep <= maxAvailableStep) {
+    // Determine target step based on saved project data or restore operation
+    if (projectData.currentStep && projectData.currentStep <= maxAvailableStep) {
+        // If project has a saved step and it's valid, use that
+        targetStep = projectData.currentStep;
+        console.log(`Using saved project step ${targetStep} (max available: ${maxAvailableStep})`);
+    } else if (isRestore && appState.currentStep && appState.currentStep <= maxAvailableStep) {
         // If restoring and current step is valid, stay on current step
         targetStep = appState.currentStep;
         console.log(`Restore: staying on current step ${targetStep} (max available: ${maxAvailableStep})`);
     } else {
-        // If initial load or current step is invalid, go to highest available step
+        // If no saved step or current step is invalid, go to highest available step
         targetStep = maxAvailableStep;
-        console.log(`Initial load: going to highest available step ${targetStep}`);
+        console.log(`No saved step: going to highest available step ${targetStep}`);
     }
     
     // Make sure templates are loaded first

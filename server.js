@@ -2557,10 +2557,12 @@ async function loadUnifiedProjectFromDatabase(projectPath, username = 'guest') {
     const userId = userResult.rows[0].id;
     
     // Load project
+    console.log(`🔍 DEBUG: Looking for project "${projectPath}" for user "${username}" (ID: ${userId})`);
     const projectResult = await dbClient.query(
       'SELECT project_context, thumbnail_data, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
       [userId, projectPath]
     );
+    console.log(`🔍 DEBUG: Found ${projectResult.rows.length} matching projects`);
     
     if (projectResult.rows.length === 0) {
       return null; // Project not found
@@ -3056,7 +3058,7 @@ app.get('/api/project/:id', async (req, res) => {
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.query.username || 'guest'; // Get from query parameter or default to guest
     
     // Load unified format project from database only
     const unifiedProject = await loadUnifiedProject(projectPath, username);
