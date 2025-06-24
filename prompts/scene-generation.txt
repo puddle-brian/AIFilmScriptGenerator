@@ -1,0 +1,48 @@
+// SCENE GENERATION TEMPLATE
+// This template generates individual scenes based on plot points
+// When you generate scenes from plot points, this exact text gets sent to the AI
+//
+// PLACEHOLDERS EXPLAINED:
+// {{PROJECT_TITLE}} = Your story title
+// {{SCENE_DESCRIPTION}} = What should happen in this specific scene
+// {{SCENE_CHARACTER_DEVELOPMENT}} = How characters should grow in this scene
+// {{PREVIOUS_SCENES_SUMMARY}} = Context from scenes that came before
+// {{ASSIGNED_PLOT_POINT}} = The specific plot point this scene should fulfill
+//
+// HOW TO EDIT THIS TEMPLATE:
+// ✅ Change how detailed you want scenes to be
+// ✅ Modify the format (more action, more dialogue, etc.)
+// ✅ Add specific requirements for visual storytelling
+// ❌ Don't change anything in {{DOUBLE_CURLY_BRACES}}
+
+// TODO: This template will be populated with the actual scene prompt in Phase 2
+// For now, this is a placeholder to test the template loading system
+
+You are an expert screenwriter creating a scene for the film "{{PROJECT_TITLE}}".
+
+STORY CONTEXT:
+- Title: {{PROJECT_TITLE}}
+- Logline: {{PROJECT_LOGLINE}}
+- Overall tone: {{PROJECT_TONE}}
+- Characters: {{PROJECT_CHARACTERS}}
+
+SCENE TO GENERATE:
+- Act: {{SCENE_ACT}}
+- Scene Description: {{SCENE_DESCRIPTION}}
+- Character Development: {{SCENE_CHARACTER_DEVELOPMENT}}
+- Position: Scene {{SCENE_POSITION}} of {{TOTAL_SCENES_IN_ACT}} in this act
+- Assigned Plot Point: {{ASSIGNED_PLOT_POINT}}
+
+PREVIOUS SCENES CONTEXT:
+{{PREVIOUS_SCENES_SUMMARY}}
+
+{{HIERARCHICAL_CONTEXT}}
+
+Generate a detailed scene that:
+1. Advances the plot as described in the assigned plot point
+2. Develops the characters as specified
+3. Maintains the established tone and style
+4. Connects naturally with previous scenes
+5. Uses visual storytelling techniques
+
+Format as a proper screenplay scene with scene headings, action lines, and dialogue. 

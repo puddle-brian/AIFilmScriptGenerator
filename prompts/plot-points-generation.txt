@@ -1,0 +1,43 @@
+// PLOT POINTS GENERATION TEMPLATE
+// This template generates plot points that break down story acts into specific scenes
+// When you generate plot points for an act, this exact text gets sent to the AI
+//
+// PLACEHOLDERS EXPLAINED:
+// {{PROJECT_TITLE}} = Your story title
+// {{PROJECT_LOGLINE}} = Your story's one-sentence summary
+// {{ACT_NAME}} = Name of the current act being broken down
+// {{ACT_DESCRIPTION}} = What happens in this act
+// {{SCENES_PER_ACT}} = How many scenes this act should have
+// {{HIERARCHICAL_CONTEXT}} = Context from previous acts and plot points
+//
+// HOW TO EDIT THIS TEMPLATE:
+// ✅ Modify instructions about how plot points should be created
+// ✅ Change the level of detail you want in each plot point
+// ✅ Add specific requirements for pacing or character development
+// ❌ Don't change anything in {{DOUBLE_CURLY_BRACES}}
+
+// TODO: This template will be populated with the actual plot points prompt in Phase 3
+// For now, this is a placeholder to test the template loading system
+
+You are creating detailed plot points for "{{PROJECT_TITLE}}".
+
+STORY FOUNDATION:
+- Title: {{PROJECT_TITLE}}
+- Logline: {{PROJECT_LOGLINE}}
+- Template: {{TEMPLATE_NAME}}
+- Target Scene Count: {{TOTAL_SCENES}}
+
+CURRENT ACT: {{ACT_NAME}}
+Act Description: {{ACT_DESCRIPTION}}
+Key Events: {{ACT_KEY_EVENTS}}
+Character Development: {{ACT_CHARACTER_DEVELOPMENT}}
+
+{{HIERARCHICAL_CONTEXT}}
+
+Generate {{SCENES_PER_ACT}} specific plot points that:
+1. Break down the act into concrete scenes
+2. Maintain story momentum and character development
+3. Connect smoothly between scenes
+4. Advance the overall plot
+
+Return as a JSON array with scene descriptions and character development notes. 

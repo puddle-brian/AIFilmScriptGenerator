@@ -1,0 +1,68 @@
+// STRUCTURE GENERATION TEMPLATE
+// This template creates the overall story structure (acts, themes, progression)
+// When you click "Generate Structure" in the app, this exact text gets sent to the AI
+// 
+// PLACEHOLDERS EXPLAINED:
+// {{PROJECT_TITLE}} = Your story title (e.g., "Lost Mirror")
+// {{PROJECT_LOGLINE}} = Your one-sentence story summary
+// {{PROJECT_CHARACTERS}} = Your main character descriptions  
+// {{PROJECT_TONE}} = The mood/genre of your story (e.g., "Horror", "Comedy")
+// {{TOTAL_SCENES}} = How many scenes you want (e.g., 70)
+// {{TEMPLATE_NAME}} = Structure template name (e.g., "Three Act Structure")
+// {{INFLUENCE_PROMPT}} = Any directorial/film influences you specified
+// {{DIRECTORIAL_INFLUENCES}} = Directors that inspire your style
+// {{SCREENWRITING_INFLUENCES}} = Screenwriters that inspire your style  
+// {{FILM_INFLUENCES}} = Specific films that inspire your story
+// {{TEMPLATE_DESCRIPTION}} = Description of the structure template you chose
+//
+// HOW TO EDIT THIS TEMPLATE:
+// ✅ Change any instructions to the AI (like "focus on visual storytelling")
+// ✅ Add requirements (like "include a plot twist in act 2")
+// ✅ Modify the tone or style of instructions
+// ❌ Don't change anything in {{DOUBLE_CURLY_BRACES}} - those get filled in automatically
+
+{{INFLUENCE_PROMPT}}Based on the following story concept, generate a detailed plot structure using the {{TEMPLATE_NAME}} format that embodies these artistic sensibilities:
+
+Story Details:
+- Title: {{PROJECT_TITLE}}
+- Logline: {{PROJECT_LOGLINE}}
+- Main Characters: {{PROJECT_CHARACTERS}}
+- Tone: {{PROJECT_TONE}}
+- Target Scene Count: {{TOTAL_SCENES}} scenes
+- Directorial Influences: {{DIRECTORIAL_INFLUENCES}}
+- Screenwriting Influences: {{SCREENWRITING_INFLUENCES}}
+- Film Influences: {{FILM_INFLUENCES}}
+
+STRUCTURE OVERVIEW:
+{{TEMPLATE_DESCRIPTION}}
+
+CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
+1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology
+2. Describe what the audience will SEE happening on screen - external, visual story beats
+3. Show character development through ACTIONS and CHOICES, not internal monologue or emotional states
+4. Focus on plot events that connect causally - what happens BECAUSE of previous events
+5. Each act should describe key incidents, confrontations, discoveries, or turning points
+6. Avoid describing what characters "feel," "realize," or "understand" - instead describe what they DO
+7. Character development should be evident through their changing behavior and choices across acts
+
+Generate a detailed breakdown for each structural element. Each element should have:
+- A clear title
+- A 2-3 sentence description of the KEY EVENTS and ACTIONS that occur in this act
+- Key character developments (shown through actions, not feelings)
+- Important plot points (concrete incidents that advance the story)
+
+Return the response as a valid JSON object with each structural element as a property. 
+
+IMPORTANT: Your response must be ONLY valid JSON, with no additional text, markdown formatting, or explanations. Start with { and end with }.
+
+Example format:
+{
+  "act1_setup": {
+    "name": "Act 1: Setup",
+    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
+  },
+  "act1_inciting_incident": {
+    "name": "Inciting Incident", 
+    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
+  }
+} 
