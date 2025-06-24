@@ -2850,10 +2850,17 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     const plotPointsContent = Array.isArray(plotPoints) ? JSON.stringify(plotPoints) : plotPoints;
     const actName = appState.generatedStructure[structureKey]?.name || structureKey.replace(/_/g, ' ').toUpperCase();
     
+    // Get act progress notation (X/Y format)
+    const structureKeys = Object.keys(appState.generatedStructure || {});
+    const totalActs = structureKeys.length;
+    const currentActIndex = structureKeys.indexOf(structureKey);
+    const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
+    const titleWithProgress = actProgress ? `${actProgress} ${actName} - Plot Points` : `Plot Points - ${actName}`;
+    
     createEditableContentBlock({
         id: `plot-points-${structureKey}`,
         type: 'plot-points',
-        title: `Plot Points - ${actName}`,
+        title: titleWithProgress,
         content: plotPointsContent,
         container: container,
         metadata: { structureKey: structureKey },
