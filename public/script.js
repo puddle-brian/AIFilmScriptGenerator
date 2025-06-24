@@ -4582,7 +4582,15 @@ function canNavigateToStep(stepNumber) {
             result = appState.storyInput && appState.storyInput.title; // Need story input
             break;
         case 3:
-            result = appState.selectedTemplate; // Need template selected
+            result = appState.selectedTemplate || appState.generatedStructure; // Need template selected OR structure already generated
+            if (stepNumber === 3) {
+                console.log('Step 3 validation:', {
+                    selectedTemplate: appState.selectedTemplate,
+                    hasStructure: !!appState.generatedStructure,
+                    structureKeys: Object.keys(appState.generatedStructure || {}),
+                    result: result
+                });
+            }
             break;
         case 4:
             result = appState.generatedStructure; // Need structure generated
@@ -4827,12 +4835,20 @@ async function showLoadProjectModal() {
         projects.forEach(project => {
             const projectDiv = document.createElement('div');
             projectDiv.className = 'project-item';
+            
+            // Format progress information
+            const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
+            const formatBadge = project.format ? `<span class="format-badge format-${project.format}">${project.format}</span>` : '';
+            const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
+            
             projectDiv.innerHTML = `
-                <h4>${project.title}</h4>
+                <div class="project-header">
+                    <h4>${project.title} ${formatBadge}</h4>
+                    ${progressBadge}
+                </div>
                 <div class="project-meta">
                     <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}<br>
-                    <strong>Tone:</strong> ${project.tone || 'Not specified'}<br>
-                    <strong>Scenes:</strong> ${project.totalScenes || 'Not specified'}
+                    <strong>Tone:</strong> ${project.tone || 'Not specified'}
                 </div>
                 <div class="project-logline">"${project.logline}"</div>
                 <div class="project-actions">
@@ -4977,6 +4993,22 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.projectId = projectData.projectId;
     appState.projectPath = projectData.projectPath;
     
+    console.log('App state after loading project data:');
+    console.log('  - selectedTemplate:', appState.selectedTemplate);
+    console.log('  - templateData:', appState.templateData);
+    console.log('  - generatedStructure exists:', !!appState.generatedStructure);
+    console.log('  - generatedStructure keys:', Object.keys(appState.generatedStructure || {}));
+    console.log('  - generatedStructure content:', appState.generatedStructure);
+    
+    // Load plot points into appState if they exist
+    if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+        appState.plotPoints = projectData.plotPoints;
+        console.log('Loaded plot points:', Object.keys(projectData.plotPoints));
+    } else {
+        appState.plotPoints = {};
+        console.log('No plot points found in project data');
+    }
+    
     // Initialize dialogue state
     appState.generatedDialogues = appState.generatedDialogues || {};
     
@@ -4986,8 +5018,12 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     if (projectData.structure) {
         maxAvailableStep = 3; // Structure available
+        if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+            maxAvailableStep = 4; // Plot points available
+            console.log('Plot points available for step 4');
+        }
         if (projectData.scenes) {
-            maxAvailableStep = 5; // Scenes available - should be step 5, not 4!
+            maxAvailableStep = 5; // Scenes available - should be step 5!
             console.log('Raw scenes data:', projectData.scenes);
             // Convert scenes format for app state
             const scenesForState = {};
@@ -5032,22 +5068,29 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
             await loadTemplates();
             console.log('Templates loaded successfully');
             
-            // Select the template if we have one
+            // Select the template if we have one - BEFORE navigation
             if (projectData.template && projectData.template.name) {
                 console.log('Selecting template:', projectData.template.name);
-                // Find and select the template
-                const templateElements = document.querySelectorAll('.template-card');
-                console.log('Found template elements:', templateElements.length);
-                templateElements.forEach(element => {
-                    const templateName = element.querySelector('h3').textContent;
-                    if (templateName === projectData.template.name) {
-                        element.classList.add('selected');
-                        // Fix: Use the template ID, not the display name
-                        appState.selectedTemplate = findTemplateIdByName(templateName);
-                        appState.templateData = projectData.template;
-                        console.log('Template selected:', templateName);
-                    }
-                });
+                // Ensure we have the template ID set in appState
+                const templateId = findTemplateIdByName(projectData.template.name);
+                if (templateId) {
+                    appState.selectedTemplate = templateId;
+                    appState.templateData = projectData.template;
+                    console.log('Template set in appState:', templateId);
+                    
+                    // Also update the UI
+                    const templateElements = document.querySelectorAll('.template-card');
+                    console.log('Found template elements:', templateElements.length);
+                    templateElements.forEach(element => {
+                        const templateName = element.querySelector('h3').textContent;
+                        if (templateName === projectData.template.name) {
+                            element.classList.add('selected');
+                            console.log('Template UI updated:', templateName);
+                        }
+                    });
+                } else {
+                    console.warn('Template ID not found for:', projectData.template.name);
+                }
             }
         } catch (error) {
             console.error('Error loading templates:', error);
@@ -5058,6 +5101,13 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     // Navigate to appropriate step (only if not a restore operation)
     if (!isRestore) {
         console.log('Navigating to step:', targetStep);
+        console.log('Navigation prerequisites check:');
+        console.log('  - appState.storyInput:', !!appState.storyInput);
+        console.log('  - appState.selectedTemplate:', appState.selectedTemplate);
+        console.log('  - appState.generatedStructure exists:', !!appState.generatedStructure);
+        console.log('  - appState.plotPoints keys:', Object.keys(appState.plotPoints || {}));
+        console.log('  - appState.generatedScenes exists:', !!appState.generatedScenes);
+        
         goToStep(targetStep);
         console.log('Navigation completed');
     } else {

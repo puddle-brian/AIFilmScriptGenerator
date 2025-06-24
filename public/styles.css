@@ -3157,3 +3157,77 @@ body {
     gap: 0.75rem;
     flex-wrap: wrap;
 }
+
+/* Format badges for project listings */
+.format-badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.125rem 0.5rem;
+    border-radius: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+    margin-left: 0.5rem;
+}
+
+.format-badge.format-hierarchical {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+}
+
+.format-badge.format-legacy {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+}
+
+.format-badge.format-partial {
+    background: #fce7f3;
+    color: #be185d;
+    border: 1px solid #f9a8d4;
+}
+
+/* Compact project header with progress badge */
+.project-item .project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 0.5rem;
+}
+
+.project-item .project-header h4 {
+    margin: 0;
+    flex: 1;
+    margin-right: 0.75rem;
+}
+
+.progress-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #4338ca;
+    color: white;
+    border-radius: 50%;
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    flex-shrink: 0;
+    cursor: help;
+    transition: all 0.2s;
+}
+
+.progress-badge:hover {
+    background: #3730a3;
+    transform: scale(1.05);
+}
+
+/* Make format badges smaller and more compact */
+.format-badge {
+    font-size: 0.625rem !important;
+    padding: 0.125rem 0.375rem !important;
+    border-radius: 0.5rem !important;
+    margin-left: 0.375rem !important;
+    vertical-align: top;
+}

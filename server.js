@@ -2469,30 +2469,373 @@ app.post('/api/auto-save-project', async (req, res) => {
   }
 });
 
-// List existing projects
+// =====================================
+// PROJECT FORMAT DETECTION FUNCTIONS
+// =====================================
+
+/**
+ * Detect the format of a project folder
+ * @param {string} projectPath - Path to the project folder
+ * @returns {string} - 'hierarchical', 'legacy', 'partial', or 'invalid'
+ */
+async function detectProjectFormat(projectPath) {
+  try {
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    
+    // Check for hierarchical format (new format)
+    const hierarchicalStructureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    try {
+      await fs.access(hierarchicalStructureFile);
+      return 'hierarchical';
+    } catch (error) {
+      // Continue checking other formats
+    }
+    
+    // Check for legacy format (old format with project.json)
+    const legacyProjectFile = path.join(projectDir, 'project.json');
+    try {
+      await fs.access(legacyProjectFile);
+      return 'legacy';
+    } catch (error) {
+      // Continue checking other formats
+    }
+    
+    // Check for partial format (has context.json but incomplete)
+    const contextFile = path.join(projectDir, 'context.json');
+    try {
+      await fs.access(contextFile);
+      return 'partial';
+    } catch (error) {
+      // No recognizable format found
+    }
+    
+    return 'invalid';
+  } catch (error) {
+    return 'invalid';
+  }
+}
+
+/**
+ * Load basic project info for listing (lightweight)
+ * @param {string} projectPath - Path to the project folder
+ * @param {string} format - Format detected by detectProjectFormat
+ * @returns {object} - Basic project info
+ */
+async function loadBasicProjectInfo(projectPath, format) {
+  const projectDir = path.join(__dirname, 'generated', projectPath);
+  
+  switch (format) {
+    case 'hierarchical':
+      return loadHierarchicalProject(projectDir, projectPath);
+    case 'legacy':
+      return loadLegacyProject(projectDir, projectPath);
+    case 'partial':
+      return loadPartialProject(projectDir, projectPath);
+    default:
+      throw new Error(`Unsupported project format: ${format}`);
+  }
+}
+
+/**
+ * Determine project progress based on available data
+ * @param {object} projectData - The loaded project data
+ * @returns {object} - Progress information
+ */
+function determineProjectProgress(projectData) {
+  if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
+    return { step: 6, label: "Final Script", icon: "📝", description: "Ready for export" };
+  }
+  if (projectData.scenes && Object.keys(projectData.scenes).length > 0) {
+    const sceneCount = Object.values(projectData.scenes).flat().length;
+    return { step: 5, label: "Scene Generation", icon: "🎬", description: `${sceneCount} scenes completed` };
+  }
+  if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+    return { step: 4, label: "Plot Points", icon: "📋", description: "Plot points generated" };
+  }
+  if (projectData.structure && Object.keys(projectData.structure).length > 0) {
+    return { step: 3, label: "Story Acts", icon: "🎭", description: "Story structure created" };
+  }
+  if (projectData.template) {
+    return { step: 2, label: "Template Selection", icon: "📐", description: "Template selected" };
+  }
+  if (projectData.storyInput) {
+    return { step: 1, label: "Story Concept", icon: "💡", description: "Ready for template selection" };
+  }
+  return { step: 1, label: "New Project", icon: "✨", description: "Start your story" };
+}
+
+/**
+ * Load project data based on detected format - UNIVERSAL LOADER
+ * @param {string} projectPath - Path to the project folder
+ * @param {string} format - Format detected by detectProjectFormat
+ * @returns {object} - Standardized project data with progress info
+ */
+async function loadProjectByFormat(projectPath, format) {
+  const projectDir = path.join(__dirname, 'generated', projectPath);
+  
+  let projectData;
+  switch (format) {
+    case 'hierarchical':
+      projectData = await loadHierarchicalProjectFull(projectDir, projectPath);
+      break;
+    case 'legacy':
+      projectData = await loadLegacyProjectFull(projectDir, projectPath);
+      break;
+    case 'partial':
+      projectData = await loadPartialProjectFull(projectDir, projectPath);
+      break;
+    default:
+      throw new Error(`Unsupported project format: ${format}`);
+  }
+  
+  // Add progress information
+  const progress = determineProjectProgress(projectData);
+  
+  return {
+    ...projectData,
+    progress,
+    format
+  };
+}
+
+/**
+ * Load hierarchical format project - BASIC INFO (for listing)
+ */
+async function loadHierarchicalProject(projectDir, projectPath) {
+  const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+  const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  
+  return {
+    path: projectPath,
+    title: projectData.storyInput.title,
+    tone: projectData.storyInput.tone,
+    totalScenes: projectData.storyInput.totalScenes,
+    createdAt: projectData.generatedAt,
+    logline: projectData.storyInput.logline,
+    format: 'hierarchical',
+    status: 'complete'
+  };
+}
+
+/**
+ * Load hierarchical format project - FULL DATA (for loading into app)
+ */
+async function loadHierarchicalProjectFull(projectDir, projectPath) {
+  const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+  const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+  const dialogueDir = path.join(projectDir, '03_dialogue');
+  const plotPointsDir = path.join(projectDir, '02_plot_points');
+  
+  // Load the main project data (REQUIRED - story concept)
+  const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+  
+  // Validate we have story concept
+  if (!projectData.storyInput || !projectData.storyInput.title) {
+    throw new Error('Project missing required story concept');
+  }
+  
+  // Try to load plot points if they exist
+  let plotPoints = {};
+  try {
+    const plotFiles = await fs.readdir(plotPointsDir);
+    for (const file of plotFiles) {
+      if (file.endsWith('_plot_points.json')) {
+        const structureKey = file.replace('_plot_points.json', '');
+        const plotPointsData = JSON.parse(await fs.readFile(path.join(plotPointsDir, file), 'utf8'));
+        if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+          plotPoints[structureKey] = plotPointsData.plotPoints;
+        }
+      }
+    }
+  } catch (error) {
+    // No plot points directory - that's fine
+  }
+  
+  // Try to load scenes if they exist
+  let scenes = null;
+  try {
+    const scenesContent = await fs.readFile(scenesFile, 'utf8');
+    const scenesJson = JSON.parse(scenesContent);
+    scenes = scenesJson.scenes || scenesJson;
+  } catch (error) {
+    // No scenes - that's fine
+  }
+  
+  // Try to load dialogue files if they exist
+  let dialogue = {};
+  try {
+    const dialogueFiles = await fs.readdir(dialogueDir);
+    for (const file of dialogueFiles) {
+      if (file.endsWith('.txt')) {
+        try {
+          const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
+          const sceneId = file.replace('.txt', '').replace(/_[a-f0-9]{8}$/, '');
+          dialogue[sceneId] = content;
+        } catch (error) {
+          // Skip this dialogue file
+        }
+      }
+    }
+  } catch (error) {
+    // No dialogue directory - that's fine
+  }
+  
+  return {
+    projectPath: projectPath,
+    projectId: projectData.projectId,
+    storyInput: projectData.storyInput,      // REQUIRED
+    template: projectData.template || null,   // OPTIONAL
+    structure: projectData.structure || {},   // OPTIONAL
+    plotPoints: plotPoints,                   // OPTIONAL
+    scenes: scenes,                          // OPTIONAL
+    dialogue: dialogue,                      // OPTIONAL
+    generatedAt: projectData.generatedAt
+  };
+}
+
+/**
+ * Load legacy format project - BASIC INFO (for listing)
+ */
+async function loadLegacyProject(projectDir, projectPath) {
+  const projectFile = path.join(projectDir, 'project.json');
+  const projectData = JSON.parse(await fs.readFile(projectFile, 'utf8'));
+  
+  return {
+    path: projectPath,
+    title: projectData.title || projectData.storyInput?.title || 'Untitled Legacy Project',
+    tone: projectData.tone || projectData.storyInput?.tone || 'Unknown',
+    totalScenes: projectData.totalScenes || projectData.storyInput?.totalScenes || 'Unknown',
+    createdAt: projectData.createdAt || projectData.generatedAt || new Date().toISOString(),
+    logline: projectData.logline || projectData.storyInput?.logline || 'No logline available',
+    format: 'legacy',
+    status: 'needs_migration'
+  };
+}
+
+/**
+ * Load legacy format project - FULL DATA (for loading into app)
+ */
+async function loadLegacyProjectFull(projectDir, projectPath) {
+  const projectFile = path.join(projectDir, 'project.json');
+  const projectData = JSON.parse(await fs.readFile(projectFile, 'utf8'));
+  
+  // Extract story concept - it might be in different places in legacy format
+  let storyInput = projectData.storyInput;
+  if (!storyInput && projectData.title) {
+    // Reconstruct story input from legacy flat structure
+    storyInput = {
+      title: projectData.title,
+      logline: projectData.logline || 'No logline available',
+      tone: projectData.tone || 'Unknown',
+      totalScenes: projectData.totalScenes || 12,
+      characters: projectData.characters || [],
+      directors: projectData.directors || [],
+      screenwriters: projectData.screenwriters || [],
+      films: projectData.films || []
+    };
+  }
+  
+  // Validate we have story concept
+  if (!storyInput || !storyInput.title) {
+    throw new Error('Legacy project missing required story concept');
+  }
+  
+  return {
+    projectPath: projectPath,
+    projectId: projectData.projectId || projectPath,
+    storyInput: storyInput,                   // REQUIRED
+    template: projectData.template || null,   // OPTIONAL
+    structure: projectData.structure || {},   // OPTIONAL
+    plotPoints: projectData.plotPoints || {}, // OPTIONAL
+    scenes: projectData.scenes || null,       // OPTIONAL
+    dialogue: projectData.dialogue || {},     // OPTIONAL
+    generatedAt: projectData.createdAt || projectData.generatedAt || new Date().toISOString()
+  };
+}
+
+/**
+ * Load partial format project - BASIC INFO (for listing)
+ */
+async function loadPartialProject(projectDir, projectPath) {
+  const contextFile = path.join(projectDir, 'context.json');
+  const contextData = JSON.parse(await fs.readFile(contextFile, 'utf8'));
+  
+  return {
+    path: projectPath,
+    title: contextData.storyInput?.title || 'Untitled Partial Project',
+    tone: contextData.storyInput?.tone || 'Unknown',
+    totalScenes: contextData.storyInput?.totalScenes || 'Unknown',
+    createdAt: contextData.generatedAt || new Date().toISOString(),
+    logline: contextData.storyInput?.logline || 'No logline available',
+    format: 'partial',
+    status: 'incomplete'
+  };
+}
+
+/**
+ * Load partial format project - FULL DATA (for loading into app)
+ */
+async function loadPartialProjectFull(projectDir, projectPath) {
+  const contextFile = path.join(projectDir, 'context.json');
+  const contextData = JSON.parse(await fs.readFile(contextFile, 'utf8'));
+  
+  // Validate we have story concept
+  if (!contextData.storyInput || !contextData.storyInput.title) {
+    throw new Error('Partial project missing required story concept');
+  }
+  
+  return {
+    projectPath: projectPath,
+    projectId: contextData.projectId || projectPath,
+    storyInput: contextData.storyInput,       // REQUIRED
+    template: contextData.template || null,   // OPTIONAL
+    structure: contextData.structure || {},   // OPTIONAL
+    plotPoints: contextData.plotPoints || {}, // OPTIONAL
+    scenes: contextData.scenes || null,       // OPTIONAL
+    dialogue: contextData.dialogue || {},     // OPTIONAL
+    generatedAt: contextData.generatedAt || new Date().toISOString()
+  };
+}
+
+// List existing projects - IMPROVED VERSION
 app.get('/api/list-projects', async (req, res) => {
   try {
     const generatedDir = path.join(__dirname, 'generated');
     const projectFolders = await fs.readdir(generatedDir);
     
     const projects = [];
+    const skippedProjects = [];
     
     for (const folder of projectFolders) {
       try {
-        const structureFile = path.join(generatedDir, folder, '01_structure', 'plot_structure.json');
-        const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+        const format = await detectProjectFormat(folder);
+        
+        if (format === 'invalid') {
+          skippedProjects.push(folder);
+          continue;
+        }
+        
+        // For listing, we just need basic info + format, then load full data to determine progress
+        const basicProjectData = await loadBasicProjectInfo(folder, format);
+        const fullProjectData = await loadProjectByFormat(folder, format);
         
         projects.push({
-          path: folder,
-          title: projectData.storyInput.title,
-          tone: projectData.storyInput.tone,
-          totalScenes: projectData.storyInput.totalScenes,
-          createdAt: projectData.generatedAt,
-          logline: projectData.storyInput.logline
+          ...basicProjectData,
+          progress: fullProjectData.progress
         });
+        
       } catch (error) {
-        console.log(`Skipping invalid project folder: ${folder}`);
+        // Only log detailed errors in development
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`Error loading project ${folder}:`, error.message);
+        }
+        skippedProjects.push(folder);
       }
+    }
+    
+    // Log summary instead of individual skips (much cleaner logs)
+    if (skippedProjects.length > 0) {
+      console.log(`📁 Project scan complete: ${projects.length} valid projects loaded${skippedProjects.length > 0 ? `, ${skippedProjects.length} invalid folders skipped` : ''}`);
     }
     
     // Sort by creation date, newest first
@@ -2519,73 +2862,54 @@ app.get('/api/project/:id', async (req, res) => {
   }
 });
 
-// Load project by path for the new interface
+// Load project by path - UNIVERSAL LOADER (Step 1.2)
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
-    const dialogueDir = path.join(projectDir, '03_dialogue');
     
-    // Load the main project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    // Step 1: Detect project format
+    const format = await detectProjectFormat(projectPath);
     
-    // Try to load scenes if they exist
-    let scenesData = null;
-    try {
-      const scenesContent = await fs.readFile(scenesFile, 'utf8');
-      const scenesJson = JSON.parse(scenesContent);
-      // Handle both old and new scene formats
-      if (scenesJson.scenes) {
-        scenesData = scenesJson.scenes;
-      } else {
-        scenesData = scenesJson;
-      }
-      console.log(`Scenes loaded for project ${projectPath}:`, Object.keys(scenesData));
-    } catch (error) {
-      console.log(`No scenes found for project ${projectPath}`);
+    if (format === 'invalid') {
+      return res.status(404).json({ 
+        error: 'Project not found or corrupted', 
+        details: 'No valid project files found' 
+      });
     }
     
-    // Try to load dialogue files if they exist
-    let dialogueData = {};
-    try {
-      const dialogueFiles = await fs.readdir(dialogueDir);
-      console.log(`Found dialogue files for project ${projectPath}:`, dialogueFiles);
-      
-      for (const file of dialogueFiles) {
-        if (file.endsWith('.txt')) {
-          try {
-            const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
-            // Extract scene identifier from filename (remove extension and hash)
-            const sceneId = file.replace('.txt', '').replace(/_[a-f0-9]{8}$/, '');
-            dialogueData[sceneId] = content;
-            console.log(`Loaded dialogue for scene: ${sceneId}`);
-          } catch (error) {
-            console.log(`Error reading dialogue file ${file}:`, error.message);
-          }
-        }
-      }
-    } catch (error) {
-      console.log(`No dialogue directory found for project ${projectPath}`);
-    }
+    // Step 2: Load full project data using universal loader
+    const fullProjectData = await loadProjectByFormat(projectPath, format);
     
-    // Return comprehensive project data
-    const fullProjectData = {
-      projectPath: projectPath,
-      projectId: projectData.projectId,
-      storyInput: projectData.storyInput,
-      template: projectData.template,
-      structure: projectData.structure,
-      scenes: scenesData,
-      dialogue: dialogueData,
-      generatedAt: projectData.generatedAt
+    // Step 3: Add helpful metadata for the frontend
+    const response = {
+      ...fullProjectData,
+      loadedSuccessfully: true,
+      canContinue: true,
+      nextStep: fullProjectData.progress.step,
+      nextStepDescription: fullProjectData.progress.description
     };
     
-    res.json(fullProjectData);
+    console.log(`📁 Project loaded: "${fullProjectData.storyInput.title}" (${format} format) - ${fullProjectData.progress.label}`);
+    
+    res.json(response);
+    
   } catch (error) {
     console.error('Error loading project:', error);
-    res.status(404).json({ error: 'Project not found or corrupted' });
+    
+    // Determine if this is a story-concept missing error vs other error
+    if (error.message.includes('missing required story concept')) {
+      res.status(400).json({ 
+        error: 'Invalid project: Missing story concept', 
+        details: 'This project appears to be corrupted - no story concept found',
+        canContinue: false
+      });
+    } else {
+      res.status(404).json({ 
+        error: 'Project not found or corrupted', 
+        details: error.message,
+        canContinue: false 
+      });
+    }
   }
 });
 
