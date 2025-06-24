@@ -497,15 +497,13 @@ class HierarchicalContext {
     return this.contexts.plotPoints;
   }
 
-  // NEW METHOD: Load plot points from all previous acts for inter-act causality
+  // Load plot points from all previous acts for inter-act causality (database version)
   async loadPreviousActsPlotPoints(projectPath) {
     try {
       if (!this.contexts.structure || !this.contexts.act) {
         return [];
       }
 
-      const projectDir = path.join(__dirname, 'generated', projectPath);
-      const plotPointsDir = path.join(projectDir, '02_plot_points');
       const currentActKey = this.contexts.act.data.key;
       const structureKeys = this.contexts.structure.data.actKeys;
       
@@ -519,29 +517,59 @@ class HierarchicalContext {
       const previousActKeys = structureKeys.slice(0, currentActIndex);
       const previousPlotPoints = [];
       
-      console.log(`🔗 Loading previous plot points for ${currentActKey}:`);
+      console.log(`🔗 Loading previous plot points for ${currentActKey} from database:`);
       console.log(`  📝 Previous acts: ${previousActKeys.join(', ')}`);
+      
+      // Load from database instead of file system
+      const username = 'guest'; // TODO: Get from user session/auth
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      
+      if (userResult.rows.length === 0) {
+        console.log('  ⚠️  User not found in database');
+        return [];
+      }
+      
+      const userId = userResult.rows[0].id;
+      
+      // Get project context from database
+      const projectResult = await dbClient.query(
+        'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+        [userId, projectPath]
+      );
+      
+      if (projectResult.rows.length === 0) {
+        console.log('  ⚠️  Project not found in database');
+        return [];
+      }
+      
+      const projectContext = JSON.parse(projectResult.rows[0].project_context);
+      
+      if (!projectContext.plotPoints) {
+        console.log('  ⚠️  No plot points found in project context');
+        return [];
+      }
       
       for (const actKey of previousActKeys) {
         try {
-          const plotPointsFile = path.join(plotPointsDir, `${actKey}_plot_points.json`);
-          const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+          const actPlotPointsData = projectContext.plotPoints[actKey];
           
-          if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+          if (actPlotPointsData && actPlotPointsData.plotPoints && Array.isArray(actPlotPointsData.plotPoints)) {
             // Add act context to each plot point for better understanding
-            const actPlotPoints = plotPointsData.plotPoints.map((plotPoint, index) => ({
+            const actPlotPoints = actPlotPointsData.plotPoints.map((plotPoint, index) => ({
               actKey: actKey,
               actName: this.contexts.structure.data.structure[actKey]?.name || actKey,
               plotPoint: plotPoint,
               plotPointIndex: index,
-              isLastInAct: index === plotPointsData.plotPoints.length - 1
+              isLastInAct: index === actPlotPointsData.plotPoints.length - 1
             }));
             
             previousPlotPoints.push(...actPlotPoints);
-            console.log(`  ✅ Loaded ${plotPointsData.plotPoints.length} plot points from ${actKey}`);
+            console.log(`  ✅ Loaded ${actPlotPointsData.plotPoints.length} plot points from ${actKey} (database)`);
+          } else {
+            console.log(`  ⚠️  No plot points found for ${actKey} in database`);
           }
-        } catch (fileError) {
-          console.log(`  ⚠️  No plot points found for ${actKey} (${fileError.message})`);
+        } catch (actError) {
+          console.log(`  ⚠️  Error loading plot points for ${actKey}: ${actError.message}`);
           // Continue loading other acts even if one fails
         }
       }
@@ -550,7 +578,7 @@ class HierarchicalContext {
       return previousPlotPoints;
       
     } catch (error) {
-      console.error('Error loading previous acts plot points:', error);
+      console.error('Error loading previous acts plot points from database:', error);
       return [];
     }
   }
@@ -745,13 +773,34 @@ class HierarchicalContext {
     return this.contexts[contextName];
   }
 
-  // Helper function to generate scenes for a plot point (extracted from the endpoint)
+  // Helper function to generate scenes for a plot point (database version)
   async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514") {
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    // Load plot points data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load plot points data with scene distribution
-    const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+    if (userResult.rows.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      throw new Error('Project not found in database');
+    }
+    
+    const projectContext = JSON.parse(projectResult.rows[0].project_context);
+    
+    if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
+      throw new Error('Plot points not found for this act in database');
+    }
+    
+    const plotPointsData = projectContext.plotPoints[actKey];
     const plotPointIndexNum = parseInt(plotPointIndex);
     const sceneDistribution = plotPointsData.sceneDistribution || [];
     const plotPointInfo = sceneDistribution[plotPointIndexNum];
@@ -767,14 +816,14 @@ class HierarchicalContext {
     const context = new HierarchicalContext();
     await context.loadFromProject(projectPath);
     
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    // Get structure data from database project context
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-      context.buildStructureContext(structure, projectData.template);
+      context.buildStoryContext(storyInput, null, null);
+      context.buildStructureContext(structure, projectContext.templateData);
     }
     
     // Build act context
@@ -834,20 +883,8 @@ Return ONLY valid JSON in this exact format:
 
     const scenesData = JSON.parse(completion.content[0].text);
 
-    // Save scenes to a dedicated file
-    const scenesDir = path.join(projectDir, '03_scenes', actKey);
-    await fs.mkdir(scenesDir, { recursive: true });
-    
-    const scenesFile = path.join(scenesDir, `plot_point_${plotPointIndexNum}_scenes.json`);
-    await fs.writeFile(scenesFile, JSON.stringify({
-      actKey: actKey,
-      plotPointIndex: plotPointIndexNum,
-      plotPoint: plotPoint,
-      sceneCount: sceneCount,
-      scenes: scenesData.scenes,
-      isKeyPlot: plotPointInfo.isKeyPlot,
-      generatedAt: new Date().toISOString()
-    }, null, 2));
+    // Save scenes to database (part of unified format - scenes will be saved by the calling endpoint)
+    console.log(`✅ Generated ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum} (database integration)`);
 
     return {
       success: true,
@@ -856,6 +893,8 @@ Return ONLY valid JSON in this exact format:
       plotPoint: plotPoint,
       scenes: scenesData.scenes,
       sceneCount: scenesData.scenes.length,
+      isKeyPlot: plotPointInfo.isKeyPlot,
+      generatedAt: new Date().toISOString(),
       message: `Generated ${scenesData.scenes.length} scenes for plot point: "${plotPoint}"`
     };
   }
@@ -2648,18 +2687,41 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       const actPosition = Object.keys(structure).indexOf(structureKey) + 1;
       context.buildActContext(structureKey, structureElement, actPosition);
       
-      // Try to load plot points for this act
+      // Try to load plot points from database
       let plotPoints = [];
       try {
-        const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
-        const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-        if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
-          plotPoints = plotPointsData.plotPoints;
-          console.log(`Loaded ${plotPoints.length} plot points for ${structureKey}`);
+        const username = 'guest'; // TODO: Get from user session/auth
+        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        
+        if (userResult.rows.length > 0) {
+          const userId = userResult.rows[0].id;
+          
+          // Get project context from database
+          const projectResult = await dbClient.query(
+            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+            [userId, projectPath]
+          );
+          
+          if (projectResult.rows.length > 0) {
+            const projectContext = JSON.parse(projectResult.rows[0].project_context);
+            
+            if (projectContext.plotPoints && projectContext.plotPoints[structureKey]) {
+              const actPlotPointsData = projectContext.plotPoints[structureKey];
+              if (actPlotPointsData.plotPoints && Array.isArray(actPlotPointsData.plotPoints)) {
+                plotPoints = actPlotPointsData.plotPoints;
+                console.log(`✅ Loaded ${plotPoints.length} plot points for ${structureKey} from database`);
+              }
+            }
+          }
+        }
+        
+        if (plotPoints.length === 0) {
+          console.log(`No plot points found for this act (${structureKey}) in database, generating scenes without plot point guidance`);
+          // Use placeholder plot points
+          plotPoints = Array(finalSceneCount).fill(0).map((_, i) => `Scene ${i + 1} plot point for ${structureElement.name}`);
         }
       } catch (plotError) {
-        console.log(`No plot points found for this act (${structureKey}), generating scenes without plot point guidance`);
-        console.log(`Looked for file: ${path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`)}`);
+        console.log(`Error loading plot points from database for ${structureKey}: ${plotError.message}`);
         // Use placeholder plot points
         plotPoints = Array(finalSceneCount).fill(0).map((_, i) => `Scene ${i + 1} plot point for ${structureElement.name}`);
       }
@@ -4365,12 +4427,35 @@ Return ONLY a JSON object with this exact structure:
     await context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount, projectPath);
     await context.saveToProject(projectPath);
 
-    // Save plot points to a dedicated file with scene distribution
-    const plotPointsDir = path.join(projectDir, '02_plot_points');
-    await fs.mkdir(plotPointsDir, { recursive: true });
+    // Save plot points to database (unified v2.0 format)
+    const username = 'guest'; // TODO: Get from user session/auth
     
-    const plotPointsFile = path.join(plotPointsDir, `${actKey}_plot_points.json`);
-    await fs.writeFile(plotPointsFile, JSON.stringify({
+    // Get user and project from database
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Load existing project context
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      throw new Error('Project not found in database');
+    }
+    
+    const projectContext = JSON.parse(projectResult.rows[0].project_context);
+    
+    // Update plot points in unified format
+    if (!projectContext.plotPoints) {
+      projectContext.plotPoints = {};
+    }
+    
+    projectContext.plotPoints[actKey] = {
       actKey: actKey,
       storyAct: storyAct,
       plotPoints: plotPointsData.plotPoints,
@@ -4379,8 +4464,20 @@ Return ONLY a JSON object with this exact structure:
       totalPlotPoints: plotPointsData.plotPoints.length,
       generatedAt: new Date().toISOString(),
       lastRegenerated: new Date().toISOString()
-    }, null, 2));
+    };
+    
+    // Update current step if needed
+    if (projectContext.currentStep < 4) {
+      projectContext.currentStep = 4;
+    }
+    
+    // Save back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = NOW() WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
 
+    console.log(`✅ Plot points saved to database for ${actKey} in unified v2.0 format`);
     console.log(`Generated ${plotPointsData.plotPoints.length} plot points for ${actKey} with scene distribution:`);
     sceneDistribution.forEach((dist, index) => {
       console.log(`  Plot Point ${index + 1}: ${dist.sceneCount} scenes ${dist.isKeyPlot ? '(key plot)' : ''}`);
@@ -4393,6 +4490,8 @@ Return ONLY a JSON object with this exact structure:
       sceneDistribution: sceneDistribution,
       totalPlotPoints: plotPointsData.plotPoints.length,
       totalScenesForAct: finalSceneCount,
+      savedToDatabase: true,
+      format: 'v2.0-unified',
       message: `Generated ${plotPointsData.plotPoints.length} plot points for ${storyAct.name} (${finalSceneCount} scenes total)`
     });
 
@@ -4402,57 +4501,7 @@ Return ONLY a JSON object with this exact structure:
   }
 });
 
-// Load existing plot points for a project
-app.get('/api/load-plot-points/:projectPath', async (req, res) => {
-  try {
-    const { projectPath } = req.params;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const plotPointsDir = path.join(projectDir, '02_plot_points');
-    
-    console.log(`Loading plot points for project: ${projectPath}`);
-    console.log(`Looking in directory: ${plotPointsDir}`);
-    
-    let plotPoints = {};
-    
-    try {
-      // Check if plot points directory exists
-      await fs.access(plotPointsDir);
-      
-      // Read all plot point files
-      const files = await fs.readdir(plotPointsDir);
-      console.log(`Found plot point files:`, files);
-      
-      for (const file of files) {
-        if (file.endsWith('_plot_points.json')) {
-          const structureKey = file.replace('_plot_points.json', '');
-          const plotPointsFile = path.join(plotPointsDir, file);
-          
-          try {
-            const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-            if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
-              plotPoints[structureKey] = plotPointsData.plotPoints;
-              console.log(`Loaded ${plotPointsData.plotPoints.length} plot points for ${structureKey}`);
-            }
-          } catch (fileError) {
-            console.error(`Error reading plot points file ${file}:`, fileError);
-          }
-        }
-      }
-    } catch (dirError) {
-      console.log(`Plot points directory doesn't exist: ${plotPointsDir}`);
-    }
-    
-    res.json({ 
-      plotPoints: plotPoints,
-      projectPath: projectPath,
-      totalStructures: Object.keys(plotPoints).length
-    });
-    
-  } catch (error) {
-    console.error('Error loading plot points:', error);
-    res.status(500).json({ error: 'Failed to load plot points', details: error.message });
-  }
-});
+// Legacy endpoint removed - plot points now loaded via /api/load-project/:projectPath in unified format
 
 // Regenerate a single plot point within an act
 app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex', async (req, res) => {
