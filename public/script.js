@@ -691,6 +691,55 @@ function hideUniversalLibrarySaveModal() {
     }
 }
 
+// Helper function to properly initialize a new project when story concept is created
+function initializeNewProjectFromStoryConcept(title, logline) {
+    console.log('🚀 Initializing new project from story concept:', title);
+    
+    // Set the story input data to trigger project creation
+    appState.storyInput = {
+        title: title,
+        logline: logline || '',
+        characters: appState.projectCharacters || [],
+        totalScenes: document.getElementById('totalScenes')?.value || '70',
+        tone: document.getElementById('tone')?.value || '',
+        customPrompt: null
+    };
+    
+    // Generate project path immediately
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const titleSlug = title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+    appState.projectPath = `${titleSlug}_${timestamp}`;
+    appState.projectId = null; // Will be set when saved to database
+    
+    // Show project header immediately
+    showProjectHeader({
+        title: title,
+        logline: logline || ''
+    });
+    
+    // Mark as having changes to trigger auto-save
+    appState.pendingChanges = true;
+    
+    // Initialize auto-save system if not already active
+    if (autoSaveManager && typeof autoSaveManager.markDirty === 'function') {
+        autoSaveManager.markDirty();
+    }
+    
+    // Save to localStorage immediately
+    saveToLocalStorage();
+    
+    console.log('✅ New project initialized:', {
+        title: appState.storyInput.title,
+        projectPath: appState.projectPath,
+        hasProjectData: !!(appState.storyInput && appState.storyInput.title)
+    });
+    
+    // Show success message
+    showToast(`New project "${title}" created and ready!`, 'success');
+    
+    return appState.projectPath;
+}
+
 async function saveToLibraryAndContinue(type, isNewEntry = false) {
     const name = document.getElementById('universalLibraryEntryName').value.trim();
     const descriptionElement = document.getElementById('universalLibraryEntryDescription');
@@ -791,7 +840,7 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                         saveToLocalStorage();
                     }
                 } else if (type === 'storyconcept') {
-                    // For story concepts, create concept display
+                    // For story concepts, create concept display AND initialize new project
                     
                     appState.currentStoryConcept = {
                         title: name,
@@ -800,7 +849,11 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                     };
                     
                     updateStoryConceptDisplay();
-                    showToast(`Story concept "${name}" created`, 'success');
+                    
+                    // Initialize a new project with this story concept
+                    initializeNewProjectFromStoryConcept(name, description || '');
+                    
+                    showToast(`Story concept "${name}" created and project initialized!`, 'success');
                 } else {
                     // Add to influence tags
                     if (!appState.influences[config.plural].includes(name)) {
@@ -939,8 +992,12 @@ function addFromDropdownOrNew(type) {
                     };
                     
                     updateStoryConceptDisplay();
+                    
+                    // Initialize a new project with this existing story concept
+                    initializeNewProjectFromStoryConcept(conceptData.name, conceptData.description || '');
+                    
                     saveToLocalStorage();
-                    showToast(`Story concept "${conceptData.name}" loaded`, 'success');
+                    showToast(`Story concept "${conceptData.name}" loaded and project initialized!`, 'success');
                 } else {
                     showToast(`Could not find story concept data`, 'error');
                 }
@@ -5878,8 +5935,7 @@ const autoSaveManager = {
                appState.apiKey && 
                appState.storyInput && 
                appState.storyInput.title && 
-               appState.storyInput.title.trim() &&
-               (appState.storyInput.storyConcept || appState.selectedTemplate || appState.generatedStructure);
+               appState.storyInput.title.trim();
     },
     
     markDirty() {
