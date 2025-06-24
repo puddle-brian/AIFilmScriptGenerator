@@ -346,7 +346,6 @@ class EditableContentBlock {
             try {
                 const parsed = JSON.parse(content);
                 return `
-                    <h3>${parsed.name || 'Untitled Act'}</h3>
                     <p><strong>Description:</strong> ${parsed.description || 'No description'}</p>
                     ${parsed.character_development ? `<p><strong>Character Development:</strong> ${parsed.character_development}</p>` : ''}
                 `;
