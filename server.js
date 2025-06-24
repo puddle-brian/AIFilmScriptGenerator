@@ -2315,6 +2315,160 @@ app.post('/api/save-project', async (req, res) => {
   }
 });
 
+// Auto-save project endpoint
+app.post('/api/auto-save-project', async (req, res) => {
+  try {
+    const projectData = req.body;
+    const username = 'guest'; // TODO: Get from user session/auth
+    
+    // Generate project path if not provided
+    let projectPath = projectData.projectPath;
+    if (!projectPath && projectData.storyInput && projectData.storyInput.title) {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+      const titleSlug = projectData.storyInput.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .slice(0, 30);
+      projectPath = `${titleSlug}_${timestamp}`;
+    }
+    
+    if (!projectPath) {
+      return res.status(400).json({ error: 'Project path could not be determined' });
+    }
+    
+    // Save to file system (existing structure)
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    await fs.mkdir(projectDir, { recursive: true });
+    
+    // Create context directory and save context
+    const contextDir = path.join(projectDir, '01_context');
+    await fs.mkdir(contextDir, { recursive: true });
+    
+    const contextFile = path.join(contextDir, 'context.json');
+    await fs.writeFile(contextFile, JSON.stringify({
+      storyInput: projectData.storyInput,
+      selectedTemplate: projectData.selectedTemplate,
+      templateData: projectData.templateData,
+      generatedStructure: projectData.generatedStructure,
+      influences: projectData.influences,
+      projectCharacters: projectData.projectCharacters,
+      currentStep: projectData.currentStep,
+      timestamp: new Date().toISOString()
+    }, null, 2));
+    
+    // Save structure if it exists
+    if (projectData.generatedStructure && projectData.templateData) {
+      const structureDir = path.join(projectDir, '01_structure');
+      await fs.mkdir(structureDir, { recursive: true });
+      
+      const structureFile = path.join(structureDir, 'plot_structure.json');
+      await fs.writeFile(structureFile, JSON.stringify({
+        structure: projectData.generatedStructure,
+        template: projectData.templateData,
+        storyInput: projectData.storyInput,
+        projectId: projectData.projectId,
+        projectPath: projectPath,
+        generatedAt: new Date().toISOString()
+      }, null, 2));
+    }
+    
+    // Save plot points if they exist
+    if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+      const plotPointsDir = path.join(projectDir, '02_plot-points');
+      await fs.mkdir(plotPointsDir, { recursive: true });
+      
+      for (const [actKey, plotPoints] of Object.entries(projectData.plotPoints)) {
+        const plotPointsFile = path.join(plotPointsDir, `${actKey}.json`);
+        await fs.writeFile(plotPointsFile, JSON.stringify(plotPoints, null, 2));
+      }
+    }
+    
+    // Save scenes if they exist
+    if (projectData.generatedScenes && Object.keys(projectData.generatedScenes).length > 0) {
+      const scenesDir = path.join(projectDir, '03_scenes');
+      await fs.mkdir(scenesDir, { recursive: true });
+      
+      for (const [actKey, scenes] of Object.entries(projectData.generatedScenes)) {
+        const actDir = path.join(scenesDir, actKey);
+        await fs.mkdir(actDir, { recursive: true });
+        
+        if (Array.isArray(scenes)) {
+          scenes.forEach((scene, index) => {
+            const sceneFile = path.join(actDir, `scene-${index + 1}.json`);
+            fs.writeFile(sceneFile, JSON.stringify(scene, null, 2)).catch(console.error);
+          });
+        }
+      }
+    }
+    
+    // Save dialogue if it exists
+    if (projectData.generatedDialogues && Object.keys(projectData.generatedDialogues).length > 0) {
+      const dialogueDir = path.join(projectDir, '04_dialogue');
+      await fs.mkdir(dialogueDir, { recursive: true });
+      
+      for (const [key, dialogue] of Object.entries(projectData.generatedDialogues)) {
+        const dialogueFile = path.join(dialogueDir, `${key}.json`);
+        await fs.writeFile(dialogueFile, JSON.stringify(dialogue, null, 2));
+      }
+    }
+    
+    // Also save to database for profile system
+    try {
+      const projectContext = {
+        ...projectData,
+        projectPath: projectPath,
+        autoSaved: true,
+        lastAutoSave: new Date().toISOString()
+      };
+      
+      const thumbnailData = {
+        title: projectData.storyInput?.title || 'Untitled Project',
+        genre: projectData.storyInput?.genre || 'Unknown',
+        tone: projectData.storyInput?.tone || 'Unknown',
+        structure: projectData.templateData?.name || 'Unknown Structure',
+        currentStep: projectData.currentStep || 1,
+        totalScenes: projectData.storyInput?.totalScenes || 70,
+        lastAutoSave: new Date().toISOString()
+      };
+
+      // Get user ID
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        // Save project to database
+        await dbClient.query(
+          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+           VALUES ($1, $2, $3, $4) 
+           ON CONFLICT (user_id, project_name) 
+           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+          [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+        );
+        
+        console.log(`✅ Project auto-saved to database for user: ${username}`);
+      }
+    } catch (dbError) {
+      console.error('⚠️ Database auto-save failed (continuing with file save):', dbError);
+      // Don't fail the entire request if database save fails
+    }
+    
+    res.json({
+      success: true,
+      projectPath: projectPath,
+      projectId: projectData.projectId,
+      message: 'Project auto-saved successfully',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Auto-save failed:', error);
+    res.status(500).json({ 
+      error: 'Failed to auto-save project',
+      details: error.message
+    });
+  }
+});
+
 // List existing projects
 app.get('/api/list-projects', async (req, res) => {
   try {

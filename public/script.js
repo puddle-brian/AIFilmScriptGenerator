@@ -8,6 +8,7 @@ const appState = {
     generatedScenes: null,
     generatedDialogues: {},
     projectId: null,
+    projectPath: null, // Add this line
     availableTemplates: [],
     influences: {
         directors: [],
@@ -24,7 +25,12 @@ const appState = {
     // Authentication state
     isAuthenticated: false,
     user: null,
-    apiKey: null
+    apiKey: null,
+    // Auto-save state
+    lastSaveTime: null,
+    saveInProgress: false,
+    pendingChanges: false,
+    autoSaveEnabled: true
 };
 
 // Authentication Management
@@ -1455,6 +1461,9 @@ async function initializeApp() {
     // Initialize authentication first
     authManager.init();
     
+    // Initialize auto-save manager
+    autoSaveManager.init();
+    
     updateProgressBar();
     updateStepIndicators();
     
@@ -1765,6 +1774,9 @@ function handleStorySubmission() {
         influencePrompt: buildInfluencePrompt(),
         storyConcept: appState.currentStoryConcept // Store the full story concept
     };
+    
+    // Mark for auto-save (project gets created here)
+    autoSaveManager.markDirty();
     
     saveToLocalStorage();
     goToStep(2);
@@ -4423,6 +4435,11 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         updateProjectStatus();
     }
     
+    // Trigger auto-save on step transitions (but not initial load)
+    if (validateAccess && autoSaveManager.hasProjectData()) {
+        autoSaveManager.markDirty();
+    }
+    
     saveToLocalStorage();
 }
 
@@ -5715,4 +5732,199 @@ window.authUtils = {
     },
     getCurrentUser: () => appState.user,
     isAuthenticated: () => appState.isAuthenticated
+};
+
+// Auto-Save Manager
+const autoSaveManager = {
+    saveTimeout: null,
+    saveInterval: null,
+    lastSaveState: null,
+    
+    init() {
+        // Set up periodic auto-save check
+        this.saveInterval = setInterval(() => {
+            this.checkAndAutoSave();
+        }, 30000); // Check every 30 seconds
+        
+        // Save on window unload
+        window.addEventListener('beforeunload', (e) => {
+            if (appState.pendingChanges && this.hasProjectData()) {
+                this.saveImmediately();
+                // Modern browsers ignore custom messages, but we try anyway
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        });
+        
+        console.log('🔄 Auto-save manager initialized');
+    },
+    
+    hasProjectData() {
+        return appState.storyInput && appState.storyInput.title && appState.storyInput.title.trim();
+    },
+    
+    markDirty() {
+        appState.pendingChanges = true;
+        this.scheduleAutoSave();
+    },
+    
+    scheduleAutoSave() {
+        if (!appState.autoSaveEnabled || appState.saveInProgress) return;
+        
+        // Clear existing timeout
+        if (this.saveTimeout) {
+            clearTimeout(this.saveTimeout);
+        }
+        
+        // Schedule save in 3 seconds (debounce)
+        this.saveTimeout = setTimeout(() => {
+            this.performAutoSave();
+        }, 3000);
+    },
+    
+    async performAutoSave() {
+        if (!this.hasProjectData() || appState.saveInProgress) return;
+        
+        try {
+            appState.saveInProgress = true;
+            this.updateSaveStatus('Saving...');
+            
+            await this.saveProjectData();
+            
+            appState.pendingChanges = false;
+            appState.lastSaveTime = new Date();
+            this.updateSaveStatus('Saved', 'success');
+            
+            console.log('✅ Auto-save completed');
+        } catch (error) {
+            console.error('❌ Auto-save failed:', error);
+            this.updateSaveStatus('Save failed', 'error');
+        } finally {
+            appState.saveInProgress = false;
+        }
+    },
+    
+    async saveImmediately() {
+        if (!this.hasProjectData()) return;
+        
+        try {
+            appState.saveInProgress = true;
+            await this.saveProjectData();
+            appState.pendingChanges = false;
+            appState.lastSaveTime = new Date();
+        } catch (error) {
+            console.error('❌ Immediate save failed:', error);
+        } finally {
+            appState.saveInProgress = false;
+        }
+    },
+    
+    async saveProjectData() {
+        // Generate project path if not exists
+        if (!appState.projectPath) {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const titleSlug = appState.storyInput.title
+                ? appState.storyInput.title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30)
+                : 'untitled';
+            appState.projectPath = `${titleSlug}_${timestamp}`;
+        }
+        
+        const projectData = {
+            ...appState,
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        // Save to both file system and database
+        const response = await fetch('/api/auto-save-project', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${appState.apiKey}`
+            },
+            body: JSON.stringify(projectData)
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save project');
+        }
+        
+        const result = await response.json();
+        
+        // Update project info if returned
+        if (result.projectPath) {
+            appState.projectPath = result.projectPath;
+        }
+        if (result.projectId) {
+            appState.projectId = result.projectId;
+        }
+        
+        // Update localStorage
+        this.saveToLocalStorage();
+        
+        return result;
+    },
+    
+    checkAndAutoSave() {
+        if (appState.pendingChanges && this.hasProjectData() && !appState.saveInProgress) {
+            this.performAutoSave();
+        }
+    },
+    
+    updateSaveStatus(message, type = 'info') {
+        const statusElement = document.getElementById('saveStatus');
+        if (statusElement) {
+            statusElement.textContent = message;
+            statusElement.className = `save-status ${type}`;
+            
+            // Hide status after 3 seconds for non-error messages
+            if (type !== 'error') {
+                setTimeout(() => {
+                    if (statusElement.textContent === message) {
+                        statusElement.textContent = '';
+                        statusElement.className = 'save-status';
+                    }
+                }, 3000);
+            }
+        }
+    },
+    
+    saveToLocalStorage() {
+        try {
+            localStorage.setItem('filmScriptGenerator', JSON.stringify({
+                ...appState,
+                lastSaved: new Date().toISOString()
+            }));
+        } catch (error) {
+            console.error('Failed to save to localStorage:', error);
+        }
+    },
+    
+    loadFromLocalStorage() {
+        try {
+            const saved = localStorage.getItem('filmScriptGenerator');
+            if (saved) {
+                const data = JSON.parse(saved);
+                
+                // Restore state
+                Object.assign(appState, data);
+                
+                // Clear auto-save flags
+                appState.saveInProgress = false;
+                appState.pendingChanges = false;
+                
+                return true;
+            }
+        } catch (error) {
+            console.error('Failed to load from localStorage:', error);
+        }
+        return false;
+    },
+    
+    destroy() {
+        if (this.saveTimeout) clearTimeout(this.saveTimeout);
+        if (this.saveInterval) clearInterval(this.saveInterval);
+    }
 };
