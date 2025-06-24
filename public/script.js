@@ -606,7 +606,20 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
     }
     
     try {
-        const entryKey = name.toLowerCase().replace(/\s+/g, '_');
+        // Check if we're editing an existing entry
+        const isEditing = window.editingLibraryEntry;
+        let url, method;
+        
+        if (isEditing && !isEditing.isNewCharacterEntry) {
+            // Editing existing entry
+            method = 'PUT';
+            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${isEditing.key}`;
+        } else {
+            // Creating new entry
+            method = 'POST';
+            const entryKey = name.toLowerCase().replace(/\s+/g, '_');
+            url = `/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`;
+        }
         
         // For characters and story concepts, store both name and description
         // For influences, store just the name (which is actually the full influence phrase)
@@ -618,14 +631,43 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
             description: `${config.displayName} influence: ${name}` // Simple fallback for database
         };
         
-        const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`, {
-            method: 'POST',
+        const response = await fetch(url, {
+            method: method,
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entryData)
+            body: JSON.stringify(isEditing && !isEditing.isNewCharacterEntry ? entryData : entryData)
         });
         
         if (response.ok) {
-            showToast(`"${name}" saved to your ${config.plural} library!`, 'success');
+            const action = (isEditing && !isEditing.isNewCharacterEntry) ? 'updated' : 'saved';
+            showToast(`"${name}" ${action} in your ${config.plural} library!`, 'success');
+            
+            // If editing from step 1, update the current project state
+            if (isEditing && isEditing.isFromStep1) {
+                if (type === 'character' && typeof isEditing.characterIndex === 'number') {
+                    // Update the character in the project
+                    const originalName = appState.projectCharacters[isEditing.characterIndex].name;
+                    appState.projectCharacters[isEditing.characterIndex] = {
+                        name: name,
+                        description: description || `Main character: ${name}`,
+                        fromLibrary: true
+                    };
+                    updateCharacterTags();
+                    saveToLocalStorage();
+                } else if (type !== 'character') {
+                    // Update influence in the project
+                    const pluralType = config.plural;
+                    const influences = appState.influences[pluralType];
+                    if (influences && isEditing.data && isEditing.data.name) {
+                        const oldName = isEditing.data.name;
+                        const index = influences.indexOf(oldName);
+                        if (index !== -1) {
+                            influences[index] = name;
+                            updateInfluenceTags(type);
+                            saveToLocalStorage();
+                        }
+                    }
+                }
+            }
             
             // For new entries, also add to the current form
             if (isNewEntry) {
@@ -680,6 +722,11 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
     } catch (error) {
         console.error('Error saving to library:', error);
         showToast('Error saving to library', 'error');
+    }
+    
+    // Clear editing state
+    if (window.editingLibraryEntry) {
+        window.editingLibraryEntry = null;
     }
     
     hideUniversalLibrarySaveModal();
@@ -852,7 +899,6 @@ function addNewToLibrary(type) {
 
 // Enhanced universal modal to handle both save-existing and create-new flows
 function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
-    console.log('showUniversalLibrarySaveModal called with:', { type, value, config, isNewEntry });
     
     const modalTitle = isNewEntry ? `Add New ${config.displayName}` : `Save ${config.displayName} to Library`;
     const modalMessage = isNewEntry ? 
@@ -874,8 +920,6 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
     } else if (type === 'storyconcept') {
                         promptHelpText = `This story description will be included in every AI prompt as your story develops, guiding all generated content.`;
     }
-    
-    console.log('Modal title:', modalTitle);
     
     // For characters and story concepts, keep the name/description structure since they use both fields
     // For influences (director/screenwriter/film), use single field that matches prompt usage
@@ -942,9 +986,9 @@ function updateInfluenceTags(type) {
     
     appState.influences[type + 's'].forEach(influence => {
         const tag = document.createElement('div');
-        tag.className = 'influence-tag';
+        tag.className = 'influence-tag clickable-tag';
         tag.innerHTML = `
-            <span>${influence}</span>
+            <span onclick="editInfluenceEntry('${type}', '${influence.replace(/'/g, "\\'")}');" style="cursor: pointer; flex: 1;">${influence}</span>
             <button type="button" class="remove-tag" onclick="removeInfluence('${type}', '${influence.replace(/'/g, "\\'")}')">×</button>
         `;
         container.appendChild(tag);
@@ -959,9 +1003,9 @@ function updateCharacterTags() {
     
     appState.projectCharacters.forEach((character, index) => {
         const tag = document.createElement('div');
-        tag.className = 'influence-tag';
+        tag.className = 'influence-tag clickable-tag';
         tag.innerHTML = `
-            <span>${character.name}</span>
+            <span onclick="editCharacterEntry(${index});" style="cursor: pointer; flex: 1;">${character.name}</span>
             <button type="button" class="remove-tag" onclick="removeCharacter(${index})" title="Remove character">×</button>
         `;
         container.appendChild(tag);
@@ -1032,6 +1076,167 @@ function createNewStoryConcept() {
     // Just open the modal to create a new story concept
     const config = LIBRARY_TYPES.storyconcept;
     showUniversalLibrarySaveModal('storyconcept', '', config, true);
+}
+
+// Edit functions for clickable tags in step 1
+async function editInfluenceEntry(type, influenceName) {
+    
+    // Get the config for this type
+    const config = LIBRARY_TYPES[type];
+    if (!config) {
+        console.warn(`Unknown influence type: ${type}`);
+        return;
+    }
+    
+    // Load user libraries to find the full data for this entry
+    const userLibraries = await loadUserLibraries();
+    const libraryType = type + 's'; // Convert to plural (directors, screenwriters, etc.)
+    const libraryEntries = userLibraries[libraryType] || [];
+    
+    // Find the entry data - library entries can be strings or objects
+    const entryData = libraryEntries.find(entry => {
+        // Handle different possible data structures
+        if (typeof entry === 'string') {
+            return entry === influenceName;
+        } else if (entry.entry_data && entry.entry_data.name) {
+            return entry.entry_data.name === influenceName;
+        } else if (entry.name) {
+            return entry.name === influenceName;
+        }
+        return false;
+    });
+    
+    if (entryData) {
+        // Extract the actual data based on the structure found
+        let actualData, actualKey;
+        
+        if (typeof entryData === 'string') {
+            // Simple string entry
+            actualData = { name: entryData, description: '' };
+            actualKey = entryData.toLowerCase().replace(/\s+/g, '_');
+        } else if (entryData.entry_data && entryData.entry_data.name) {
+            actualData = entryData.entry_data;
+            actualKey = entryData.entry_key;
+        } else if (entryData.name) {
+            actualData = { name: entryData.name, description: entryData.description || '' };
+            actualKey = entryData.entry_key || entryData.key;
+        } else {
+            actualData = { name: influenceName, description: '' };
+            actualKey = influenceName.toLowerCase().replace(/\s+/g, '_');
+        }
+        
+        // Store editing state for the universal modal
+        window.editingLibraryEntry = {
+            type: libraryType,
+            key: actualKey,
+            data: actualData,
+            isFromStep1: true // Flag to know this came from step 1
+        };
+        
+        // Show universal modal with pre-filled data
+        showUniversalLibrarySaveModal(type, actualData.name, config, false);
+        
+        // Pre-fill description if exists
+        setTimeout(() => {
+            const descField = document.getElementById('universalLibraryEntryDescription');
+            if (descField && actualData.description) {
+                descField.value = actualData.description;
+            }
+        }, 100);
+    } else {
+        // Entry not found in library, maybe it's a default entry
+        // Create a new library entry with this name
+        showUniversalLibrarySaveModal(type, influenceName, config, true);
+        showToast('This entry is not in your library yet. You can save it now!', 'info');
+    }
+}
+
+async function editCharacterEntry(characterIndex) {
+    console.log('Editing character entry:', characterIndex);
+    
+    const character = appState.projectCharacters[characterIndex];
+    if (!character) {
+        console.warn('Character not found:', characterIndex);
+        return;
+    }
+    
+    // Get the config for characters
+    const config = LIBRARY_TYPES.character;
+    
+    // Load user libraries to find the full data for this character
+    const userLibraries = await loadUserLibraries();
+    const characterEntries = userLibraries.characters || [];
+    
+    // Find the entry data - library entries can be strings or objects
+    const entryData = characterEntries.find(entry => {
+        // Handle different possible data structures
+        if (typeof entry === 'string') {
+            return entry === character.name;
+        } else if (entry.entry_data && entry.entry_data.name) {
+            return entry.entry_data.name === character.name;
+        } else if (entry.name) {
+            return entry.name === character.name;
+        }
+        return false;
+    });
+    
+    if (entryData) {
+        // Extract the actual data based on the structure found
+        let actualData, actualKey;
+        
+        if (typeof entryData === 'string') {
+            // Simple string entry
+            actualData = { name: entryData, description: character.description || '' };
+            actualKey = entryData.toLowerCase().replace(/\s+/g, '_');
+        } else if (entryData.entry_data && entryData.entry_data.name) {
+            actualData = entryData.entry_data;
+            actualKey = entryData.entry_key;
+        } else if (entryData.name) {
+            actualData = { name: entryData.name, description: entryData.description || '' };
+            actualKey = entryData.entry_key || entryData.key;
+        } else {
+            actualData = { name: character.name, description: character.description || '' };
+            actualKey = character.name.toLowerCase().replace(/\s+/g, '_');
+        }
+        
+        // Store editing state for the universal modal
+        window.editingLibraryEntry = {
+            type: 'characters',
+            key: actualKey,
+            data: actualData,
+            isFromStep1: true,
+            characterIndex: characterIndex // Store the index for project character updates
+        };
+        
+        // Show universal modal with pre-filled data
+        showUniversalLibrarySaveModal('character', actualData.name, config, false);
+        
+        // Pre-fill description
+        setTimeout(() => {
+            const descField = document.getElementById('universalLibraryEntryDescription');
+            if (descField && actualData.description) {
+                descField.value = actualData.description;
+            }
+        }, 100);
+    } else {
+        // Character not found in library, create a new library entry
+        window.editingLibraryEntry = {
+            isFromStep1: true,
+            characterIndex: characterIndex,
+            isNewCharacterEntry: true
+        };
+        
+        // Show modal with current character data
+        showUniversalLibrarySaveModal('character', character.name, config, true);
+        
+        // Pre-fill description with current character description
+        setTimeout(() => {
+            const descField = document.getElementById('universalLibraryEntryDescription');
+            if (descField && character.description) {
+                descField.value = character.description;
+            }
+        }, 100);
+    }
 }
 
 function buildInfluencePrompt() {
@@ -1423,18 +1628,11 @@ async function populateDropdowns() {
 
 // Load user's custom libraries for dropdowns
 async function loadUserLibraries() {
-    console.log('LoadUserLibraries: Starting...');
-    
     // Re-check authentication status in case it wasn't initialized properly
     authManager.checkAuthStatus();
     
     // Skip user libraries for guest users (not authenticated)
     if (!appState.isAuthenticated) {
-        console.log('LoadUserLibraries: User not authenticated, skipping user libraries');
-        console.log('Authentication status:', appState.isAuthenticated);
-        console.log('User:', appState.user);
-        console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
-        console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
         return { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
     }
     
@@ -1444,7 +1642,6 @@ async function loadUserLibraries() {
         
         // Load each library type from the API with timeout
         for (const type of libraryTypes) {
-            console.log(`LoadUserLibraries: Attempting to load ${type}...`);
             try {
                 // Add 5-second timeout to prevent hanging
                 const controller = new AbortController();
@@ -1455,26 +1652,15 @@ async function loadUserLibraries() {
                 });
                 clearTimeout(timeoutId);
                 
-                console.log(`LoadUserLibraries: Response for ${type}: ${response.status}`);
-                
                 if (response.ok) {
                     const libraries = await response.json();
                     userLibraries[type] = libraries.map(lib => lib.entry_data.name);
-                    console.log(`LoadUserLibraries: Loaded ${userLibraries[type].length} ${type} from user library`);
-                } else {
-                    console.log(`LoadUserLibraries: ${type} API returned ${response.status}, using empty array`);
                 }
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.log(`LoadUserLibraries: ${type} request timed out, using empty array`);
-                } else {
-                    console.log(`LoadUserLibraries: Could not load user ${type} library:`, error);
-                }
                 // Continue with empty array for this type
             }
         }
         
-        console.log('LoadUserLibraries: Completed successfully:', userLibraries);
         return userLibraries;
     } catch (error) {
         console.error('LoadUserLibraries: Error occurred:', error);

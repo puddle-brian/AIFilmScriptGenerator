@@ -1,8 +1,6 @@
 // Profile page functionality
-let currentUser = null; // Will be set from authenticated user data
+let currentUser = 'guest';
 let currentUserId = null; // Will be set from authenticated user data
-let currentLibraryType = '';
-let editingEntry = null;
 let isCurrentUserAdmin = false;
 
 // Initialize page
@@ -60,19 +58,18 @@ async function loadUsers() {
         const users = await response.json();
         
         const userSelect = document.getElementById('currentUser');
-        userSelect.innerHTML = '';
+        userSelect.innerHTML = '<option value="guest">Guest</option>';
         
         users.forEach(user => {
             const option = document.createElement('option');
             option.value = user.username;
             option.textContent = user.username;
-            if (user.username === currentUser) {
-                option.selected = true;
-            }
             userSelect.appendChild(option);
         });
+        
+        userSelect.value = currentUser;
     } catch (error) {
-        console.error('Failed to load users:', error);
+        console.error('Error loading users:', error);
     }
 }
 
@@ -114,7 +111,7 @@ async function createNewUser() {
     form.onsubmit = async function(e) {
         e.preventDefault();
         const formData = new FormData(form);
-        const username = formData.get('newUsername').trim();
+        const username = formData.get('newUserName').trim();
         
         if (!username) {
             alert('Please enter a username');
@@ -145,11 +142,13 @@ async function createNewUser() {
         }
     };
     
-    userModal.classList.add('active');
+    userModal.classList.add('show');
 }
 
 function closeUserModal() {
-    document.getElementById('userCreationModal').classList.remove('active');
+    const modal = document.getElementById('userCreationModal');
+    modal.classList.remove('show');
+    document.getElementById('userCreationForm').reset();
 }
 
 // Load all user data
@@ -163,61 +162,85 @@ async function loadUserLibraries() {
     const libraryTypes = ['directors', 'storyconcepts', 'characters', 'screenwriters', 'films', 'tones'];
     
     for (const type of libraryTypes) {
-        try {
-            const response = await fetch(`/api/user-libraries/${currentUser}/${type}`);
-            const libraries = await response.json();
-            displayLibraries(type, libraries);
-        } catch (error) {
-            console.error(`Failed to load ${type} libraries:`, error);
-            displayLibraries(type, []);
-        }
+        await loadLibrary(type);
+    }
+}
+
+async function loadLibrary(type) {
+    try {
+        const response = await fetch(`/api/user-libraries/${currentUser}/${type}`);
+        const libraries = await response.json();
+        
+        displayLibraries(type, libraries);
+    } catch (error) {
+        console.error(`Error loading ${type} library:`, error);
+        displayLibraries(type, []);
     }
 }
 
 function displayLibraries(type, libraries) {
     const container = document.getElementById(`${type}-library`);
-    
-    if (libraries.length === 0) {
-        container.innerHTML = '<div class="library-empty">No custom entries yet</div>';
+    if (!container) {
+        console.warn(`Container not found for ${type}-library`);
         return;
     }
     
+    if (libraries.length === 0) {
+        container.innerHTML = '<div class="library-empty">No entries yet. Click "Add New" to get started!</div>';
+        return;
+    }
+    
+    // Create influence tags (step 1 badge pattern)
     container.innerHTML = libraries.map(lib => `
-        <div class="library-item">
-            <div class="library-item-content">
-                <div class="library-item-name">${lib.entry_data.name}</div>
-                <div class="library-item-description">${lib.entry_data.description}</div>
-            </div>
-            <div class="library-item-actions">
-                <button onclick="editLibraryEntry('${type}', '${lib.entry_key}', ${JSON.stringify(lib.entry_data)})" title="Edit">✏️</button>
-                <button onclick="deleteLibraryEntry('${type}', '${lib.entry_key}')" title="Delete">🗑️</button>
-            </div>
+        <div class="influence-tag" onclick="editLibraryEntry('${type}', '${lib.entry_key}', ${JSON.stringify(lib.entry_data).replace(/"/g, '&quot;')})">
+            <span>${lib.entry_data.name}</span>
+            <button class="remove-tag" onclick="event.stopPropagation(); deleteLibraryEntry('${type}', '${lib.entry_key}')" title="Remove">&times;</button>
         </div>
     `).join('');
 }
 
 function addLibraryEntry(type) {
-    currentLibraryType = type;
-    editingEntry = null;
-    
-    const displayName = type === 'storyconcepts' ? 'Story Concept' : type.charAt(0).toUpperCase() + type.slice(1, -1);
-    document.getElementById('modalTitle').textContent = `Add ${displayName} Entry`;
-    document.getElementById('entryName').value = '';
-    document.getElementById('entryDescription').value = '';
-    
-    document.getElementById('libraryEntryModal').classList.add('active');
+    // This function is deprecated - use addFromDropdownOrNew instead
+    addFromDropdownOrNew(type.replace(/s$/, '')); // Remove 's' from plural
 }
 
-function editLibraryEntry(type, key, data) {
-    currentLibraryType = type;
-    editingEntry = key;
+function editLibraryEntry(type, entryKey, entryData) {
+    // Use the universal modal system for editing
+    const config = getLibraryTypeConfig(type.replace(/s$/, '')); // Remove 's' from plural
+    if (!config) {
+        console.warn(`Unknown library type: ${type}`);
+        return;
+    }
     
-    const displayName = type === 'storyconcepts' ? 'Story Concept' : type.charAt(0).toUpperCase() + type.slice(1, -1);
-    document.getElementById('modalTitle').textContent = `Edit ${displayName} Entry`;
-    document.getElementById('entryName').value = data.name;
-    document.getElementById('entryDescription').value = data.description;
+    // Store editing state
+    window.editingLibraryEntry = {
+        type: type,
+        key: entryKey,
+        data: entryData
+    };
     
-    document.getElementById('libraryEntryModal').classList.add('active');
+    // Show universal modal with pre-filled data
+    showUniversalLibrarySaveModal(type.replace(/s$/, ''), entryData.name || '', config, false);
+    
+    // Pre-fill the description field if it exists
+    setTimeout(() => {
+        const descField = document.getElementById('universalLibraryEntryDescription');
+        if (descField && entryData.description) {
+            descField.value = entryData.description;
+        }
+    }, 100);
+}
+
+function getTypeDisplayName(type) {
+    const displayNames = {
+        'directors': 'Director',
+        'screenwriters': 'Screenwriter', 
+        'films': 'Film',
+        'tones': 'Tone',
+        'storyconcepts': 'Story Concept',
+        'characters': 'Character'
+    };
+    return displayNames[type] || type;
 }
 
 async function deleteLibraryEntry(type, key) {
@@ -229,7 +252,8 @@ async function deleteLibraryEntry(type, key) {
         });
         
         if (response.ok) {
-            await loadUserLibraries();
+            await loadLibrary(type);
+            showToast('Library entry deleted successfully!', 'success');
         } else {
             alert('Failed to delete entry');
         }
@@ -240,7 +264,18 @@ async function deleteLibraryEntry(type, key) {
 }
 
 function closeModal() {
-    document.getElementById('libraryEntryModal').classList.remove('active');
+    document.querySelectorAll('.modal').forEach(modal => {
+        modal.classList.remove('show');
+    });
+    
+    // Clear editing state
+    window.editingLibraryEntry = null;
+}
+
+function closeUserModal() {
+    const modal = document.getElementById('userCreationModal');
+    modal.classList.remove('show');
+    document.getElementById('userCreationForm').reset();
 }
 
 // Helper function to generate a URL-safe key from name
@@ -252,48 +287,7 @@ function generateEntryKey(name) {
         .trim('-'); // Remove leading/trailing dashes
 }
 
-// Form submission for library entries
-document.getElementById('libraryEntryForm').onsubmit = async function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const entryName = formData.get('entryName').trim();
-    const entryDescription = formData.get('entryDescription').trim();
-    
-    if (!entryName || !entryDescription) {
-        alert('Please fill in all fields');
-        return;
-    }
-    
-    // Auto-generate key from name (or use existing key when editing)
-    const entryKey = editingEntry || generateEntryKey(entryName);
-    
-    const entryData = {
-        name: entryName,
-        description: entryDescription
-    };
-    
-    try {
-        const method = editingEntry ? 'PUT' : 'POST';
-        const response = await fetch(`/api/user-libraries/${currentUser}/${currentLibraryType}/${entryKey}`, {
-            method: method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entryData)
-        });
-        
-        if (response.ok) {
-            await loadUserLibraries();
-            closeModal();
-            e.target.reset();
-        } else {
-            const error = await response.text();
-            alert('Failed to save entry: ' + error);
-        }
-    } catch (error) {
-        console.error('Failed to save entry:', error);
-        alert('Failed to save entry');
-    }
-};
+// Old form handler removed - now using universal modal system
 
 // Project Management
 async function loadUserProjects() {
@@ -488,4 +482,354 @@ document.addEventListener('keydown', function(e) {
             modal.classList.remove('active');
         });
     }
-}); 
+});
+
+// Credits Widget Functions
+function toggleCreditsDetail() {
+    const panel = document.getElementById('creditsDetailPanel');
+    const toggle = document.getElementById('creditsToggle');
+    
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        toggle.textContent = 'Hide ▲';
+        
+        // Load credits data when panel opens
+        if (typeof loadCreditsData === 'function') {
+            loadCreditsData();
+        }
+    } else {
+        panel.style.display = 'none';
+        toggle.textContent = 'Manage ▼';
+    }
+}
+
+function updateHeaderCredits() {
+    // Update header credits display
+    if (typeof getUserCredits === 'function') {
+        getUserCredits().then(credits => {
+            const headerAmount = document.getElementById('headerCreditsAmount');
+            if (headerAmount) {
+                headerAmount.textContent = credits || '--';
+            }
+        }).catch(error => {
+            console.error('Error updating header credits:', error);
+        });
+    }
+}
+
+function showToast(message, type = 'info') {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-content">
+            <span class="toast-message">${message}</span>
+            <button class="toast-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(toast);
+    
+    // Show toast
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+// Click outside modal to close
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal')) {
+        closeModal();
+        closeUserModal();
+    }
+});
+
+// Profile-specific versions of functions from main app
+// Library entry creation functions
+function addFromDropdownOrNew(type) {
+    // For profile page, always open modal to create new entry
+    addNewToLibrary(type);
+}
+
+function addNewToLibrary(type) {
+    console.log('Profile: Adding new library entry for', type);
+    
+    const config = getLibraryTypeConfig(type);
+    if (!config) {
+        console.warn(`Unknown library type: ${type}`);
+        return;
+    }
+    
+    showUniversalLibrarySaveModal(type, '', config, true);
+}
+
+function getLibraryTypeConfig(type) {
+    const configs = {
+        'director': {
+            displayName: 'Director',
+            singular: 'director',
+            plural: 'directors',
+            placeholder: 'e.g. Christopher Nolan, Greta Gerwig, Denis Villeneuve'
+        },
+        'screenwriter': {
+            displayName: 'Screenwriter',
+            singular: 'screenwriter',
+            plural: 'screenwriters',
+            placeholder: 'e.g. Aaron Sorkin, Charlie Kaufman, Diablo Cody'
+        },
+        'film': {
+            displayName: 'Film',
+            singular: 'film',
+            plural: 'films',
+            placeholder: 'e.g. Pulp Fiction, Citizen Kane, The Godfather'
+        },
+        'tone': {
+            displayName: 'Tone',
+            singular: 'tone',
+            plural: 'tones',
+            placeholder: 'e.g. dark comedy, psychological thriller, romantic drama'
+        },
+        'storyconcept': {
+            displayName: 'Story Concept',
+            singular: 'story concept',
+            plural: 'story concepts',
+            placeholder: 'Brief description of your story idea...'
+        },
+        'character': {
+            displayName: 'Character',
+            singular: 'character',
+            plural: 'characters',
+            placeholder: 'Describe the character\'s role, personality, background...'
+        }
+    };
+    
+    return configs[type];
+}
+
+function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
+    console.log('Profile: Showing universal library modal for', type);
+    
+    const modalTitle = isNewEntry ? `Add New ${config.displayName}` : `Save ${config.displayName} to Library`;
+    const modalMessage = isNewEntry ? 
+        `Create a new ${config.singular} for your library:` :
+        `Would you like to save "<strong>${value}</strong>" to your ${config.plural} library for future projects?`;
+    
+    // Create prompt context help text based on type
+    let promptHelpText = '';
+    if (type === 'director') {
+        promptHelpText = `This will appear in prompts as: "In the directorial style of <em>[what you enter]</em>, ..."`;
+    } else if (type === 'screenwriter') {
+        promptHelpText = `This will appear in prompts as: "with screenplay influences from <em>[what you enter]</em>, ..."`;
+    } else if (type === 'film') {
+        promptHelpText = `This will appear in prompts as: "drawing inspiration from films like <em>[what you enter]</em>, ..."`;
+    } else if (type === 'character') {
+        promptHelpText = `Characters use both name and description in prompts for detailed character development.`;
+    } else if (type === 'tone') {
+        promptHelpText = `This tone will be used throughout your story generation.`;
+    } else if (type === 'storyconcept') {
+        promptHelpText = `This story description will be included in every AI prompt as your story develops, guiding all generated content.`;
+    }
+    
+    const isComplexType = type === 'character' || type === 'storyconcept';
+    
+    const modalHtml = `
+        <div class="modal universal-library-modal" id="universalLibrarySaveModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${modalTitle}</h3>
+                    <button class="modal-close" onclick="hideUniversalLibrarySaveModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <p>${modalMessage}</p>
+                    <form id="universalLibrarySaveForm">
+                        ${isComplexType ? `
+                            <div class="form-group">
+                                <label for="universalLibraryEntryName">${type === 'character' ? 'Character Name' : 'Story Title'}</label>
+                                <input type="text" id="universalLibraryEntryName" value="${value}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="universalLibraryEntryDescription">${type === 'character' ? 'Character Description' : 'Story Description'}</label>
+                                <textarea id="universalLibraryEntryDescription" rows="3" 
+                                    placeholder="${config.placeholder}"></textarea>
+                                ${type === 'storyconcept' ? `<small class="form-help">${promptHelpText}</small>` : ''}
+                            </div>
+                        ` : `
+                            <div class="form-group">
+                                <label for="universalLibraryEntryName">${config.displayName} Influence</label>
+                                <input type="text" id="universalLibraryEntryName" value="${value}" required 
+                                    placeholder="${config.placeholder}">
+                                <small class="form-help">${promptHelpText}</small>
+                            </div>
+                        `}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideUniversalLibrarySaveModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveToLibraryAndContinue('${type}', ${isNewEntry})">
+                        ${isNewEntry ? 'Add to Library' : 'Save to Library'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('universalLibrarySaveModal');
+    if (existingModal) existingModal.remove();
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('universalLibrarySaveModal').classList.add('show');
+    
+    // Focus on the name input
+    setTimeout(() => {
+        document.getElementById('universalLibraryEntryName').focus();
+    }, 100);
+}
+
+function hideUniversalLibrarySaveModal() {
+    const modal = document.getElementById('universalLibrarySaveModal');
+    if (modal) {
+        modal.classList.remove('show');
+        setTimeout(() => modal.remove(), 300);
+    }
+}
+
+async function saveToLibraryAndContinue(type, isNewEntry = false) {
+    const nameField = document.getElementById('universalLibraryEntryName');
+    const descriptionField = document.getElementById('universalLibraryEntryDescription');
+    
+    if (!nameField || !nameField.value.trim()) {
+        showToast('Please enter a name', 'error');
+        return;
+    }
+    
+    const name = nameField.value.trim();
+    const description = descriptionField ? descriptionField.value.trim() : '';
+    
+    try {
+        const entryData = type === 'character' || type === 'storyconcept' ? 
+            { name, description } : 
+            { name };
+        
+        // Check if we're editing an existing entry
+        const isEditing = window.editingLibraryEntry;
+        let url, method;
+        
+        if (isEditing) {
+            // Editing existing entry
+            method = 'PUT';
+            url = `/api/user-libraries/${currentUser}/${isEditing.type}/${isEditing.key}`;
+        } else {
+            // Creating new entry
+            method = 'POST';
+            url = `/api/user-libraries/${currentUser}/${type}`;
+        }
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('apiKey')}`
+            },
+            body: JSON.stringify(isEditing ? entryData : { entry_data: entryData })
+        });
+        
+        if (response.ok) {
+            const action = isEditing ? 'updated' : 'added';
+            showToast(`${name} ${action} in your ${type} library!`, 'success');
+            hideUniversalLibrarySaveModal();
+            
+            // Clear editing state
+            if (isEditing) {
+                window.editingLibraryEntry = null;
+            }
+            
+            // Refresh the library display
+            const libraryType = isEditing ? isEditing.type : (type + 's');
+            await loadLibrary(libraryType);
+        } else {
+            const error = await response.text();
+            showToast(`Error saving to library: ${error}`, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving to library:', error);
+        showToast('Error saving to library', 'error');
+    }
+}
+
+// Character-specific functions
+function addCharacter() {
+    console.log('Profile: Adding new character');
+    addNewToLibrary('character');
+}
+
+// Toast styling
+const toastStyles = `
+.toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #333;
+    color: white;
+    padding: 12px 16px;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
+    max-width: 400px;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.success {
+    background: #4CAF50;
+}
+
+.toast.error {
+    background: #f44336;
+}
+
+.toast.warning {
+    background: #ff9800;
+}
+
+.toast-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toast-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0;
+    opacity: 0.7;
+}
+
+.toast-close:hover {
+    opacity: 1;
+}
+`;
+
+// Add toast styles to page
+if (!document.getElementById('toast-styles')) {
+    const style = document.createElement('style');
+    style.id = 'toast-styles';
+    style.textContent = toastStyles;
+    document.head.appendChild(style);
+} 

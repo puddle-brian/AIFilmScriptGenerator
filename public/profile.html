@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile - SCREENPLAY HACK</title>
+    <title>Profile - SCREENPLAY GENIE</title>
     <link rel="stylesheet" href="styles.css?v=1.3">
     <link rel="stylesheet" href="profile.css?v=1.0">
     <link rel="stylesheet" href="credits.css?v=1.0">
@@ -13,9 +13,24 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <h1 class="title">SCREENPLAY HACK</h1>
+                <div class="title-container">
+                    <h1 class="title">SCREENPLAY GENIE</h1>
+                    <img src="screenplayGenieLogoSmall_invert.png" alt="Screenplay Genie" class="logo">
+                </div>
                 <nav class="nav">
                     <a href="index.html" class="nav-link">← Back to Generator</a>
+                    
+                    <!-- Compact Credits Widget -->
+                    <div class="credits-widget" id="creditsWidget">
+                        <div class="credits-summary">
+                            <span class="credits-amount" id="headerCreditsAmount">--</span>
+                            <span class="credits-label">credits</span>
+                            <button class="credits-manage-btn" onclick="toggleCreditsDetail()" id="creditsToggle">
+                                Manage ▼
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div class="user-selector" id="adminUserSelector" style="display: none;">
                         <label for="currentUser">User:</label>
                         <select id="currentUser" onchange="switchUser()">
@@ -30,8 +45,8 @@
             </div>
         </header>
 
-        <div class="profile-container">
-            <!-- Credits Dashboard -->
+        <!-- Collapsible Credits Detail Panel -->
+        <div class="credits-detail-panel" id="creditsDetailPanel" style="display: none;">
             <div class="credits-dashboard" id="creditsDashboard">
                 <div class="credits-overview">
                     <div class="credits-card main-balance">
@@ -85,80 +100,82 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Left Panel: My Libraries -->
-            <div class="libraries-panel">
-                <h2>My Libraries</h2>
+        <div class="profile-container">
+            <!-- Main Content: My Libraries -->
+            <div class="libraries-main">
+                <h2>My Creative Libraries</h2>
                 
-                <!-- Directors Library -->
+                <!-- Directors -->
                 <div class="library-section">
                     <div class="library-header">
                         <h3>Directors</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('directors')">+</button>
+                        <button class="add-new-btn" onclick="addFromDropdownOrNew('director')">+ Add New</button>
                     </div>
-                    <div class="library-items" id="directors-library">
-                        <!-- Director entries will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Story Concepts Library -->
-                <div class="library-section">
-                    <div class="library-header">
-                        <h3>Story Concepts</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('storyconcepts')">+</button>
-                    </div>
-                    <div class="library-items" id="storyconcepts-library">
-                        <!-- Story concept entries will be loaded here -->
+                    <div class="influence-tags" id="directors-library">
+                        <!-- Director badges will be loaded here -->
                     </div>
                 </div>
 
-                <!-- Characters Library -->
-                <div class="library-section">
-                    <div class="library-header">
-                        <h3>Characters</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('characters')">+</button>
-                    </div>
-                    <div class="library-items" id="characters-library">
-                        <!-- Character entries will be loaded here -->
-                    </div>
-                </div>
-
-                <!-- Screenwriters Library -->
+                <!-- Screenwriters -->
                 <div class="library-section">
                     <div class="library-header">
                         <h3>Screenwriters</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('screenwriters')">+</button>
+                        <button class="add-new-btn" onclick="addFromDropdownOrNew('screenwriter')">+ Add New</button>
                     </div>
-                    <div class="library-items" id="screenwriters-library">
-                        <!-- Screenwriter entries will be loaded here -->
+                    <div class="influence-tags" id="screenwriters-library">
+                        <!-- Screenwriter badges will be loaded here -->
                     </div>
                 </div>
 
-                <!-- Films Library -->
+                <!-- Films -->
                 <div class="library-section">
                     <div class="library-header">
                         <h3>Films</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('films')">+</button>
+                        <button class="add-new-btn" onclick="addFromDropdownOrNew('film')">+ Add New</button>
                     </div>
-                    <div class="library-items" id="films-library">
-                        <!-- Film entries will be loaded here -->
+                    <div class="influence-tags" id="films-library">
+                        <!-- Film badges will be loaded here -->
                     </div>
                 </div>
 
-                <!-- Tones Library -->
+                <!-- Tones -->
                 <div class="library-section">
                     <div class="library-header">
                         <h3>Tones</h3>
-                        <button class="add-btn" onclick="addLibraryEntry('tones')">+</button>
+                        <button class="add-new-btn" onclick="addFromDropdownOrNew('tone')">+ Add New</button>
                     </div>
-                    <div class="library-items" id="tones-library">
-                        <!-- Tone entries will be loaded here -->
+                    <div class="influence-tags" id="tones-library">
+                        <!-- Tone badges will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Story Concepts -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Story Concepts</h3>
+                        <button class="add-new-btn" onclick="addFromDropdownOrNew('storyconcept')">+ Add New</button>
+                    </div>
+                    <div class="influence-tags" id="storyconcepts-library">
+                        <!-- Story concept badges will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Characters -->
+                <div class="library-section">
+                    <div class="library-header">
+                        <h3>Characters</h3>
+                        <button class="add-new-btn" onclick="addCharacter()">+ Add New</button>
+                    </div>
+                    <div class="influence-tags" id="characters-library">
+                        <!-- Character badges will be loaded here -->
                     </div>
                 </div>
             </div>
 
-            <!-- Right Panel: My Projects -->
-            <div class="projects-panel">
+            <!-- Secondary Content: My Projects -->
+            <div class="projects-section">
                 <h2>My Projects</h2>
                 <div class="projects-grid" id="projects-grid">
                     <!-- Project cards will be loaded here -->
@@ -167,35 +184,7 @@
         </div>
     </div>
 
-    <!-- Add/Edit Library Entry Modal -->
-    <div class="modal" id="libraryEntryModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitle">Add Library Entry</h3>
-                <button class="modal-close" onclick="closeModal()">&times;</button>
-            </div>
-            <form id="libraryEntryForm">
-                <div class="form-group">
-                    <label for="entryName">Name</label>
-                    <input type="text" id="entryName" name="entryName" required 
-                           placeholder="e.g., Cosmic Horror Favorites">
-                </div>
-                
-                <div class="form-group">
-                    <label for="entryDescription">Description</label>
-                    <textarea id="entryDescription" name="entryDescription" required rows="4"
-                              placeholder="Describe this library entry and how it should influence the story..."></textarea>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Entry</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- User Creation Modal -->
+    <!-- User Creation Modal (Admin only) -->
     <div class="modal" id="userCreationModal">
         <div class="modal-content">
             <div class="modal-header">
@@ -204,11 +193,10 @@
             </div>
             <form id="userCreationForm">
                 <div class="form-group">
-                    <label for="newUsername">Username</label>
-                    <input type="text" id="newUsername" name="newUsername" required 
-                           placeholder="Enter username">
+                    <label for="newUserName">User Name</label>
+                    <input type="text" id="newUserName" name="newUserName" required 
+                           placeholder="Enter a name for the new user">
                 </div>
-                
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create User</button>
@@ -217,7 +205,7 @@
         </div>
     </div>
 
-    <script src="credits.js?v=1.0"></script>
-    <script src="profile.js?v=1.0"></script>
+    <script src="credits.js"></script>
+    <script src="profile.js"></script>
 </body>
 </html> 
