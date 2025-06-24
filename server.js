@@ -2315,7 +2315,93 @@ app.post('/api/save-project', async (req, res) => {
   }
 });
 
-// Auto-save project endpoint
+/**
+ * Cache project to file system asynchronously (optional performance layer)
+ * This runs in background and doesn't block the main save operation
+ */
+async function cacheProjectToFileSystem(projectData, projectPath) {
+  try {
+    // Save to file system (hierarchical structure) - CACHE ONLY
+    const projectDir = path.join(__dirname, 'generated', projectPath);
+    await fs.mkdir(projectDir, { recursive: true });
+    
+    // Create structure directory and save story concept (hierarchical format)
+    const structureDir = path.join(projectDir, '01_structure');
+    await fs.mkdir(structureDir, { recursive: true });
+    
+    // Save story concept first (always required for hierarchical projects)
+    const storyConceptFile = path.join(structureDir, 'story_concept.json');
+    await fs.writeFile(storyConceptFile, JSON.stringify({
+      storyInput: projectData.storyInput,
+      projectId: projectData.projectId,
+      projectPath: projectPath,
+      createdAt: new Date().toISOString(),
+      currentStep: projectData.currentStep || 1,
+      cached: true // Mark as cache
+    }, null, 2));
+    
+    // Save structure if it exists
+    if (projectData.generatedStructure && projectData.templateData) {
+      const structureFile = path.join(structureDir, 'plot_structure.json');
+      await fs.writeFile(structureFile, JSON.stringify({
+        structure: projectData.generatedStructure,
+        template: projectData.templateData,
+        storyInput: projectData.storyInput,
+        projectId: projectData.projectId,
+        projectPath: projectPath,
+        generatedAt: new Date().toISOString(),
+        cached: true // Mark as cache
+      }, null, 2));
+    }
+    
+    // Save plot points if they exist
+    if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+      const plotPointsDir = path.join(projectDir, '02_plot-points');
+      await fs.mkdir(plotPointsDir, { recursive: true });
+      
+      for (const [actKey, plotPoints] of Object.entries(projectData.plotPoints)) {
+        const plotPointsFile = path.join(plotPointsDir, `${actKey}.json`);
+        await fs.writeFile(plotPointsFile, JSON.stringify({...plotPoints, cached: true}, null, 2));
+      }
+    }
+    
+    // Save scenes if they exist
+    if (projectData.generatedScenes && Object.keys(projectData.generatedScenes).length > 0) {
+      const scenesDir = path.join(projectDir, '03_scenes');
+      await fs.mkdir(scenesDir, { recursive: true });
+      
+      for (const [actKey, scenes] of Object.entries(projectData.generatedScenes)) {
+        const actDir = path.join(scenesDir, actKey);
+        await fs.mkdir(actDir, { recursive: true });
+        
+        if (Array.isArray(scenes)) {
+          scenes.forEach((scene, index) => {
+            const sceneFile = path.join(actDir, `scene-${index + 1}.json`);
+            fs.writeFile(sceneFile, JSON.stringify({...scene, cached: true}, null, 2)).catch(console.error);
+          });
+        }
+      }
+    }
+    
+    // Save dialogue if it exists
+    if (projectData.generatedDialogues && Object.keys(projectData.generatedDialogues).length > 0) {
+      const dialogueDir = path.join(projectDir, '04_dialogue');
+      await fs.mkdir(dialogueDir, { recursive: true });
+      
+      for (const [key, dialogue] of Object.entries(projectData.generatedDialogues)) {
+        const dialogueFile = path.join(dialogueDir, `${key}.json`);
+        await fs.writeFile(dialogueFile, JSON.stringify({...dialogue, cached: true}, null, 2));
+      }
+    }
+    
+    console.log(`📁 Project cached to file system: ${projectData.storyInput?.title || projectPath}`);
+  } catch (error) {
+    // Don't throw - caching is optional
+    console.warn(`⚠️ File system cache failed for ${projectPath}:`, error.message);
+  }
+}
+
+// Auto-save project endpoint - DATABASE FIRST
 app.post('/api/auto-save-project', async (req, res) => {
   try {
     const projectData = req.body;
@@ -2335,128 +2421,59 @@ app.post('/api/auto-save-project', async (req, res) => {
     if (!projectPath) {
       return res.status(400).json({ error: 'Project path could not be determined' });
     }
-    
-    // Save to file system (hierarchical structure)
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    await fs.mkdir(projectDir, { recursive: true });
-    
-    // Create structure directory and save story concept (hierarchical format)
-    const structureDir = path.join(projectDir, '01_structure');
-    await fs.mkdir(structureDir, { recursive: true });
-    
-    // Save story concept first (always required for hierarchical projects)
-    const storyConceptFile = path.join(structureDir, 'story_concept.json');
-    await fs.writeFile(storyConceptFile, JSON.stringify({
-      storyInput: projectData.storyInput,
-      projectId: projectData.projectId,
-      projectPath: projectPath,
-      createdAt: new Date().toISOString(),
-      currentStep: projectData.currentStep || 1
-    }, null, 2));
-    
-    // Save structure if it exists
-    if (projectData.generatedStructure && projectData.templateData) {
-      const structureDir = path.join(projectDir, '01_structure');
-      await fs.mkdir(structureDir, { recursive: true });
-      
-      const structureFile = path.join(structureDir, 'plot_structure.json');
-      await fs.writeFile(structureFile, JSON.stringify({
-        structure: projectData.generatedStructure,
-        template: projectData.templateData,
-        storyInput: projectData.storyInput,
-        projectId: projectData.projectId,
-        projectPath: projectPath,
-        generatedAt: new Date().toISOString()
-      }, null, 2));
-    }
-    
-    // Save plot points if they exist
-    if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
-      const plotPointsDir = path.join(projectDir, '02_plot-points');
-      await fs.mkdir(plotPointsDir, { recursive: true });
-      
-      for (const [actKey, plotPoints] of Object.entries(projectData.plotPoints)) {
-        const plotPointsFile = path.join(plotPointsDir, `${actKey}.json`);
-        await fs.writeFile(plotPointsFile, JSON.stringify(plotPoints, null, 2));
-      }
-    }
-    
-    // Save scenes if they exist
-    if (projectData.generatedScenes && Object.keys(projectData.generatedScenes).length > 0) {
-      const scenesDir = path.join(projectDir, '03_scenes');
-      await fs.mkdir(scenesDir, { recursive: true });
-      
-      for (const [actKey, scenes] of Object.entries(projectData.generatedScenes)) {
-        const actDir = path.join(scenesDir, actKey);
-        await fs.mkdir(actDir, { recursive: true });
-        
-        if (Array.isArray(scenes)) {
-          scenes.forEach((scene, index) => {
-            const sceneFile = path.join(actDir, `scene-${index + 1}.json`);
-            fs.writeFile(sceneFile, JSON.stringify(scene, null, 2)).catch(console.error);
-          });
-        }
-      }
-    }
-    
-    // Save dialogue if it exists
-    if (projectData.generatedDialogues && Object.keys(projectData.generatedDialogues).length > 0) {
-      const dialogueDir = path.join(projectDir, '04_dialogue');
-      await fs.mkdir(dialogueDir, { recursive: true });
-      
-      for (const [key, dialogue] of Object.entries(projectData.generatedDialogues)) {
-        const dialogueFile = path.join(dialogueDir, `${key}.json`);
-        await fs.writeFile(dialogueFile, JSON.stringify(dialogue, null, 2));
-      }
-    }
-    
-    // Also save to database for profile system
-    try {
-      const projectContext = {
-        ...projectData,
-        projectPath: projectPath,
-        autoSaved: true,
-        lastAutoSave: new Date().toISOString()
-      };
-      
-      const thumbnailData = {
-        title: projectData.storyInput?.title || 'Untitled Project',
-        genre: projectData.storyInput?.genre || 'Unknown',
-        tone: projectData.storyInput?.tone || 'Unknown',
-        structure: projectData.templateData?.name || 'Unknown Structure',
-        currentStep: projectData.currentStep || 1,
-        totalScenes: projectData.storyInput?.totalScenes || 70,
-        lastAutoSave: new Date().toISOString()
-      };
 
-      // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        // Save project to database
-        await dbClient.query(
-          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-           VALUES ($1, $2, $3, $4) 
-           ON CONFLICT (user_id, project_name) 
-           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-          [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-        );
-        
-        console.log(`✅ Project auto-saved to database for user: ${username}`);
-      }
-    } catch (dbError) {
-      console.error('⚠️ Database auto-save failed (continuing with file save):', dbError);
-      // Don't fail the entire request if database save fails
+    // STEP 1: Save to database FIRST (primary storage)
+    const projectContext = {
+      ...projectData,
+      projectPath: projectPath,
+      autoSaved: true,
+      lastAutoSave: new Date().toISOString(),
+      formatVersion: '2.0' // Mark as new database-first format
+    };
+    
+    const thumbnailData = {
+      title: projectData.storyInput?.title || 'Untitled Project',
+      genre: projectData.storyInput?.genre || 'Unknown',
+      tone: projectData.storyInput?.tone || 'Unknown',
+      structure: projectData.templateData?.name || 'Unknown Structure',
+      currentStep: projectData.currentStep || 1,
+      totalScenes: projectData.storyInput?.totalScenes || 70,
+      lastAutoSave: new Date().toISOString()
+    };
+
+    // Get user ID and save to database (PRIMARY STORAGE)
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ error: 'User not found' });
     }
     
+    const userId = userResult.rows[0].id;
+    
+    // Save project to database (PRIMARY)
+    await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, project_name) 
+       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+      [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+    );
+    
+    console.log(`✅ Project saved to database (primary): ${projectData.storyInput?.title || projectPath}`);
+
+    // STEP 2: Cache to file system ASYNC (optional, for performance)
+    // Don't wait for file caching - respond immediately
+    cacheProjectToFileSystem(projectData, projectPath).catch(error => {
+      console.warn('⚠️ File system cache failed (not critical):', error.message);
+    });
+    // STEP 3: Respond immediately (database save is complete)
     res.json({
       success: true,
       projectPath: projectPath,
       projectId: projectData.projectId,
-      message: 'Project auto-saved successfully',
-      timestamp: new Date().toISOString()
-    });
+      message: 'Project saved successfully',
+      timestamp: new Date().toISOString(),
+      storage: 'database-first' // Indicate new storage method
+         });
     
   } catch (error) {
     console.error('❌ Auto-save failed:', error);
@@ -2829,46 +2846,96 @@ async function loadPartialProjectFull(projectDir, projectPath) {
   };
 }
 
-// List existing projects - IMPROVED VERSION
+// List existing projects - DATABASE FIRST
 app.get('/api/list-projects', async (req, res) => {
   try {
-    const generatedDir = path.join(__dirname, 'generated');
-    const projectFolders = await fs.readdir(generatedDir);
-    
+    const username = 'guest'; // TODO: Get from user session/auth
     const projects = [];
     const skippedProjects = [];
     
-    for (const folder of projectFolders) {
-      try {
-        const format = await detectProjectFormat(folder);
+    // STEP 1: Load projects from database (primary source)
+    try {
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
         
-        if (format === 'invalid') {
-          skippedProjects.push(folder);
+        const dbProjects = await dbClient.query(
+          'SELECT project_name, project_context, thumbnail_data, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
+          [userId]
+        );
+        
+        for (const row of dbProjects.rows) {
+          try {
+            const projectContext = JSON.parse(row.project_context);
+            const thumbnailData = JSON.parse(row.thumbnail_data);
+            
+            // Determine progress from database data
+            const progress = determineProjectProgress(projectContext);
+            
+            projects.push({
+              path: row.project_name,
+              title: thumbnailData.title,
+              tone: thumbnailData.tone,
+              totalScenes: thumbnailData.totalScenes,
+              createdAt: row.updated_at,
+              logline: projectContext.storyInput?.logline || 'No logline available',
+              format: 'database', // Mark as database-sourced
+              status: 'database-first',
+              progress: progress
+            });
+          } catch (parseError) {
+            console.warn(`⚠️ Skipping corrupted database project: ${row.project_name}`);
+            skippedProjects.push(row.project_name);
+          }
+        }
+        
+        console.log(`💾 Loaded ${projects.length} projects from database (primary storage)`);
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Database query failed, falling back to file system:', dbError.message);
+    }
+    
+    // STEP 2: Load additional projects from file system (legacy/cache)
+    try {
+      const generatedDir = path.join(__dirname, 'generated');
+      const projectFolders = await fs.readdir(generatedDir);
+      
+      for (const folder of projectFolders) {
+        // Skip if already loaded from database
+        if (projects.some(p => p.path === folder)) {
           continue;
         }
         
-        // For listing, we just need basic info + format, then load full data to determine progress
-        const basicProjectData = await loadBasicProjectInfo(folder, format);
-        const fullProjectData = await loadProjectByFormat(folder, format);
-        
-        projects.push({
-          ...basicProjectData,
-          progress: fullProjectData.progress
-        });
-        
-      } catch (error) {
-        // Only log detailed errors in development
-        if (process.env.NODE_ENV !== 'production') {
-          console.log(`Error loading project ${folder}:`, error.message);
+        try {
+          const format = await detectProjectFormat(folder);
+          
+          if (format === 'invalid') {
+            skippedProjects.push(folder);
+            continue;
+          }
+          
+          // Load file-based project
+          const basicProjectData = await loadBasicProjectInfo(folder, format);
+          const fullProjectData = await loadProjectByFormat(folder, format);
+          
+          projects.push({
+            ...basicProjectData,
+            progress: fullProjectData.progress
+          });
+          
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log(`Error loading file project ${folder}:`, error.message);
+          }
+          skippedProjects.push(folder);
         }
-        skippedProjects.push(folder);
       }
+    } catch (fsError) {
+      console.warn('⚠️ File system scan failed:', fsError.message);
     }
     
-    // Log summary instead of individual skips (much cleaner logs)
-    if (skippedProjects.length > 0) {
-      console.log(`📁 Project scan complete: ${projects.length} valid projects loaded${skippedProjects.length > 0 ? `, ${skippedProjects.length} invalid folders skipped` : ''}`);
-    }
+    // Log summary
+    console.log(`📁 Project scan complete: ${projects.length} valid projects loaded${skippedProjects.length > 0 ? `, ${skippedProjects.length} invalid folders skipped` : ''}`);
     
     // Sort by creation date, newest first
     projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -2894,23 +2961,60 @@ app.get('/api/project/:id', async (req, res) => {
   }
 });
 
-// Load project by path - UNIVERSAL LOADER (Step 1.2)
+// Load project by path - DATABASE FIRST UNIVERSAL LOADER
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
+    const username = 'guest'; // TODO: Get from user session/auth
+    let fullProjectData = null;
+    let loadSource = 'unknown';
     
-    // Step 1: Detect project format
-    const format = await detectProjectFormat(projectPath);
-    
-    if (format === 'invalid') {
-      return res.status(404).json({ 
-        error: 'Project not found or corrupted', 
-        details: 'No valid project files found' 
-      });
+    // Step 1: Try to load from database (primary storage)
+    try {
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        const projectResult = await dbClient.query(
+          'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+          [userId, projectPath]
+        );
+        
+        if (projectResult.rows.length > 0) {
+          const projectContext = JSON.parse(projectResult.rows[0].project_context);
+          
+          // Add progress information
+          const progress = determineProjectProgress(projectContext);
+          
+          fullProjectData = {
+            ...projectContext,
+            progress,
+            format: 'database'
+          };
+          
+          loadSource = 'database';
+          console.log(`💾 Project loaded from database: "${fullProjectData.storyInput.title}" - ${progress.label}`);
+        }
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Database load failed, trying file system:', dbError.message);
     }
     
-    // Step 2: Load full project data using universal loader
-    const fullProjectData = await loadProjectByFormat(projectPath, format);
+    // Step 2: Fall back to file system if not in database
+    if (!fullProjectData) {
+      const format = await detectProjectFormat(projectPath);
+      
+      if (format === 'invalid') {
+        return res.status(404).json({ 
+          error: 'Project not found or corrupted', 
+          details: 'No valid project files found in database or file system' 
+        });
+      }
+      
+      fullProjectData = await loadProjectByFormat(projectPath, format);
+      loadSource = 'filesystem';
+      console.log(`📁 Project loaded from file system: "${fullProjectData.storyInput.title}" (${format} format) - ${fullProjectData.progress.label}`);
+    }
     
     // Step 3: Add helpful metadata for the frontend
     const response = {
@@ -2918,10 +3022,9 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
       loadedSuccessfully: true,
       canContinue: true,
       nextStep: fullProjectData.progress.step,
-      nextStepDescription: fullProjectData.progress.description
+      nextStepDescription: fullProjectData.progress.description,
+      loadSource: loadSource // Help frontend understand where data came from
     };
-    
-    console.log(`📁 Project loaded: "${fullProjectData.storyInput.title}" (${format} format) - ${fullProjectData.progress.label}`);
     
     res.json(response);
     
