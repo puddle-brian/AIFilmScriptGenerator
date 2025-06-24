@@ -4667,10 +4667,9 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     }
     
     // Trigger auto-save on step transitions (but not initial load)
-    // Temporarily commented out to reduce server load until project is substantial
-    // if (validateAccess && autoSaveManager.hasProjectData()) {
-    //     autoSaveManager.markDirty();
-    // }
+    if (validateAccess && autoSaveManager.hasProjectData()) {
+        autoSaveManager.markDirty();
+    }
     
     saveToLocalStorage();
 }
@@ -5227,16 +5226,17 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Determine target step based on saved project data or restore operation
     console.log(`🔍 STEP DEBUG: projectData.currentStep = ${projectData.currentStep}, maxAvailableStep = ${maxAvailableStep}, isRestore = ${isRestore}`);
-    if (projectData.currentStep && projectData.currentStep <= maxAvailableStep) {
-        // If project has a saved step and it's valid, use that
+    if (projectData.currentStep) {
+        // If project has a saved step, trust it and use it
+        // This allows users to return to their last working step even if prerequisites aren't complete
         targetStep = projectData.currentStep;
         console.log(`✅ Using saved project step ${targetStep} (max available: ${maxAvailableStep})`);
-    } else if (isRestore && appState.currentStep && appState.currentStep <= maxAvailableStep) {
-        // If restoring and current step is valid, stay on current step
+    } else if (isRestore && appState.currentStep) {
+        // If restoring and current step is available, stay on current step
         targetStep = appState.currentStep;
-        console.log(`✅ Restore: staying on current step ${targetStep} (max available: ${maxAvailableStep})`);
+        console.log(`✅ Restore: staying on current step ${targetStep}`);
     } else {
-        // If no saved step or current step is invalid, go to highest available step
+        // If no saved step, go to highest available step based on content
         targetStep = maxAvailableStep;
         console.log(`❌ No saved step: going to highest available step ${targetStep}`);
         console.log(`   - projectData.currentStep: ${projectData.currentStep}`);
