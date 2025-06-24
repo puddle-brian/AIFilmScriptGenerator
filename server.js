@@ -2582,12 +2582,33 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     const { projectPath, structureKey } = req.params;
     const { sceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    // Load project data from database instead of file system
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Get project context from database
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
+    
+    if (!structure || !storyInput) {
+      return res.status(400).json({ error: 'Project structure or story input not found in database' });
+    }
     
     if (!structure[structureKey]) {
       return res.status(400).json({ error: 'Invalid structure key' });
@@ -2598,18 +2619,23 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     // Try to get intelligent scene count from multiple sources
     let finalSceneCount = sceneCount; // Use provided count if given
     
-    // 1. Check if we have scene distribution from plot points
+    // 1. Check if we have scene distribution from plot points in database
     try {
-      const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
-      const plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
-      if (plotPointsData.totalScenesForAct) {
-        finalSceneCount = plotPointsData.totalScenesForAct;
-        console.log(`📈 Using scene count from plot points distribution: ${finalSceneCount} scenes`);
+      if (projectContext.plotPoints && projectContext.plotPoints[structureKey]) {
+        const actPlotPointsData = projectContext.plotPoints[structureKey];
+        if (actPlotPointsData.totalScenesForAct) {
+          finalSceneCount = actPlotPointsData.totalScenesForAct;
+          console.log(`📈 Using scene count from plot points distribution: ${finalSceneCount} scenes`);
+        }
       }
     } catch (plotError) {
-      // 2. Check if story structure has predefined scene count
+      console.log('Error checking plot points for scene count:', plotError.message);
+    }
+    
+    // 2. Check if story structure has predefined scene count
+    if (!finalSceneCount) {
       const preDefinedSceneCount = structureElement.scene_count || structure[structureKey]?.scene_count;
-      if (preDefinedSceneCount && !finalSceneCount) {
+      if (preDefinedSceneCount) {
         finalSceneCount = preDefinedSceneCount;
         console.log(`🎭 Using predefined scene count from story structure: ${finalSceneCount} scenes`);
       }
@@ -2635,8 +2661,8 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       // If context doesn't exist, rebuild it from project data
       if (!context.contexts.story) {
         console.log('Rebuilding context from project data...');
-        context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-        context.buildStructureContext(structure, projectData.template);
+        context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+        context.buildStructureContext(structure, projectContext.template);
       }
       
       // Build act context for this specific structural element
@@ -2838,36 +2864,25 @@ Return ONLY valid JSON in this exact format:
       });
     }
 
-    console.log('About to save scenes to file...');
+    console.log('About to save scenes to database...');
     
-    // Load existing scenes file or create new one
-    const scenesDir = path.join(projectDir, '02_scenes');
-    const scenesFile = path.join(scenesDir, 'scenes.json');
-    
-    console.log('Scenes directory:', scenesDir);
-    console.log('Scenes file:', scenesFile);
-    
-    let allScenes = { scenes: {}, storyInput };
-    try {
-      const existingContent = await fs.readFile(scenesFile, 'utf8');
-      allScenes = JSON.parse(existingContent);
-      console.log('Loaded existing scenes file');
-    } catch (error) {
-      console.log('No existing scenes file, creating new one');
+    // Update scenes in database
+    if (!projectContext.generatedScenes) {
+      projectContext.generatedScenes = {};
     }
-
-    // Update the specific structural element
-    allScenes.scenes[structureKey] = {
-      scenes: scenesData.scenes
+    
+    projectContext.generatedScenes[structureKey] = {
+      scenes: scenesData.scenes,
+      lastUpdated: new Date().toISOString()
     };
-    allScenes.lastUpdated = new Date().toISOString();
-
-    console.log('About to write scenes file...');
     
-    // Save updated scenes
-    await fs.writeFile(scenesFile, JSON.stringify(allScenes, null, 2));
+    // Save updated project context back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1 WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
-    console.log(`Scenes for ${structureKey} saved to: ${scenesDir}`);
+    console.log(`Scenes for ${structureKey} saved to database`);
 
     res.json({ 
       scenes: scenesData.scenes,
@@ -2888,26 +2903,40 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     const { model = "claude-sonnet-4-20250514" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    // Load project data from database instead of file system
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Get project context from database
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
+    
+    if (!structure || !storyInput) {
+      return res.status(400).json({ error: 'Project structure or story input not found in database' });
+    }
     
     if (!structure[structureKey]) {
       return res.status(400).json({ error: 'Invalid structure key' });
     }
     
-    // Load existing scenes to get context
-    let existingScenes = {};
-    try {
-      const scenesData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
-      existingScenes = scenesData.scenes || {};
-    } catch (error) {
-      console.log('No existing scenes found, generating fresh scene');
-    }
+    // Load existing scenes from database
+    const existingScenes = projectContext.generatedScenes || {};
     
     const structureElement = structure[structureKey];
     const elementScenes = existingScenes[structureKey]?.scenes || [];
@@ -2922,8 +2951,8 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     // If context doesn't exist, rebuild it from project data
     if (!context.contexts.story) {
       console.log('Rebuilding context from project data...');
-      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-      context.buildStructureContext(structure, projectData.template);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectContext.template);
     }
     
     // Build act context for this specific structural element
@@ -2992,28 +3021,26 @@ Return ONLY valid JSON in this exact format:
       });
     }
 
-    // Load existing scenes file or create new structure
-    let allScenes = { scenes: {}, storyInput };
-    try {
-      const existingContent = await fs.readFile(scenesFile, 'utf8');
-      allScenes = JSON.parse(existingContent);
-    } catch (error) {
-      // File doesn't exist yet, use default structure
+    // Update scene in database
+    if (!projectContext.generatedScenes) {
+      projectContext.generatedScenes = {};
     }
-
-    // Ensure the structure exists
-    if (!allScenes.scenes[structureKey]) {
-      allScenes.scenes[structureKey] = { scenes: [] };
+    
+    if (!projectContext.generatedScenes[structureKey]) {
+      projectContext.generatedScenes[structureKey] = { scenes: [] };
     }
 
     // Update the specific scene
-    allScenes.scenes[structureKey].scenes[sceneIndexNum] = sceneData;
-    allScenes.lastUpdated = new Date().toISOString();
+    projectContext.generatedScenes[structureKey].scenes[sceneIndexNum] = sceneData;
+    projectContext.generatedScenes[structureKey].lastUpdated = new Date().toISOString();
 
-    // Save updated scenes
-    await fs.writeFile(scenesFile, JSON.stringify(allScenes, null, 2));
+    // Save updated project context back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1 WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
-    console.log(`Individual scene ${sceneIndexNum + 1} for ${structureKey} saved`);
+    console.log(`Individual scene ${sceneIndexNum + 1} for ${structureKey} saved to database`);
 
     res.json({ 
       scene: sceneData,
