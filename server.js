@@ -232,7 +232,7 @@ async function populateUserStarterPack(userId, username) {
       
       // Truncate to 50 characters to fit database constraint
       if (key.length > 50) {
-        key = key.substring(0, 50).replace(/-+$/, ''); // Remove trailing dashes
+        key = key.substring(0, 47) + '...'; // Ensure it fits and is identifiable
       }
       
       return key;
@@ -2992,33 +2992,27 @@ app.get('/api/list-projects', async (req, res) => {
             const projectContext = typeof rawProjectContext === 'string' ? JSON.parse(rawProjectContext) : rawProjectContext;
             const thumbnailData = typeof rawThumbnailData === 'string' ? JSON.parse(rawThumbnailData) : rawThumbnailData;
             
-            // Only load unified format v2.0 projects
-            if (projectContext.formatVersion === '2.0') {
-              // Determine progress from unified data
-              const progress = determineProjectProgress(projectContext);
-              
-              projects.push({
-                path: row.project_name,
-                title: projectContext.title,
-                tone: projectContext.storyInput?.tone || 'Unknown',
-                totalScenes: projectContext.storyInput?.totalScenes || 'Unknown',
-                createdAt: row.updated_at,
-                logline: projectContext.storyInput?.logline || 'No logline available',
-                format: 'unified', // Mark as unified format
-                status: 'active',
-                progress: progress
-              });
-            } else {
-              console.warn(`⚠️ Skipping legacy format project: ${row.project_name} (v${projectContext.formatVersion || '1.0'})`);
-              skippedProjects.push(row.project_name);
-            }
+            // SIMPLE: Load ALL projects - no version filtering
+            const progress = determineProjectProgress(projectContext);
+            
+            projects.push({
+              path: row.project_name,
+              title: projectContext.title || projectContext.storyInput?.title || row.project_name,
+              tone: projectContext.storyInput?.tone || 'Unknown',
+              totalScenes: projectContext.storyInput?.totalScenes || 'Unknown',
+              createdAt: row.updated_at,
+              logline: projectContext.storyInput?.logline || 'No logline available',
+              format: 'unified', // Mark as unified format
+              status: 'active',
+              progress: progress
+            });
           } catch (parseError) {
             console.warn(`⚠️ Skipping corrupted database project: ${row.project_name}`);
             skippedProjects.push(row.project_name);
           }
         }
         
-        console.log(`💾 Loaded ${projects.length} unified format projects from database`);
+        console.log(`💾 Loaded ${projects.length} projects from database`);
       }
     } catch (dbError) {
       console.warn('⚠️ Database query failed:', dbError.message);
@@ -3028,9 +3022,9 @@ app.get('/api/list-projects', async (req, res) => {
     
     // Log summary
     if (skippedProjects.length > 0) {
-      console.log(`📁 Database scan complete: ${projects.length} unified projects loaded, ${skippedProjects.length} legacy/corrupted projects skipped`);
+      console.log(`📁 Database scan complete: ${projects.length} projects loaded, ${skippedProjects.length} corrupted projects skipped`);
     } else {
-      console.log(`📁 Database scan complete: ${projects.length} unified projects loaded`);
+      console.log(`📁 Database scan complete: ${projects.length} projects loaded`);
     }
     
     // Sort by creation date, newest first
@@ -5279,12 +5273,14 @@ app.get('/api/user-projects/:username', async (req, res) => {
     
     const userId = userResult.rows[0].id;
     
-    // Get projects
+    // Get projects - only unified format v2.0 (same as /api/list-projects)
     const result = await dbClient.query(
       'SELECT project_name, project_context, thumbnail_data, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
       [userId]
     );
     
+    // SIMPLE: Return ALL projects - no filtering nonsense
+    console.log(`📋 Profile page loaded ${result.rows.length} projects for ${username}`);
     res.json(result.rows);
   } catch (error) {
     console.error('Failed to fetch user projects:', error);

@@ -763,7 +763,18 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         } else {
             // Creating new entry
             method = 'POST';
-            const entryKey = name.toLowerCase().replace(/\s+/g, '_');
+            // Generate safe entry key (same logic as server-side)
+            let entryKey = name.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                .replace(/\s+/g, '-')         // Replace spaces with hyphens
+                .replace(/-+/g, '-')          // Remove multiple hyphens
+                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+                
+            // Truncate to 47 chars to fit database constraint (VARCHAR(50))
+            if (entryKey.length > 47) {
+                entryKey = entryKey.substring(0, 47) + '...';
+            }
+            
             url = `/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`;
         }
         
