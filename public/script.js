@@ -702,7 +702,19 @@ function initializeNewProjectFromStoryConcept(title, logline) {
         characters: appState.projectCharacters || [],
         totalScenes: document.getElementById('totalScenes')?.value || '70',
         tone: document.getElementById('tone')?.value || '',
-        customPrompt: null
+        customPrompt: null,
+        storyConcept: {
+            title: title,
+            logline: logline || '',
+            fromLibrary: false
+        }
+    };
+    
+    // Also set the current story concept for immediate display
+    appState.currentStoryConcept = {
+        title: title,
+        logline: logline || '',
+        fromLibrary: false
     };
     
     // Generate project path immediately
@@ -4942,8 +4954,16 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     console.log('Loading project with title:', projectData.storyInput.title);
     
     // Restore story concept if available
+    console.log('🔍 STORY CONCEPT DEBUG:', {
+        hasStoryConcept: !!projectData.storyInput.storyConcept,
+        storyConceptData: projectData.storyInput.storyConcept,
+        fallbackTitle: projectData.storyInput.title,
+        fallbackLogline: projectData.storyInput.logline
+    });
+    
     if (projectData.storyInput.storyConcept) {
         appState.currentStoryConcept = projectData.storyInput.storyConcept;
+        console.log('✅ Restored story concept from saved data:', appState.currentStoryConcept);
     } else if (projectData.storyInput.title && projectData.storyInput.logline) {
         // Create story concept from legacy data
         appState.currentStoryConcept = {
@@ -4951,6 +4971,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
             logline: projectData.storyInput.logline,
             fromLibrary: false
         };
+        console.log('✅ Created story concept from legacy data:', appState.currentStoryConcept);
     }
     updateStoryConceptDisplay();
     

@@ -2463,6 +2463,9 @@ function createUnifiedProject(data) {
     scenes: data.scenes || null,                 // Generated scenes
     dialogue: data.dialogue || {},               // Generated dialogue
     
+    // Navigation state
+    currentStep: data.currentStep || 1,          // Current step in workflow
+    
     // Additional data
     customPromptUsed: data.customPromptUsed || false,
     
@@ -2536,6 +2539,7 @@ async function saveUnifiedProjectToDatabase(projectData, username = 'guest') {
     );
     
     console.log(`✅ Project saved to database in unified format: "${unifiedProject.title}"`);
+    console.log(`🔍 DEBUG: Saved currentStep = ${unifiedProject.currentStep}`);
     return unifiedProject;
     
   } catch (error) {
@@ -2575,6 +2579,7 @@ async function loadUnifiedProjectFromDatabase(projectPath, username = 'guest') {
     // Only load unified format v2.0 projects
     if (projectContext.formatVersion === '2.0') {
       console.log(`💾 Loaded unified project from database: "${projectContext.title}"`);
+      console.log(`🔍 DEBUG: Project currentStep = ${projectContext.currentStep}`);
       return projectContext;
     }
     
