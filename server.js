@@ -3103,7 +3103,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
 app.delete('/api/project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.query.username || 'guest'; // Get from query parameter or default to guest
     let deletedFromDatabase = false;
     let deletedFromFileSystem = false;
     

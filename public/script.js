@@ -5057,18 +5057,22 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     }
     
     // Determine target step based on saved project data or restore operation
+    console.log(`🔍 STEP DEBUG: projectData.currentStep = ${projectData.currentStep}, maxAvailableStep = ${maxAvailableStep}, isRestore = ${isRestore}`);
     if (projectData.currentStep && projectData.currentStep <= maxAvailableStep) {
         // If project has a saved step and it's valid, use that
         targetStep = projectData.currentStep;
-        console.log(`Using saved project step ${targetStep} (max available: ${maxAvailableStep})`);
+        console.log(`✅ Using saved project step ${targetStep} (max available: ${maxAvailableStep})`);
     } else if (isRestore && appState.currentStep && appState.currentStep <= maxAvailableStep) {
         // If restoring and current step is valid, stay on current step
         targetStep = appState.currentStep;
-        console.log(`Restore: staying on current step ${targetStep} (max available: ${maxAvailableStep})`);
+        console.log(`✅ Restore: staying on current step ${targetStep} (max available: ${maxAvailableStep})`);
     } else {
         // If no saved step or current step is invalid, go to highest available step
         targetStep = maxAvailableStep;
-        console.log(`No saved step: going to highest available step ${targetStep}`);
+        console.log(`❌ No saved step: going to highest available step ${targetStep}`);
+        console.log(`   - projectData.currentStep: ${projectData.currentStep}`);
+        console.log(`   - isRestore: ${isRestore}`);
+        console.log(`   - appState.currentStep: ${appState.currentStep}`);
     }
     
     // Make sure templates are loaded first
@@ -5411,7 +5415,10 @@ async function deleteProject(projectPath, projectTitle) {
     try {
         showLoading('Deleting project...');
         
-        const response = await fetch(`/api/project/${encodeURIComponent(projectPath)}`, {
+        // Get current username from app state
+        const username = appState.user?.username || 'guest';
+        
+        const response = await fetch(`/api/project/${encodeURIComponent(projectPath)}?username=${encodeURIComponent(username)}`, {
             method: 'DELETE'
         });
         
