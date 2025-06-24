@@ -117,47 +117,90 @@ try {
 // Test 4: Test Scene Prompt Building
 console.log('📋 Test 4: Scene Prompt Building');
 try {
-    const testProjectContext = {
-        title: "Test Movie",
-        logline: "A test story about testing systems.",
-        characters: "Protagonist: A dedicated tester",
-        tone: "Comedy"
-    };
+    // Create a test hierarchical context (simulating what the server provides)
+    const testHierarchicalContext = `STORY CONTEXT:
+Title: Test Movie
+Logline: A test story about testing systems.
+Characters: Protagonist: A dedicated tester
+Genre: Comedy
+
+STRUCTURAL ELEMENT TO DEVELOP:
+Name: Act 1: Setup
+Description: Character discovers a bug in the system and shows problem-solving skills
+
+Previous scenes established the character's routine.`;
     
-    const testSceneData = {
-        actName: "Act 1",
-        description: "Character discovers a bug in the system",
-        character_development: "Shows problem-solving skills",
-        assignedPlotPoint: "First major obstacle",
-        position: 3,
-        totalInAct: 10
-    };
+    const scenePrompt = promptBuilders.buildScenePrompt(testHierarchicalContext, 3);
     
-    const scenePrompt = promptBuilders.buildScenePrompt(
-        testProjectContext, 
-        testSceneData, 
-        { 
-            sceneIndex: 2,
-            previousScenesContext: "Previous scenes established the character's routine"
-        }
-    );
-    
-    if (scenePrompt.includes('{{PROJECT_TITLE}}')) {
+    if (scenePrompt.includes('{{')) {
         console.log('❌ Scene prompt still contains unreplaced placeholders');
+        // Show which placeholders are missing
+        const matches = scenePrompt.match(/\{\{[^}]+\}\}/g);
+        if (matches) {
+            console.log('   Missing placeholders:', matches);
+        }
+        console.log('   Scene prompt preview:', scenePrompt.substring(0, 300) + '...');
         process.exit(1);
     }
     
-    if (scenePrompt.includes('Test Movie') && scenePrompt.includes('discovers a bug')) {
+    if (scenePrompt.includes('Test Movie') && scenePrompt.includes('3 scenes')) {
         console.log('✅ Scene prompt built successfully!');
-        console.log('   • Contains project title ✓');
-        console.log('   • Contains scene description ✓');
+        console.log('   • Contains hierarchical context ✓');
+        console.log('   • Contains scene count ✓');
         console.log('   • Placeholders replaced ✓\n');
     } else {
         console.log('❌ Scene prompt missing expected content');
+        console.log('   Preview:', scenePrompt.substring(0, 300) + '...');
         process.exit(1);
     }
 } catch (error) {
     console.log('❌ Scene prompt test failed:', error.message);
+    process.exit(1);
+}
+
+// Test 4b: Test Individual Scene Prompt Building
+console.log('📋 Test 4b: Individual Scene Prompt Building');
+try {
+    // Create a test hierarchical context for individual scene
+    const testHierarchicalContext = `STORY CONTEXT:
+Title: Test Movie
+Logline: A test story about testing systems.
+Characters: Protagonist: A dedicated tester
+Genre: Comedy
+
+STRUCTURAL ELEMENT TO DEVELOP:
+Name: Act 1: Setup
+Description: Character discovers a bug in the system
+
+SCENE TO REGENERATE:
+Position: Scene 2 in this structural element
+Current title: Bug Discovery Scene`;
+    
+    const individualScenePrompt = promptBuilders.buildIndividualScenePrompt(testHierarchicalContext);
+    
+    if (individualScenePrompt.includes('{{')) {
+        console.log('❌ Individual scene prompt still contains unreplaced placeholders');
+        // Show which placeholders are missing
+        const matches = individualScenePrompt.match(/\{\{[^}]+\}\}/g);
+        if (matches) {
+            console.log('   Missing placeholders:', matches);
+        }
+        console.log('   Individual scene prompt preview:', individualScenePrompt.substring(0, 300) + '...');
+        process.exit(1);
+    }
+    
+    if (individualScenePrompt.includes('Test Movie') && individualScenePrompt.includes('"title": "Scene Title"')) {
+        console.log('✅ Individual scene prompt built successfully!');
+        console.log('   • Contains hierarchical context ✓');
+        console.log('   • Contains individual scene JSON format ✓');
+        console.log('   • Placeholders replaced ✓\n');
+    } else {
+        console.log('❌ Individual scene prompt missing expected content');
+        console.log('   Preview:', individualScenePrompt.substring(0, 300) + '...');
+        process.exit(1);
+    }
+} catch (error) {
+    console.log('❌ Individual scene prompt test failed:', error.message);
     process.exit(1);
 }
 

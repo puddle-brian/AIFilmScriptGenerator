@@ -1,0 +1,34 @@
+// INDIVIDUAL SCENE GENERATION TEMPLATE
+// This template generates a single scene (used for regenerating specific scenes)
+// When you regenerate an individual scene, this exact text gets sent to the AI
+//
+// PLACEHOLDERS EXPLAINED:
+// {{HIERARCHICAL_CONTEXT}} = Complete story context including plot points, structure, etc.
+//
+// HOW TO EDIT THIS TEMPLATE:
+// ✅ Change the scene generation requirements
+// ✅ Modify the level of detail you want
+// ✅ Add specific formatting or style instructions
+// ❌ Don't change anything in double curly braces
+
+{{HIERARCHICAL_CONTEXT}}
+
+SCENE REGENERATION REQUIREMENTS:
+1. This scene must serve the OVERALL STORY STRUCTURE and advance the narrative
+2. It must fulfill the specific PURPOSE of its structural element
+3. It must advance any CHARACTER DEVELOPMENT noted for this element
+4. It must deliver the ASSIGNED PLOT POINT specified above
+5. Make it cinematic and specific, not just a plot summary
+6. Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+
+The scene you generate should feel like an organic part of the complete story structure, not an isolated fragment.
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location", 
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+} 

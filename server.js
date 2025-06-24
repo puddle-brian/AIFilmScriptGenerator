@@ -5,6 +5,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Anthropic = require('@anthropic-ai/sdk');
 const { Client } = require('pg');
+const promptBuilders = require('./prompt-builders');
 require('dotenv').config();
 
 // Add comprehensive error handling to prevent server crashes
@@ -2222,34 +2223,13 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
         
         hierarchicalPrompt = context.generateHierarchicalPrompt(5, customInstructions);
         
+        // Use our new prompt builder system for both individual and multiple scenes
         if (existingScene && sceneIndex !== null) {
-          prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "title": "Scene Title",
-  "location": "Specific location", 
-  "time_of_day": "Morning/Afternoon/Evening/Night",
-  "description": "What happens in this scene - be specific and visual",
-  "characters": ["Character1", "Character2"],
-  "emotional_beats": ["primary emotion", "secondary emotion"]
-}`;
+          // For individual scene, use the specific individual scene template
+          prompt = promptBuilders.buildIndividualScenePrompt(hierarchicalPrompt);
         } else {
-          prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night", 
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"]
-    }
-  ]
-}`;
+          // For multiple scenes
+          prompt = promptBuilders.buildScenePrompt(hierarchicalPrompt, sceneCount);
         }
         
         systemMessage = "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
@@ -2263,8 +2243,8 @@ Return ONLY valid JSON in this exact format:
     // Fallback to simple prompt if hierarchical context failed
     if (!hierarchicalPrompt) {
       if (existingScene && sceneIndex !== null) {
-        // Individual scene regeneration prompt
-        prompt = `Regenerate a single scene for "${storyInput.title}".
+        // Individual scene regeneration prompt using template system
+        const fallbackContext = `Regenerate a single scene for "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2279,26 +2259,12 @@ STRUCTURAL ELEMENT:
 
 SCENE TO REGENERATE:
 - Position: Scene ${sceneIndex + 1} in this structural element
-- Current title: ${existingScene.title || 'New Scene'}
-
-REQUIREMENTS:
-1. Create a single scene that fits this structural element
-2. Make it cinematic and specific, not just a plot summary
-3. Scene should advance the plot and character development described above
-4. Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
-
-Return ONLY valid JSON in this exact format:
-{
-  "title": "Scene Title",
-  "location": "Specific location",
-  "time_of_day": "Morning/Afternoon/Evening/Night",
-  "description": "What happens in this scene - be specific and visual",
-  "characters": ["Character1", "Character2"],
-  "emotional_beats": ["primary emotion", "secondary emotion"]
-}`;
+- Current title: ${existingScene.title || 'New Scene'}`;
+        
+        prompt = promptBuilders.buildIndividualScenePrompt(fallbackContext);
       } else {
-        // Multiple scenes generation prompt
-        prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+        // Multiple scenes generation prompt using template system
+        const fallbackContext = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2309,29 +2275,9 @@ STORY CONTEXT:
 STRUCTURAL ELEMENT TO DEVELOP:
 - Name: ${structureElement.name}
 - Description: ${structureElement.description}
-- Character Development: ${structureElement.character_development || 'Not specified'}
-
-REQUIREMENTS:
-1. Create exactly ${sceneCount} scenes that develop this structural element
-2. Each scene should advance the plot and character development described above
-3. Make scenes cinematic and specific, not just plot summaries
-4. Vary scene types: some dialogue-heavy, some action, some introspective
-5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
-6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night",
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"]
-    }
-  ]
-}`;
+- Character Development: ${structureElement.character_development || 'Not specified'}`;
+        
+        prompt = promptBuilders.buildScenePrompt(fallbackContext, sceneCount);
       }
       
       systemMessage = "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
@@ -2899,21 +2845,8 @@ The scenes you generate should feel like organic parts of the complete story str
       
       console.log('Hierarchical prompt generated successfully');
       
-      prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night",
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"]
-    }
-  ]
-}`;
+      // Use our new prompt builder system
+      prompt = promptBuilders.buildScenePrompt(hierarchicalPrompt, finalSceneCount);
       
       console.log('About to save context to project...');
       
@@ -2928,8 +2861,8 @@ Return ONLY valid JSON in this exact format:
     } catch (contextError) {
       console.error('Failed to build hierarchical context, falling back to simple prompt:', contextError);
       
-      // Fallback to simple prompt
-      prompt = `Create ${finalSceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+      // Fallback to simple prompt using template system
+      const fallbackContext = `Create ${finalSceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2940,29 +2873,9 @@ STORY CONTEXT:
 STRUCTURAL ELEMENT TO DEVELOP:
 - Name: ${structureElement.name}
 - Description: ${structureElement.description}
-- Character Development: ${structureElement.character_development || 'Not specified'}
+- Character Development: ${structureElement.character_development || 'Not specified'}`;
 
-REQUIREMENTS:
-1. Create exactly ${finalSceneCount} scenes that develop this structural element
-2. Each scene should advance the plot and character development described above
-3. Make scenes cinematic and specific, not just plot summaries
-4. Vary scene types: some dialogue-heavy, some action, some introspective
-5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
-6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night",
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"]
-    }
-  ]
-}`;
+      prompt = promptBuilders.buildScenePrompt(fallbackContext, finalSceneCount);
     }
 
     console.log('About to call Anthropic API for scene generation...');
@@ -3152,17 +3065,8 @@ SCENE GENERATION REQUIREMENTS:
 
 The scene you generate should feel like an organic part of the complete story structure, not an isolated fragment.`);
     
-    const prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "title": "Scene Title",
-  "location": "Specific location", 
-  "time_of_day": "Morning/Afternoon/Evening/Night",
-  "description": "What happens in this scene - be specific and visual",
-  "characters": ["Character1", "Character2"],
-  "emotional_beats": ["primary emotion", "secondary emotion"]
-}`;
+    // Use our new prompt builder system for individual scene generation
+    const prompt = promptBuilders.buildIndividualScenePrompt(hierarchicalPrompt);
 
     // Save updated context to project
     await context.saveToProject(projectPath);

@@ -129,27 +129,34 @@ function buildPlotPointsPrompt(projectContext, actKey, actData, options = {}) {
 
 /**
  * SCENE GENERATION PROMPT BUILDER  
- * Builds prompts for generating individual scenes based on plot points
+ * Builds prompts for generating multiple scenes based on hierarchical context
  */
-function buildScenePrompt(projectContext, sceneData, options = {}) {
+function buildScenePrompt(hierarchicalContext, sceneCount = 3, options = {}) {
     // Load the scene generation template
     const template = loadTemplate('scene-generation');
     
     // Prepare placeholders with actual project data
     const placeholders = {
-        PROJECT_TITLE: projectContext.title,
-        PROJECT_LOGLINE: projectContext.logline,
-        PROJECT_CHARACTERS: projectContext.characters,
-        PROJECT_TONE: projectContext.tone,
-        SCENE_ACT: sceneData.actName || options.actName,
-        SCENE_DESCRIPTION: sceneData.description || sceneData.assignedPlotPoint,
-        SCENE_CHARACTER_DEVELOPMENT: sceneData.character_development || sceneData.characterDevelopment || '',
-        SCENE_POSITION: sceneData.position || options.sceneIndex + 1,
-        TOTAL_SCENES_IN_ACT: sceneData.totalInAct || options.totalScenesInAct,
-        PREVIOUS_SCENES_SUMMARY: options.previousScenesContext || '',
-        PLOT_POINT_INDEX: sceneData.plotPointIndex || options.plotPointIndex,
-        ASSIGNED_PLOT_POINT: sceneData.assignedPlotPoint || '',
-        HIERARCHICAL_CONTEXT: options.hierarchicalContext || '',
+        HIERARCHICAL_CONTEXT: hierarchicalContext || '',
+        SCENE_COUNT: sceneCount,
+        CUSTOM_INSTRUCTIONS: options.customInstructions || ''
+    };
+    
+    // Replace placeholders and return the complete prompt
+    return replacePlaceholders(template, placeholders);
+}
+
+/**
+ * INDIVIDUAL SCENE GENERATION PROMPT BUILDER  
+ * Builds prompts for generating a single scene (regeneration)
+ */
+function buildIndividualScenePrompt(hierarchicalContext, options = {}) {
+    // Load the individual scene generation template
+    const template = loadTemplate('individual-scene-generation');
+    
+    // Prepare placeholders with actual project data
+    const placeholders = {
+        HIERARCHICAL_CONTEXT: hierarchicalContext || '',
         CUSTOM_INSTRUCTIONS: options.customInstructions || ''
     };
     
@@ -229,6 +236,7 @@ module.exports = {
     buildStructurePrompt,
     buildPlotPointsPrompt,
     buildScenePrompt,
+    buildIndividualScenePrompt,
     buildDialoguePrompt,
     validateTemplates,
     clearTemplateCache
