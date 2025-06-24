@@ -1,0 +1,122 @@
+[
+  {
+    "name": "Ellen Ripley",
+    "description": "Resourceful space officer who transforms from corporate employee to fierce survivor, facing alien threats with intelligence and determination. Represents the evolution from victim to warrior."
+  },
+  {
+    "name": "Travis Bickle",
+    "description": "Isolated taxi driver descending into vigilante violence, representing urban alienation and the dangerous psychology of the lonely outsider seeking purpose through violence."
+  },
+  {
+    "name": "Dorothy Gale",
+    "description": "Young farm girl swept into a fantastical journey, learning that home and self-worth come from within. The classic hero's journey through a child's eyes."
+  },
+  {
+    "name": "Vito Corleone",
+    "description": "Powerful mafia patriarch balancing family loyalty with criminal empire, embodying the contradiction between traditional values and moral corruption."
+  },
+  {
+    "name": "Holly Golightly",
+    "description": "Enigmatic social butterfly hiding vulnerability behind glamorous facade, representing the search for identity and belonging in urban anonymity."
+  },
+  {
+    "name": "Jake Gittes",
+    "description": "Private investigator uncovering corruption in 1930s Los Angeles, representing the cynical hero confronting institutional power and personal moral compromise."
+  },
+  {
+    "name": "Annie Hall",
+    "description": "Quirky, independent woman navigating modern romance with neurotic humor, representing authentic female complexity in relationships and self-discovery."
+  },
+  {
+    "name": "Daniel Plainview",
+    "description": "Ruthless oil prospector consumed by greed and misanthropy, representing American capitalism's destructive potential and the isolation of unchecked ambition."
+  },
+  {
+    "name": "Marge Gunderson",
+    "description": "Pregnant small-town police chief solving brutal crimes with folksy wisdom and moral clarity, representing competent authority and Midwestern values."
+  },
+  {
+    "name": "Tyler Durden",
+    "description": "Charismatic anarchist leader challenging consumer culture through underground fight clubs, representing rebellion against modern masculinity and corporate conformity."
+  },
+  {
+    "name": "Clarice Starling",
+    "description": "Ambitious FBI trainee confronting serial killers while overcoming class and gender barriers, representing intelligence and determination in male-dominated institutions."
+  },
+  {
+    "name": "The Dude",
+    "description": "Laid-back bowler reluctantly drawn into criminal conspiracy, representing passive resistance to life's complications and the absurdity of modern existence."
+  },
+  {
+    "name": "Scarlett O'Hara",
+    "description": "Determined Southern belle surviving Civil War through ruthless pragmatism, representing resilience, vanity, and the transformation of American society."
+  },
+  {
+    "name": "Atticus Finch",
+    "description": "Principled lawyer defending justice in racist small town, representing moral courage and the complexity of progressive ideals in conservative environments."
+  },
+  {
+    "name": "Norma Desmond",
+    "description": "Aging silent film star living in delusion, representing Hollywood's cruelty and the tragic cost of fame and the passage of time."
+  },
+  {
+    "name": "Alex DeLarge",
+    "description": "Charismatic sociopathic youth leader of violent gang, representing questions of free will, rehabilitation, and the nature of evil in modern society."
+  },
+  {
+    "name": "Sarah Connor",
+    "description": "Waitress transformed into warrior mother protecting humanity's future, representing the evolution from ordinary person to legendary figure through necessity."
+  },
+  {
+    "name": "Antoine Doinel",
+    "description": "Mischievous French boy navigating adolescence with humor and rebellion, representing universal coming-of-age struggles and the search for identity."
+  },
+  {
+    "name": "Blanche DuBois",
+    "description": "Fragile Southern belle clinging to illusions while facing harsh reality, representing the collision between fantasy and truth, gentility and brutality."
+  },
+  {
+    "name": "The Man with No Name",
+    "description": "Mysterious gunfighter operating by his own moral code in lawless frontier, representing the archetypal antihero and American individualism."
+  },
+  {
+    "name": "Lester Burnham",
+    "description": "Middle-aged suburban father experiencing midlife crisis and rebellion against conformity, representing American middle-class dissatisfaction and mortality."
+  },
+  {
+    "name": "Amélie Poulain",
+    "description": "Whimsical young woman secretly helping others find happiness while discovering her own capacity for love, representing kindness and magical realism in everyday life."
+  },
+  {
+    "name": "Michael Corleone",
+    "description": "War hero reluctantly inheriting family crime business, representing the corruption of innocence and the price of power and loyalty."
+  },
+  {
+    "name": "Thelma Dickinson",
+    "description": "Repressed housewife discovering freedom through criminal road trip, representing female liberation and rebellion against patriarchal constraints."
+  },
+  {
+    "name": "Louise Sawyer",
+    "description": "Waitress and protective friend whose past trauma drives desperate flight from justice, representing solidarity between women and consequences of violence."
+  },
+  {
+    "name": "Hannibal Lecter",
+    "description": "Brilliant psychiatrist and cannibalistic serial killer who helps capture other criminals, representing the seductive nature of evil and intellectual superiority."
+  },
+  {
+    "name": "Neo Anderson",
+    "description": "Computer programmer discovering reality is simulation and becoming humanity's savior, representing awakening to truth and the hero's journey in digital age."
+  },
+  {
+    "name": "Maximus Decimus Meridius",
+    "description": "Roman general enslaved as gladiator seeking revenge against corrupt emperor, representing honor, vengeance, and the fall of empires."
+  },
+  {
+    "name": "Erin Brockovich",
+    "description": "Single mother with no legal training who takes on corporate polluters, representing working-class heroism and environmental justice."
+  },
+  {
+    "name": "Jules Winnfield",
+    "description": "Philosophical hitman questioning his violent lifestyle through biblical interpretation, representing redemption and moral awakening in criminal underworld."
+  }
+] 

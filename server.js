@@ -183,6 +183,117 @@ async function connectToDatabase() {
   }
 }
 
+// =====================================
+// STARTER PACK POPULATION SYSTEM
+// =====================================
+
+/**
+ * Populate new user's libraries with starter pack content from JSON files
+ * This replaces the hardcoded dropdown approach with user-customizable libraries
+ */
+async function populateUserStarterPack(userId, username) {
+  try {
+    console.log(`🎬 Populating starter pack for user: ${username} (ID: ${userId})`);
+    
+    // Load starter pack data from JSON files
+    const [directors, screenwriters, films, tones, characters] = await Promise.all([
+      fs.readFile(path.join(__dirname, 'public/data/directors.json')).then(data => JSON.parse(data)),
+      fs.readFile(path.join(__dirname, 'public/data/screenwriters.json')).then(data => JSON.parse(data)),
+      fs.readFile(path.join(__dirname, 'public/data/films.json')).then(data => JSON.parse(data)),
+      fs.readFile(path.join(__dirname, 'public/data/tones.json')).then(data => JSON.parse(data)),
+      fs.readFile(path.join(__dirname, 'public/data/characters.json')).then(data => JSON.parse(data))
+    ]);
+    
+    // Prepare batch insert data
+    const libraryEntries = [];
+    
+    // Helper function to generate valid entry keys (max 50 characters)
+    const generateEntryKey = (name) => {
+      let key = name.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim('-');
+      
+      // Truncate to 50 characters to fit database constraint
+      if (key.length > 50) {
+        key = key.substring(0, 50).replace(/-+$/, ''); // Remove trailing dashes
+      }
+      
+      return key;
+    };
+    
+    // Add directors to user library
+    directors.forEach(director => {
+      libraryEntries.push([
+        userId,
+        'directors',
+        generateEntryKey(director),
+        JSON.stringify({ name: director, description: `Director influence: ${director}` })
+      ]);
+    });
+    
+    // Add screenwriters to user library
+    screenwriters.forEach(screenwriter => {
+      libraryEntries.push([
+        userId,
+        'screenwriters', 
+        generateEntryKey(screenwriter),
+        JSON.stringify({ name: screenwriter, description: `Screenwriter influence: ${screenwriter}` })
+      ]);
+    });
+    
+    // Add films to user library
+    films.forEach(film => {
+      libraryEntries.push([
+        userId,
+        'films',
+        generateEntryKey(film),
+        JSON.stringify({ name: film, description: `Film influence: ${film}` })
+      ]);
+    });
+    
+    // Add tones to user library
+    tones.forEach(tone => {
+      libraryEntries.push([
+        userId,
+        'tones',
+        generateEntryKey(tone),
+        JSON.stringify({ name: tone, description: `Tone: ${tone}` })
+      ]);
+    });
+
+    // Add characters to user library
+    characters.forEach(character => {
+      libraryEntries.push([
+        userId,
+        'characters',
+        generateEntryKey(character.name),
+        JSON.stringify({ name: character.name, description: character.description })
+      ]);
+    });
+    
+    // Batch insert all library entries
+    const insertPromises = libraryEntries.map(([userId, libraryType, entryKey, entryData]) => {
+      return dbClient.query(
+        `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+         VALUES ($1, $2, $3, $4, NOW())
+         ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+        [userId, libraryType, entryKey, entryData]
+      );
+    });
+    
+    await Promise.all(insertPromises);
+    
+    console.log(`✅ Starter pack populated for ${username}: ${directors.length} directors, ${screenwriters.length} screenwriters, ${films.length} films, ${tones.length} tones, ${characters.length} characters`);
+    return true;
+    
+  } catch (error) {
+    console.error(`❌ Failed to populate starter pack for user ${username}:`, error);
+    return false;
+  }
+}
+
 // Production security middleware
 if (process.env.NODE_ENV === 'production') {
   // Security headers
@@ -4423,6 +4534,33 @@ app.delete('/api/user-libraries/:username/:type/:key', async (req, res) => {
   }
 });
 
+// Populate starter pack for existing users (optional endpoint)
+app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Populate starter pack
+    const success = await populateUserStarterPack(userId, username);
+    
+    if (success) {
+      res.json({ message: 'Starter pack populated successfully with directors, screenwriters, films, tones, and characters' });
+    } else {
+      res.status(500).json({ error: 'Failed to populate starter pack' });
+    }
+  } catch (error) {
+    console.error('Failed to populate starter pack:', error);
+    res.status(500).json({ error: 'Failed to populate starter pack' });
+  }
+});
+
 // User Projects Management
 app.get('/api/user-projects/:username', async (req, res) => {
   try {
@@ -5672,6 +5810,8 @@ app.get('/api/my-stats', authenticateApiKey, async (req, res) => {
   }
 });
 
+
+
 // =====================================
 // AUTHENTICATION ENDPOINTS
 // =====================================
@@ -5752,8 +5892,14 @@ app.post('/api/auth/register', async (req, res) => {
     
     const user = result.rows[0];
     
+    // 🎬 NEW: Populate user's starter pack libraries
+    const starterPackSuccess = await populateUserStarterPack(user.id, username);
+    if (!starterPackSuccess) {
+      console.warn(`⚠️ Starter pack population failed for ${username}, but user was created successfully`);
+    }
+    
     // TODO: Send welcome email with email verification link
-    console.log(`New user registered: ${username} (${email}) - API Key: ${apiKey}`);
+    console.log(`New user registered: ${username} (${email}) - API Key: ${apiKey} - Starter Pack: ${starterPackSuccess ? 'Success' : 'Failed'}`);
     
     res.status(201).json({
       message: 'Account created successfully',
@@ -5763,7 +5909,8 @@ app.post('/api/auth/register', async (req, res) => {
         email: user.email,
         credits_remaining: user.credits_remaining,
         created_at: user.created_at
-      }
+      },
+      apiKey: user.api_key  // Include API key for immediate authentication
     });
     
   } catch (error) {

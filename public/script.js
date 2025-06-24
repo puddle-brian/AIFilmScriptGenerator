@@ -40,9 +40,20 @@ const authManager = {
         
         if (apiKey && userData) {
             try {
+                const newUser = JSON.parse(userData);
+                
+                // Check if user has changed
+                const userChanged = appState.user && appState.user.username !== newUser.username;
+                
                 appState.apiKey = apiKey;
-                appState.user = JSON.parse(userData);
+                appState.user = newUser;
                 appState.isAuthenticated = true;
+                
+                // If user changed, reset app state to prevent data mixing
+                if (userChanged) {
+                    console.log(`User changed from ${appState.user.username} to ${newUser.username}, resetting app state`);
+                    this.resetAppState();
+                }
             } catch (error) {
                 console.error('Error parsing stored user data:', error);
                 this.clearAuth();
@@ -135,10 +146,49 @@ const authManager = {
     clearAuth() {
         localStorage.removeItem('apiKey');
         localStorage.removeItem('userData');
+        localStorage.removeItem('filmScriptGenerator'); // Clear app state when auth changes
         appState.isAuthenticated = false;
         appState.user = null;
         appState.apiKey = null;
+        
+        // Reset app state to defaults when user changes
+        this.resetAppState();
         this.updateUI();
+    },
+    
+    resetAppState() {
+        // Reset all user-specific state when switching users
+        Object.assign(appState, {
+            currentStep: 1,
+            storyInput: {},
+            selectedTemplate: null,
+            templateData: null,
+            generatedStructure: null,
+            generatedScenes: null,
+            generatedDialogues: {},
+            projectId: null,
+            projectPath: null,
+            influences: {
+                directors: [],
+                screenwriters: [],
+                films: []
+            },
+            projectCharacters: [],
+            currentStoryConcept: null,
+            customPrompt: null,
+            originalPrompt: null,
+            isEditMode: false,
+            plotPoints: {}
+        });
+        
+        // Update UI elements
+        if (typeof updateCharacterTags === 'function') updateCharacterTags();
+        if (typeof updateInfluenceTags === 'function') {
+            updateInfluenceTags('director');
+            updateInfluenceTags('screenwriter');
+            updateInfluenceTags('film');
+        }
+        if (typeof updateStoryConceptDisplay === 'function') updateStoryConceptDisplay();
     }
 };
 
@@ -1341,16 +1391,16 @@ async function autoGenerate() {
     const titleWords2 = ["Room", "Mirror", "Letter", "Dance", "Memory", "Portrait", "Garden", "Window", "Shadow", "Dream"];
     const title = `${titleWords1[Math.floor(Math.random() * titleWords1.length)]} ${titleWords2[Math.floor(Math.random() * titleWords2.length)]}`;
     
-    // Load external data
-    const { directors: allDirectors, screenwriters: allScreenwriters, films: allFilms, tones } = await window.dataLoader.loadAllData();
+    // Load user libraries (which include starter pack content)
+    const userLibraries = await loadUserLibraries();
     
     // Clear existing influences
     appState.influences = { directors: [], screenwriters: [], films: [] };
     
-    // Add random influences (1-3 of each type)
-    const randomDirectors = [...allDirectors].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
-    const randomScreenwriters = [...allScreenwriters].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
-    const randomFilms = [...allFilms].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
+    // Add random influences (1-3 of each type) from user's libraries
+    const randomDirectors = [...(userLibraries.directors || [])].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
+    const randomScreenwriters = [...(userLibraries.screenwriters || [])].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
+    const randomFilms = [...(userLibraries.films || [])].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
     
     appState.influences.directors = randomDirectors;
     appState.influences.screenwriters = randomScreenwriters;
@@ -1374,7 +1424,7 @@ async function autoGenerate() {
     // Set random total scenes (will be set when user reaches Step 5)
     appState.storyInput.totalScenes = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
     
-    document.getElementById('tone').value = tones[Math.floor(Math.random() * tones.length)];
+    document.getElementById('tone').value = (userLibraries.tones || [])[Math.floor(Math.random() * (userLibraries.tones?.length || 1))] || '';
     
     // Update influence tags
     updateInfluenceTags('director');
@@ -1489,29 +1539,12 @@ async function initializeApp() {
     console.log('=== INITIALIZE APP COMPLETE ===');
 }
 
-// Populate dropdowns from JSON files and user libraries
+// Populate dropdowns from user libraries ONLY (no more hardcoded JSON)
 async function populateDropdowns() {
-    console.log('PopulateDropdowns: Starting...');
+    console.log('PopulateDropdowns: Starting (user libraries only)...');
     
     try {
-        // Check if dataLoader exists
-        if (!window.dataLoader) {
-            console.error('PopulateDropdowns: window.dataLoader not found!');
-            throw new Error('DataLoader not initialized');
-        }
-        
-        console.log('PopulateDropdowns: Loading data from dataLoader...');
-        // Load default data from JSON files
-        const { directors, screenwriters, films, tones } = await window.dataLoader.loadAllData();
-        
-        console.log('PopulateDropdowns: Data loaded:', {
-            directors: directors?.length || 0,
-            screenwriters: screenwriters?.length || 0,
-            films: films?.length || 0,
-            tones: tones?.length || 0
-        });
-        
-        // Load user's custom libraries
+        // Load user's libraries (which now include starter pack content for new users)
         console.log('PopulateDropdowns: Loading user libraries...');
         const userLibraries = await loadUserLibraries();
         
@@ -1522,15 +1555,14 @@ async function populateDropdowns() {
             tones: userLibraries.tones?.length || 0
         });
         
-        // Populate directors dropdown (default + custom)
+        // Populate directors dropdown (user library only)
         console.log('PopulateDropdowns: Populating directors dropdown...');
         const directorSelect = document.getElementById('directorSelect');
         if (!directorSelect) {
             console.error('PopulateDropdowns: directorSelect element not found!');
         } else {
-            const allDirectors = [...(directors || []), ...(userLibraries.directors || [])];
-            console.log(`PopulateDropdowns: Adding ${allDirectors.length} directors`);
-            allDirectors.forEach(director => {
+            console.log(`PopulateDropdowns: Adding ${userLibraries.directors?.length || 0} directors`);
+            (userLibraries.directors || []).forEach(director => {
                 const option = document.createElement('option');
                 option.value = director;
                 option.textContent = director;
@@ -1538,15 +1570,14 @@ async function populateDropdowns() {
             });
         }
         
-        // Populate screenwriters dropdown (default + custom)
+        // Populate screenwriters dropdown (user library only)
         console.log('PopulateDropdowns: Populating screenwriters dropdown...');
         const screenwriterSelect = document.getElementById('screenwriterSelect');
         if (!screenwriterSelect) {
             console.error('PopulateDropdowns: screenwriterSelect element not found!');
         } else {
-            const allScreenwriters = [...(screenwriters || []), ...(userLibraries.screenwriters || [])];
-            console.log(`PopulateDropdowns: Adding ${allScreenwriters.length} screenwriters`);
-            allScreenwriters.forEach(screenwriter => {
+            console.log(`PopulateDropdowns: Adding ${userLibraries.screenwriters?.length || 0} screenwriters`);
+            (userLibraries.screenwriters || []).forEach(screenwriter => {
                 const option = document.createElement('option');
                 option.value = screenwriter;
                 option.textContent = screenwriter;
@@ -1554,15 +1585,14 @@ async function populateDropdowns() {
             });
         }
         
-        // Populate films dropdown (default + custom)
+        // Populate films dropdown (user library only)
         console.log('PopulateDropdowns: Populating films dropdown...');
         const filmSelect = document.getElementById('filmSelect');
         if (!filmSelect) {
             console.error('PopulateDropdowns: filmSelect element not found!');
         } else {
-            const allFilms = [...(films || []), ...(userLibraries.films || [])];
-            console.log(`PopulateDropdowns: Adding ${allFilms.length} films`);
-            allFilms.forEach(film => {
+            console.log(`PopulateDropdowns: Adding ${userLibraries.films?.length || 0} films`);
+            (userLibraries.films || []).forEach(film => {
                 const option = document.createElement('option');
                 option.value = film;
                 option.textContent = film;
@@ -1570,16 +1600,14 @@ async function populateDropdowns() {
             });
         }
         
-        // Populate tones dropdown (default + custom, remove duplicates)
+        // Populate tones dropdown (user library only)
         console.log('PopulateDropdowns: Populating tones dropdown...');
         const toneSelect = document.getElementById('tone');
         if (!toneSelect) {
             console.error('PopulateDropdowns: toneSelect element not found!');
         } else {
-            const allTones = [...(tones || []), ...(userLibraries.tones || [])];
-            const uniqueTones = [...new Set(allTones)]; // Remove duplicates
-            console.log(`PopulateDropdowns: Adding ${uniqueTones.length} tones`);
-            uniqueTones.forEach(tone => {
+            console.log(`PopulateDropdowns: Adding ${userLibraries.tones?.length || 0} tones`);
+            (userLibraries.tones || []).forEach(tone => {
                 const option = document.createElement('option');
                 option.value = tone;
                 option.textContent = tone;
@@ -5666,3 +5694,25 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCharacterTags();
     validateCharactersRequired();
 });
+
+// Global auth utilities for testing and debugging
+window.authUtils = {
+    switchUser: (username, userData, apiKey) => {
+        // For testing: manually switch to a different user
+        localStorage.setItem('apiKey', apiKey);
+        localStorage.setItem('userData', JSON.stringify(userData));
+        localStorage.removeItem('filmScriptGenerator'); // Clear old state
+        authManager.checkAuthStatus();
+        authManager.updateUI();
+        window.location.reload(); // Reload to ensure clean state
+    },
+    clearAllData: () => {
+        // For testing: completely clear all stored data
+        localStorage.clear();
+        authManager.resetAppState();
+        authManager.updateUI();
+        window.location.reload();
+    },
+    getCurrentUser: () => appState.user,
+    isAuthenticated: () => appState.isAuthenticated
+};

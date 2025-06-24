@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starter Pack Test - SCREENPLAY GENIE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .test-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.5rem;
+        }
+        .test-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            color: #059669;
+            background: #ecfdf5;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #a7f3d0;
+        }
+        .error {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #fecaca;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .instructions {
+            background: #eff6ff;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+            margin-bottom: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🎬 Starter Pack System Test</h1>
+        
+        <div class="instructions">
+            <h3>Testing Instructions:</h3>
+            <p><strong>Option 1:</strong> Populate your existing account with starter pack content</p>
+            <p><strong>Option 2:</strong> Check what's currently in your libraries</p>
+            <p><strong>Option 3:</strong> Test the main app to see new dropdown behavior</p>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Option 1: Populate Your Account with Starter Pack</h3>
+            <p>This will add all the default directors, screenwriters, films, and tones to your personal library.</p>
+            <button onclick="populateStarterPack('BGibson')">Populate BGibson's Starter Pack</button>
+            <div id="populateResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📚 Option 2: Check Current Library Contents</h3>
+            <p>See what's currently in your libraries:</p>
+            <button onclick="loadUserLibraries('BGibson')">Load BGibson's Libraries</button>
+            <div id="librariesResult"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Option 3: Test New Dropdown Behavior</h3>
+            <p>Go to the main app and check that:</p>
+            <ul>
+                <li>Dropdowns are populated from your libraries only</li>
+                <li>You can edit/delete ANY entry (including "defaults")</li>
+                <li>Auto-generate uses your libraries</li>
+            </ul>
+            <a href="index.html" style="display: inline-block; background: #10b981; color: white; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px;">Go to Main App</a>
+        </div>
+
+        <div class="section">
+            <h2>Check Library Counts</h2>
+            <button onclick="checkLibraryCounts('BGibson')">Check BGibson's Library Counts</button>
+            <div id="countsResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>🧪 Test New User Registration (with Starter Pack)</h2>
+            <p>Create a test user to verify that new accounts automatically get the full starter pack:</p>
+            <button onclick="testNewUserRegistration()">Create Test User & Check Starter Pack</button>
+            <div id="newUserResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function populateStarterPack(username) {
+            const resultDiv = document.getElementById('populateResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Populating starter pack...';
+
+            try {
+                const response = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Success: ${result.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Error: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function loadUserLibraries(username) {
+            const resultDiv = document.getElementById('librariesResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Loading user libraries...';
+
+            try {
+                const response = await fetch(`/api/user-libraries/${username}`);
+                const libraries = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>Libraries for ${username}:</h3>
+                        <p>Directors: ${libraries.directors ? libraries.directors.length : 0}</p>
+                        <p>Screenwriters: ${libraries.screenwriters ? libraries.screenwriters.length : 0}</p>
+                        <p>Films: ${libraries.films ? libraries.films.length : 0}</p>
+                        <p>Tones: ${libraries.tones ? libraries.tones.length : 0}</p>
+                        <p>Characters: ${libraries.characters ? libraries.characters.length : 0}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Error loading libraries: ${libraries.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function checkLibraryCounts(username) {
+            const resultDiv = document.getElementById('countsResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Checking database counts...';
+
+            try {
+                // We'll make individual API calls to check what's in the database
+                const endpoints = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                const counts = {};
+                
+                for (const type of endpoints) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/${username}/${type}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            counts[type] = Array.isArray(data) ? data.length : 0;
+                        } else {
+                            counts[type] = 'Error';
+                        }
+                    } catch (e) {
+                        counts[type] = 'Error';
+                    }
+                }
+                
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h3>Database Counts for ${username}:</h3>
+                    <p>Directors: ${counts.directors}</p>
+                    <p>Screenwriters: ${counts.screenwriters}</p>
+                    <p>Films: ${counts.films}</p>
+                    <p>Tones: ${counts.tones}</p>
+                    <p>Characters: ${counts.characters}</p>
+                `;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        }
+
+        async function testNewUserRegistration() {
+            const resultDiv = document.getElementById('newUserResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Creating test user...';
+
+            try {
+                // Create a test user
+                const testUsername = `testuser${Date.now()}`;
+                const testEmail = `test${Date.now()}@example.com`;
+                
+                const registrationResponse = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: testUsername,
+                        email: testEmail,
+                        password: 'testpassword123',
+                        emailUpdates: false
+                    })
+                });
+                
+                const registrationResult = await registrationResponse.json();
+                
+                if (!registrationResponse.ok) {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Registration failed: ${registrationResult.error}`;
+                    return;
+                }
+                
+                resultDiv.innerHTML = `✅ User created: ${testUsername}<br>✅ API Key received: ${registrationResult.apiKey ? 'Yes' : 'No'}<br>Now checking starter pack...`;
+                
+                // Wait a moment for starter pack population
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Check the user's libraries using individual endpoints (same as checkLibraryCounts)
+                const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                const libraries = {};
+                let allSuccessful = true;
+                
+                for (const type of libraryTypes) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/${testUsername}/${type}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            libraries[type] = data.length;
+                        } else {
+                            libraries[type] = 'Error';
+                            allSuccessful = false;
+                        }
+                    } catch (error) {
+                        libraries[type] = 'Error';
+                        allSuccessful = false;
+                    }
+                }
+                
+                if (allSuccessful) {
+                    const allMatch = libraries.directors === 40 && 
+                                   libraries.screenwriters === 10 && 
+                                   libraries.films === 18 && 
+                                   libraries.tones === 22 && 
+                                   libraries.characters === 30;
+                    
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `
+                        <h3>✅ New User Registration Test Complete!</h3>
+                        <p><strong>Created User:</strong> ${testUsername}</p>
+                        <p><strong>API Key:</strong> ${registrationResult.apiKey ? 'Received' : 'Missing'}</p>
+                        <p><strong>Starter Pack Contents:</strong></p>
+                        <ul>
+                            <li>Directors: ${libraries.directors} ${libraries.directors === 40 ? '✅' : '❌'}</li>
+                            <li>Screenwriters: ${libraries.screenwriters} ${libraries.screenwriters === 10 ? '✅' : '❌'}</li>
+                            <li>Films: ${libraries.films} ${libraries.films === 18 ? '✅' : '❌'}</li>
+                            <li>Tones: ${libraries.tones} ${libraries.tones === 22 ? '✅' : '❌'}</li>
+                            <li>Characters: ${libraries.characters} ${libraries.characters === 30 ? '✅' : '❌'}</li>
+                        </ul>
+                        <p><strong>Expected:</strong> 40 directors, 10 screenwriters, 18 films, 22 tones, 30 characters</p>
+                        <p><strong>Overall Status:</strong> ${allMatch ? '✅ All starter packs working perfectly!' : '⚠️ Some counts don\'t match'}</p>
+                    `;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Could not check all libraries for ${testUsername}. Some endpoints failed.`;
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Test failed: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 
