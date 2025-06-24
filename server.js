@@ -1721,6 +1721,12 @@ ${storyInput.influences.screenwriters && storyInput.influences.screenwriters.len
 ${storyInput.influences.films && storyInput.influences.films.length > 0 ? 
   `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
 
+    // Generate project identifiers
+    const projectId = uuidv4();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
+    const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+
     // Generate a detailed description of the template structure
     const structureDescription = generateStructureDescription(templateData);
     
