@@ -70,16 +70,18 @@ const authManager = {
     updateUI() {
         const guestActions = document.getElementById('guestActions');
         const userControls = document.getElementById('userControls');
-        const creditsDisplay = document.getElementById('creditsDisplay');
-        const profileLink = document.getElementById('profileLink');
         const userName = document.getElementById('userName');
+        const profileUsername = document.getElementById('profileUsername');
         
         if (appState.isAuthenticated && appState.user) {
             // Show authenticated user UI
             if (guestActions) guestActions.style.display = 'none';
             if (userControls) userControls.style.display = 'flex';
-            if (profileLink && userName) {
+            if (userName) {
                 userName.textContent = `👤 ${appState.user.username}`;
+            }
+            if (profileUsername) {
+                profileUsername.textContent = appState.user.username;
             }
             
             // Initialize credit widget if available
@@ -198,6 +200,49 @@ const authManager = {
 function logout() {
     authManager.clearAuth();
     window.location.href = 'login.html';
+}
+
+// Profile dropdown functions
+function toggleProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    const isOpen = dropdown.classList.contains('open');
+    
+    if (isOpen) {
+        closeProfileDropdown();
+    } else {
+        openProfileDropdown();
+    }
+}
+
+function openProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    dropdown.classList.add('open');
+    
+    // Close dropdown when clicking outside or pressing escape
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleEscapeKey);
+}
+
+function closeProfileDropdown() {
+    const dropdown = document.getElementById('profileDropdown');
+    dropdown.classList.remove('open');
+    
+    // Remove event listeners
+    document.removeEventListener('click', handleOutsideClick);
+    document.removeEventListener('keydown', handleEscapeKey);
+}
+
+function handleOutsideClick(event) {
+    const dropdown = document.getElementById('profileDropdown');
+    if (!dropdown.contains(event.target)) {
+        closeProfileDropdown();
+    }
+}
+
+function handleEscapeKey(event) {
+    if (event.key === 'Escape') {
+        closeProfileDropdown();
+    }
 }
 
 // Model pricing information

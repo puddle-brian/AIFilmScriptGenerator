@@ -99,6 +99,106 @@ body {
     gap: 0.75rem;
 }
 
+/* Profile Dropdown */
+.profile-dropdown {
+    position: relative;
+}
+
+.profile-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.profile-trigger:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-arrow {
+    font-size: 0.7rem;
+    opacity: 0.7;
+    transition: transform 0.2s;
+}
+
+.profile-dropdown.open .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    min-width: 200px;
+    overflow: hidden;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.profile-dropdown.open .profile-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.profile-menu-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.profile-username {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.profile-menu-divider {
+    height: 1px;
+    background: #e2e8f0;
+}
+
+.profile-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    color: #2d3748;
+    text-decoration: none;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-size: 0.9rem;
+    transition: background-color 0.2s;
+    cursor: pointer;
+}
+
+.profile-menu-item:hover {
+    background: #f7fafc;
+    color: #2d3748;
+}
+
+.profile-signout:hover {
+    background: #fed7d7;
+    color: #c53030;
+}
+
+.menu-icon {
+    font-size: 1rem;
+}
+
 .btn-xs {
     padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
@@ -239,6 +339,11 @@ body {
     .header-project-nav {
         justify-content: center;
         flex-wrap: wrap;
+    }
+    
+    .profile-menu {
+        right: -1rem;
+        min-width: 180px;
     }
 }
 
