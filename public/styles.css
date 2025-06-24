@@ -3347,9 +3347,9 @@ body {
 .structure-element.preview-mode {
     padding: 8px 12px;
     margin-bottom: 6px;
-    border-left: 3px solid #4facfe;
     background: rgba(255, 255, 255, 0.02);
     border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .structure-element.preview-mode h3 {

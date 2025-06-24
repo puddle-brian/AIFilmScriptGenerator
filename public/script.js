@@ -5709,11 +5709,8 @@ async function displayTemplateStructurePreview() {
         const previewHeader = document.createElement('div');
         previewHeader.className = 'structure-preview-header';
         previewHeader.innerHTML = `
-            <h3>📐 ${templateData.name} Structure Preview</h3>
+            <h3>${templateData.name} Structure Preview</h3>
             <p class="structure-preview-description">${templateData.description}</p>
-            <p class="structure-preview-hint">
-                <span class="preview-badge">PREVIEW</span> These containers will be filled when you generate acts
-            </p>
         `;
         structureContainer.appendChild(previewHeader);
         
@@ -5829,11 +5826,8 @@ function createFullTemplatePreview(templateData, structureContainer) {
     const previewHeader = document.createElement('div');
     previewHeader.className = 'structure-preview-header';
     previewHeader.innerHTML = `
-        <h3>📐 ${templateData.name} Structure Preview</h3>
+        <h3>${templateData.name} Structure Preview</h3>
         <p class="structure-preview-description">${templateData.description}</p>
-        <p class="structure-preview-hint">
-            <span class="preview-badge">PREVIEW</span> These containers will be filled when you generate acts
-        </p>
     `;
     structureContainer.appendChild(previewHeader);
     
@@ -5881,15 +5875,12 @@ function createBasicTemplatePreview(structureContainer) {
     // Clear existing content
     structureContainer.innerHTML = '';
     
-    // Add simple preview header
+    // Add preview header
     const previewHeader = document.createElement('div');
     previewHeader.className = 'structure-preview-header';
     previewHeader.innerHTML = `
-        <h3>📐 Template Structure Preview</h3>
+        <h3>Template Structure Preview</h3>
         <p class="structure-preview-description">Selected template: ${appState.selectedTemplate || 'Unknown'}</p>
-        <p class="structure-preview-hint">
-            <span class="preview-badge">PREVIEW</span> Template structure will be shown here when you generate acts
-        </p>
     `;
     structureContainer.appendChild(previewHeader);
     
