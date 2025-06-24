@@ -2466,6 +2466,16 @@ function createUnifiedProject(data) {
     // Navigation state
     currentStep: data.currentStep || 1,          // Current step in workflow
     
+    // Frontend app state preservation
+    projectCharacters: data.projectCharacters || [],     // Character data
+    influences: data.influences || {},                   // Selected influences
+    selectedTemplate: data.selectedTemplate || null,    // Template ID
+    templateData: data.templateData || null,             // Template object
+    generatedStructure: data.generatedStructure || {},  // Generated structure
+    generatedScenes: data.generatedScenes || {},        // Generated scenes
+    generatedDialogues: data.generatedDialogues || {},  // Generated dialogues
+    currentStoryConcept: data.currentStoryConcept || null, // Story concept object
+    
     // Additional data
     customPromptUsed: data.customPromptUsed || false,
     

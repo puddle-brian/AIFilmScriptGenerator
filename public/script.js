@@ -588,8 +588,18 @@ function addInfluence(type) {
     
     if (value && !appState.influences[type + 's'].includes(value)) {
         appState.influences[type + 's'].push(value);
+        console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${value}" to appState.influences`);
+        console.log('  - Current influences:', appState.influences);
+        
         updateInfluenceTags(type);
         saveToLocalStorage();
+        
+        // Mark as dirty to trigger auto-save
+        appState.pendingChanges = true;
+        if (autoSaveManager) {
+            autoSaveManager.markDirty();
+        }
+        console.log('  - Marked as dirty for auto-save');
         
         // Check if this is a custom entry (not in default dropdown)
         checkAndOfferLibrarySave(type, value);
@@ -853,15 +863,26 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                     // Add to main story characters (not influences)
                     const existingCharacter = appState.projectCharacters.find(char => char.name === name);
                     if (!existingCharacter) {
-                        appState.projectCharacters.push({
+                        const character = {
                             name: name,
                             description: description || `Main character: ${name}`,
                             fromLibrary: true
-                        });
+                        };
+                        appState.projectCharacters.push(character);
+                        console.log(`🔍 CHARACTER DEBUG: Added new character:`, character);
+                        console.log(`🔍 CHARACTER DEBUG: Current projectCharacters:`, appState.projectCharacters);
+                        
                         // Update character tags display (similar to influences)
                         updateCharacterTags();
                         validateCharactersRequired();
                         saveToLocalStorage();
+                        
+                        // Mark as dirty to trigger auto-save
+                        appState.pendingChanges = true;
+                        if (autoSaveManager) {
+                            autoSaveManager.markDirty();
+                        }
+                        console.log(`🔍 CHARACTER DEBUG: Marked as dirty for auto-save`);
                     }
                 } else if (type === 'storyconcept') {
                     // For story concepts, create concept display AND initialize new project
@@ -882,8 +903,18 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                     // Add to influence tags
                     if (!appState.influences[config.plural].includes(name)) {
                         appState.influences[config.plural].push(name);
+                        console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${name}" to appState.influences`);
+                        console.log('  - Current influences:', appState.influences);
+                        
                         updateInfluenceTags(type);
                         saveToLocalStorage();
+                        
+                        // Mark as dirty to trigger auto-save
+                        appState.pendingChanges = true;
+                        if (autoSaveManager) {
+                            autoSaveManager.markDirty();
+                        }
+                        console.log('  - Marked as dirty for auto-save');
                     }
                 }
             }
@@ -4945,9 +4976,8 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     // Refresh dropdowns to include any new custom library entries
     await populateDropdowns();
     
-    // Clear existing state
-    console.log('Clearing existing state...');
-    appState.influences = { directors: [], screenwriters: [], films: [] };
+    // Note: We don't clear existing state here anymore - we'll overwrite with loaded data
+    console.log('Loading project data (preserving existing state until overwritten)...');
     
     // Populate basic story info
     console.log('Populating basic story info...');
@@ -4975,17 +5005,25 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     }
     updateStoryConceptDisplay();
     
-    // Handle characters - use new structured format if available, fallback to old format
-    if (projectData.storyInput.charactersData && Array.isArray(projectData.storyInput.charactersData)) {
+    // Handle characters - check both unified format and legacy storyInput format
+    if (projectData.projectCharacters && Array.isArray(projectData.projectCharacters)) {
+        // Unified format - characters stored at top level
+        appState.projectCharacters = projectData.projectCharacters;
+        console.log('✅ Loaded characters from unified format:', projectData.projectCharacters.length);
+    } else if (projectData.storyInput.charactersData && Array.isArray(projectData.storyInput.charactersData)) {
+        // Legacy format - characters in storyInput.charactersData
         appState.projectCharacters = projectData.storyInput.charactersData;
+        console.log('✅ Loaded characters from legacy charactersData format:', projectData.storyInput.charactersData.length);
     } else if (projectData.storyInput.characters) {
-        // Convert old format to new format
+        // Very old format - convert old format to new format
         appState.projectCharacters = [{
             name: 'Imported Characters',
             description: projectData.storyInput.characters
         }];
+        console.log('✅ Converted characters from very old format');
     } else {
         appState.projectCharacters = [];
+        console.log('⚠️ No characters found in project data');
     }
     updateCharacterTags();
     validateCharactersRequired();
@@ -4997,27 +5035,84 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     document.getElementById('tone').value = projectData.storyInput.tone || '';
     console.log('Basic story info populated');
     
-    // Populate influences if they exist
-    if (projectData.storyInput.influences) {
+    // Populate influences - check both unified format and legacy storyInput format
+    if (projectData.influences && typeof projectData.influences === 'object') {
+        // Unified format - influences stored at top level
         appState.influences = {
-            directors: projectData.storyInput.influences.directors || [],
-            screenwriters: projectData.storyInput.influences.screenwriters || [],
-            films: projectData.storyInput.influences.films || []
+            directors: projectData.influences.directors || [],
+            screenwriters: projectData.influences.screenwriters || [],
+            films: projectData.influences.films || []
         };
+        console.log('✅ Loaded influences from unified format:', {
+            directors: appState.influences.directors.length,
+            screenwriters: appState.influences.screenwriters.length,
+            films: appState.influences.films.length
+        });
         
         // Update influence tags
         updateInfluenceTags('director');
         updateInfluenceTags('screenwriter');
         updateInfluenceTags('film');
+    } else if (projectData.storyInput.influences) {
+        // Legacy format - influences in storyInput
+        appState.influences = {
+            directors: projectData.storyInput.influences.directors || [],
+            screenwriters: projectData.storyInput.influences.screenwriters || [],
+            films: projectData.storyInput.influences.films || []
+        };
+        console.log('✅ Loaded influences from legacy storyInput format:', {
+            directors: appState.influences.directors.length,
+            screenwriters: appState.influences.screenwriters.length,
+            films: appState.influences.films.length
+        });
+        
+        // Update influence tags
+        updateInfluenceTags('director');
+        updateInfluenceTags('screenwriter');
+        updateInfluenceTags('film');
+    } else {
+        // No influences found in project data - initialize to empty if not already set
+        if (!appState.influences) {
+            appState.influences = { directors: [], screenwriters: [], films: [] };
+        }
+        console.log('⚠️ No influences found in project data - initialized to empty arrays');
     }
     
     // Update app state with loaded data
     appState.storyInput = projectData.storyInput;
-    // Fix: Find the correct template ID based on the template name
-    appState.selectedTemplate = findTemplateIdByName(projectData.template ? projectData.template.name : null);
-    appState.templateData = projectData.template;
-    appState.generatedStructure = projectData.structure;
-    appState.projectId = projectData.projectId;
+    
+    // Load template data - check both unified format and legacy format
+    if (projectData.selectedTemplate && projectData.templateData) {
+        // Unified format - template data stored at top level
+        appState.selectedTemplate = projectData.selectedTemplate;
+        appState.templateData = projectData.templateData;
+        console.log('✅ Loaded template from unified format:', projectData.selectedTemplate);
+    } else if (projectData.template) {
+        // Legacy format - convert template name to ID
+        appState.selectedTemplate = findTemplateIdByName(projectData.template.name);
+        appState.templateData = projectData.template;
+        console.log('✅ Loaded template from legacy format:', projectData.template.name);
+    } else {
+        appState.selectedTemplate = null;
+        appState.templateData = null;
+        console.log('⚠️ No template found in project data');
+    }
+    
+    // Load generated structure - check both unified format and legacy format
+    if (projectData.generatedStructure) {
+        // Unified format - structure stored as generatedStructure
+        appState.generatedStructure = projectData.generatedStructure;
+        console.log('✅ Loaded structure from unified format:', Object.keys(projectData.generatedStructure).length, 'keys');
+    } else if (projectData.structure) {
+        // Legacy format - structure stored as structure
+        appState.generatedStructure = projectData.structure;
+        console.log('✅ Loaded structure from legacy format:', Object.keys(projectData.structure).length, 'keys');
+    } else {
+        appState.generatedStructure = {};
+        console.log('⚠️ No structure found in project data');
+    }
+    
+    appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
     
     console.log('App state after loading project data:');
@@ -5030,49 +5125,70 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     // Load plot points into appState if they exist
     if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
         appState.plotPoints = projectData.plotPoints;
-        console.log('Loaded plot points:', Object.keys(projectData.plotPoints));
+        console.log('✅ Loaded plot points:', Object.keys(projectData.plotPoints));
     } else {
         appState.plotPoints = {};
-        console.log('No plot points found in project data');
+        console.log('⚠️ No plot points found in project data');
     }
     
-    // Initialize dialogue state
-    appState.generatedDialogues = appState.generatedDialogues || {};
+    // Load generated scenes - check both unified format and legacy format
+    if (projectData.generatedScenes && Object.keys(projectData.generatedScenes).length > 0) {
+        // Unified format - scenes stored as generatedScenes
+        appState.generatedScenes = projectData.generatedScenes;
+        console.log('✅ Loaded scenes from unified format:', Object.keys(projectData.generatedScenes));
+    } else if (projectData.scenes && Object.keys(projectData.scenes).length > 0) {
+        // Legacy format - scenes stored as scenes, need to convert format
+        const scenesForState = {};
+        Object.entries(projectData.scenes).forEach(([key, value]) => {
+            if (value.scenes && Array.isArray(value.scenes)) {
+                // New format: {key: {scenes: [...]}}
+                scenesForState[key] = value.scenes;
+            } else if (Array.isArray(value)) {
+                // Old format: {key: [...]}
+                scenesForState[key] = value;
+            }
+        });
+        appState.generatedScenes = scenesForState;
+        console.log('✅ Loaded scenes from legacy format:', Object.keys(scenesForState));
+    } else {
+        appState.generatedScenes = {};
+        console.log('⚠️ No scenes found in project data');
+    }
     
-    // Determine which step to show based on available data
+    // Load generated dialogues - check both unified format and legacy format
+    if (projectData.generatedDialogues && Object.keys(projectData.generatedDialogues).length > 0) {
+        // Unified format - dialogues stored as generatedDialogues
+        appState.generatedDialogues = projectData.generatedDialogues;
+        console.log('✅ Loaded dialogues from unified format:', Object.keys(projectData.generatedDialogues));
+    } else if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
+        // Legacy format - dialogues stored as dialogue
+        appState.generatedDialogues = projectData.dialogue;
+        console.log('✅ Loaded dialogues from legacy format:', Object.keys(projectData.dialogue));
+    } else {
+        appState.generatedDialogues = {};
+        console.log('⚠️ No dialogues found in project data');
+    }
+    
+    // Determine which step to show based on available data (using appState now that it's populated)
     let targetStep = 1;
     let maxAvailableStep = 1;
     
-    if (projectData.structure) {
+    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
         maxAvailableStep = 3; // Structure available
-        if (projectData.plotPoints && Object.keys(projectData.plotPoints).length > 0) {
+        console.log('Structure available for step 3');
+        
+        if (appState.plotPoints && Object.keys(appState.plotPoints).length > 0) {
             maxAvailableStep = 4; // Plot points available
             console.log('Plot points available for step 4');
         }
-        if (projectData.scenes) {
-            maxAvailableStep = 5; // Scenes available - should be step 5!
-            console.log('Raw scenes data:', projectData.scenes);
-            // Convert scenes format for app state
-            const scenesForState = {};
-            Object.entries(projectData.scenes).forEach(([key, value]) => {
-                console.log(`Processing scene group ${key}:`, value);
-                if (value.scenes && Array.isArray(value.scenes)) {
-                    // New format: {key: {scenes: [...]}}
-                    scenesForState[key] = value.scenes;
-                    console.log(`Converted ${key} to array of ${value.scenes.length} scenes`);
-                } else if (Array.isArray(value)) {
-                    // Old format: {key: [...]}
-                    scenesForState[key] = value;
-                    console.log(`${key} already in array format with ${value.length} scenes`);
-                }
-            });
-            appState.generatedScenes = scenesForState;
-            console.log('Final scenes for app state:', scenesForState);
+        
+        if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0) {
+            maxAvailableStep = 5; // Scenes available
+            console.log('Scenes available for step 5');
             
-            if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
-                maxAvailableStep = 6; // Dialogue available - should be step 6!
-                console.log('Dialogue data:', projectData.dialogue);
-                appState.generatedDialogues = projectData.dialogue;
+            if (appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0) {
+                maxAvailableStep = 6; // Dialogue available
+                console.log('Dialogues available for step 6');
             }
         }
     }
@@ -5150,28 +5266,16 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     }
     
     // If we have a structure, display it
-    if (projectData.structure && targetStep >= 3) {
-        console.log('Displaying structure:', projectData.structure);
-        displayStructure(projectData.structure);
+    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0 && targetStep >= 3) {
+        console.log('Displaying structure:', appState.generatedStructure);
+        displayStructure(appState.generatedStructure);
         console.log('Structure display completed');
     }
     
     // If we have scenes, display them
-    if (projectData.scenes && targetStep >= 4) {
-        console.log('Displaying scenes:', projectData.scenes);
-        // Convert scenes format if needed
-        const scenesToDisplay = {};
-        Object.entries(projectData.scenes).forEach(([key, value]) => {
-            if (value.scenes && Array.isArray(value.scenes)) {
-                // New format: {key: {scenes: [...]}}
-                scenesToDisplay[key] = value.scenes;
-            } else if (Array.isArray(value)) {
-                // Old format: {key: [...]}
-                scenesToDisplay[key] = value;
-            }
-        });
-        console.log('Scenes to display:', scenesToDisplay);
-        displayScenes(scenesToDisplay);
+    if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0 && targetStep >= 4) {
+        console.log('Displaying scenes:', appState.generatedScenes);
+        displayScenes(appState.generatedScenes);
         console.log('Scenes display completed');
     }
     
@@ -5182,9 +5286,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         console.log('Dialogue generation interface displayed');
         
         // If we have existing dialogue, populate it
-        if (projectData.dialogue && Object.keys(projectData.dialogue).length > 0) {
+        if (appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0) {
             console.log('Populating existing dialogue');
-            console.log('Available dialogue keys:', Object.keys(projectData.dialogue));
+            console.log('Available dialogue keys:', Object.keys(appState.generatedDialogues));
             console.log('Current scenes in app state:', Object.keys(appState.generatedScenes));
             
             // Check immediately what elements are available
@@ -5877,10 +5981,12 @@ document.getElementById('characterForm').onsubmit = function(e) {
     if (editingCharacterIndex !== null) {
         // Editing existing character
         appState.projectCharacters[editingCharacterIndex] = character;
+        console.log(`🔍 CHARACTER DEBUG: Updated character at index ${editingCharacterIndex}:`, character);
         showToast('Character updated');
     } else {
         // Adding new character
         appState.projectCharacters.push(character);
+        console.log(`🔍 CHARACTER DEBUG: Added new character:`, character);
         showToast('Character added');
         
         // Offer to save to library if authenticated
@@ -5888,6 +5994,15 @@ document.getElementById('characterForm').onsubmit = function(e) {
             checkAndOfferLibrarySave('character', name);
         }
     }
+    
+    console.log('  - Current projectCharacters:', appState.projectCharacters);
+    
+    // Mark as dirty to trigger auto-save
+    appState.pendingChanges = true;
+    if (autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    console.log('  - Marked as dirty for auto-save');
     
     updateCharacterTags();
     hideCharacterModal();
@@ -6056,12 +6171,22 @@ const autoSaveManager = {
             appState.projectPath = `${titleSlug}_${timestamp}`;
         }
         
+        // DEBUG: Log what we're about to save
+        console.log('🔍 AUTO-SAVE DEBUG: Current appState before saving:');
+        console.log('  - projectCharacters:', appState.projectCharacters);
+        console.log('  - influences:', appState.influences);
+        console.log('  - storyInput.characters:', appState.storyInput?.characters);
+        
         const projectData = {
             ...appState,
             username: appState.user?.username || 'guest', // Include current username
             timestamp: new Date().toISOString(),
             version: '1.0'
         };
+        
+        console.log('🔍 AUTO-SAVE DEBUG: projectData being sent to server:');
+        console.log('  - projectData.projectCharacters:', projectData.projectCharacters);
+        console.log('  - projectData.influences:', projectData.influences);
         
         // Save to both file system and database
         const response = await fetch('/api/auto-save-project', {
