@@ -950,6 +950,12 @@ function removeInfluence(type, value) {
         appState.influences[type + 's'].splice(index, 1);
         updateInfluenceTags(type);
         saveToLocalStorage();
+        
+        // Mark as dirty to trigger auto-save
+        appState.pendingChanges = true;
+        if (autoSaveManager) {
+            autoSaveManager.markDirty();
+        }
     }
 }
 
@@ -959,6 +965,12 @@ function removeCharacter(index) {
         updateCharacterTags();
         validateCharactersRequired();
         saveToLocalStorage();
+        
+        // Mark as dirty to trigger auto-save
+        appState.pendingChanges = true;
+        if (autoSaveManager) {
+            autoSaveManager.markDirty();
+        }
     }
 }
 
@@ -1018,10 +1030,17 @@ function addFromDropdownOrNew(type) {
                     name: value,
                     description: `Main character: ${value}`,
                     fromLibrary: true
-                                        });
-                        updateCharacterTags();
-                        validateCharactersRequired();
-                        saveToLocalStorage();
+                });
+                updateCharacterTags();
+                validateCharactersRequired();
+                saveToLocalStorage();
+                
+                // Mark as dirty to trigger auto-save
+                appState.pendingChanges = true;
+                if (autoSaveManager) {
+                    autoSaveManager.markDirty();
+                }
+                
                 showToast(`Added "${value}" to your main characters`, 'success');
                 
                 // Check if this is a custom entry (not in default dropdown)
@@ -1065,6 +1084,13 @@ function addFromDropdownOrNew(type) {
                 appState.influences[type + 's'].push(value);
                 updateInfluenceTags(type);
                 saveToLocalStorage();
+                
+                // Mark as dirty to trigger auto-save
+                appState.pendingChanges = true;
+                if (autoSaveManager) {
+                    autoSaveManager.markDirty();
+                }
+                
                 showToast(`Added "${value}" to your influences`, 'success');
                 
                 // Check if this is a custom entry (not in default dropdown)
@@ -1673,6 +1699,12 @@ async function autoGenerate() {
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
+    
+    // Mark as dirty to trigger auto-save for all the changes
+    appState.pendingChanges = true;
+    if (autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
     
     console.log('Auto-generated story concept:', {
         title,
@@ -5952,6 +5984,13 @@ function selectCharacterFromLibrary(key, name, description) {
     updateCharacterTags();
     hideCharacterLibraryModal();
     validateCharactersRequired();
+    
+    // Mark as dirty to trigger auto-save
+    appState.pendingChanges = true;
+    if (autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    
     showToast(`Added "${name}" to your project`);
 }
 
