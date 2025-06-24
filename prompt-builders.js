@@ -101,26 +101,16 @@ function buildStructurePrompt(storyInput, templateData) {
  * PLOT POINTS GENERATION PROMPT BUILDER
  * Builds prompts for generating plot points that break down story acts
  */
-function buildPlotPointsPrompt(projectContext, actKey, actData, options = {}) {
+function buildPlotPointsPrompt(hierarchicalContext, plotPointCount = 4, finalSceneCount = 14, options = {}) {
     // Load the plot points generation template  
     const template = loadTemplate('plot-points-generation');
     
     // Prepare placeholders with actual project data
     const placeholders = {
-        PROJECT_TITLE: projectContext.title,
-        PROJECT_LOGLINE: projectContext.logline,
-        PROJECT_CHARACTERS: projectContext.characters,
-        PROJECT_TONE: projectContext.tone,
-        TOTAL_SCENES: projectContext.totalScenes,
-        TEMPLATE_NAME: projectContext.templateData?.name || 'Unknown Template',
-        ACT_KEY: actKey,
-        ACT_NAME: actData.name,
-        ACT_DESCRIPTION: actData.description,
-        ACT_KEY_EVENTS: Array.isArray(actData.key_events) ? actData.key_events.join('\n- ') : actData.key_events,
-        ACT_CHARACTER_DEVELOPMENT: actData.character_development || actData.character_developments || '',
-        SCENES_PER_ACT: options.scenesPerAct || Math.ceil(projectContext.totalScenes / Object.keys(projectContext.generatedStructure || {}).length),
-        PREVIOUS_ACTS_CONTEXT: options.previousActsContext || '',
-        HIERARCHICAL_CONTEXT: options.hierarchicalContext || ''
+        HIERARCHICAL_CONTEXT: hierarchicalContext || '',
+        PLOT_POINT_COUNT: plotPointCount,
+        FINAL_SCENE_COUNT: finalSceneCount,
+        CUSTOM_INSTRUCTIONS: options.customInstructions || ''
     };
     
     // Replace placeholders and return the complete prompt

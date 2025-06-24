@@ -2488,16 +2488,8 @@ AVOID internal states like "feels lonely" or "contemplates" - show these through
 
 Create ${desiredSceneCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
-    const prompt = `${hierarchicalPrompt}
-
-Return ONLY a JSON object with this exact structure:
-{
-  "plotPoints": [
-    "Plot point 1 that establishes the situation for this act",
-    "But plot point 2 that introduces conflict or complication", 
-    "Therefore plot point 3 that shows the consequence or progress"
-  ]
-}`;
+    // Use our new prompt builder system for preview
+    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredSceneCount, desiredSceneCount);
 
     const systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency. Always respond with valid JSON.";
 
@@ -4491,17 +4483,8 @@ AVOID internal states like "feels lonely" or "contemplates" - show these through
 
 Create 4 plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
-    const prompt = `${hierarchicalPrompt}
-
-Return ONLY a JSON object with this exact structure:
-{
-  "plotPoints": [
-    "Plot point 1 that establishes the situation for this act",
-    "But plot point 2 that introduces conflict or complication", 
-    "Therefore plot point 3 that shows the consequence or progress",
-    "Therefore plot point 4 that concludes this act's progression"
-  ]
-}`;
+    // Use our new prompt builder system
+    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, 4, finalSceneCount);
 
     console.log(`Generating 4 plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
     

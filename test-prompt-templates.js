@@ -72,41 +72,41 @@ try {
 // Test 3: Test Plot Points Prompt Building
 console.log('📋 Test 3: Plot Points Prompt Building');
 try {
-    const testProjectContext = {
-        title: "Test Movie",
-        logline: "A test story about testing systems.",
-        characters: "Protagonist: A dedicated tester",
-        tone: "Comedy",
-        totalScenes: 50,
-        templateData: { name: "Three Act Structure" }
-    };
+    // Create a test hierarchical context for plot points
+    const testHierarchicalContext = `STORY CONTEXT:
+Title: Test Movie
+Logline: A test story about testing systems.
+Characters: Protagonist: A dedicated tester
+Genre: Comedy
+
+ACT CONTEXT:
+Name: Act 1: Setup
+Description: Introducing the characters and world and testing systems
+Previous acts: None (this is the first act)
+
+Character development through this act: Protagonist shows dedication to testing`;
     
-    const testActData = {
-        name: "Act 1: Setup",
-        description: "Introducing the characters and world",
-        key_events: ["Character introduction", "World establishment", "Inciting incident"],
-        character_development: "Protagonist shows dedication to testing"
-    };
+    const plotPointsPrompt = promptBuilders.buildPlotPointsPrompt(testHierarchicalContext, 4, 10);
     
-    const plotPointsPrompt = promptBuilders.buildPlotPointsPrompt(
-        testProjectContext, 
-        'act1', 
-        testActData, 
-        { scenesPerAct: 10 }
-    );
-    
-    if (plotPointsPrompt.includes('{{PROJECT_TITLE}}')) {
+    if (plotPointsPrompt.includes('{{')) {
         console.log('❌ Plot points prompt still contains unreplaced placeholders');
+        // Show which placeholders are missing
+        const matches = plotPointsPrompt.match(/\{\{[^}]+\}\}/g);
+        if (matches) {
+            console.log('   Missing placeholders:', matches);
+        }
+        console.log('   Plot points prompt preview:', plotPointsPrompt.substring(0, 300) + '...');
         process.exit(1);
     }
     
-    if (plotPointsPrompt.includes('Test Movie') && plotPointsPrompt.includes('Act 1: Setup')) {
+    if (plotPointsPrompt.includes('Test Movie') && plotPointsPrompt.includes('4 causally connected plot points')) {
         console.log('✅ Plot points prompt built successfully!');
-        console.log('   • Contains project title ✓');
-        console.log('   • Contains act information ✓');
+        console.log('   • Contains hierarchical context ✓');
+        console.log('   • Contains plot point count ✓');
         console.log('   • Placeholders replaced ✓\n');
     } else {
         console.log('❌ Plot points prompt missing expected content');
+        console.log('   Preview:', plotPointsPrompt.substring(0, 300) + '...');
         process.exit(1);
     }
 } catch (error) {

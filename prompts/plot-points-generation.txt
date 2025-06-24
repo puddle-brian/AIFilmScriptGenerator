@@ -3,41 +3,64 @@
 // When you generate plot points for an act, this exact text gets sent to the AI
 //
 // PLACEHOLDERS EXPLAINED:
-// {{PROJECT_TITLE}} = Your story title
-// {{PROJECT_LOGLINE}} = Your story's one-sentence summary
-// {{ACT_NAME}} = Name of the current act being broken down
-// {{ACT_DESCRIPTION}} = What happens in this act
-// {{SCENES_PER_ACT}} = How many scenes this act should have
-// {{HIERARCHICAL_CONTEXT}} = Context from previous acts and plot points
+// {{HIERARCHICAL_CONTEXT}} = Complete story context including previous acts and structure
+// {{PLOT_POINT_COUNT}} = Number of plot points to generate (usually 4)
+// {{FINAL_SCENE_COUNT}} = Total scenes this act will expand to (e.g., 14)
 //
 // HOW TO EDIT THIS TEMPLATE:
 // ✅ Modify instructions about how plot points should be created
 // ✅ Change the level of detail you want in each plot point
 // ✅ Add specific requirements for pacing or character development
-// ❌ Don't change anything in {{DOUBLE_CURLY_BRACES}}
-
-// TODO: This template will be populated with the actual plot points prompt in Phase 3
-// For now, this is a placeholder to test the template loading system
-
-You are creating detailed plot points for "{{PROJECT_TITLE}}".
-
-STORY FOUNDATION:
-- Title: {{PROJECT_TITLE}}
-- Logline: {{PROJECT_LOGLINE}}
-- Template: {{TEMPLATE_NAME}}
-- Target Scene Count: {{TOTAL_SCENES}}
-
-CURRENT ACT: {{ACT_NAME}}
-Act Description: {{ACT_DESCRIPTION}}
-Key Events: {{ACT_KEY_EVENTS}}
-Character Development: {{ACT_CHARACTER_DEVELOPMENT}}
+// ❌ Don't change anything in double curly braces
 
 {{HIERARCHICAL_CONTEXT}}
 
-Generate {{SCENES_PER_ACT}} specific plot points that:
-1. Break down the act into concrete scenes
-2. Maintain story momentum and character development
-3. Connect smoothly between scenes
-4. Advance the overall plot
+PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
+1. Break down this story act into {{PLOT_POINT_COUNT}} causally connected plot points (these will be expanded into {{FINAL_SCENE_COUNT}} total scenes)
+2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
+3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
+4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
+5. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
+6. Show character development through ACTIONS and CHOICES, not internal monologue
+7. Each plot point should create a specific dramatic situation or encounter
+8. Make events unpredictable and cinematic while serving the character arc
+9. Some plot points will be expanded into multiple scenes (sequences) to reach the target of {{FINAL_SCENE_COUNT}} scenes for this act
 
-Return as a JSON array with scene descriptions and character development notes. 
+INTER-ACT CAUSAL CONNECTION:
+- If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
+- Use "THEREFORE" to show how this act follows logically from the previous act's conclusion
+- Don't repeat previous events, but build upon their consequences
+- Maintain character momentum and story energy across act boundaries
+
+CHARACTER ARC THROUGH ACTION:
+- Show character growth through CHOICES under pressure
+- Reveal personality through HOW characters act, not what they think
+- Use physical behavior to show emotional states
+- Force characters to make decisions that reveal their true nature
+
+CINEMATIC SPECIFICITY:
+- Include specific locations that serve the story (not just "a room")
+- Add time pressure or urgency to create tension
+- Introduce physical obstacles or concrete goals
+- Create visual conflicts that can be filmed dramatically
+
+EXAMPLES OF GOOD PLOT POINTS:
+- "She saves a child from a burning building"
+- "Police surround him with weapons drawn"  
+- "He breaks into an abandoned school to sleep"
+- "He must choose between saving his friend or escaping before the building collapses"
+- "She discovers the hidden evidence just as her phone battery dies"
+
+AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
+
+Create {{PLOT_POINT_COUNT}} plot points using "But and Therefore" logic to create dramatic tension and causal flow.
+
+Return ONLY a JSON object with this exact structure:
+{
+  "plotPoints": [
+    "Plot point 1 that establishes the situation for this act",
+    "But plot point 2 that introduces conflict or complication", 
+    "Therefore plot point 3 that shows the consequence or progress",
+    "Therefore plot point 4 that concludes this act's progression"
+  ]
+} 
