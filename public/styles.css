@@ -3423,6 +3423,26 @@ body {
     font-size: 0.9rem;
 }
 
+/* Universal act progress notation styling */
+.act-progress {
+    display: inline-block;
+    background: #4facfe;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* Make sure it works in both preview and generated containers */
+.editable-content-title .act-progress {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    margin-right: 6px;
+}
+
 @media (max-width: 768px) {
     .structure-acts-preview {
         grid-template-columns: 1fr;

@@ -2488,14 +2488,17 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
         }
         
         // Create editable content blocks for each act
-        Object.entries(structure).forEach(([key, element]) => {
+        const totalActs = Object.keys(structure).length;
+        Object.entries(structure).forEach(([key, element], index) => {
             if (typeof element === 'object' && element.name) {
                 const actContent = JSON.stringify(element);
+                const actProgress = `${index + 1}/${totalActs}`;
+                const actTitle = element.name || key.replace(/_/g, ' ').toUpperCase();
                 
                 createEditableContentBlock({
                     id: `act-${key}`,
                     type: 'acts',
-                    title: element.name || key.replace(/_/g, ' ').toUpperCase(),
+                    title: `${actProgress} ${actTitle}`,
                     content: actContent,
                     container: container,
                     metadata: { actKey: key },
@@ -5836,18 +5839,19 @@ function createFullTemplatePreview(templateData, structureContainer) {
     
     // Create preview structure using the SAME format as displayStructure()
     if (templateData.structure) {
+        const totalActs = Object.keys(templateData.structure).length;
         Object.entries(templateData.structure).forEach(([key, act], index) => {
             const actElement = document.createElement('div');
             actElement.className = 'structure-element preview-mode';
             actElement.setAttribute('data-act', key);
             
             const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            const actNumber = `${index + 1}/${totalActs}`;
             
             actElement.innerHTML = `
                 <div class="structure-element-header">
-                    <h3>${actName}</h3>
+                    <h3><span class="act-progress">${actNumber}</span> ${actName}</h3>
                     <div class="structure-element-meta">
-                        <span class="act-number">Act ${index + 1}</span>
                         <span class="preview-status">Ready for generation</span>
                     </div>
                 </div>
