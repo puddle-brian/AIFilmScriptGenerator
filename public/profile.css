@@ -1,61 +1,12 @@
 /* Profile Page Styles */
 
-.header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 1rem;
+/* Context-aware visibility rules */
+.profile-page .hide-on-profile {
+    display: none !important;
 }
 
-.nav {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-}
-
-.nav-link {
-    color: #6b7280;
-    text-decoration: none;
-    transition: color 0.2s;
-}
-
-.nav-link:hover {
-    color: #374151;
-}
-
-.user-selector {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.user-selector label {
-    color: #6b7280;
-    font-weight: 500;
-}
-
-.user-selector select {
-    padding: 0.25rem 0.5rem;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-}
-
-.user-info {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    background: #f3f4f6;
-    border-radius: 0.375rem;
-    font-weight: 500;
-    color: #374151;
-}
-
-.btn-sm {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.875rem;
+.profile-page .show-on-profile {
+    display: inline-block !important;
 }
 
 /* Profile Container */

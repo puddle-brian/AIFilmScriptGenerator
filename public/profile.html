@@ -9,17 +9,21 @@
     <link rel="stylesheet" href="credits.css?v=1.0">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="profile-page">
     <div class="container">
         <header class="header">
-            <div class="header-content">
+            <!-- Top Row: Title and User Account Controls -->
+            <div class="header-top">
                 <div class="title-container">
-                    <h1 class="title">SCREENPLAY GENIE</h1>
+                    <div class="title-section">
+                        <h1 class="title">SCREENPLAY GENIE</h1>
+                        <p class="subtitle">Create a feature-length screenplay in minutes</p>
+                    </div>
                     <img src="screenplayGenieLogoSmall_invert.png" alt="Screenplay Genie" class="logo">
                 </div>
-                <nav class="nav">
-                    <a href="index.html" class="nav-link">← Back to Generator</a>
-                    
+                
+                <!-- User Account Controls -->
+                <nav class="header-user-nav">
                     <!-- Compact Credits Widget -->
                     <div class="credits-widget" id="creditsWidget">
                         <div class="credits-summary">
@@ -41,6 +45,25 @@
                     <div class="user-info" id="regularUserInfo">
                         <span id="currentUserDisplay">Loading...</span>
                     </div>
+                </nav>
+            </div>
+            
+            <!-- Bottom Row: Project Controls -->
+            <div class="header-controls">
+                <nav class="header-project-nav">
+                    <!-- Global Project Controls -->
+                    <div class="global-project-controls">
+                        <!-- Project Actions -->
+                        <div class="global-project-actions">
+                            <a href="index.html" class="btn btn-outline btn-xs show-on-profile">← Back to Generator</a>
+                            <button class="btn btn-outline btn-xs" onclick="window.location.href='index.html'">New Project</button>
+                            <button class="btn btn-outline btn-xs" onclick="window.location.href='index.html?action=load'">Load Project</button>
+                            <button class="btn btn-outline btn-xs hide-on-profile" onclick="saveProject()" id="globalSaveBtn" style="display: none;">Save Project</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Save Status Indicator -->
+                    <div id="saveStatus" class="save-status"></div>
                 </nav>
             </div>
         </header>
