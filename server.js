@@ -1407,168 +1407,65 @@ Example format:
       };
     }
 
-    const projectDir = path.join(__dirname, 'generated', projectFolderName);
-    await fs.mkdir(projectDir, { recursive: true });
-    
-    // Create folder structure for different story elements
-    const structureDir = path.join(projectDir, '01_structure');
-    const scenesDir = path.join(projectDir, '02_scenes');
-    const dialogueDir = path.join(projectDir, '03_dialogue');
-    const finalScriptDir = path.join(projectDir, '04_final_script');
-    
-    await Promise.all([
-      fs.mkdir(structureDir, { recursive: true }),
-      fs.mkdir(scenesDir, { recursive: true }),
-      fs.mkdir(dialogueDir, { recursive: true }),
-      fs.mkdir(finalScriptDir, { recursive: true })
-    ]);
-    
-    // Save the story structure
-    const structureFile = path.join(structureDir, 'plot_structure.json');
-    const storyOverviewFile = path.join(structureDir, 'story_overview.md');
-    
-    await fs.writeFile(structureFile, JSON.stringify({
-      structure: structureData,
-      template: templateData,
-      storyInput,
-      projectId,
-      generatedAt: new Date().toISOString()
-    }, null, 2));
-    
-    // Create a readable markdown overview
-    let overview = `# ${storyInput.title}\n\n`;
-    overview += `**Tone:** ${storyInput.tone}\n`;
-    overview += `**Logline:** ${storyInput.logline}\n`;
-    overview += `**Characters:** ${storyInput.characters}\n`;
-    overview += `**Target Scenes:** ${storyInput.totalScenes || 70}\n\n`;
-    
-    if (storyInput.influences) {
-      if (storyInput.influences.directors && storyInput.influences.directors.length > 0) {
-        overview += `**Directorial Influences:** ${storyInput.influences.directors.join(', ')}\n`;
-      }
-      if (storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0) {
-        overview += `**Screenwriting Influences:** ${storyInput.influences.screenwriters.join(', ')}\n`;
-      }
-      if (storyInput.influences.films && storyInput.influences.films.length > 0) {
-        overview += `**Film Influences:** ${storyInput.influences.films.join(', ')}\n`;
-      }
-      overview += `\n`;
-    }
-    
-    overview += `**Template Used:** ${templateData.name}\n\n`;
-    overview += `---\n\n## Plot Structure\n\n`;
-    
-    // Add each structural element to the overview
-    Object.entries(structureData).forEach(([key, element]) => {
-      if (element.name && element.description) {
-        overview += `### ${element.name}\n\n`;
-        overview += `${element.description}\n\n`;
-        if (element.character_development) {
-          overview += `**Character Development:** ${element.character_development}\n\n`;
-        }
-        if (element.plot_points && Array.isArray(element.plot_points)) {
-          overview += `**Key Plot Points:**\n`;
-          element.plot_points.forEach(point => {
-            overview += `- ${point}\n`;
-          });
-          overview += `\n`;
-        }
-        overview += `---\n\n`;
-      }
-    });
-    
-    await fs.writeFile(storyOverviewFile, overview);
-    
-    // Create a README for the project
-    const readmeFile = path.join(projectDir, 'README.md');
-    const readme = `# ${storyInput.title} - Film Script Project
-
-Generated on: ${new Date().toLocaleString()}
-
-## Project Structure
-
-This folder contains your generated film script in a hierarchical structure:
-
-- **01_structure/** - Plot structure and story overview
-- **02_scenes/** - Individual scenes (generated in step 4)
-- **03_dialogue/** - Full dialogue for each scene (generated in step 5)
-- **04_final_script/** - Complete screenplay format (generated in step 6)
-
-## Story Details
-
-- **Title:** ${storyInput.title}
-- **Tone:** ${storyInput.tone}
-- **Logline:** ${storyInput.logline}
-- **Main Characters:** ${storyInput.characters}
-
-## Template Used
-
-${templateData.name}: ${templateData.description}
-
-## Next Steps
-
-1. Review the plot structure in \`01_structure/story_overview.md\`
-2. Generate scenes using the web interface (Step 4)
-3. Generate dialogue for each scene (Step 5)
-4. Export the final screenplay (Step 6)
-
-Project ID: ${projectId}
-`;
-    
-    await fs.writeFile(readmeFile, readme);
-    
-    console.log(`Project saved to: ${projectDir}`);
+    console.log(`✅ Structure generated for project: ${projectFolderName}`);
     console.log(`Project ID: ${projectId}`);
 
-    // Also save to database for profile page (use 'guest' as default user)
-    try {
-      const username = 'guest'; // TODO: Get from user session/auth
-      const projectContext = {
-        structure: structureData,
-        template: templateData,
-        storyInput,
-        projectId,
-        projectPath: projectFolderName,
-        generatedAt: new Date().toISOString()
-      };
-      
-      const thumbnailData = {
-        title: storyInput.title,
-        genre: storyInput.genre || 'Unknown',
-        tone: storyInput.tone,
-        structure: templateData.name,
-        currentStep: 3, // Just completed structure generation
-        totalScenes: storyInput.totalScenes || 70
-      };
+    // Save to database in unified v2.0 format (database-only)
+    const username = 'guest'; // TODO: Get from user session/auth
+    const projectContext = {
+      projectId,
+      projectPath: projectFolderName,
+      storyInput,
+      selectedTemplate: selectedTemplate,
+      templateData: templateData,
+      generatedStructure: structureData,
+      plotPoints: {},
+      generatedScenes: {},
+      generatedDialogues: {},
+      currentStep: 3,
+      influences: {},
+      projectCharacters: [],
+      generatedAt: new Date().toISOString()
+    };
+    
+    const thumbnailData = {
+      title: storyInput.title,
+      genre: storyInput.genre || 'Unknown',
+      tone: storyInput.tone,
+      structure: templateData.name,
+      currentStep: 3,
+      totalScenes: storyInput.totalScenes || 70
+    };
 
-      // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        // Save project to database
-        await dbClient.query(
-          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-           VALUES ($1, $2, $3, $4) 
-           ON CONFLICT (user_id, project_name) 
-           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-        );
-        
-        console.log(`✅ Project also saved to database for user: ${username}`);
-      }
-    } catch (dbError) {
-      console.error('❌ Failed to save project to database:', dbError);
-      // Don't fail the entire request if database save fails
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length > 0) {
+      const userId = userResult.rows[0].id;
+      
+      // Save project to database using unified format
+      await dbClient.query(
+        `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (user_id, project_name) 
+         DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+        [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+      );
+      
+      console.log(`✅ Project saved to database in unified v2.0 format: "${storyInput.title}"`);
+    } else {
+      throw new Error('User not found');
     }
 
     res.json({
-      structure: structureData,
-      template: templateData,
-      storyInput,
       projectId,
       projectPath: projectFolderName,
-      savedLocally: true,
+      storyInput,
+      selectedTemplate: selectedTemplate,
+      templateData: templateData,
+      generatedStructure: structureData,
+      currentStep: 3,
+      savedToDatabase: true,
+      format: 'v2.0-unified',
       prompt: prompt,
       systemMessage: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON."
     });
@@ -1894,7 +1791,80 @@ Make the dialogue authentic, character-specific, and genre-appropriate. Include 
   }
 });
 
-// Save project
+// Auto-save project (unified v2.0 format - database only)
+app.post('/api/auto-save-project', async (req, res) => {
+  try {
+    const projectData = req.body;
+    const username = projectData.username || 'guest';
+    
+    // Generate project name from path or title
+    const projectPath = projectData.projectPath || 
+      (projectData.storyInput?.title ? 
+        `${projectData.storyInput.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}` :
+        `untitled_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}`);
+    
+    // Create unified project context in v2.0 format
+    const projectContext = {
+      projectId: projectData.projectId || uuidv4(),
+      projectPath: projectPath,
+      storyInput: projectData.storyInput || {},
+      selectedTemplate: projectData.selectedTemplate,
+      templateData: projectData.templateData,
+      generatedStructure: projectData.generatedStructure,
+      plotPoints: projectData.plotPoints || {},
+      generatedScenes: projectData.generatedScenes || {},
+      generatedDialogues: projectData.generatedDialogues || {},
+      currentStep: projectData.currentStep || 1,
+      influences: projectData.influences || {},
+      projectCharacters: projectData.projectCharacters || [],
+      generatedAt: new Date().toISOString()
+    };
+    
+    // Create thumbnail data for project listing
+    const thumbnailData = {
+      title: projectData.storyInput?.title || 'Untitled Project',
+      genre: projectData.storyInput?.genre || 'Unknown',
+      tone: projectData.storyInput?.tone || '',
+      structure: projectData.templateData?.name || '',
+      currentStep: projectData.currentStep || 1,
+      totalScenes: projectData.storyInput?.totalScenes || 70
+    };
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Save to database using unified format
+    const result = await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, project_name) 
+       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()
+       RETURNING *`,
+      [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+    );
+    
+    console.log(`✅ Auto-saved project in unified v2.0 format: "${thumbnailData.title}"`);
+    
+    res.json({
+      success: true,
+      projectId: projectContext.projectId,
+      projectPath: projectPath,
+      message: 'Project auto-saved successfully',
+      format: 'v2.0-unified'
+    });
+    
+  } catch (error) {
+    console.error('Error auto-saving project:', error);
+    res.status(500).json({ error: 'Failed to auto-save project' });
+  }
+});
+
+// Save project (legacy endpoint - will be removed)
 app.post('/api/save-project', async (req, res) => {
   try {
     const projectId = req.body.projectId || uuidv4();
@@ -1963,126 +1933,62 @@ app.get('/api/project/:id', async (req, res) => {
   }
 });
 
-// Load project by path for the new interface
+// Load project by path (unified v2.0 format - database first)
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
     const username = req.query.username || 'guest';
     
-    console.log(`🔍 DEBUG: Looking for project "${projectPath}" for user "${username}"`);
+    console.log(`🔍 Loading project "${projectPath}" for user "${username}"`);
     
-    // First, try to load from database (unified v2.0 format)
-    try {
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        // Look for project in database by project_name
-        const projectResult = await dbClient.query(
-          'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
-          [userId, projectPath]
-        );
-        
-        console.log(`🔍 DEBUG: Found ${projectResult.rows.length} matching projects`);
-        
-        if (projectResult.rows.length > 0) {
-          const dbProject = projectResult.rows[0];
-          const projectContext = JSON.parse(dbProject.project_context);
-          
-          console.log(`💾 Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
-          console.log(`🔍 DEBUG: Project currentStep = ${projectContext.currentStep}`);
-          
-          // Return the project data in the expected format
-          const fullProjectData = {
-            projectPath: projectPath,
-            projectId: projectContext.projectId,
-            storyInput: projectContext.storyInput,
-            selectedTemplate: projectContext.selectedTemplate,
-            templateData: projectContext.templateData,
-            generatedStructure: projectContext.generatedStructure,
-            plotPoints: projectContext.plotPoints,
-            generatedScenes: projectContext.generatedScenes,
-            generatedDialogues: projectContext.generatedDialogues,
-            currentStep: projectContext.currentStep,
-            generatedAt: dbProject.created_at,
-            updatedAt: dbProject.updated_at,
-            // Also provide the server field names for compatibility
-            template: projectContext.templateData,
-            structure: projectContext.generatedStructure,
-            scenes: projectContext.generatedScenes,
-            dialogue: projectContext.generatedDialogues
-          };
-          
-          return res.json(fullProjectData);
-        } else {
-          console.log(`🔍 DEBUG: Project not found in database, trying file system...`);
-        }
-      }
-    } catch (dbError) {
-      console.log('Database lookup failed, trying file system:', dbError.message);
+    // Load from database (unified v2.0 format)
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
     
-    // Fallback to file system (legacy format)
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
-    const dialogueDir = path.join(projectDir, '03_dialogue');
+    const userId = userResult.rows[0].id;
     
-    // Load the main project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    // Look for project in database by project_name
+    const projectResult = await dbClient.query(
+      'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
     
-    // Try to load scenes if they exist
-    let scenesData = null;
-    try {
-      const scenesContent = await fs.readFile(scenesFile, 'utf8');
-      const scenesJson = JSON.parse(scenesContent);
-      // Handle both old and new scene formats
-      if (scenesJson.scenes) {
-        scenesData = scenesJson.scenes;
-      } else {
-        scenesData = scenesJson;
-      }
-      console.log(`Scenes loaded for project ${projectPath}:`, Object.keys(scenesData));
-    } catch (error) {
-      console.log(`No scenes found for project ${projectPath}`);
-    }
-    
-    // Try to load dialogue files if they exist
-    let dialogueData = {};
-    try {
-      const dialogueFiles = await fs.readdir(dialogueDir);
-      console.log(`Found dialogue files for project ${projectPath}:`, dialogueFiles);
+    if (projectResult.rows.length > 0) {
+      const dbProject = projectResult.rows[0];
+      const projectContext = JSON.parse(dbProject.project_context);
       
-      for (const file of dialogueFiles) {
-        if (file.endsWith('.txt')) {
-          try {
-            const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
-            // Extract scene identifier from filename (remove extension and hash)
-            const sceneId = file.replace('.txt', '').replace(/_[a-f0-9]{8}$/, '');
-            dialogueData[sceneId] = content;
-            console.log(`Loaded dialogue for scene: ${sceneId}`);
-          } catch (error) {
-            console.log(`Error reading dialogue file ${file}:`, error.message);
-          }
-        }
-      }
-    } catch (error) {
-      console.log(`No dialogue directory found for project ${projectPath}`);
+      console.log(`✅ Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
+      
+      // Return unified v2.0 format - no field mapping needed
+      const fullProjectData = {
+        projectPath: projectPath,
+        projectId: projectContext.projectId,
+        storyInput: projectContext.storyInput,
+        selectedTemplate: projectContext.selectedTemplate,
+        templateData: projectContext.templateData,
+        generatedStructure: projectContext.generatedStructure,
+        plotPoints: projectContext.plotPoints,
+        generatedScenes: projectContext.generatedScenes,
+        generatedDialogues: projectContext.generatedDialogues,
+        currentStep: projectContext.currentStep,
+        influences: projectContext.influences || {},
+        projectCharacters: projectContext.projectCharacters || [],
+        generatedAt: dbProject.created_at,
+        updatedAt: dbProject.updated_at,
+        format: 'v2.0-unified'
+      };
+      
+      return res.json(fullProjectData);
     }
     
-    // Return comprehensive project data (legacy format)
-    const fullProjectData = {
-      projectPath: projectPath,
-      projectId: projectData.projectId,
-      storyInput: projectData.storyInput,
-      template: projectData.template,
-      structure: projectData.structure,
-      scenes: scenesData,
-      dialogue: dialogueData,
-      generatedAt: projectData.generatedAt
-    };
-    
-    res.json(fullProjectData);
+    // Project not found in database
+    console.log(`❌ Project "${projectPath}" not found in database for user "${username}"`);
+    return res.status(404).json({ 
+      error: 'Project not found',
+      message: 'This project may need to be migrated to the new format'
+    });
   } catch (error) {
     console.error('Error loading project:', error);
     res.status(404).json({ error: 'Project not found or corrupted' });
