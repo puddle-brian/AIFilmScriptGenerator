@@ -68,21 +68,19 @@ const authManager = {
     },
     
     updateUI() {
-        const authStatus = document.getElementById('authStatus');
         const guestActions = document.getElementById('guestActions');
+        const userControls = document.getElementById('userControls');
         const creditsDisplay = document.getElementById('creditsDisplay');
         const profileLink = document.getElementById('profileLink');
         const userName = document.getElementById('userName');
         
         if (appState.isAuthenticated && appState.user) {
             // Show authenticated user UI
-            if (authStatus) {
-                authStatus.style.display = 'flex';
-                if (userName) userName.textContent = appState.user.username;
-            }
             if (guestActions) guestActions.style.display = 'none';
-            if (creditsDisplay) creditsDisplay.style.display = 'flex';
-            if (profileLink) profileLink.style.display = 'block';
+            if (userControls) userControls.style.display = 'flex';
+            if (profileLink && userName) {
+                userName.textContent = `👤 ${appState.user.username}`;
+            }
             
             // Initialize credit widget if available
             if (window.creditWidget && typeof window.creditWidget.fetchBalance === 'function') {
@@ -90,10 +88,8 @@ const authManager = {
             }
         } else {
             // Show guest UI
-            if (authStatus) authStatus.style.display = 'none';
             if (guestActions) guestActions.style.display = 'flex';
-            if (creditsDisplay) creditsDisplay.style.display = 'none';
-            if (profileLink) profileLink.style.display = 'none';
+            if (userControls) userControls.style.display = 'none';
             
             // Show registration prompt for key actions
             this.showRegistrationPrompts();

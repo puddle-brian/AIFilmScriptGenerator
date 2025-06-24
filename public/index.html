@@ -12,13 +12,66 @@
 <body>
     <div class="container">
         <header class="header">
-            <div class="header-content">
+            <!-- Top Row: Title and User Account Controls -->
+            <div class="header-top">
                 <div class="title-container">
                     <h1 class="title">SCREENPLAY GENIE</h1>
                     <img src="screenplayGenieLogoSmall_invert.png" alt="Screenplay Genie" class="logo">
                 </div>
-                <nav class="header-nav">
-                    <!-- Global Project Controls (Always Visible) -->
+                
+                <!-- User Account Controls -->
+                <nav class="header-user-nav">
+                    <!-- Guest Actions -->
+                    <div class="guest-actions" id="guestActions">
+                        <a href="login.html" class="nav-link">Sign In</a>
+                        <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
+                    </div>
+                    
+                    <!-- Authenticated User Controls -->
+                    <div class="user-controls" id="userControls" style="display: none;">
+                        <!-- Credits Display -->
+                        <div class="credits-display" id="creditsDisplay">
+                            <div class="credits-badge" id="creditsBadge">
+                                <span class="credits-icon">💳</span>
+                                <span class="credits-amount" id="creditsAmount">--</span>
+                                <span class="credits-text">credits</span>
+                            </div>
+                            <div class="credits-tooltip" id="creditsTooltip">
+                                <div class="tooltip-content">
+                                    <div class="tooltip-row">
+                                        <span>Current Balance:</span>
+                                        <span id="tooltipBalance">--</span>
+                                    </div>
+                                    <div class="tooltip-row">
+                                        <span>Last 7 days:</span>
+                                        <span id="tooltipUsage">-- used</span>
+                                    </div>
+                                    <div class="tooltip-row">
+                                        <span>Est. cost/generation:</span>
+                                        <span id="tooltipEstimate">10-50 credits</span>
+                                    </div>
+                                    <div class="tooltip-action">
+                                        <a href="profile.html#credits">Manage Credits →</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Profile Link -->
+                        <a href="profile.html" class="nav-link" id="profileLink">
+                            <span id="userName">👤 User</span>
+                        </a>
+                        
+                        <!-- Sign Out Button -->
+                        <button class="btn btn-outline btn-xs" onclick="logout()">Sign Out</button>
+                    </div>
+                </nav>
+            </div>
+            
+            <!-- Bottom Row: Project Controls -->
+            <div class="header-controls">
+                <nav class="header-project-nav">
+                    <!-- Global Project Controls -->
                     <div class="global-project-controls">
                         <!-- Model Selector -->
                         <div class="global-model-selector">
@@ -40,51 +93,6 @@
                     
                     <!-- Save Status Indicator -->
                     <div id="saveStatus" class="save-status"></div>
-                    
-                    <!-- Authentication Status -->
-                    <div class="auth-status" id="authStatus" style="display: none;">
-                        <div class="user-info">
-                            <span class="user-name" id="userName">User</span>
-                            <button class="btn btn-outline btn-xs" onclick="logout()">Sign Out</button>
-                        </div>
-                    </div>
-                    
-                    <!-- Guest Actions -->
-                    <div class="guest-actions" id="guestActions">
-                        <a href="login.html" class="nav-link">Sign In</a>
-                        <a href="register.html" class="btn btn-primary btn-sm">Get Started</a>
-                    </div>
-                    
-                    <!-- Credits Display (for authenticated users) -->
-                    <div class="credits-display" id="creditsDisplay" style="display: none;">
-                        <div class="credits-badge" id="creditsBadge">
-                            <span class="credits-icon">💳</span>
-                            <span class="credits-amount" id="creditsAmount">--</span>
-                            <span class="credits-text">credits</span>
-                        </div>
-                        <div class="credits-tooltip" id="creditsTooltip">
-                            <div class="tooltip-content">
-                                <div class="tooltip-row">
-                                    <span>Current Balance:</span>
-                                    <span id="tooltipBalance">--</span>
-                                </div>
-                                <div class="tooltip-row">
-                                    <span>Last 7 days:</span>
-                                    <span id="tooltipUsage">-- used</span>
-                                </div>
-                                <div class="tooltip-row">
-                                    <span>Est. cost/generation:</span>
-                                    <span id="tooltipEstimate">10-50 credits</span>
-                                </div>
-                                <div class="tooltip-action">
-                                    <a href="profile.html#credits">Manage Credits →</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Profile Link (for authenticated users) -->
-                    <a href="profile.html" class="nav-link" id="profileLink" style="display: none;">👤 Profile</a>
                 </nav>
             </div>
         </header>
