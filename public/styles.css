@@ -2950,3 +2950,66 @@ body {
     content: "⚠ ";
     margin-right: 0.25rem;
 }
+
+/* Global Project Controls */
+.global-project-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 0.5rem;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.global-model-selector select {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    border-radius: 0.375rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    backdrop-filter: blur(5px);
+}
+
+.global-model-selector select option {
+    background: #1a202c;
+    color: white;
+}
+
+.global-project-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.select-compact {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.875rem !important;
+    min-height: auto !important;
+    height: auto !important;
+}
+
+@media (max-width: 768px) {
+    .global-project-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.5rem;
+    }
+    
+    .global-model-selector select {
+        width: 100%;
+    }
+    
+    .global-project-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}
+
+/* Form Actions Layout - Simplified */
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}

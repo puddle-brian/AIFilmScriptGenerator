@@ -1317,28 +1317,112 @@ function buildInfluencePrompt() {
 
 // Model selection functions
 function setupModelSelector() {
-    const modelSelect = document.getElementById('modelSelect');
-    const modelCost = document.getElementById('modelCost');
+    // Setup both model selectors (main form and project header)
+    const modelSelectors = [
+        { element: 'modelSelect', cost: 'modelCost' },
+        { element: 'modelSelectMain', cost: 'modelCostMain' }
+    ];
     
-    // Set initial model
-    modelSelect.value = appState.selectedModel;
-    updateModelCost();
-    
-    // Add event listener for model changes
-    modelSelect.addEventListener('change', function() {
-        appState.selectedModel = this.value;
-        updateModelCost();
-        saveToLocalStorage();
-        showToast(`Switched to ${modelPricing[this.value].description} model`, 'success');
+    modelSelectors.forEach(selector => {
+        const modelSelect = document.getElementById(selector.element);
+        if (modelSelect) {
+            // Set initial model
+            modelSelect.value = appState.selectedModel;
+            
+            // Add event listener for model changes
+            modelSelect.addEventListener('change', function() {
+                appState.selectedModel = this.value;
+                
+                // Sync both selectors
+                modelSelectors.forEach(s => {
+                    const element = document.getElementById(s.element);
+                    if (element && element !== this) {
+                        element.value = this.value;
+                    }
+                });
+                
+                updateModelCost();
+                saveToLocalStorage();
+                showToast(`Switched to ${modelPricing[this.value]?.description || 'selected'} model`, 'success');
+            });
+        }
     });
+    
+    // Initial cost update
+    updateModelCost();
+}
+
+// Initialize global model selector in header
+function initializeGlobalModelSelector() {
+    console.log('Initializing global model selector...');
+    
+    const globalModelSelect = document.getElementById('globalModelSelect');
+    const modelSelectProject = document.getElementById('modelSelect');
+    const globalSaveBtn = document.getElementById('globalSaveBtn');
+    
+    // Set default model
+    if (globalModelSelect) {
+        globalModelSelect.value = appState.selectedModel;
+        
+        // Sync global model selector changes
+        globalModelSelect.addEventListener('change', function() {
+            console.log('Global model selector changed to:', this.value);
+            
+            // Update app state
+            appState.selectedModel = this.value;
+            
+            // Sync with all other model selectors
+            const modelSelectors = ['modelSelect', 'modelSelectMain'];
+            modelSelectors.forEach(selectorId => {
+                const element = document.getElementById(selectorId);
+                if (element) {
+                    element.value = this.value;
+                }
+            });
+            
+            // Update cost displays
+            updateModelCost();
+            
+            // Save to localStorage
+            saveToLocalStorage();
+            
+            // Mark project as dirty if we have project data
+            if (appState.projectPath || appState.logline) {
+                autoSaveManager.markDirty();
+            }
+            
+            showToast(`Switched to ${modelPricing[this.value]?.description || 'selected'} model`, 'success');
+        });
+    }
+    
+    // Show save button when project is loaded
+    function updateGlobalSaveButton() {
+        if (globalSaveBtn) {
+            if (appState.projectPath || appState.logline || appState.currentStoryConcept) {
+                globalSaveBtn.style.display = 'inline-block';
+            } else {
+                globalSaveBtn.style.display = 'none';
+            }
+        }
+    }
+    
+    // Update save button visibility on app state changes
+    updateGlobalSaveButton();
+    
+    // Set up periodic check for save button visibility
+    setInterval(updateGlobalSaveButton, 2000);
 }
 
 function updateModelCost() {
-    const modelCost = document.getElementById('modelCost');
+    const costElements = ['modelCost', 'modelCostMain'];
     const pricing = modelPricing[appState.selectedModel];
-    if (pricing) {
-        modelCost.textContent = `~$${pricing.input}/$${pricing.output} per million tokens`;
-    }
+    
+    costElements.forEach(elementId => {
+        const modelCost = document.getElementById(elementId);
+        if (modelCost && pricing) {
+            modelCost.textContent = `~$${pricing.input}/$${pricing.output} per million tokens`;
+        }
+    });
 }
 
 function getSelectedModel() {
@@ -1450,6 +1534,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     await initializeApp();
     setupEventListeners();
     setupModelSelector();
+    initializeGlobalModelSelector();
     loadTemplates();
     setupUniversalLibraryKeyboardSupport();
 });
@@ -1776,7 +1861,8 @@ function handleStorySubmission() {
     };
     
     // Mark for auto-save (project gets created here)
-    autoSaveManager.markDirty();
+    // Temporarily disabled until auto-save is fully stabilized
+    // autoSaveManager.markDirty();
     
     saveToLocalStorage();
     goToStep(2);
@@ -4436,9 +4522,10 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     }
     
     // Trigger auto-save on step transitions (but not initial load)
-    if (validateAccess && autoSaveManager.hasProjectData()) {
-        autoSaveManager.markDirty();
-    }
+    // Temporarily commented out to reduce server load until project is substantial
+    // if (validateAccess && autoSaveManager.hasProjectData()) {
+    //     autoSaveManager.markDirty();
+    // }
     
     saveToLocalStorage();
 }
@@ -5741,10 +5828,10 @@ const autoSaveManager = {
     lastSaveState: null,
     
     init() {
-        // Set up periodic auto-save check
+        // Set up periodic auto-save check (less frequent to reduce server load)
         this.saveInterval = setInterval(() => {
             this.checkAndAutoSave();
-        }, 30000); // Check every 30 seconds
+        }, 60000); // Check every 60 seconds
         
         // Save on window unload
         window.addEventListener('beforeunload', (e) => {
@@ -5761,7 +5848,13 @@ const autoSaveManager = {
     },
     
     hasProjectData() {
-        return appState.storyInput && appState.storyInput.title && appState.storyInput.title.trim();
+        // Only auto-save if we have meaningful project data AND user is authenticated
+        return appState.isAuthenticated && 
+               appState.apiKey && 
+               appState.storyInput && 
+               appState.storyInput.title && 
+               appState.storyInput.title.trim() &&
+               (appState.storyInput.storyConcept || appState.selectedTemplate || appState.generatedStructure);
     },
     
     markDirty() {
@@ -5777,10 +5870,10 @@ const autoSaveManager = {
             clearTimeout(this.saveTimeout);
         }
         
-        // Schedule save in 3 seconds (debounce)
+        // Schedule save in 5 seconds (longer debounce to reduce server load)
         this.saveTimeout = setTimeout(() => {
             this.performAutoSave();
-        }, 3000);
+        }, 5000);
     },
     
     async performAutoSave() {
@@ -5798,8 +5891,13 @@ const autoSaveManager = {
             
             console.log('✅ Auto-save completed');
         } catch (error) {
-            console.error('❌ Auto-save failed:', error);
-            this.updateSaveStatus('Save failed', 'error');
+            console.warn('⚠️ Auto-save failed (will retry later):', error.message);
+            // Don't show error status for network issues - just fail silently
+            if (error.message.includes('Failed to fetch') || error.message.includes('CONNECTION_RESET')) {
+                this.updateSaveStatus(''); // Hide status
+            } else {
+                this.updateSaveStatus('Save failed', 'error');
+            }
         } finally {
             appState.saveInProgress = false;
         }
