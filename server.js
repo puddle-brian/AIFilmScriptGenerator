@@ -1878,38 +1878,47 @@ app.post('/api/save-project', async (req, res) => {
   }
 });
 
-// List existing projects
+// List existing projects (database-only version)
 app.get('/api/list-projects', async (req, res) => {
   try {
-    const generatedDir = path.join(__dirname, 'generated');
-    const projectFolders = await fs.readdir(generatedDir);
+    const username = req.query.username || 'guest';
     
-    const projects = [];
-    
-    for (const folder of projectFolders) {
-      try {
-        const structureFile = path.join(generatedDir, folder, '01_structure', 'plot_structure.json');
-        const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-        
-        projects.push({
-          path: folder,
-          title: projectData.storyInput.title,
-          tone: projectData.storyInput.tone,
-          totalScenes: projectData.storyInput.totalScenes,
-          createdAt: projectData.generatedAt,
-          logline: projectData.storyInput.logline
-        });
-      } catch (error) {
-        console.log(`Skipping invalid project folder: ${folder}`);
-      }
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.json([]); // Return empty array if user not found
     }
     
-    // Sort by creation date, newest first
-    projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const userId = userResult.rows[0].id;
     
+    // Get all projects for this user from database
+    const projectsResult = await dbClient.query(
+      'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+    
+    const projects = projectsResult.rows.map(row => {
+      try {
+        const projectContext = parseProjectContext(row.project_context);
+        
+        return {
+          path: row.project_name,
+          title: projectContext.storyInput?.title || 'Untitled Project',
+          tone: projectContext.storyInput?.tone || projectContext.storyInput?.genre || 'Unknown',
+          totalScenes: projectContext.storyInput?.totalScenes || 0,
+          createdAt: row.created_at,
+          logline: projectContext.storyInput?.logline || 'No logline available'
+        };
+      } catch (error) {
+        console.log(`Skipping invalid project: ${row.project_name}`, error.message);
+        return null;
+      }
+    }).filter(Boolean); // Remove null entries
+    
+    console.log(`📋 Listed ${projects.length} projects for user "${username}"`);
     res.json(projects);
   } catch (error) {
-    console.error('Error listing projects:', error);
+    console.error('Error listing projects from database:', error);
     res.status(500).json({ error: 'Failed to list projects' });
   }
 });
