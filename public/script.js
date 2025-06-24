@@ -330,7 +330,9 @@ class EditableContentBlock {
             case 'acts':
                 return this.formatActsContent(content);
             case 'plot-points':
-                return this.formatPlotPointsContent(content);
+                // Extract act number from metadata if available
+                const actNumber = this.metadata && this.metadata.actNumber ? this.metadata.actNumber : null;
+                return this.formatPlotPointsContent(content, actNumber);
             case 'scenes':
                 return this.formatScenesContent(content);
             case 'dialogue':
@@ -356,20 +358,26 @@ class EditableContentBlock {
         return `<p>${content}</p>`;
     }
     
-    formatPlotPointsContent(content) {
+    formatPlotPointsContent(content, actNumber = null) {
         // If content is an array or JSON array string
         if (Array.isArray(content)) {
             return `
-                <ol>
-                    ${content.map(point => `<li>${point}</li>`).join('')}
+                <ol class="hierarchical-plot-points" ${actNumber ? `data-act-number="${actNumber}"` : ''}>
+                    ${content.map((point, index) => {
+                        const plotPointNumber = actNumber ? `${actNumber}.${index + 1}` : index + 1;
+                        return `<li data-plot-number="${plotPointNumber}"><span class="plot-point-number">${plotPointNumber}</span> ${point}</li>`;
+                    }).join('')}
                 </ol>
             `;
         } else if (typeof content === 'string' && content.startsWith('[')) {
             try {
                 const parsed = JSON.parse(content);
                 return `
-                    <ol>
-                        ${parsed.map(point => `<li>${point}</li>`).join('')}
+                    <ol class="hierarchical-plot-points" ${actNumber ? `data-act-number="${actNumber}"` : ''}>
+                        ${parsed.map((point, index) => {
+                            const plotPointNumber = actNumber ? `${actNumber}.${index + 1}` : index + 1;
+                            return `<li data-plot-number="${plotPointNumber}"><span class="plot-point-number">${plotPointNumber}</span> ${point}</li>`;
+                        }).join('')}
                     </ol>
                 `;
             } catch (e) {
@@ -2878,7 +2886,10 @@ function displayElementPlotPoints(structureKey, plotPoints) {
         title: titleWithProgress,
         content: plotPointsContent,
         container: container,
-        metadata: { structureKey: structureKey },
+        metadata: { 
+            structureKey: structureKey,
+            actNumber: currentActIndex + 1 // Pass the act number (1, 2, 3, etc.)
+        },
         onSave: async (newContent, block) => {
             // Save the edited plot points content
             await savePlotPointsContent(structureKey, newContent);
