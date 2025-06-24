@@ -1967,6 +1967,62 @@ app.get('/api/project/:id', async (req, res) => {
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
+    const username = req.query.username || 'guest';
+    
+    console.log(`🔍 DEBUG: Looking for project "${projectPath}" for user "${username}"`);
+    
+    // First, try to load from database (unified v2.0 format)
+    try {
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        // Look for project in database by project_name
+        const projectResult = await dbClient.query(
+          'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+          [userId, projectPath]
+        );
+        
+        console.log(`🔍 DEBUG: Found ${projectResult.rows.length} matching projects`);
+        
+        if (projectResult.rows.length > 0) {
+          const dbProject = projectResult.rows[0];
+          const projectContext = JSON.parse(dbProject.project_context);
+          
+          console.log(`💾 Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
+          console.log(`🔍 DEBUG: Project currentStep = ${projectContext.currentStep}`);
+          
+          // Return the project data in the expected format
+          const fullProjectData = {
+            projectPath: projectPath,
+            projectId: projectContext.projectId,
+            storyInput: projectContext.storyInput,
+            selectedTemplate: projectContext.selectedTemplate,
+            templateData: projectContext.templateData,
+            generatedStructure: projectContext.generatedStructure,
+            plotPoints: projectContext.plotPoints,
+            generatedScenes: projectContext.generatedScenes,
+            generatedDialogues: projectContext.generatedDialogues,
+            currentStep: projectContext.currentStep,
+            generatedAt: dbProject.created_at,
+            updatedAt: dbProject.updated_at,
+            // Also provide the server field names for compatibility
+            template: projectContext.templateData,
+            structure: projectContext.generatedStructure,
+            scenes: projectContext.generatedScenes,
+            dialogue: projectContext.generatedDialogues
+          };
+          
+          return res.json(fullProjectData);
+        } else {
+          console.log(`🔍 DEBUG: Project not found in database, trying file system...`);
+        }
+      }
+    } catch (dbError) {
+      console.log('Database lookup failed, trying file system:', dbError.message);
+    }
+    
+    // Fallback to file system (legacy format)
     const projectDir = path.join(__dirname, 'generated', projectPath);
     const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
     const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
@@ -2014,7 +2070,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
       console.log(`No dialogue directory found for project ${projectPath}`);
     }
     
-    // Return comprehensive project data
+    // Return comprehensive project data (legacy format)
     const fullProjectData = {
       projectPath: projectPath,
       projectId: projectData.projectId,

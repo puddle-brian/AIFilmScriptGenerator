@@ -4044,6 +4044,27 @@ function displayDialogueGeneration() {
         }
     });
     
+    // Handle any pending dialogue restoration from page reload
+    if (appState.pendingDialogueRestore) {
+        console.log('Processing pending dialogue restoration:', appState.pendingDialogueRestore);
+        
+        // Merge pending dialogue into current state if not already present
+        Object.entries(appState.pendingDialogueRestore).forEach(([dialogueKey, dialogue]) => {
+            if (!appState.generatedDialogues[dialogueKey]) {
+                appState.generatedDialogues[dialogueKey] = dialogue;
+                console.log(`Restored dialogue for: ${dialogueKey}`);
+            }
+        });
+        
+        // Clear the pending restoration
+        delete appState.pendingDialogueRestore;
+        
+        // Refresh the dialogue display to show restored content
+        setTimeout(() => {
+            displayDialogueGeneration();
+        }, 100);
+    }
+    
     console.log('Dialogue interface displayed with existing content restored');
 }
 
@@ -5120,16 +5141,17 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     });
     
     // Load project data (unified v2.0 format only)
+    // Map server field names to frontend field names
     appState.currentStoryConcept = projectData.storyInput?.storyConcept || {};
-    appState.projectCharacters = projectData.projectCharacters || [];
-    appState.influences = projectData.influences || { directors: [], screenwriters: [], films: [] };
+    appState.projectCharacters = projectData.projectCharacters || projectData.storyInput?.charactersData || [];
+    appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [] };
     appState.storyInput = projectData.storyInput || {};
-    appState.selectedTemplate = projectData.selectedTemplate;
-    appState.templateData = projectData.templateData;
-    appState.generatedStructure = projectData.generatedStructure || {};
+    appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
+    appState.templateData = projectData.templateData || projectData.template;
+    appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
     appState.plotPoints = projectData.plotPoints || {};
-    appState.generatedScenes = projectData.generatedScenes || {};
-    appState.generatedDialogues = projectData.generatedDialogues || {};
+    appState.generatedScenes = projectData.generatedScenes || projectData.scenes || {};
+    appState.generatedDialogues = projectData.generatedDialogues || projectData.dialogue || {};
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
     
@@ -5241,82 +5263,35 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         console.log('Skipping navigation during restore - will be handled by initializeApp');
     }
     
+    // Always display content if it exists (regardless of restore status)
+    // This ensures content is visible on page reload
+    console.log('Checking content to display...');
+    
     // If we have a structure, display it
-    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0 && targetStep >= 3) {
+    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
         console.log('Displaying structure:', appState.generatedStructure);
         displayStructure(appState.generatedStructure);
         console.log('Structure display completed');
     }
     
+    // If we have plot points, they will be displayed when displayPlotPointsGeneration is called in goToStepInternal
+    // No need to explicitly display them here as they're handled by the step navigation
+    
     // If we have scenes, display them
-    if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0 && targetStep >= 4) {
+    if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0) {
         console.log('Displaying scenes:', appState.generatedScenes);
         displayScenes(appState.generatedScenes);
         console.log('Scenes display completed');
     }
     
-    // If we have dialogue and we're going to step 6, display dialogue generation interface
-    if (targetStep >= 6) {
-        console.log('Displaying dialogue generation interface');
-        displayDialogueGeneration();
-        console.log('Dialogue generation interface displayed');
+    // If we have dialogue, ensure the dialogue generation interface is set up
+    if (appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0) {
+        console.log('Setting up dialogue restoration');
+        console.log('Available dialogue keys:', Object.keys(appState.generatedDialogues));
         
-        // If we have existing dialogue, populate it
-        if (appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0) {
-            console.log('Populating existing dialogue');
-            console.log('Available dialogue keys:', Object.keys(appState.generatedDialogues));
-            console.log('Current scenes in app state:', Object.keys(appState.generatedScenes));
-            
-            // Check immediately what elements are available
-            console.log('Available dialogue elements (immediate):', Array.from(document.querySelectorAll('[id^="dialogue-"]')).map(el => el.id));
-            
-            // Wait a moment for the dialogue interface to be fully rendered
-            setTimeout(() => {
-                console.log('=== TIMEOUT EXECUTED ===');
-                console.log('Available dialogue elements after timeout:', Array.from(document.querySelectorAll('[id^="dialogue-"]')).map(el => el.id));
-                
-                Object.entries(projectData.dialogue).forEach(([sceneId, dialogue]) => {
-                    console.log(`Processing dialogue: ${sceneId}`);
-                    
-                    // The dialogue ID format is like "The_Empty_Studio" but we need to find the matching scene
-                    // Look through all generated scenes to find the matching one
-                    let found = false;
-                    Object.entries(appState.generatedScenes).forEach(([structureKey, scenes]) => {
-                        scenes.forEach((scene, index) => {
-                            const expectedElementId = `dialogue-${structureKey}-${index}`;
-                            const dialogueElement = document.getElementById(expectedElementId);
-                            
-                            // Check if this scene matches the dialogue (by title or name)
-                            // Normalize both titles by removing all non-alphanumeric characters and converting to lowercase
-                            const rawSceneTitle = scene.title || scene.name || '';
-                            const sceneTitle = rawSceneTitle.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                            const dialogueTitle = sceneId.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
-                            
-                            console.log(`Comparing scene "${rawSceneTitle}" -> "${sceneTitle}" with dialogue "${sceneId}" -> "${dialogueTitle}" for element ${expectedElementId}`);
-                            
-                            if (sceneTitle === dialogueTitle || sceneTitle.includes(dialogueTitle) || dialogueTitle.includes(sceneTitle)) {
-                                // Store dialogue in app state with the correct key format
-                                const correctSceneId = `${structureKey}-${index}`;
-                                appState.generatedDialogues[correctSceneId] = dialogue;
-                                
-                                if (dialogueElement) {
-                                    dialogueElement.textContent = dialogue;
-                                    console.log(`✅ Populated dialogue for scene: ${correctSceneId} (original: ${sceneId})`);
-                                    found = true;
-                                } else {
-                                    console.log(`❌ Element ${expectedElementId} not found, but dialogue stored in app state`);
-                                    found = true; // Still count as found since we stored it
-                                }
-                            }
-                        });
-                    });
-                    
-                    if (!found) {
-                        console.log(`❌ Could not match dialogue "${sceneId}" to any scene`);
-                    }
-                });
-            }, 100);
-        }
+        // Store dialogue restoration for later (will be handled by displayDialogueGeneration when step 6 is reached)
+        appState.pendingDialogueRestore = appState.generatedDialogues;
+        console.log('Dialogue restoration queued for step 6');
     }
     
     // Mark this as a loaded project so it can be restored on page reload
