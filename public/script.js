@@ -4834,32 +4834,8 @@ async function showLoadProjectModal() {
         
         projects.forEach(project => {
             const projectDiv = document.createElement('div');
-            projectDiv.className = 'project-item';
-            
-            // Format progress information
-            const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
-            const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
-            
-            projectDiv.innerHTML = `
-                <div class="project-header">
-                    <h4>${project.title}</h4>
-                    ${progressBadge}
-                </div>
-                <div class="project-meta">
-                    <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}<br>
-                    <strong>Tone:</strong> ${project.tone || 'Not specified'}
-                </div>
-                <div class="project-logline">"${project.logline}"</div>
-                <div class="project-actions">
-                    <button class="load-project-btn" onclick="loadProject('${project.path}')">
-                        📁 Load Project
-                    </button>
-                    <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
-                        🗑️ Delete
-                    </button>
-                </div>
-            `;
-            projectsList.appendChild(projectDiv);
+            projectDiv.innerHTML = generateProjectCard(project, 'modal');
+            projectsList.appendChild(projectDiv.firstElementChild);
         });
     } catch (error) {
         console.error('Error loading projects:', error);
@@ -6116,3 +6092,44 @@ const autoSaveManager = {
         if (this.saveInterval) clearInterval(this.saveInterval);
     }
 };
+
+// Shared Project Card Generator - Reuses the modal card format
+function generateProjectCard(project, context = 'modal') {
+    // Format progress information
+    const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
+    const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
+    
+    // Different actions based on context
+    const actions = context === 'profile' ? `
+        <button class="load-project-btn" onclick="event.stopPropagation(); openProject('${project.path}')">
+            📁 Open Project
+        </button>
+        <button class="delete-project-btn" onclick="event.stopPropagation(); deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            🗑️ Delete
+        </button>
+    ` : `
+        <button class="load-project-btn" onclick="loadProject('${project.path}')">
+            📁 Load Project
+        </button>
+        <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            🗑️ Delete
+        </button>
+    `;
+    
+    return `
+        <div class="project-item">
+            <div class="project-header">
+                <h4>${project.title}</h4>
+                ${progressBadge}
+            </div>
+            <div class="project-meta">
+                <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}<br>
+                <strong>Tone:</strong> ${project.tone || 'Not specified'}
+            </div>
+            <div class="project-logline">"${project.logline}"</div>
+            <div class="project-actions">
+                ${actions}
+            </div>
+        </div>
+    `;
+}

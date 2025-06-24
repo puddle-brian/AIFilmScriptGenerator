@@ -167,6 +167,21 @@ async function initializeDatabase() {
       console.log('✅ Admin user created with API key:', adminApiKey);
       console.log('   Save this API key securely - it won\'t be shown again!');
     }
+    
+    // Create guest user if it doesn't exist
+    const guestUser = await dbClient.query(
+      'SELECT * FROM users WHERE username = $1',
+      ['guest']
+    );
+    
+    if (guestUser.rows.length === 0) {
+      await dbClient.query(`
+        INSERT INTO users (username, credits_remaining, is_admin)
+        VALUES ($1, $2, $3)
+      `, ['guest', 999999, false]);
+      
+      console.log('✅ Guest user created for testing');
+    }
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
   }
@@ -1633,10 +1648,12 @@ Project ID: ${projectId}
     console.log(`Project saved to: ${projectDir}`);
     console.log(`Project ID: ${projectId}`);
 
-    // Also save to database for profile page (use 'guest' as default user)
+    // Also save to database for profile page using UNIFIED FORMAT
     try {
       const username = 'guest'; // TODO: Get from user session/auth
-      const projectContext = {
+      
+      // Create unified project format
+      const unifiedProject = createUnifiedProject({
         structure: structureData,
         template: templateData,
         storyInput,
@@ -1644,33 +1661,12 @@ Project ID: ${projectId}
         projectPath: projectFolderName,
         customPromptUsed: true,
         generatedAt: new Date().toISOString()
-      };
-      
-      const thumbnailData = {
-        title: storyInput.title,
-        genre: storyInput.genre || 'Unknown',
-        tone: storyInput.tone,
-        structure: templateData.name,
-        currentStep: 3, // Just completed structure generation
-        totalScenes: storyInput.totalScenes || 70
-      };
+      });
 
-      // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        // Save project to database
-        await dbClient.query(
-          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-           VALUES ($1, $2, $3, $4) 
-           ON CONFLICT (user_id, project_name) 
-           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-        );
-        
-        console.log(`✅ Custom prompt project also saved to database for user: ${username}`);
-      }
+      // Save using unified format function
+      await saveUnifiedProjectToDatabase(unifiedProject, username);
+      
+      console.log(`✅ Custom prompt project saved to database in unified format: ${unifiedProject.title}`);
     } catch (dbError) {
       console.error('❌ Failed to save custom prompt project to database:', dbError);
       // Don't fail the entire request if database save fails
@@ -1922,43 +1918,24 @@ Project ID: ${projectId}
     console.log(`Project saved to: ${projectDir}`);
     console.log(`Project ID: ${projectId}`);
 
-    // Also save to database for profile page (use 'guest' as default user)
+    // Also save to database for profile page using UNIFIED FORMAT
     try {
       const username = 'guest'; // TODO: Get from user session/auth
-      const projectContext = {
+      
+      // Create unified project format
+      const unifiedProject = createUnifiedProject({
         structure: structureData,
         template: templateData,
         storyInput,
         projectId,
         projectPath: projectFolderName,
         generatedAt: new Date().toISOString()
-      };
-      
-      const thumbnailData = {
-        title: storyInput.title,
-        genre: storyInput.genre || 'Unknown',
-        tone: storyInput.tone,
-        structure: templateData.name,
-        currentStep: 3, // Just completed structure generation
-        totalScenes: storyInput.totalScenes || 70
-      };
+      });
 
-      // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        // Save project to database
-        await dbClient.query(
-          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-           VALUES ($1, $2, $3, $4) 
-           ON CONFLICT (user_id, project_name) 
-           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-        );
-        
-        console.log(`✅ Project also saved to database for user: ${username}`);
-      }
+      // Save using unified format function
+      await saveUnifiedProjectToDatabase(unifiedProject, username);
+      
+      console.log(`✅ Project saved to database in unified format: ${unifiedProject.title}`);
     } catch (dbError) {
       console.error('❌ Failed to save project to database:', dbError);
       // Don't fail the entire request if database save fails
@@ -2422,43 +2399,13 @@ app.post('/api/auto-save-project', async (req, res) => {
       return res.status(400).json({ error: 'Project path could not be determined' });
     }
 
-    // STEP 1: Save to database FIRST (primary storage)
-    const projectContext = {
+    // STEP 1: Save to database FIRST (primary storage) using UNIFIED FORMAT
+    const unifiedProject = await saveUnifiedProjectToDatabase({
       ...projectData,
       projectPath: projectPath,
       autoSaved: true,
-      lastAutoSave: new Date().toISOString(),
-      formatVersion: '2.0' // Mark as new database-first format
-    };
-    
-    const thumbnailData = {
-      title: projectData.storyInput?.title || 'Untitled Project',
-      genre: projectData.storyInput?.genre || 'Unknown',
-      tone: projectData.storyInput?.tone || 'Unknown',
-      structure: projectData.templateData?.name || 'Unknown Structure',
-      currentStep: projectData.currentStep || 1,
-      totalScenes: projectData.storyInput?.totalScenes || 70,
       lastAutoSave: new Date().toISOString()
-    };
-
-    // Get user ID and save to database (PRIMARY STORAGE)
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      return res.status(400).json({ error: 'User not found' });
-    }
-    
-    const userId = userResult.rows[0].id;
-    
-    // Save project to database (PRIMARY)
-    await dbClient.query(
-      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-       VALUES ($1, $2, $3, $4) 
-       ON CONFLICT (user_id, project_name) 
-       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-      [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-    );
-    
-    console.log(`✅ Project saved to database (primary): ${projectData.storyInput?.title || projectPath}`);
+    }, username);
 
     // STEP 2: Cache to file system ASYNC (optional, for performance)
     // Don't wait for file caching - respond immediately
@@ -2469,10 +2416,11 @@ app.post('/api/auto-save-project', async (req, res) => {
     res.json({
       success: true,
       projectPath: projectPath,
-      projectId: projectData.projectId,
-      message: 'Project saved successfully',
+      projectId: unifiedProject.id,
+      message: 'Project saved successfully in unified format',
       timestamp: new Date().toISOString(),
-      storage: 'database-first' // Indicate new storage method
+      storage: 'unified-format', // Indicate new unified format
+      completionStatus: unifiedProject.completionStatus
          });
     
   } catch (error) {
@@ -2483,6 +2431,178 @@ app.post('/api/auto-save-project', async (req, res) => {
     });
   }
 });
+
+// =====================================
+// PHASE 2 STEP 2.2: UNIFIED PROJECT FORMAT
+// =====================================
+
+/**
+ * Create unified project format - the single format for all database storage
+ * Eliminates format detection complexity by standardizing all projects
+ */
+function createUnifiedProject(data) {
+  const now = new Date().toISOString();
+  
+  return {
+    // Core identification
+    id: data.projectId || data.id || `project_${Date.now()}`,
+    title: data.storyInput?.title || data.title || 'Untitled Project',
+    userId: data.userId || null,
+    projectPath: data.projectPath || data.path || null,
+    
+    // Timestamps
+    createdAt: data.createdAt || data.generatedAt || now,
+    updatedAt: data.updatedAt || now,
+    
+    // All project data in standardized structure
+    storyInput: data.storyInput || {},           // Story concept (REQUIRED)
+    template: data.template || null,             // Selected template
+    structure: data.structure || {},             // Generated story structure  
+    plotPoints: data.plotPoints || {},           // Generated plot points
+    scenes: data.scenes || null,                 // Generated scenes
+    dialogue: data.dialogue || {},               // Generated dialogue
+    
+    // Additional data
+    customPromptUsed: data.customPromptUsed || false,
+    
+    // Metadata
+    formatVersion: '2.0',
+    completionStatus: determineCompletionStatus(data)
+  };
+}
+
+/**
+ * Determine completion status for unified format
+ */
+function determineCompletionStatus(data) {
+  if (data.dialogue && Object.keys(data.dialogue).length > 0) {
+    return 'complete';
+  }
+  if (data.scenes && (Array.isArray(data.scenes) ? data.scenes.length > 0 : data.scenes)) {
+    return 'dialogue';
+  }
+  if (data.plotPoints && Object.keys(data.plotPoints).length > 0) {
+    return 'scenes';
+  }
+  if (data.structure && Object.keys(data.structure).length > 0) {
+    return 'structured';
+  }
+  if (data.storyInput && data.storyInput.title) {
+    return 'draft';
+  }
+  return 'incomplete';
+}
+
+/**
+ * Save project in unified format to database
+ */
+async function saveUnifiedProjectToDatabase(projectData, username = 'guest') {
+  try {
+    // Convert to unified format if not already
+    const unifiedProject = projectData.formatVersion === '2.0' 
+      ? projectData 
+      : createUnifiedProject(projectData);
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      throw new Error(`User ${username} not found`);
+    }
+    const userId = userResult.rows[0].id;
+    
+    // Create thumbnail data for project list display
+    const thumbnailData = {
+      title: unifiedProject.title,
+      tone: unifiedProject.storyInput?.tone || 'Unknown',
+      totalScenes: unifiedProject.storyInput?.totalScenes || 'Unknown',
+      structure: unifiedProject.template?.name || 'No template',
+      completionStatus: unifiedProject.completionStatus,
+      formatVersion: unifiedProject.formatVersion
+    };
+    
+    // Save to database with unified format
+    await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, project_name) 
+       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
+      [
+        userId, 
+        unifiedProject.projectPath || unifiedProject.id, 
+        JSON.stringify(unifiedProject), 
+        JSON.stringify(thumbnailData)
+      ]
+    );
+    
+    console.log(`✅ Project saved to database in unified format: "${unifiedProject.title}"`);
+    return unifiedProject;
+    
+  } catch (error) {
+    console.error('❌ Failed to save unified project to database:', error);
+    throw error;
+  }
+}
+
+/**
+ * Load project from database in unified format
+ */
+async function loadUnifiedProjectFromDatabase(projectPath, username = 'guest') {
+  try {
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return null; // User not found
+    }
+    const userId = userResult.rows[0].id;
+    
+    // Load project
+    const projectResult = await dbClient.query(
+      'SELECT project_context, thumbnail_data, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return null; // Project not found
+    }
+    
+    // Handle both JSON string and already-parsed object from database
+    const rawContext = projectResult.rows[0].project_context;
+    const projectContext = typeof rawContext === 'string' ? JSON.parse(rawContext) : rawContext;
+    
+    // Only load unified format v2.0 projects
+    if (projectContext.formatVersion === '2.0') {
+      console.log(`💾 Loaded unified project from database: "${projectContext.title}"`);
+      return projectContext;
+    }
+    
+    // Reject legacy projects
+    console.warn(`⚠️ Rejecting legacy project format: ${projectPath} (v${projectContext.formatVersion || '1.0'})`);
+    return null;
+    
+  } catch (error) {
+    console.error('❌ Failed to load unified project from database:', error);
+    return null;
+  }
+}
+
+/**
+ * Load project in unified format (database-only, no migration)
+ */
+async function loadUnifiedProject(projectPath, username = 'guest') {
+  try {
+    // Load from database only - no file system fallback since we're unified format only
+    const dbProject = await loadUnifiedProjectFromDatabase(projectPath, username);
+    if (dbProject) {
+      return dbProject;
+    }
+    
+    throw new Error(`Project not found: ${projectPath}`);
+    
+  } catch (error) {
+    console.error(`❌ Failed to load unified project: ${projectPath}`, error);
+    throw error;
+  }
+}
 
 // =====================================
 // PROJECT FORMAT DETECTION FUNCTIONS
@@ -2853,7 +2973,7 @@ app.get('/api/list-projects', async (req, res) => {
     const projects = [];
     const skippedProjects = [];
     
-    // STEP 1: Load projects from database (primary source)
+    // STEP 1: Load projects from database (unified format only)
     try {
       const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
       if (userResult.rows.length > 0) {
@@ -2866,76 +2986,52 @@ app.get('/api/list-projects', async (req, res) => {
         
         for (const row of dbProjects.rows) {
           try {
-            const projectContext = JSON.parse(row.project_context);
-            const thumbnailData = JSON.parse(row.thumbnail_data);
+            // Handle both JSON string and already-parsed object from database
+            const rawProjectContext = row.project_context;
+            const rawThumbnailData = row.thumbnail_data;
+            const projectContext = typeof rawProjectContext === 'string' ? JSON.parse(rawProjectContext) : rawProjectContext;
+            const thumbnailData = typeof rawThumbnailData === 'string' ? JSON.parse(rawThumbnailData) : rawThumbnailData;
             
-            // Determine progress from database data
-            const progress = determineProjectProgress(projectContext);
-            
-            projects.push({
-              path: row.project_name,
-              title: thumbnailData.title,
-              tone: thumbnailData.tone,
-              totalScenes: thumbnailData.totalScenes,
-              createdAt: row.updated_at,
-              logline: projectContext.storyInput?.logline || 'No logline available',
-              format: 'database', // Mark as database-sourced
-              status: 'database-first',
-              progress: progress
-            });
+            // Only load unified format v2.0 projects
+            if (projectContext.formatVersion === '2.0') {
+              // Determine progress from unified data
+              const progress = determineProjectProgress(projectContext);
+              
+              projects.push({
+                path: row.project_name,
+                title: projectContext.title,
+                tone: projectContext.storyInput?.tone || 'Unknown',
+                totalScenes: projectContext.storyInput?.totalScenes || 'Unknown',
+                createdAt: row.updated_at,
+                logline: projectContext.storyInput?.logline || 'No logline available',
+                format: 'unified', // Mark as unified format
+                status: 'active',
+                progress: progress
+              });
+            } else {
+              console.warn(`⚠️ Skipping legacy format project: ${row.project_name} (v${projectContext.formatVersion || '1.0'})`);
+              skippedProjects.push(row.project_name);
+            }
           } catch (parseError) {
             console.warn(`⚠️ Skipping corrupted database project: ${row.project_name}`);
             skippedProjects.push(row.project_name);
           }
         }
         
-        console.log(`💾 Loaded ${projects.length} projects from database (primary storage)`);
+        console.log(`💾 Loaded ${projects.length} unified format projects from database`);
       }
     } catch (dbError) {
-      console.warn('⚠️ Database query failed, falling back to file system:', dbError.message);
+      console.warn('⚠️ Database query failed:', dbError.message);
     }
     
-    // STEP 2: Load additional projects from file system (legacy/cache)
-    try {
-      const generatedDir = path.join(__dirname, 'generated');
-      const projectFolders = await fs.readdir(generatedDir);
-      
-      for (const folder of projectFolders) {
-        // Skip if already loaded from database
-        if (projects.some(p => p.path === folder)) {
-          continue;
-        }
-        
-        try {
-          const format = await detectProjectFormat(folder);
-          
-          if (format === 'invalid') {
-            skippedProjects.push(folder);
-            continue;
-          }
-          
-          // Load file-based project
-          const basicProjectData = await loadBasicProjectInfo(folder, format);
-          const fullProjectData = await loadProjectByFormat(folder, format);
-          
-          projects.push({
-            ...basicProjectData,
-            progress: fullProjectData.progress
-          });
-          
-        } catch (error) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.log(`Error loading file project ${folder}:`, error.message);
-          }
-          skippedProjects.push(folder);
-        }
-      }
-    } catch (fsError) {
-      console.warn('⚠️ File system scan failed:', fsError.message);
-    }
+    // No file system scanning - unified format projects are database-only
     
     // Log summary
-    console.log(`📁 Project scan complete: ${projects.length} valid projects loaded${skippedProjects.length > 0 ? `, ${skippedProjects.length} invalid folders skipped` : ''}`);
+    if (skippedProjects.length > 0) {
+      console.log(`📁 Database scan complete: ${projects.length} unified projects loaded, ${skippedProjects.length} legacy/corrupted projects skipped`);
+    } else {
+      console.log(`📁 Database scan complete: ${projects.length} unified projects loaded`);
+    }
     
     // Sort by creation date, newest first
     projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
@@ -2961,69 +3057,27 @@ app.get('/api/project/:id', async (req, res) => {
   }
 });
 
-// Load project by path - DATABASE FIRST UNIVERSAL LOADER
+// Load project by path - UNIFIED FORMAT ONLY
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
     const username = 'guest'; // TODO: Get from user session/auth
-    let fullProjectData = null;
-    let loadSource = 'unknown';
     
-    // Step 1: Try to load from database (primary storage)
-    try {
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-      if (userResult.rows.length > 0) {
-        const userId = userResult.rows[0].id;
-        
-        const projectResult = await dbClient.query(
-          'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-          [userId, projectPath]
-        );
-        
-        if (projectResult.rows.length > 0) {
-          const projectContext = JSON.parse(projectResult.rows[0].project_context);
-          
-          // Add progress information
-          const progress = determineProjectProgress(projectContext);
-          
-          fullProjectData = {
-            ...projectContext,
-            progress,
-            format: 'database'
-          };
-          
-          loadSource = 'database';
-          console.log(`💾 Project loaded from database: "${fullProjectData.storyInput.title}" - ${progress.label}`);
-        }
-      }
-    } catch (dbError) {
-      console.warn('⚠️ Database load failed, trying file system:', dbError.message);
-    }
+    // Load unified format project from database only
+    const unifiedProject = await loadUnifiedProject(projectPath, username);
     
-    // Step 2: Fall back to file system if not in database
-    if (!fullProjectData) {
-      const format = await detectProjectFormat(projectPath);
-      
-      if (format === 'invalid') {
-        return res.status(404).json({ 
-          error: 'Project not found or corrupted', 
-          details: 'No valid project files found in database or file system' 
-        });
-      }
-      
-      fullProjectData = await loadProjectByFormat(projectPath, format);
-      loadSource = 'filesystem';
-      console.log(`📁 Project loaded from file system: "${fullProjectData.storyInput.title}" (${format} format) - ${fullProjectData.progress.label}`);
-    }
+    // Add progress information for frontend
+    const progress = determineProjectProgress(unifiedProject);
     
     // Step 3: Add helpful metadata for the frontend
     const response = {
-      ...fullProjectData,
+      ...unifiedProject,
+      progress,
       loadedSuccessfully: true,
       canContinue: true,
-      nextStep: fullProjectData.progress.step,
-      nextStepDescription: fullProjectData.progress.description,
-      loadSource: loadSource // Help frontend understand where data came from
+      nextStep: progress.step,
+      nextStepDescription: progress.description,
+      loadSource: 'unified-format' // Indicate new unified system
     };
     
     res.json(response);
@@ -3032,7 +3086,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     console.error('Error loading project:', error);
     
     // Determine if this is a story-concept missing error vs other error
-    if (error.message.includes('missing required story concept')) {
+    if (error.message.includes('missing required story concept') || error.message.includes('corrupted or invalid')) {
       res.status(400).json({ 
         error: 'Invalid project: Missing story concept', 
         details: 'This project appears to be corrupted - no story concept found',
@@ -3048,24 +3102,56 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
   }
 });
 
-// Delete project endpoint
+// Delete project endpoint - UNIFIED FORMAT (Database + File System)
 app.delete('/api/project/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
+    const username = 'guest'; // TODO: Get from user session/auth
+    let deletedFromDatabase = false;
+    let deletedFromFileSystem = false;
     
-    // Check if project directory exists
+    // STEP 1: Delete from database (primary storage)
     try {
-      await fs.access(projectDir);
-    } catch (error) {
-      return res.status(404).json({ error: 'Project not found' });
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length > 0) {
+        const userId = userResult.rows[0].id;
+        
+        const deleteResult = await dbClient.query(
+          'DELETE FROM user_projects WHERE user_id = $1 AND project_name = $2 RETURNING project_name',
+          [userId, projectPath]
+        );
+        
+        if (deleteResult.rows.length > 0) {
+          deletedFromDatabase = true;
+          console.log(`✅ Project deleted from database: ${projectPath}`);
+        }
+      }
+    } catch (dbError) {
+      console.warn('⚠️ Failed to delete from database:', dbError.message);
     }
     
-    // Recursively delete the project directory
-    await fs.rm(projectDir, { recursive: true, force: true });
+    // STEP 2: Delete from file system (cache)
+    try {
+      const projectDir = path.join(__dirname, 'generated', projectPath);
+      await fs.access(projectDir);
+      await fs.rm(projectDir, { recursive: true, force: true });
+      deletedFromFileSystem = true;
+      console.log(`✅ Project deleted from file system: ${projectPath}`);
+    } catch (fsError) {
+      console.warn('⚠️ File system deletion failed (not critical):', fsError.message);
+    }
     
-    console.log(`Project deleted: ${projectPath}`);
-    res.json({ message: 'Project deleted successfully', projectPath });
+    // Success if deleted from database OR file system
+    if (deletedFromDatabase || deletedFromFileSystem) {
+      res.json({ 
+        message: 'Project deleted successfully', 
+        projectPath,
+        deletedFromDatabase,
+        deletedFromFileSystem
+      });
+    } else {
+      res.status(404).json({ error: 'Project not found in database or file system' });
+    }
     
   } catch (error) {
     console.error('Error deleting project:', error);

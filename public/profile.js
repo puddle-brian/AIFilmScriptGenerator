@@ -289,6 +289,47 @@ function generateEntryKey(name) {
 
 // Old form handler removed - now using universal modal system
 
+// Shared Project Card Generator - Reuses the modal card format from script.js
+function generateProjectCard(project, context = 'modal') {
+    // Format progress information
+    const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
+    const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
+    
+    // Different actions based on context
+    const actions = context === 'profile' ? `
+        <button class="load-project-btn" onclick="event.stopPropagation(); openProject('${project.path}')">
+            📁 Open Project
+        </button>
+        <button class="delete-project-btn" onclick="event.stopPropagation(); deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            🗑️ Delete
+        </button>
+    ` : `
+        <button class="load-project-btn" onclick="loadProject('${project.path}')">
+            📁 Load Project
+        </button>
+        <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            🗑️ Delete
+        </button>
+    `;
+    
+    return `
+        <div class="project-item">
+            <div class="project-header">
+                <h4>${project.title}</h4>
+                ${progressBadge}
+            </div>
+            <div class="project-meta">
+                <strong>Created:</strong> ${new Date(project.createdAt).toLocaleDateString()}<br>
+                <strong>Tone:</strong> ${project.tone || 'Not specified'}
+            </div>
+            <div class="project-logline">"${project.logline}"</div>
+            <div class="project-actions">
+                ${actions}
+            </div>
+        </div>
+    `;
+}
+
 // Project Management
 async function loadUserProjects() {
     try {
@@ -309,13 +350,13 @@ function displayProjects(projects) {
         return;
     }
     
-    container.innerHTML = projects.map(project => {
-        const thumbnail = getProjectThumbnail(project.thumbnail_data);
-        const progressText = getProgressText(project.thumbnail_data);
-        const dateText = new Date(project.created_at).toLocaleDateString();
-        
+    // Transform projects to match the format expected by generateProjectCard
+    const transformedProjects = projects.map(project => {
         // Get the clean title from thumbnail_data or project_context
         let projectTitle = project.project_name; // fallback
+        let projectLogline = '';
+        let projectProgress = { step: 1, label: 'Story Concept', icon: '💡' };
+        
         try {
             if (project.thumbnail_data && project.thumbnail_data.title) {
                 projectTitle = project.thumbnail_data.title;
@@ -332,7 +373,6 @@ function displayProjects(projects) {
         }
         
         // Get project description/logline
-        let projectLogline = '';
         try {
             if (project.project_context) {
                 const context = typeof project.project_context === 'string' 
@@ -340,7 +380,7 @@ function displayProjects(projects) {
                     : project.project_context;
                 if (context.storyInput && context.storyInput.logline) {
                     projectLogline = context.storyInput.logline;
-                    // Truncate if too long (allow more text since we removed thumbnail)
+                    // Truncate if too long
                     if (projectLogline.length > 200) {
                         projectLogline = projectLogline.substring(0, 200) + '...';
                     }
@@ -350,25 +390,30 @@ function displayProjects(projects) {
             console.log('Could not parse project logline:', error);
         }
         
-        return `
-            <div class="project-card">
-                <div class="project-content">
-                    <h3>${projectTitle}</h3>
-                    ${projectLogline ? `<p class="project-logline">${projectLogline}</p>` : ''}
-                    <p class="project-progress">${progressText}</p>
-                    <span class="project-date">${dateText}</span>
-                </div>
-                <div class="project-actions">
-                    <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); openProject('${project.project_name}')">
-                        Open Project
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); deleteProject('${project.project_name}')">
-                        Delete
-                    </button>
-                </div>
-            </div>
-        `;
-    }).join('');
+        // Get progress information (reuse existing logic)
+        const progressText = getProgressText(project.thumbnail_data);
+        // Convert progress text to progress object
+        if (progressText.includes('Step 2')) projectProgress = { step: 2, label: 'Template Selection', icon: '📋' };
+        else if (progressText.includes('Step 3')) projectProgress = { step: 3, label: 'Story Structure', icon: '🎭' };
+        else if (progressText.includes('Step 4')) projectProgress = { step: 4, label: 'Plot Points', icon: '📝' };
+        else if (progressText.includes('Step 5')) projectProgress = { step: 5, label: 'Scene Generation', icon: '🎬' };
+        else if (progressText.includes('Step 6')) projectProgress = { step: 6, label: 'Dialogue', icon: '💬' };
+        else if (progressText.includes('Step 7') || progressText.includes('Complete')) projectProgress = { step: 7, label: 'Complete', icon: '✅' };
+        
+        return {
+            path: project.project_name,
+            title: projectTitle,
+            logline: projectLogline || 'No description available',
+            tone: 'Not specified', // Could extract from context if needed
+            createdAt: project.created_at,
+            progress: projectProgress
+        };
+    });
+    
+    // Use the shared generateProjectCard function
+    container.innerHTML = transformedProjects.map(project => 
+        generateProjectCard(project, 'profile')
+    ).join('');
 }
 
 function getProjectThumbnail(thumbnailData) {

@@ -154,31 +154,117 @@
     gap: 1rem;
 }
 
-.project-card {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 0.5rem;
-    padding: 1rem;
-    transition: all 0.2s;
+/* Reuse modal project card styles */
+.project-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    background: #fafafa;
+    transition: all 0.2s ease;
 }
 
-.project-card:hover {
+.project-item:hover {
     border-color: #4facfe;
-    transform: translateY(-1px);
+    background: #f0f9ff;
+    transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(79, 172, 254, 0.15);
 }
 
-.project-title {
-    font-weight: 600;
-    color: #111827;
-    margin: 0 0 0.5rem 0;
-    font-size: 0.95rem;
+.project-item h4 {
+    margin: 0 0 10px 0;
+    color: #2d3748;
+    font-size: 1.2rem;
+}
+
+.project-item .project-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.project-item .project-header h4 {
+    margin: 0;
+    color: #2d3748;
+    font-size: 1.2rem;
+}
+
+.progress-badge {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    min-width: 45px;
+    text-align: center;
+    display: inline-block;
+}
+
+.progress-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
 }
 
 .project-meta {
-    color: #6b7280;
-    font-size: 0.8rem;
-    margin: 0;
+    font-size: 0.9rem;
+    color: #718096;
+    margin-bottom: 10px;
+}
+
+.project-logline {
+    font-style: italic;
+    color: #4a5568;
+    margin-bottom: 15px;
+}
+
+.project-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.load-project-btn {
+    background: #4facfe;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.load-project-btn:hover {
+    background: #2e86de;
+    transform: translateY(-1px);
+}
+
+.delete-project-btn {
+    background: #ef4444;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.delete-project-btn:hover {
+    background: #dc2626;
+    transform: translateY(-1px);
+}
+
+.delete-project-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
 }
 
 /* Modal Styles */
