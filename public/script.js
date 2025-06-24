@@ -3227,8 +3227,14 @@ function checkPlotPointsCompletion() {
 
 // Preview scene generation prompt for an element
 async function previewElementScenesPrompt(structureKey) {
-    if (!appState.generatedStructure || !appState.storyInput) {
-        showToast('No structure or story data available for prompt preview.', 'error');
+    if (!appState.generatedStructure || !appState.storyInput || !appState.projectPath) {
+        showToast('No structure, story data, or project available for prompt preview.', 'error');
+        return;
+    }
+
+    // Check if plot points exist for this element
+    if (!hasPlotPointsForElement(structureKey)) {
+        showToast('Please generate plot points for this structural element first in Step 4.', 'error');
         return;
     }
 
@@ -3240,19 +3246,16 @@ async function previewElementScenesPrompt(structureKey) {
     }
 
     try {
-        showLoading('Generating scene generation prompt preview...');
+        showLoading('Generating hierarchical scene generation prompt preview...');
         
-        const response = await fetch('/api/preview-scene-prompt', {
+        // Use the new hierarchical plot-point-level preview (show first plot point as example)
+        const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${structureKey}/0`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                storyInput: appState.storyInput,
-                structureElement: structureElement,
-                sceneIndex: null, // null for multiple scenes generation
-                sceneCount: 3, // Default scene count per act
-                projectPath: appState.projectPath // Include project path for hierarchical context
+                model: 'claude-sonnet-4-20250514'
             })
         });
         
@@ -3264,9 +3267,11 @@ async function previewElementScenesPrompt(structureKey) {
                 systemMessage: data.systemMessage,
                 userPrompt: data.prompt,
                 promptType: data.promptType,
-                structureElement: data.structureElement,
+                structureElement: structureElement,
                 structureKey: structureKey,
-                isElementGeneration: true
+                sceneCount: data.sceneCount || 'varies per plot point',
+                hierarchicalPrompt: data.hierarchicalPrompt,
+                previewNote: data.previewNote || `This shows the ACTUAL hierarchical prompts used for scene generation. This example shows Plot Point 1 for "${structureKey}" - similar prompts are used for each plot point in this act. This is the TRUE hierarchical approach where scenes implement specific plot points.`
             };
             
             // Show the scene prompt modal
@@ -3277,7 +3282,7 @@ async function previewElementScenesPrompt(structureKey) {
         }
     } catch (error) {
         console.error('Error generating scene prompt preview:', error);
-        showToast('Error generating scene prompt preview. Please try again.', 'error');
+        showToast('Error generating hierarchical scene prompt preview. Please try again.', 'error');
         hideLoading();
     }
 }
@@ -3427,17 +3432,14 @@ async function previewAllScenesPrompt() {
         const firstActKey = actsWithPlotPoints[0];
         const structureElement = appState.generatedStructure[firstActKey];
         
-        const response = await fetch('/api/preview-scene-prompt', {
+        // Use the new hierarchical plot-point-level preview
+        const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${firstActKey}/0`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                storyInput: appState.storyInput,
-                structureElement: structureElement,
-                sceneIndex: null, // null for multiple scenes generation
-                sceneCount: 3, // Default scene count per act
-                projectPath: appState.projectPath
+                model: 'claude-sonnet-4-20250514'
             })
         });
         
@@ -3450,9 +3452,9 @@ async function previewAllScenesPrompt() {
                 userPrompt: data.prompt,
                 promptType: data.promptType,
                 structureElement: structureElement,
-                sceneCount: 3,
+                sceneCount: data.sceneCount || 'varies per plot point',
                 hierarchicalPrompt: data.hierarchicalPrompt,
-                previewNote: `This shows the prompt structure for generating scenes. This example is for "${structureElement.name || firstActKey}" - similar prompts will be used for all ${actsWithPlotPoints.length} acts with plot points.`
+                previewNote: data.previewNote || `This shows the ACTUAL hierarchical prompts used for scene generation. Each plot point generates its allocated scenes (${data.sceneCount} in this example). This is the TRUE hierarchical approach where scenes implement specific plot points.`
             };
             
             // Show the scene prompt modal
