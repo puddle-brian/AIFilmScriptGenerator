@@ -542,7 +542,7 @@ class HierarchicalContext {
         return [];
       }
       
-      const projectContext = JSON.parse(projectResult.rows[0].project_context);
+      const projectContext = parseProjectContext(projectResult.rows[0].project_context);
       
       if (!projectContext.plotPoints) {
         console.log('  ⚠️  No plot points found in project context');
@@ -747,10 +747,12 @@ class HierarchicalContext {
     return prompt;
   }
 
-  // Save context to project file
+  // Save context to project file (database-only mode - skip file system)
   async saveToProject(projectPath) {
-    const contextFile = path.join(__dirname, 'generated', projectPath, 'context.json');
-    await fs.writeFile(contextFile, JSON.stringify(this.contexts, null, 2));
+    // In database-only mode, we don't need to save context files
+    // Context is managed in memory during generation and saved to database
+    console.log(`Context management: Skipping file system save for ${projectPath} (database-only mode)`);
+    return;
   }
 
   // Load context from project file
@@ -794,7 +796,7 @@ class HierarchicalContext {
       throw new Error('Project not found in database');
     }
     
-    const projectContext = JSON.parse(projectResult.rows[0].project_context);
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
     
     if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
       throw new Error('Plot points not found for this act in database');
@@ -947,6 +949,11 @@ Return ONLY valid JSON in this exact format:
     
     return sceneDistribution;
   }
+}
+
+// Helper function to safely parse project context (handles both JSONB and TEXT storage)
+function parseProjectContext(projectContextRaw) {
+  return typeof projectContextRaw === 'string' ? JSON.parse(projectContextRaw) : projectContextRaw;
 }
 
 // API Routes
@@ -1946,12 +1953,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     if (projectResult.rows.length > 0) {
       const dbProject = projectResult.rows[0];
       // Handle both string and object formats for project_context
-      let projectContext;
-      if (typeof dbProject.project_context === 'string') {
-        projectContext = JSON.parse(dbProject.project_context);
-      } else {
-        projectContext = dbProject.project_context;
-      }
+      const projectContext = parseProjectContext(dbProject.project_context);
       
       console.log(`✅ Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
       
@@ -2222,16 +2224,18 @@ Return ONLY valid JSON in this exact format:
 // Preview plot point generation prompt
 app.post('/api/preview-plot-point-prompt', async (req, res) => {
   try {
-    const { storyInput, allScenes, targetScene = null, sceneIndex = null, structureElement = null } = req.body;
+    const { storyInput, structure, templateData, structureElements, targetScene = null, sceneIndex = null, structureElement = null } = req.body;
     
     let prompt, systemMessage;
     
     if (targetScene && sceneIndex !== null && structureElement) {
-      // Individual plot point generation prompt
-      const previousScene = sceneIndex > 0 ? allScenes[sceneIndex - 1] : null;
-      const nextScene = sceneIndex < allScenes.length - 1 ? allScenes[sceneIndex + 1] : null;
+      // Individual plot point generation prompt - using structure elements instead of scenes
+      const structureKeys = Object.keys(structure);
+      const currentIndex = structureKeys.indexOf(structureElement.key);
+      const previousElement = currentIndex > 0 ? structure[structureKeys[currentIndex - 1]] : null;
+      const nextElement = currentIndex < structureKeys.length - 1 ? structure[structureKeys[currentIndex + 1]] : null;
       
-      prompt = `You are a master screenwriter creating a plot point that connects scenes with clear causal relationships.
+      prompt = `You are a master screenwriter creating a plot point that connects structural elements with clear causal relationships.
 
 STORY CONTEXT:
 Title: ${storyInput.title}
@@ -2239,26 +2243,21 @@ Logline: ${storyInput.logline}
 Characters: ${storyInput.characters}
 Genre: ${storyInput.genre || storyInput.tone}
 
-STRUCTURAL CONTEXT:
-This scene belongs to: ${structureElement.name}
-Purpose: ${structureElement.description}
-
-TARGET SCENE:
-Title: ${targetScene.title || targetScene.name}
-Description: ${targetScene.description}
-Location: ${targetScene.location || 'Not specified'}
+TARGET STRUCTURAL ELEMENT:
+Name: ${structureElement.name}
+Description: ${structureElement.description}
 
 CONTEXT:
-${previousScene ? `Previous Scene: ${previousScene.title} - ${previousScene.description}` : 'This is the first scene'}
-${nextScene ? `Next Scene: ${nextScene.title} - ${nextScene.description}` : 'This is the final scene'}
+${previousElement ? `Previous Element: ${previousElement.name} - ${previousElement.description}` : 'This is the first structural element'}
+${nextElement ? `Next Element: ${nextElement.name} - ${nextElement.description}` : 'This is the final structural element'}
 
-TASK: Generate a single plot point for the target scene that:
+TASK: Generate a single plot point for the target structural element that:
 
-1. Is a clear, concise sentence capturing the scene's key story beat
-2. ${previousScene ? 'Connects causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")' : 'Establishes the initial situation clearly'}
-3. ${nextScene ? 'Sets up the next scene logically' : 'Provides satisfying closure'}
+1. Is a clear, concise sentence capturing the element's key story beat
+2. ${previousElement ? 'Connects causally to the previous element (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")' : 'Establishes the initial situation clearly'}
+3. ${nextElement ? 'Sets up the next element logically' : 'Provides satisfying closure'}
 4. Maintains narrative momentum and character development
-5. Is specific to this scene's content and purpose
+5. Is specific to this element's content and purpose
 
 Return ONLY a JSON object:
 {
@@ -2267,8 +2266,10 @@ Return ONLY a JSON object:
       
       systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency.";
     } else {
-      // All plot points generation prompt
-      prompt = `You are a master screenwriter creating plot points that connect scenes with clear causal relationships.
+      // All plot points generation prompt - using structure instead of scenes
+      const structureKeys = Object.keys(structure);
+      
+      prompt = `You are a master screenwriter creating plot points that connect structural elements with clear causal relationships.
 
 STORY CONTEXT:
 Title: ${storyInput.title}
@@ -2277,32 +2278,32 @@ Characters: ${storyInput.characters}
 Genre: ${storyInput.genre || storyInput.tone}
 Tone: ${storyInput.tone}
 
-SCENES TO CONNECT:
-${allScenes.map((scene, index) => `
-Scene ${index + 1} (${scene.structureElement}): ${scene.title}
-- Description: ${scene.description}
-- Location: ${scene.location}
+STRUCTURAL ELEMENTS TO CONNECT:
+${structureKeys.map((key, index) => `
+Element ${index + 1} (${key}): ${structure[key].name}
+- Description: ${structure[key].description}
+- Character Development: ${structure[key].character_developments || structure[key].character_development || 'Not specified'}
 `).join('')}
 
-TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "BUT" and "THEREFORE" logic (avoid weak "and then" sequencing). Each plot point should:
+TASK: Generate a plot point for each structural element that creates clear causal connections using "BUT" and "THEREFORE" logic (avoid weak "and then" sequencing). Each plot point should:
 
-1. Be a single, clear sentence that captures the scene's key story beat
-2. Connect causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")
-3. Set up the next scene logically
+1. Be a single, clear sentence that captures the element's key story beat
+2. Connect causally to the previous element (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")
+3. Set up the next element logically
 4. Maintain narrative momentum and character development
-5. Be specific to the scene's content and purpose
+5. Be specific to the element's content and purpose
 
 Return ONLY a JSON object with this structure:
 {
   "plotPoints": [
-    "Scene 1 plot point that establishes the initial situation",
-    "But Scene 2 plot point that introduces conflict or complication from Scene 1",
-    "Therefore Scene 3 plot point that shows the consequence or progress from Scene 2",
-    // ... continue for all ${allScenes.length} scenes
+    "Element 1 plot point that establishes the initial situation",
+    "But Element 2 plot point that introduces conflict or complication from Element 1",
+    "Therefore Element 3 plot point that shows the consequence or progress from Element 2",
+    // ... continue for all ${structureKeys.length} elements
   ]
 }
 
-Focus on creating a strong narrative spine where each scene leads logically to the next through conflict and consequence.`;
+Focus on creating a strong narrative spine where each element leads logically to the next through conflict and consequence.`;
       
       systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency.";
     }
@@ -2658,7 +2659,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
           );
           
           if (projectResult.rows.length > 0) {
-            const projectContext = JSON.parse(projectResult.rows[0].project_context);
+            const projectContext = parseProjectContext(projectResult.rows[0].project_context);
             
             if (projectContext.plotPoints && projectContext.plotPoints[structureKey]) {
               const actPlotPointsData = projectContext.plotPoints[structureKey];
@@ -4247,7 +4248,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
       throw new Error('Project not found in database');
     }
     
-    const plotProjectContext = JSON.parse(plotProjectResult.rows[0].project_context);
+    const plotProjectContext = parseProjectContext(plotProjectResult.rows[0].project_context);
     const { generatedStructure: structure, storyInput, templateData } = plotProjectContext;
     
     if (!structure[actKey]) {
@@ -4262,8 +4263,8 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectData.lastUsedPrompt, projectData.lastUsedSystemMessage);
-      context.buildStructureContext(structure, projectData.template);
+      context.buildStoryContext(storyInput, plotProjectContext.lastUsedPrompt, plotProjectContext.lastUsedSystemMessage);
+      context.buildStructureContext(structure, templateData);
     }
     
     // Build act context
@@ -4420,7 +4421,7 @@ Return ONLY a JSON object with this exact structure:
       throw new Error('Project not found in database');
     }
     
-    const projectContext = JSON.parse(projectResult.rows[0].project_context);
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
     
     // Update plot points in unified format
     if (!projectContext.plotPoints) {

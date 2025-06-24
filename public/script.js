@@ -5437,25 +5437,22 @@ async function previewAllPlotPointsPrompt() {
         return;
     }
 
-    // Build all scenes array for the prompt
-    const allScenes = [];
-    Object.entries(appState.generatedScenes).forEach(([key, scenes]) => {
-        if (Array.isArray(scenes)) {
-            scenes.forEach((scene, index) => {
-                allScenes.push({
-                    title: scene.title || scene.name || 'Untitled Scene',
-                    description: scene.description || '',
-                    location: scene.location || '',
-                    structureElement: appState.generatedStructure[key]?.name || key
-                });
-            });
-        }
-    });
-
-    if (allScenes.length === 0) {
-        showToast('No scenes found to generate plot points for.', 'error');
+    // Check if we have a generated structure (plot points are generated FROM structure, not scenes)
+    if (!appState.generatedStructure || Object.keys(appState.generatedStructure).length === 0) {
+        showToast('No story structure found. Please generate a structure first.', 'error');
         return;
     }
+
+    // Build structure elements array for the prompt
+    const structureElements = [];
+    Object.entries(appState.generatedStructure).forEach(([key, act]) => {
+        structureElements.push({
+            key: key,
+            name: act.name || key.replace(/_/g, ' ').toUpperCase(),
+            description: act.description || '',
+            characterDevelopments: act.character_developments || act.character_development || ''
+        });
+    });
 
     try {
         showLoading('Generating all plot points prompt preview...');
@@ -5467,7 +5464,9 @@ async function previewAllPlotPointsPrompt() {
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
-                allScenes: allScenes
+                structure: appState.generatedStructure,
+                templateData: appState.templateData,
+                structureElements: structureElements
             })
         });
         
