@@ -1981,14 +1981,57 @@ app.get('/api/list-projects', async (req, res) => {
   }
 });
 
-// Load project
+// Load project (legacy endpoint - redirects to database)
 app.get('/api/project/:id', async (req, res) => {
   try {
     const projectId = req.params.id;
-    const projectFile = path.join(__dirname, 'generated', projectId, 'project.json');
+    const username = 'guest'; // TODO: Get from user session/auth
     
-    const projectData = await fs.readFile(projectFile, 'utf8');
-    res.json(JSON.parse(projectData));
+    // Try to load from database first
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length > 0) {
+      const userId = userResult.rows[0].id;
+      
+      // Look for project in database by project_name (assuming projectId = project_name)
+      const projectResult = await dbClient.query(
+        'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+        [userId, projectId]
+      );
+      
+      if (projectResult.rows.length > 0) {
+        const dbProject = projectResult.rows[0];
+        const projectContext = parseProjectContext(dbProject.project_context);
+        
+        console.log(`✅ Loaded legacy project from database: "${projectContext.storyInput?.title || projectId}"`);
+        
+        // Return in legacy format for compatibility
+        return res.json({
+          projectId: projectContext.projectId,
+          storyInput: projectContext.storyInput,
+          selectedTemplate: projectContext.selectedTemplate,
+          templateData: projectContext.templateData,
+          generatedStructure: projectContext.generatedStructure,
+          plotPoints: projectContext.plotPoints,
+          generatedScenes: projectContext.generatedScenes,
+          generatedDialogues: projectContext.generatedDialogues,
+          currentStep: projectContext.currentStep,
+          generatedAt: dbProject.created_at,
+          updatedAt: dbProject.updated_at
+        });
+      }
+    }
+    
+    // Fallback to file system for old projects
+    try {
+      const projectFile = path.join(__dirname, 'generated', projectId, 'project.json');
+      const projectData = await fs.readFile(projectFile, 'utf8');
+      console.log(`📁 Legacy project loaded from file system: ${projectId}`);
+      res.json(JSON.parse(projectData));
+    } catch (fsError) {
+      console.error('Error loading project from file system:', fsError);
+      res.status(404).json({ error: 'Project not found' });
+    }
   } catch (error) {
     console.error('Error loading project:', error);
     res.status(404).json({ error: 'Project not found' });
@@ -3190,21 +3233,35 @@ app.post('/api/generate-plot-points/:projectPath', async (req, res) => {
     const { projectPath } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     
-    // Load existing scenes
-    const scenesFileData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
-    console.log('Loaded scenes data structure:', Object.keys(scenesFileData));
-    console.log('Sample scenes data:', JSON.stringify(scenesFileData, null, 2).substring(0, 500));
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
+    
+    // Load existing scenes from database
+    const rawScenesData = projectContext.generatedScenes || {};
+    console.log('Loaded scenes data structure:', Object.keys(rawScenesData));
+    console.log('Sample scenes data:', JSON.stringify(rawScenesData, null, 2).substring(0, 500));
     
     // Extract the actual scenes data (handle nested structure)
-    const scenesData = scenesFileData.scenes || scenesFileData;
+    const scenesData = rawScenesData.scenes || rawScenesData;
     
     // Create a comprehensive context for plot point generation
     const allScenes = [];
@@ -3332,19 +3389,33 @@ app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', asyn
     const { model = "claude-sonnet-4-20250514" } = req.body;
     const sceneIndexNum = parseInt(sceneIndex);
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     
-    // Load existing scenes
-    const scenesFileData = JSON.parse(await fs.readFile(scenesFile, 'utf8'));
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
+    
+    // Load existing scenes from database
+    const rawScenesData = projectContext.generatedScenes || {};
     
     // Extract the actual scenes data (handle nested structure)
-    const scenesData = scenesFileData.scenes || scenesFileData;
+    const scenesData = rawScenesData.scenes || rawScenesData;
     
     // Handle both formats: direct array or nested object with scenes property
     let scenes = Array.isArray(scenesData[structureKey]) ? scenesData[structureKey] : scenesData[structureKey]?.scenes;
@@ -3461,12 +3532,28 @@ Return ONLY a JSON object:
 app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     console.log(`Regenerating scenes (simple) for project: ${projectPath}`);
     
@@ -3506,40 +3593,21 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
       scenesData[key] = { scenes };
     });
 
-    // Save scenes to local folder
-    const scenesDir = path.join(projectDir, '02_scenes');
-    
-    // Save scenes as JSON
-    const scenesFile = path.join(scenesDir, 'scenes.json');
-    await fs.writeFile(scenesFile, JSON.stringify({
+    // Save scenes to database
+    projectContext.generatedScenes = {
       scenes: scenesData,
       storyInput,
       generatedAt: new Date().toISOString(),
       method: 'simple_generation'
-    }, null, 2));
+    };
     
-    // Create readable markdown breakdown
-    let scenesOverview = `# Scenes Breakdown - ${storyInput.title}\n\n`;
-    scenesOverview += `**Generated:** ${new Date().toLocaleString()}\n`;
-    scenesOverview += `**Method:** Simple generation (${totalScenes} scenes distributed across ${structureKeys.length} structural elements)\n`;
-    scenesOverview += `**Distribution:** ${scenesPerElement} base scenes per element, ${extraScenes} elements get +1 extra scene\n\n`;
+    // Update database with new scenes
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
-    Object.entries(scenesData).forEach(([structureKey, structureScenes]) => {
-      scenesOverview += `## ${structureKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}\n\n`;
-      structureScenes.scenes.forEach((scene, index) => {
-        scenesOverview += `### Scene ${scene.scene_number}: ${scene.title}\n\n`;
-        scenesOverview += `**Location:** ${scene.location}\n`;
-        scenesOverview += `**Characters:** ${scene.characters.join(', ')}\n\n`;
-        scenesOverview += `${scene.description}\n\n`;
-        scenesOverview += `**Emotional Beats:** ${scene.emotional_beats.join(', ')}\n\n`;
-        scenesOverview += `---\n\n`;
-      });
-    });
-    
-    const scenesOverviewFile = path.join(scenesDir, 'scenes_overview.md');
-    await fs.writeFile(scenesOverviewFile, scenesOverview);
-    
-    console.log(`Simple scenes generated and saved to: ${scenesDir}`);
+    console.log(`Simple scenes generated and saved to database for project: ${projectPath}`);
     
     // Count total scenes for debugging
     const totalGeneratedScenes = Object.values(scenesData).reduce((total, element) => {
@@ -3563,12 +3631,28 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
 app.post('/api/regenerate-scenes/:projectPath', async (req, res) => {
   try {
     const projectPath = req.params.projectPath;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     console.log(`Regenerating scenes for project: ${projectPath}`);
     
@@ -3611,42 +3695,21 @@ Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "descri
       };
     }
 
-    // Save scenes to local folder
+    // Save scenes to database
     if (scenesData && !scenesData.error) {
-      const scenesDir = path.join(projectDir, '02_scenes');
-      
-      // Save scenes as JSON
-      const scenesFile = path.join(scenesDir, 'scenes.json');
-      await fs.writeFile(scenesFile, JSON.stringify({
+      projectContext.generatedScenes = {
         scenes: scenesData,
         storyInput,
         regeneratedAt: new Date().toISOString()
-      }, null, 2));
+      };
       
-      // Create readable markdown breakdown
-      let scenesOverview = `# Scenes Breakdown - ${storyInput.title}\n\n`;
-      scenesOverview += `**Regenerated:** ${new Date().toLocaleString()}\n\n`;
+      // Update database with regenerated scenes
+      await dbClient.query(
+        'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+        [JSON.stringify(projectContext), userId, projectPath]
+      );
       
-      Object.entries(scenesData).forEach(([structureKey, structureScenes]) => {
-        if (Array.isArray(structureScenes)) {
-          scenesOverview += `## ${structureKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}\n\n`;
-          structureScenes.forEach((scene, index) => {
-            scenesOverview += `### Scene ${index + 1}: ${scene.title || scene.name || 'Untitled Scene'}\n\n`;
-            if (scene.location) scenesOverview += `**Location:** ${scene.location}\n`;
-            if (scene.timeOfDay) scenesOverview += `**Time:** ${scene.timeOfDay}\n`;
-            if (scene.characters) scenesOverview += `**Characters:** ${Array.isArray(scene.characters) ? scene.characters.join(', ') : scene.characters}\n\n`;
-            if (scene.description) scenesOverview += `${scene.description}\n\n`;
-            if (scene.keyDialogue) scenesOverview += `**Key Dialogue Moments:** ${scene.keyDialogue}\n\n`;
-            if (scene.emotionalBeats) scenesOverview += `**Emotional Beats:** ${scene.emotionalBeats}\n\n`;
-            scenesOverview += `---\n\n`;
-          });
-        }
-      });
-      
-      const scenesOverviewFile = path.join(scenesDir, 'scenes_overview.md');
-      await fs.writeFile(scenesOverviewFile, scenesOverview);
-      
-      console.log(`Scenes regenerated and saved to: ${scenesDir}`);
+      console.log(`Scenes regenerated and saved to database for project: ${projectPath}`);
     }
 
     res.json({ 
@@ -3693,15 +3756,33 @@ app.post('/api/export', async (req, res) => {
           // Load the original structure to get the correct act ordering
           let structureKeys = Object.keys(scenesData.scenes);
           try {
-            const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-            const structureContent = await fs.readFile(structureFile, 'utf8');
-            const structureData = JSON.parse(structureContent);
-            if (structureData.structure) {
-              structureKeys = Object.keys(structureData.structure);
-              console.log('Using template structure order:', structureKeys);
+            // Try to load from database first
+            const username = 'guest';
+            const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+            
+            if (userResult.rows.length > 0) {
+              const userId = userResult.rows[0].id;
+              const projectResult = await dbClient.query(
+                'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+                [userId, projectPath.split('/').pop()]
+              );
+              
+              if (projectResult.rows.length > 0) {
+                const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+                if (projectContext.generatedStructure) {
+                  structureKeys = Object.keys(projectContext.generatedStructure);
+                  console.log('Using database structure order:', structureKeys);
+                } else {
+                  throw new Error('No structure in database');
+                }
+              } else {
+                throw new Error('Project not found in database');
+              }
+            } else {
+              throw new Error('User not found in database');
             }
           } catch (error) {
-            console.log('Could not load structure file, using scenes order');
+            console.log('Could not load structure from database, using scenes order:', error.message);
           }
           
           // Get scene titles in story order
@@ -4638,24 +4719,41 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     const { projectPath, structureKey, plotPointIndex } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
-    const plotPointsFile = path.join(projectDir, '02_plot_points', `${structureKey}_plot_points.json`);
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     if (!structure[structureKey]) {
       return res.status(400).json({ error: 'Invalid structure key' });
     }
     
-    // Load existing plot points
+    // Load existing plot points from database
     let plotPointsData;
     try {
-      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+      if (!projectContext.plotPoints || !projectContext.plotPoints[structureKey]) {
+        return res.status(400).json({ error: 'Plot points not found. Please generate plot points for this act first.' });
+      }
+      plotPointsData = projectContext.plotPoints[structureKey];
     } catch (error) {
-      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+      return res.status(400).json({ error: 'Plot points data not found. Please generate plot points for this act first.' });
     }
     
     const plotPointIndexNum = parseInt(plotPointIndex);
@@ -4741,8 +4839,12 @@ Return ONLY a JSON object with this exact structure:
     plotPointsData.plotPoints[plotPointIndexNum] = responseData.plotPoint;
     plotPointsData.lastRegenerated = new Date().toISOString();
     
-    // Save updated plot points back to file
-    await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
+    // Save updated plot points back to database
+    projectContext.plotPoints[structureKey] = plotPointsData;
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     // Update hierarchical context with new plot points
     await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length);
@@ -4769,12 +4871,27 @@ app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
   try {
     const { projectPath, structureKey, plotPointIndex, existingPlotPoints } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
     
     if (!structure[structureKey]) {
       return res.status(400).json({ error: 'Invalid structure key' });
@@ -4946,11 +5063,25 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
       return res.status(400).json({ error: 'Content is required' });
     }
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
     
     // Parse the new content (could be JSON or plain text)
     let updatedAct;
@@ -4959,26 +5090,29 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
     } catch (e) {
       // If not valid JSON, treat as plain text description
       updatedAct = {
-        name: projectData.structure[actKey]?.name || actKey,
+        name: projectContext.generatedStructure[actKey]?.name || actKey,
         description: content
       };
     }
     
     // Update the specific act
-    projectData.structure[actKey] = {
-      ...projectData.structure[actKey],
+    projectContext.generatedStructure[actKey] = {
+      ...projectContext.generatedStructure[actKey],
       ...updatedAct,
       lastModified: new Date().toISOString()
     };
     
-    // Save back to file
-    await fs.writeFile(structureFile, JSON.stringify(projectData, null, 2));
+    // Save back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     console.log(`Act ${actKey} updated successfully`);
     res.json({ 
       success: true, 
       message: 'Act updated successfully',
-      updatedAct: projectData.structure[actKey]
+      updatedAct: projectContext.generatedStructure[actKey]
     });
     
   } catch (error) {
