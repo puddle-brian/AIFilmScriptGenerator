@@ -191,28 +191,37 @@ function buildIndividualScenePrompt(hierarchicalContext, options = {}) {
 /**
  * DIALOGUE GENERATION PROMPT BUILDER
  * Builds prompts for writing screenplay dialogue for scenes
+ * Can handle both hierarchical context and simple fallback approaches
  */
-function buildDialoguePrompt(projectContext, sceneContent, options = {}) {
+function buildDialoguePrompt(hierarchicalContext, sceneContent, additionalContext = '', options = {}) {
     // Load the dialogue generation template
     const template = loadTemplate('dialogue-generation');
     
     // Prepare placeholders with actual project data
     const placeholders = {
-        PROJECT_TITLE: projectContext.title,
-        PROJECT_LOGLINE: projectContext.logline,
-        PROJECT_CHARACTERS: projectContext.characters,
-        PROJECT_TONE: projectContext.tone,
-        SCENE_CONTENT: sceneContent,
-        CHARACTER_PROFILES: options.characterProfiles || projectContext.characters,
-        DIALOGUE_STYLE: options.dialogueStyle || 'natural and character-specific',
-        SCENE_CONTEXT: options.sceneContext || '',
-        PREVIOUS_DIALOGUE_CONTEXT: options.previousDialogueContext || '',
-        HIERARCHICAL_CONTEXT: options.hierarchicalContext || '',
-        CUSTOM_INSTRUCTIONS: options.customInstructions || ''
+        HIERARCHICAL_CONTEXT: hierarchicalContext || '',
+        SCENE_CONTENT: typeof sceneContent === 'object' ? JSON.stringify(sceneContent, null, 2) : sceneContent,
+        ADDITIONAL_CONTEXT: additionalContext || 'None provided'
     };
     
     // Replace placeholders and return the complete prompt
     return replacePlaceholders(template, placeholders);
+}
+
+/**
+ * DIALOGUE GENERATION PROMPT BUILDER (SIMPLE VERSION)
+ * Builds basic dialogue prompts when hierarchical context is not available
+ */
+function buildSimpleDialoguePrompt(storyInput, sceneContent, additionalContext = '') {
+    // Create a simple story context when hierarchical context isn't available
+    const simpleContext = `Write full screenplay dialogue for this scene:
+
+Story Context:
+- Title: ${storyInput?.title || 'Untitled'}
+- Tone: ${storyInput?.tone || 'Not specified'}
+- Characters: ${storyInput?.characters || 'Not specified'}`;
+    
+    return buildDialoguePrompt(simpleContext, sceneContent, additionalContext);
 }
 
 /**
@@ -262,6 +271,7 @@ module.exports = {
     buildScenePrompt,
     buildIndividualScenePrompt,
     buildDialoguePrompt,
+    buildSimpleDialoguePrompt,
     validateTemplates,
     clearTemplateCache
 }; 

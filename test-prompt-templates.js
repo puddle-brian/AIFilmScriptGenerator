@@ -207,36 +207,41 @@ Current title: Bug Discovery Scene`;
 // Test 5: Test Dialogue Prompt Building
 console.log('📋 Test 5: Dialogue Prompt Building');
 try {
-    const testProjectContext = {
+    // Test the simple dialogue prompt builder
+    const testStoryInput = {
         title: "Test Movie",
-        logline: "A test story about testing systems.",
-        characters: "Protagonist: A dedicated tester",
-        tone: "Comedy"
+        tone: "Comedy",
+        characters: "Protagonist: A dedicated tester"
     };
     
-    const testSceneContent = "INT. TESTING LAB - DAY\n\nThe protagonist stares at a screen showing error messages.";
+    const testSceneContent = {
+        description: "The protagonist stares at a screen showing error messages.",
+        location: "INT. TESTING LAB - DAY"
+    };
     
-    const dialoguePrompt = promptBuilders.buildDialoguePrompt(
-        testProjectContext, 
-        testSceneContent, 
-        { 
-            dialogueStyle: "witty and technical",
-            characterProfiles: "Protagonist speaks in tech jargon but with humor"
-        }
-    );
+    const testContext = "This is a key moment where the character realizes the scope of the problem.";
     
-    if (dialoguePrompt.includes('{{PROJECT_TITLE}}')) {
+    const dialoguePrompt = promptBuilders.buildSimpleDialoguePrompt(testStoryInput, testSceneContent, testContext);
+    
+    if (dialoguePrompt.includes('{{')) {
         console.log('❌ Dialogue prompt still contains unreplaced placeholders');
+        // Show which placeholders are missing
+        const matches = dialoguePrompt.match(/\{\{[^}]+\}\}/g);
+        if (matches) {
+            console.log('   Missing placeholders:', matches);
+        }
+        console.log('   Dialogue prompt preview:', dialoguePrompt.substring(0, 300) + '...');
         process.exit(1);
     }
     
-    if (dialoguePrompt.includes('Test Movie') && dialoguePrompt.includes('TESTING LAB')) {
+    if (dialoguePrompt.includes('Test Movie') && dialoguePrompt.includes('error messages')) {
         console.log('✅ Dialogue prompt built successfully!');
         console.log('   • Contains project title ✓');
         console.log('   • Contains scene content ✓');
         console.log('   • Placeholders replaced ✓\n');
     } else {
         console.log('❌ Dialogue prompt missing expected content');
+        console.log('   Preview:', dialoguePrompt.substring(0, 300) + '...');
         process.exit(1);
     }
 } catch (error) {

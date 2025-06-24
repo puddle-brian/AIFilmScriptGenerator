@@ -3,46 +3,29 @@
 // When you generate dialogue for completed scenes, this exact text gets sent to the AI
 //
 // PLACEHOLDERS EXPLAINED:
-// {{PROJECT_TITLE}} = Your story title
+// {{HIERARCHICAL_CONTEXT}} = Story context (hierarchical or simple)
 // {{SCENE_CONTENT}} = The scene description/content that needs dialogue
-// {{CHARACTER_PROFILES}} = Information about your main characters
-// {{PROJECT_TONE}} = The overall mood/style of your story
-// {{DIALOGUE_STYLE}} = Specific style instructions for dialogue
+// {{ADDITIONAL_CONTEXT}} = Extra context provided by user
 //
 // HOW TO EDIT THIS TEMPLATE:
 // ✅ Change the dialogue style (more natural, more formal, etc.)
 // ✅ Add character voice requirements ("Character A speaks in short sentences")
 // ✅ Modify formatting preferences
-// ❌ Don't change anything in {{DOUBLE_CURLY_BRACES}}
-
-// TODO: This template will be populated with the actual dialogue prompt in Phase 4
-// For now, this is a placeholder to test the template loading system
-
-Write full screenplay dialogue for this scene from "{{PROJECT_TITLE}}".
-
-STORY CONTEXT:
-- Title: {{PROJECT_TITLE}}
-- Logline: {{PROJECT_LOGLINE}}
-- Overall tone: {{PROJECT_TONE}}
-- Characters: {{CHARACTER_PROFILES}}
-
-SCENE TO WRITE DIALOGUE FOR:
-{{SCENE_CONTENT}}
-
-DIALOGUE STYLE REQUIREMENTS:
-- Style: {{DIALOGUE_STYLE}}
-- Each character should have a distinct voice
-- Dialogue should sound natural when spoken aloud
-- Advance the plot through conversation
-- Reveal character through how they speak
+// ❌ Don't change anything in double curly braces
 
 {{HIERARCHICAL_CONTEXT}}
 
-Generate screenplay-formatted dialogue that:
-1. Sounds authentic and character-specific
-2. Advances the story naturally
-3. Includes appropriate action lines
-4. Maintains the established tone
-5. Uses subtext effectively
+Scene Details:
+{{SCENE_CONTENT}}
 
-Format as proper screenplay with character names, dialogue, and action lines. 
+Additional Context:
+{{ADDITIONAL_CONTEXT}}
+
+Write the scene in proper screenplay format with:
+- Scene heading (INT./EXT. LOCATION - TIME)
+- Action lines
+- Character names (in CAPS)
+- Dialogue
+- Parentheticals when necessary
+
+Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue. 

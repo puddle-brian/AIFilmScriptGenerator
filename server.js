@@ -1535,27 +1535,8 @@ app.post('/api/generate-dialogue', async (req, res) => {
   try {
     const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514" } = req.body;
     
-    const prompt = `Write full screenplay dialogue for this scene:
-
-Story Context:
-- Title: ${storyInput.title}
-- Tone: ${storyInput.tone}
-- Characters: ${storyInput.characters}
-
-Scene Details:
-${JSON.stringify(scene, null, 2)}
-
-Additional Context:
-${context || 'None provided'}
-
-Write the scene in proper screenplay format with:
-- Scene heading (INT./EXT. LOCATION - TIME)
-- Action lines
-- Character names (in CAPS)
-- Dialogue
-- Parentheticals when necessary
-
-Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue.`;
+    // Use our new prompt builder system for simple dialogue generation
+    const prompt = promptBuilders.buildSimpleDialoguePrompt(storyInput, scene, context);
 
     const completion = await anthropic.messages.create({
       model: model,
@@ -1685,11 +1666,8 @@ ${JSON.stringify(scene, null, 2)}`;
         
         hierarchicalPrompt = hierarchicalContext.generateHierarchicalPrompt(5, customInstructions);
         
-        prompt = `${hierarchicalPrompt}
-
-Additional Context: ${context || 'None provided'}
-
-Write full screenplay dialogue for this scene following all the requirements above.`;
+        // Use our template system for hierarchical dialogue generation
+        prompt = promptBuilders.buildDialoguePrompt(hierarchicalPrompt, scene, context);
         
         systemMessage = "You are a professional screenwriter generating dialogue within a hierarchical story structure. Write engaging, properly formatted screenplay dialogue and action that serves the overall narrative architecture.";
         
@@ -1708,27 +1686,8 @@ Write full screenplay dialogue for this scene following all the requirements abo
         });
       }
       
-      prompt = `Write full screenplay dialogue for this scene:
-
-Story Context:
-- Title: ${storyInput.title || 'Untitled'}
-- Tone: ${storyInput.tone || 'Not specified'}
-- Characters: ${storyInput.characters || 'Not specified'}
-
-Scene Details:
-${JSON.stringify(scene, null, 2)}
-
-Additional Context:
-${context || 'None provided'}
-
-Write the scene in proper screenplay format with:
-- Scene heading (INT./EXT. LOCATION - TIME)
-- Action lines
-- Character names (in CAPS)
-- Dialogue
-- Parentheticals when necessary
-
-Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue.`;
+      // Use our template system for simple dialogue fallback
+      prompt = promptBuilders.buildSimpleDialoguePrompt(storyInput, scene, context);
 
       systemMessage = "You are a professional screenwriter. Write engaging, properly formatted screenplay dialogue and action. Follow standard screenplay format conventions.";
     }
