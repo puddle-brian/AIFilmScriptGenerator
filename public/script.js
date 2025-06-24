@@ -1989,7 +1989,15 @@ async function restoreLoadedProject() {
     }
     
     const projectData = await response.json();
-    console.log('Project data restored:', projectData);
+    console.log('✅ Database project data restored:', {
+        structure: Object.keys(projectData.generatedStructure || {}).length,
+        plotPoints: Object.keys(projectData.plotPoints || {}).length,
+        scenes: Object.keys(projectData.generatedScenes || {}).length,
+        dialogues: Object.keys(projectData.generatedDialogues || {}).length
+    });
+    
+    // DATABASE TAKES PRIORITY - Clear conflicting localStorage data before restoration
+    console.log('🔄 Clearing stale localStorage data before database restoration');
     
     // Populate the form with the restored project data
     await populateFormWithProject(projectData, false, true); // Don't show toast on restore, isRestore = true
@@ -2390,8 +2398,8 @@ async function generateStructure() {
             // 🔥 Refresh credits after successful generation
             window.creditWidget.refreshAfterOperation();
             
-            appState.generatedStructure = data.structure;
-            appState.templateData = data.template;
+            appState.generatedStructure = data.generatedStructure;
+            appState.templateData = data.templateData;
             appState.projectId = data.projectId;
             appState.projectPath = data.projectPath;
             appState.lastUsedPrompt = data.prompt;
@@ -2405,7 +2413,7 @@ async function generateStructure() {
                 projectId: appState.projectId
             });
             
-            displayStructure(data.structure, data.prompt, data.systemMessage);
+            displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
             goToStep(3);
             showToast('Plot structure generated successfully!', 'success');
         } else {
@@ -2424,6 +2432,13 @@ async function generateStructure() {
 // Display generated structure
 function displayStructure(structure, prompt = null, systemMessage = null) {
     const container = document.getElementById('structureContent');
+    
+    // Validate structure data
+    if (!structure || typeof structure !== 'object') {
+        console.error('displayStructure called with invalid structure:', structure);
+        container.innerHTML = '<div class="error-message">❌ Structure data is missing or invalid</div>';
+        return;
+    }
     
     // Check if we already have a preview showing
     const existingPreview = container.parentNode.querySelector('#templateStructurePreview');
@@ -5140,12 +5155,12 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
         fallbackLogline: projectData.storyInput.logline
     });
     
-    // Load project data (unified v2.0 format only)
-    // Map server field names to frontend field names
+    // Load project data (unified v2.0 format - with temporary legacy localStorage compatibility)
     appState.currentStoryConcept = projectData.storyInput?.storyConcept || {};
     appState.projectCharacters = projectData.projectCharacters || projectData.storyInput?.charactersData || [];
     appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [] };
     appState.storyInput = projectData.storyInput || {};
+    // Temporary fallbacks for legacy localStorage data (can be removed after migration period)
     appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
     appState.templateData = projectData.templateData || projectData.template;
     appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
@@ -5658,9 +5673,10 @@ async function displayTemplateStructurePreview() {
         return;
     }
     
-    // Check if we already have generated structure - if so, don't show preview
+    // Check if we already have generated structure - if so, display it instead of preview
     if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
-        console.log('Generated structure already exists, skipping preview');
+        console.log('Generated structure already exists, displaying actual structure');
+        displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
         return;
     }
     
@@ -6371,9 +6387,10 @@ const autoSaveManager = {
         
         // DEBUG: Log what we're about to save
         console.log('🔍 AUTO-SAVE DEBUG: Current appState before saving:');
-        console.log('  - projectCharacters:', appState.projectCharacters);
-        console.log('  - influences:', appState.influences);
-        console.log('  - storyInput.characters:', appState.storyInput?.characters);
+        console.log('  - generatedStructure keys:', Object.keys(appState.generatedStructure || {}));
+        console.log('  - structure keys (legacy):', Object.keys(appState.structure || {}));
+        console.log('  - plotPoints keys:', Object.keys(appState.plotPoints || {}));
+        console.log('  - generatedScenes keys:', Object.keys(appState.generatedScenes || {}));
         
         const projectData = {
             ...appState,
@@ -6383,8 +6400,9 @@ const autoSaveManager = {
         };
         
         console.log('🔍 AUTO-SAVE DEBUG: projectData being sent to server:');
-        console.log('  - projectData.projectCharacters:', projectData.projectCharacters);
-        console.log('  - projectData.influences:', projectData.influences);
+        console.log('  - projectData.generatedStructure keys:', Object.keys(projectData.generatedStructure || {}));
+        console.log('  - projectData.structure keys (legacy):', Object.keys(projectData.structure || {}));
+        console.log('  - projectData.plotPoints keys:', Object.keys(projectData.plotPoints || {}));
         
         // Save to both file system and database
         const response = await fetch('/api/auto-save-project', {

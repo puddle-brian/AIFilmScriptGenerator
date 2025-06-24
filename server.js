@@ -1455,7 +1455,7 @@ Example format:
       projectId,
       projectPath: projectFolderName,
       storyInput,
-      selectedTemplate: selectedTemplate,
+      selectedTemplate: template,
       templateData: templateData,
       generatedStructure: structureData,
       plotPoints: {},
@@ -1499,7 +1499,7 @@ Example format:
       projectId,
       projectPath: projectFolderName,
       storyInput,
-      selectedTemplate: selectedTemplate,
+      selectedTemplate: template,
       templateData: templateData,
       generatedStructure: structureData,
       currentStep: 3,
@@ -1566,43 +1566,8 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
       };
     }
 
-    // Save scenes to local folder if projectPath is provided
-    if (projectPath && scenesData && !scenesData.error) {
-      const projectDir = path.join(__dirname, 'generated', projectPath);
-      const scenesDir = path.join(projectDir, '02_scenes');
-      
-      // Save scenes as JSON
-      const scenesFile = path.join(scenesDir, 'scenes.json');
-      await fs.writeFile(scenesFile, JSON.stringify({
-        scenes: scenesData,
-        storyInput,
-        generatedAt: new Date().toISOString()
-      }, null, 2));
-      
-      // Create readable markdown breakdown
-      let scenesOverview = `# Scenes Breakdown - ${storyInput.title}\n\n`;
-      
-      Object.entries(scenesData).forEach(([structureKey, structureScenes]) => {
-        if (Array.isArray(structureScenes)) {
-          scenesOverview += `## ${structureKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}\n\n`;
-          structureScenes.forEach((scene, index) => {
-            scenesOverview += `### Scene ${index + 1}: ${scene.title || scene.name || 'Untitled Scene'}\n\n`;
-            if (scene.location) scenesOverview += `**Location:** ${scene.location}\n`;
-            if (scene.timeOfDay) scenesOverview += `**Time:** ${scene.timeOfDay}\n`;
-            if (scene.characters) scenesOverview += `**Characters:** ${Array.isArray(scene.characters) ? scene.characters.join(', ') : scene.characters}\n\n`;
-            if (scene.description) scenesOverview += `${scene.description}\n\n`;
-            if (scene.keyDialogue) scenesOverview += `**Key Dialogue Moments:** ${scene.keyDialogue}\n\n`;
-            if (scene.emotionalBeats) scenesOverview += `**Emotional Beats:** ${scene.emotionalBeats}\n\n`;
-            scenesOverview += `---\n\n`;
-          });
-        }
-      });
-      
-      const scenesOverviewFile = path.join(scenesDir, 'scenes_overview.md');
-      await fs.writeFile(scenesOverviewFile, scenesOverview);
-      
-      console.log(`Scenes saved to: ${scenesDir}`);
-    }
+    // Scene generation now saves to database only (v2.0 unified format)
+    console.log('✅ Scene generation completed - database-only storage');
 
     res.json({ scenes: scenesData });
   } catch (error) {
@@ -1654,24 +1619,8 @@ Make the dialogue authentic, character-specific, and genre-appropriate. Include 
     const sceneId = scene.id || uuidv4();
     const dialogueText = completion.content[0].text;
 
-    // Save dialogue to local folder if projectPath is provided
-    if (projectPath) {
-      const projectDir = path.join(__dirname, 'generated', projectPath);
-      const dialogueDir = path.join(projectDir, '03_dialogue');
-      
-      const sceneTitle = (scene.title || scene.name || 'scene').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-      const dialogueFile = path.join(dialogueDir, `${sceneTitle}_${sceneId.substring(0, 8)}.txt`);
-      
-      let dialogueContent = `Scene: ${scene.title || scene.name || 'Untitled Scene'}\n`;
-      if (scene.location) dialogueContent += `Location: ${scene.location}\n`;
-      if (scene.timeOfDay) dialogueContent += `Time: ${scene.timeOfDay}\n`;
-      dialogueContent += `Generated: ${new Date().toLocaleString()}\n`;
-      dialogueContent += `\n${'='.repeat(50)}\n\n`;
-      dialogueContent += dialogueText;
-      
-      await fs.writeFile(dialogueFile, dialogueContent);
-      console.log(`Dialogue saved to: ${dialogueFile}`);
-    }
+    // Dialogue generation now saves to database only (v2.0 unified format)
+    console.log('✅ Dialogue generation completed - database-only storage');
 
     res.json({ 
       dialogue: dialogueText,
@@ -1996,7 +1945,13 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     
     if (projectResult.rows.length > 0) {
       const dbProject = projectResult.rows[0];
-      const projectContext = JSON.parse(dbProject.project_context);
+      // Handle both string and object formats for project_context
+      let projectContext;
+      if (typeof dbProject.project_context === 'string') {
+        projectContext = JSON.parse(dbProject.project_context);
+      } else {
+        projectContext = dbProject.project_context;
+      }
       
       console.log(`✅ Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
       
@@ -4271,12 +4226,29 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     const { projectPath, actKey } = req.params;
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const structureFile = path.join(projectDir, '01_structure', 'plot_structure.json');
+    // Load existing project data from database (unified v2.0 format)
+    const plotUsername = 'guest'; // TODO: Get from user session/auth
     
-    // Load existing project data
-    const projectData = JSON.parse(await fs.readFile(structureFile, 'utf8'));
-    const { structure, storyInput } = projectData;
+    // Get user and project from database
+    const plotUserResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [plotUsername]);
+    if (plotUserResult.rows.length === 0) {
+      throw new Error('User not found');
+    }
+    
+    const plotUserId = plotUserResult.rows[0].id;
+    
+    // Load project context from database
+    const plotProjectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [plotUserId, projectPath]
+    );
+    
+    if (plotProjectResult.rows.length === 0) {
+      throw new Error('Project not found in database');
+    }
+    
+    const plotProjectContext = JSON.parse(plotProjectResult.rows[0].project_context);
+    const { generatedStructure: structure, storyInput, templateData } = plotProjectContext;
     
     if (!structure[actKey]) {
       return res.status(400).json({ error: 'Invalid act key' });

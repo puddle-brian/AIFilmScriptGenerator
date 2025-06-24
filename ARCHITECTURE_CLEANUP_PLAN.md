@@ -194,14 +194,14 @@ The system evolved from file-based to database storage but kept both systems run
 
 ### Testing Checklist
 
-- [ ] Create new project → Generate structure → Reload → Structure visible
-- [ ] Generate plot points → Reload → Plot points visible  
+- [x] Create new project → Generate structure → Reload → Structure visible ✅
+- [x] Generate plot points → Reload → Plot points visible ✅
 - [ ] Generate scenes → Reload → Scenes visible
-- [ ] Generate dialogue → Reload → Dialogue visible
+- [ ] Generate dialogue → Reload → Dialogue visible  
 - [ ] Navigate between steps → Reload → Correct step restored
 - [ ] Multiple users can work simultaneously
-- [ ] No files created in `generated/` directory
-- [ ] All project operations complete without file system access
+- [x] No files created in `generated/` directory ✅ (structure & plot points)
+- [x] All project operations complete without file system access ✅ (structure & plot points)
 - [ ] Project deletion removes only database records
 - [ ] Export functionality still works (if applicable)
 
