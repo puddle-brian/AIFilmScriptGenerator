@@ -292,58 +292,7 @@
 }
 
 /* Button Styles */
-.btn {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.btn-primary {
-    background: #4facfe;
-    color: white;
-    border-color: #4facfe;
-}
-
-.btn-primary:hover {
-    background: #3182ce;
-    border-color: #3182ce;
-    transform: translateY(-1px);
-}
-
-.btn-secondary {
-    background: #6b7280;
-    color: white;
-    border-color: #6b7280;
-}
-
-.btn-secondary:hover {
-    background: #4b5563;
-    border-color: #4b5563;
-}
-
-.btn-outline {
-    background: transparent;
-    color: #4facfe;
-    border-color: #4facfe;
-}
-
-.btn-outline:hover {
-    background: #4facfe;
-    color: white;
-}
-
-.btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-}
+/* Button styles removed - using global styles from styles.css */
 
 /* Responsive Design */
 @media (max-width: 768px) {
