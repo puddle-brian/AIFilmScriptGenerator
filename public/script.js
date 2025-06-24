@@ -720,9 +720,9 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     // Mark as having changes to trigger auto-save
     appState.pendingChanges = true;
     
-    // Initialize auto-save system if not already active
-    if (autoSaveManager && typeof autoSaveManager.markDirty === 'function') {
-        autoSaveManager.markDirty();
+    // Save immediately so the project appears in lists right away
+    if (autoSaveManager && typeof autoSaveManager.saveImmediately === 'function') {
+        autoSaveManager.saveImmediately();
     }
     
     // Save to localStorage immediately
@@ -4849,7 +4849,8 @@ async function showLoadProjectModal() {
     projectsList.innerHTML = '<p>Loading projects...</p>';
     
     try {
-        const response = await fetch('/api/list-projects');
+        const username = appState.user?.username || 'guest';
+        const response = await fetch(`/api/list-projects?username=${encodeURIComponent(username)}`);
         const projects = await response.json();
         
         if (projects.length === 0) {
@@ -6022,6 +6023,7 @@ const autoSaveManager = {
         
         const projectData = {
             ...appState,
+            username: appState.user?.username || 'guest', // Include current username
             timestamp: new Date().toISOString(),
             version: '1.0'
         };

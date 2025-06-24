@@ -2382,7 +2382,8 @@ async function cacheProjectToFileSystem(projectData, projectPath) {
 app.post('/api/auto-save-project', async (req, res) => {
   try {
     const projectData = req.body;
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.body.username || req.query.username || 'guest'; // Get username from request
+    console.log(`🔍 DEBUG: Auto-save received username: "${username}" from request`);
     
     // Generate project path if not provided
     let projectPath = projectData.projectPath;
@@ -2969,7 +2970,7 @@ async function loadPartialProjectFull(projectDir, projectPath) {
 // List existing projects - DATABASE FIRST
 app.get('/api/list-projects', async (req, res) => {
   try {
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.query.username || 'guest'; // Get from query parameter or default to guest
     const projects = [];
     const skippedProjects = [];
     
