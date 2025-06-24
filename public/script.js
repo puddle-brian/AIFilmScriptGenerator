@@ -78,7 +78,7 @@ const authManager = {
             if (guestActions) guestActions.style.display = 'none';
             if (userControls) userControls.style.display = 'flex';
             if (userName) {
-                userName.textContent = `👤 ${appState.user.username}`;
+                userName.textContent = appState.user.username;
             }
             if (profileUsername) {
                 profileUsername.textContent = appState.user.username;
