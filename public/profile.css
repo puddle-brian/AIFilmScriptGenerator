@@ -525,4 +525,24 @@
 
 .universal-library-modal .btn-secondary:hover {
     background: #545b62;
-} 
+}
+
+/* Clickable tags for editing - same as step 1 */
+.influence-tag.clickable-tag {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.influence-tag.clickable-tag:hover {
+    background: #3d8bfe !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(79, 172, 254, 0.3);
+}
+
+.influence-tag.clickable-tag span {
+    transition: all 0.2s ease;
+}
+
+.influence-tag.clickable-tag:hover span {
+    font-weight: 600;
+}

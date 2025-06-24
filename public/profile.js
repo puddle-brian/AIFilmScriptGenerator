@@ -192,7 +192,7 @@ function displayLibraries(type, libraries) {
     
     // Create influence tags (step 1 badge pattern)
     container.innerHTML = libraries.map(lib => `
-        <div class="influence-tag" onclick="editLibraryEntry('${type}', '${lib.entry_key}', ${JSON.stringify(lib.entry_data).replace(/"/g, '&quot;')})">
+        <div class="influence-tag clickable-tag" onclick="editLibraryEntry('${type}', '${lib.entry_key}', ${JSON.stringify(lib.entry_data).replace(/"/g, '&quot;')})">
             <span>${lib.entry_data.name}</span>
             <button class="remove-tag" onclick="event.stopPropagation(); deleteLibraryEntry('${type}', '${lib.entry_key}')" title="Remove">&times;</button>
         </div>
