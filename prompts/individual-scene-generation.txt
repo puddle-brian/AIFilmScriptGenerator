@@ -1,34 +1,77 @@
-// INDIVIDUAL SCENE GENERATION TEMPLATE
-// This template generates a single scene (used for regenerating specific scenes)
-// When you regenerate an individual scene, this exact text gets sent to the AI
+// INDIVIDUAL PLOT POINT SCENE GENERATION TEMPLATE
+// This template generates multiple scenes that implement a SINGLE plot point
+// When you generate scenes for a plot point, this exact text gets sent to the AI
 //
 // PLACEHOLDERS EXPLAINED:
-// {{HIERARCHICAL_CONTEXT}} = Complete story context including plot points, structure, etc.
+// {{HIERARCHICAL_CONTEXT}} = Complete story context including all levels
+// {{PLOT_POINT}} = The specific plot point being implemented into scenes
+// {{SCENE_COUNT}} = Number of scenes to generate for this plot point (e.g., 3-4)
+// {{PLOT_POINT_INDEX}} = Which plot point this is (for context)
+// {{IS_KEY_PLOT}} = Whether this is a key plot point requiring more dramatic weight
 //
 // HOW TO EDIT THIS TEMPLATE:
-// ✅ Change the scene generation requirements
-// ✅ Modify the level of detail you want
-// ✅ Add specific formatting or style instructions
+// ✅ Modify how scenes break down plot points into sequences
+// ✅ Change the level of detail you want in each scene
+// ✅ Add specific requirements for visual storytelling within plot points
 // ❌ Don't change anything in double curly braces
 
 {{HIERARCHICAL_CONTEXT}}
 
-SCENE REGENERATION REQUIREMENTS:
-1. This scene must serve the OVERALL STORY STRUCTURE and advance the narrative
-2. It must fulfill the specific PURPOSE of its structural element
-3. It must advance any CHARACTER DEVELOPMENT noted for this element
-4. It must deliver the ASSIGNED PLOT POINT specified above
-5. Make it cinematic and specific, not just a plot summary
-6. Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+PLOT POINT SCENE SEQUENCE GENERATION:
+Generate exactly {{SCENE_COUNT}} scenes that collectively implement this specific plot point:
+"{{PLOT_POINT}}"
 
-The scene you generate should feel like an organic part of the complete story structure, not an isolated fragment.
+This is {{IS_KEY_PLOT}} plot point {{PLOT_POINT_INDEX}} in the story structure.
+
+SCENE SEQUENCE REQUIREMENTS:
+1. Break this single plot point into a {{SCENE_COUNT}}-scene progression that shows the complete dramatic arc
+2. Each scene should advance this plot point's specific purpose step-by-step
+3. Create a natural causal flow between scenes in this sequence: Scene 1 leads to Scene 2, which leads to Scene 3, etc.
+4. Vary scene types within the sequence: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Scenes should feel like organic parts of a sequence that collectively fulfill the plot point
+7. Show visual, external story beats that can be filmed - what does the audience SEE happening?
+8. Use concrete locations and specific time pressures to create cinematic tension
+9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward
+
+PLOT POINT BREAKDOWN STRATEGY:
+- Scene 1: Set up the situation or conflict described in the plot point
+- Scene 2: Develop/complicate the situation (show obstacles, resistance, or escalation)  
+- Scene 3: Resolve/conclude the plot point (show outcome, consequence, or transition)
+- Scene 4 (if applicable): Bridge to the next plot point or show aftermath
+
+{{IS_KEY_PLOT}} CONSIDERATIONS:
+{{#if IS_KEY_PLOT}}
+Since this is a KEY plot point, give it extra dramatic weight:
+- Include more character development and emotional stakes
+- Create more visual spectacle or memorable moments
+- Show how this plot point changes the character's trajectory
+- Make the sequence more cinematically striking
+{{else}}
+This is a regular plot point, so focus on:
+- Efficient story progression that serves the overall narrative
+- Clear cause-and-effect within the sequence
+- Smooth transitions that maintain story momentum
+{{/if}}
+
+HIERARCHICAL CONTEXT INTEGRATION:
+- Reference the complete story context to maintain character consistency
+- Honor the structure template and act purpose established earlier
+- Connect causally to previous plot points while setting up future ones
+- Maintain the established tone and visual style throughout
 
 Return ONLY valid JSON in this exact format:
 {
-  "title": "Scene Title",
-  "location": "Specific location", 
-  "time_of_day": "Morning/Afternoon/Evening/Night",
-  "description": "What happens in this scene - be specific and visual",
-  "characters": ["Character1", "Character2"],
-  "emotional_beats": ["primary emotion", "secondary emotion"]
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": {{PLOT_POINT_INDEX}},
+      "sequencePosition": 1
+    }
+  ]
 } 

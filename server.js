@@ -4761,15 +4761,35 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', async (req, re
     const { projectPath, actKey } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const plotPointsFile = path.join(projectDir, '02_plot_points', `${actKey}_plot_points.json`);
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load plot points data with scene distribution
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Load plot points data with scene distribution from database
     let plotPointsData;
     try {
-      plotPointsData = JSON.parse(await fs.readFile(plotPointsFile, 'utf8'));
+      if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
+        return res.status(400).json({ error: 'Plot points not found. Please generate plot points for this act first.' });
+      }
+      plotPointsData = projectContext.plotPoints[actKey];
     } catch (error) {
-      return res.status(400).json({ error: 'Plot points file not found. Please generate plot points for this act first.' });
+      return res.status(400).json({ error: 'Plot points data not found. Please generate plot points for this act first.' });
     }
     
     if (!plotPointsData.sceneDistribution) {
@@ -4813,18 +4833,24 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', async (req, re
       }
     }
     
-    // Save comprehensive act scenes summary
-    const actScenesDir = path.join(projectDir, '03_scenes', actKey);
-    await fs.mkdir(actScenesDir, { recursive: true });
+    // Save comprehensive act scenes summary to database
+    if (!projectContext.generatedScenes) {
+      projectContext.generatedScenes = {};
+    }
     
-    const actSummaryFile = path.join(actScenesDir, `${actKey}_act_scenes_summary.json`);
-    await fs.writeFile(actSummaryFile, JSON.stringify({
+    projectContext.generatedScenes[actKey] = {
       actKey: actKey,
       totalScenesGenerated: totalScenesGenerated,
       targetScenes: plotPointsData.totalScenesForAct,
       plotPointScenes: allGeneratedScenes,
       generatedAt: new Date().toISOString()
-    }, null, 2));
+    };
+    
+    // Update database with new scenes
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     console.log(`\n✅ Act ${actKey} complete: Generated ${totalScenesGenerated} scenes across ${allGeneratedScenes.length} plot points`);
     
@@ -5570,6 +5596,134 @@ app.get('/register.html', (req, res) => {
 
 app.get('/login.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Preview hierarchical plot point scene generation prompt
+app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIndex', async (req, res) => {
+  try {
+    const { projectPath, actKey, plotPointIndex } = req.params;
+    const { model = "claude-sonnet-4-20250514" } = req.body;
+    
+    // Load project data from database
+    const username = 'guest'; // TODO: Get from user session/auth
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Load plot points data with scene distribution from database
+    let plotPointsData;
+    try {
+      if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
+        return res.status(400).json({ error: 'Plot points not found. Please generate plot points for this act first.' });
+      }
+      plotPointsData = projectContext.plotPoints[actKey];
+    } catch (error) {
+      return res.status(400).json({ error: 'Plot points data not found. Please generate plot points for this act first.' });
+    }
+    
+    const plotPointIndexNum = parseInt(plotPointIndex);
+    if (plotPointIndexNum < 0 || plotPointIndexNum >= plotPointsData.plotPoints.length) {
+      return res.status(400).json({ error: 'Invalid plot point index' });
+    }
+    
+    const sceneDistribution = plotPointsData.sceneDistribution || [];
+    const plotPointInfo = sceneDistribution[plotPointIndexNum];
+    
+    if (!plotPointInfo) {
+      return res.status(400).json({ error: 'Scene distribution not found. Please regenerate plot points.' });
+    }
+    
+    const sceneCount = plotPointInfo.sceneCount;
+    const plotPoint = plotPointInfo.plotPoint;
+    
+    // Initialize and load hierarchical context
+    const context = new HierarchicalContext();
+    await context.loadFromProject(projectPath);
+    
+    const structure = projectContext.generatedStructure;
+    const storyInput = projectContext.storyInput;
+    
+    // Rebuild context if needed
+    if (!context.contexts.story) {
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStructureContext(structure, projectContext.templateData);
+    }
+    
+    // Build act context
+    const actPosition = Object.keys(structure).indexOf(actKey) + 1;
+    context.buildActContext(actKey, structure[actKey], actPosition);
+    
+    // Build plot points context
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    
+    // Build scene context for this specific plot point
+    context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
+    
+    // Generate hierarchical prompt for multiple scenes from one plot point
+    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
+1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
+2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
+3. Each scene should advance this plot point's dramatic purpose step-by-step
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Create a natural flow between scenes in this sequence
+6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+7. Scenes should feel like organic parts of a sequence, not isolated fragments
+8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+
+This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+    
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+
+    const systemMessage = "You are a professional screenwriter generating scene sequences within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
+
+    res.json({
+      prompt: prompt,
+      systemMessage: systemMessage,
+      promptType: 'hierarchical_plot_point_scenes',
+      plotPoint: plotPoint,
+      sceneCount: sceneCount,
+      plotPointIndex: plotPointIndexNum,
+      isKeyPlot: plotPointInfo.isKeyPlot,
+      hierarchicalPrompt: hierarchicalPrompt,
+      usedHierarchicalContext: true,
+      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". This is the TRUE hierarchical approach where each plot point generates its allocated scenes.`
+    });
+
+  } catch (error) {
+    console.error('Error generating hierarchical plot point scene prompt preview:', error);
+    res.status(500).json({ error: 'Failed to generate prompt preview', details: error.message });
+  }
 });
 
 startServer().catch(console.error);

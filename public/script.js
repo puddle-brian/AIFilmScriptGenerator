@@ -3291,61 +3291,7 @@ function hasPlotPointsForElement(structureKey) {
            appState.plotPoints[structureKey].length > 0;
 }
 
-async function generateScenesForElement(structureKey) {
-    if (!appState.projectPath) {
-        showToast('No project loaded. Please create or load a project first.', 'error');
-        return;
-    }
-
-    // Check if plot points exist first
-    if (!hasPlotPointsForElement(structureKey)) {
-        showToast('Please generate plot points for this structural element first in Step 4.', 'error');
-        return;
-    }
-
-    const sceneCount = 3; // Default scenes per act
-    
-    try {
-        showLoading(`Generating scenes for ${structureKey}...`);
-        
-        const response = await fetch(`/api/generate-scene/${appState.projectPath}/${structureKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                sceneCount: sceneCount,
-                model: getSelectedModel()
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            console.log('Scenes generated:', data);
-            
-            // Store scenes in app state
-            if (!appState.generatedScenes) {
-                appState.generatedScenes = {};
-            }
-            appState.generatedScenes[structureKey] = data.scenes;
-            
-            // Refresh the scenes display
-            displayScenes(appState.generatedScenes);
-            
-            showToast(`Generated ${data.scenes.length} scenes for ${structureKey}!`, 'success');
-            saveToLocalStorage();
-        } else {
-            throw new Error(data.error || 'Failed to generate scenes');
-        }
-        
-        hideLoading();
-    } catch (error) {
-        console.error('Error generating scenes:', error);
-        showToast('Error generating scenes. Please try again.', 'error');
-        hideLoading();
-    }
-}
+// This function has been replaced with proper hierarchical implementation
 
 // Generate scenes for all acts that have plot points
 async function generateAllScenes() {
@@ -3395,13 +3341,12 @@ async function generateAllScenes() {
         for (const structureKey of actsWithPlotPoints) {
             console.log(`Generating scenes for: ${structureKey}`);
             
-            const response = await fetch(`/api/generate-scene/${appState.projectPath}/${structureKey}`, {
+            const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    sceneCount: 3, // Default scenes per act
                     model: getSelectedModel()
                 })
             });
@@ -3409,13 +3354,28 @@ async function generateAllScenes() {
             const data = await response.json();
             
             if (response.ok) {
-                console.log(`Scenes generated for ${structureKey}:`, data);
+                console.log(`Hierarchical scenes generated for ${structureKey}:`, data);
                 
-                // Store scenes in app state
+                // Store scenes in app state - flatten plot point structure
                 if (!appState.generatedScenes) {
                     appState.generatedScenes = {};
                 }
-                appState.generatedScenes[structureKey] = data.scenes;
+                
+                // Flatten plot point scenes into act-level structure for display
+                const allScenes = [];
+                if (data.plotPointScenes) {
+                    data.plotPointScenes.forEach(plotPointData => {
+                        plotPointData.scenes.forEach(scene => {
+                            // Add metadata about which plot point this scene came from
+                            scene.plotPointIndex = plotPointData.plotPointIndex;
+                            scene.plotPoint = plotPointData.plotPoint;
+                            scene.isKeyPlot = plotPointData.isKeyPlot;
+                            allScenes.push(scene);
+                        });
+                    });
+                }
+                
+                appState.generatedScenes[structureKey] = allScenes;
             } else {
                 throw new Error(`Failed to generate scenes for ${structureKey}: ${data.error}`);
             }
@@ -6556,4 +6516,74 @@ function generateProjectCard(project, context = 'modal') {
             </div>
         </div>
     `;
+}
+
+// Generate scenes for a structural element using proper hierarchical flow
+async function generateScenesForElement(structureKey) {
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+
+    // Check if plot points exist first
+    if (!hasPlotPointsForElement(structureKey)) {
+        showToast('Please generate plot points for this structural element first in Step 4.', 'error');
+        return;
+    }
+
+    try {
+        showLoading(`Generating scenes for ${structureKey} using hierarchical plot points...`);
+        
+        // Use the proper hierarchical scene generation endpoint
+        const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Hierarchical scenes generated:', data);
+            
+            // Store scenes in app state - need to flatten the plot point structure
+            if (!appState.generatedScenes) {
+                appState.generatedScenes = {};
+            }
+            
+            // Flatten plot point scenes into act-level structure for display
+            const allScenes = [];
+            if (data.plotPointScenes) {
+                data.plotPointScenes.forEach(plotPointData => {
+                    plotPointData.scenes.forEach(scene => {
+                        // Add metadata about which plot point this scene came from
+                        scene.plotPointIndex = plotPointData.plotPointIndex;
+                        scene.plotPoint = plotPointData.plotPoint;
+                        scene.isKeyPlot = plotPointData.isKeyPlot;
+                        allScenes.push(scene);
+                    });
+                });
+            }
+            
+            appState.generatedScenes[structureKey] = allScenes;
+            
+            // Refresh the scenes display
+            displayScenes(appState.generatedScenes);
+            
+            showToast(`Generated ${data.totalScenesGenerated} scenes for ${structureKey} across ${data.plotPointScenes?.length || 0} plot points!`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate scenes');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating scenes:', error);
+        showToast('Error generating scenes. Please try again.', 'error');
+        hideLoading();
+    }
 }
