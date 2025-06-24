@@ -3681,45 +3681,20 @@ async function previewPlotPointPrompt(structureKey, sceneIndex) {
 
 // Project Header Management
 function showProjectHeader(projectData) {
-    const header = document.getElementById('projectHeader');
-    const titleEl = document.getElementById('projectTitle');
-    const statusEl = document.getElementById('projectStatus');
-    const templateEl = document.getElementById('projectTemplate');
-    const scenesEl = document.getElementById('projectScenes');
-    const idEl = document.getElementById('projectId');
+    const indicator = document.getElementById('currentProjectIndicator');
+    const projectNameEl = document.getElementById('currentProjectName');
     
-    if (projectData) {
-        titleEl.textContent = projectData.title || 'Untitled Project';
-        templateEl.textContent = `Template: ${projectData.templateName || 'Unknown'}`;
-        scenesEl.textContent = `${projectData.totalScenes || 70} scenes`;
-        idEl.textContent = `ID: ${(projectData.projectId || 'unknown').substring(0, 8)}`;
-        
-        // Update status based on current step or project state
-        updateProjectStatus();
-        
-        header.style.display = 'flex';
+    if (projectData && indicator && projectNameEl) {
+        projectNameEl.textContent = projectData.title || 'Untitled Project';
+        indicator.style.display = 'flex';
     }
 }
 
 function hideProjectHeader() {
-    const header = document.getElementById('projectHeader');
-    header.style.display = 'none';
-}
-
-function updateProjectStatus() {
-    const statusEl = document.getElementById('projectStatus');
-    const currentStep = getCurrentStep();
-    
-    const statusMap = {
-        1: 'Defining Story',
-        2: 'Selecting Template',
-        3: 'Reviewing Structure',
-        4: 'Generating Scenes',
-        5: 'Writing Dialogue',
-        6: 'Finalizing Script'
-    };
-    
-    statusEl.textContent = statusMap[currentStep] || 'In Progress';
+    const indicator = document.getElementById('currentProjectIndicator');
+    if (indicator) {
+        indicator.style.display = 'none';
+    }
 }
 
 function getCurrentStep() {
@@ -3730,22 +3705,6 @@ function getCurrentStep() {
         return parseInt(stepId.replace('step', ''));
     }
     return 1;
-}
-
-function showProjectDetails() {
-    // Show a modal with full project details
-    if (appState.storyInput && appState.generatedStructure) {
-        const details = `
-Project: ${appState.storyInput.title}
-Logline: ${appState.storyInput.logline}
-Characters: ${appState.storyInput.characters}
-Tone: ${appState.storyInput.tone}
-Template: ${appState.selectedTemplate || 'None selected'}
-Total Scenes: ${appState.storyInput.totalScenes || 70}
-Project ID: ${appState.projectId || 'Not saved'}
-        `;
-        alert(details); // For now, use alert. Could be enhanced with a proper modal later
-    }
 }
 
 function saveProject() {
@@ -4557,9 +4516,9 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     updateProgressBar();
     updateStepIndicators();
     
-    // Update project header status if project is loaded
+    // Update project header if project is loaded
     if (appState.storyInput) {
-        updateProjectStatus();
+        showProjectHeader(appState.storyInput);
     }
     
     // Trigger auto-save on step transitions (but not initial load)
