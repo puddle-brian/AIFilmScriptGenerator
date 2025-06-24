@@ -3535,6 +3535,14 @@ function displayScenes(scenes) {
             groupElement.className = 'scene-group';
             groupElement.id = `scene-group-${structureKey}`;
             
+            // Get act progress notation (X/Y format) - same as plot points and acts
+            const structureKeys = Object.keys(appState.generatedStructure || {});
+            const totalActs = structureKeys.length;
+            const currentActIndex = structureKeys.indexOf(structureKey);
+            const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
+            const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
+            const titleWithProgress = actProgress ? `${actProgress} ${actName}` : actName;
+            
             // Check if this element has plot points for scene generation
             const canGenerateScenes = hasPlotPointsForElement(structureKey);
             const generateButtonClass = canGenerateScenes ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
@@ -3547,7 +3555,7 @@ function displayScenes(scenes) {
 
             groupElement.innerHTML = `
                 <div class="scene-group-header">
-                    <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
+                    <h3>${titleWithProgress}</h3>
                     <div class="scene-group-actions">
                         <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateScenes ? '' : 'disabled'}>
                             🎬 Generate Scenes
@@ -3564,8 +3572,11 @@ function displayScenes(scenes) {
                 ${hasPlotPoints ? `
                     <div class="plot-points-reference">
                         <h4>Plot Points for this Act:</h4>
-                        <ol>
-                            ${plotPoints.map(point => `<li>${point}</li>`).join('')}
+                        <ol class="hierarchical-plot-points" data-act-number="${currentActIndex + 1}">
+                            ${plotPoints.map((point, index) => {
+                                const plotPointNumber = `${currentActIndex + 1}.${index + 1}`;
+                                return `<li data-plot-number="${plotPointNumber}"><span class="plot-point-number">${plotPointNumber}</span> ${point}</li>`;
+                            }).join('')}
                         </ol>
                     </div>
                 ` : `
