@@ -3085,11 +3085,6 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
-    padding: 0.5rem 0.75rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 0.5rem;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .global-model-selector select {
@@ -3123,7 +3118,6 @@ body {
     .global-project-controls {
         flex-direction: column;
         gap: 0.5rem;
-        padding: 0.5rem;
     }
     
     .global-model-selector select {
