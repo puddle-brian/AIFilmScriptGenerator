@@ -28,13 +28,12 @@ Story Details:
 - Logline: {{PROJECT_LOGLINE}}
 - Main Characters: {{PROJECT_CHARACTERS}}
 - Tone: {{PROJECT_TONE}}
-- Target Scene Count: {{TOTAL_SCENES}} scenes
-- Directorial Influences: {{DIRECTORIAL_INFLUENCES}}
-- Screenwriting Influences: {{SCREENWRITING_INFLUENCES}}
-- Film Influences: {{FILM_INFLUENCES}}
+- Target Scene Count: {{TOTAL_SCENES}} scenes{{INFLUENCES_SECTION}}
 
 STRUCTURE OVERVIEW:
-{{TEMPLATE_DESCRIPTION}}
+{{STRUCTURE_DESCRIPTION}}
+
+Template Structure Elements: {{TEMPLATE_STRUCTURE}}
 
 CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
 1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology

@@ -1350,62 +1350,8 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     const templateContent = await fs.readFile(templatePath, 'utf8');
     const templateData = JSON.parse(templateContent);
     
-    const influencePrompt = storyInput.influencePrompt || '';
-    const influencesSection = storyInput.influences ? `
-${storyInput.influences.directors && storyInput.influences.directors.length > 0 ? 
-  `- Directorial Influences: ${storyInput.influences.directors.join(', ')}` : ''}
-${storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0 ? 
-  `- Screenwriting Influences: ${storyInput.influences.screenwriters.join(', ')}` : ''}
-${storyInput.influences.films && storyInput.influences.films.length > 0 ? 
-  `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
-
-    // Generate a detailed description of the template structure
-    const structureDescription = generateStructureDescription(templateData);
-    
-    const prompt = `${influencePrompt}Based on the following story concept, generate a detailed plot structure using the ${templateData.name} format that embodies these artistic sensibilities:
-
-Story Details:
-- Title: ${storyInput.title}
-- Logline: ${storyInput.logline}
-- Main Characters: ${storyInput.characters}
-- Tone: ${storyInput.tone}
-- Target Scene Count: ${storyInput.totalScenes || 70} scenes${influencesSection}
-
-STRUCTURE OVERVIEW:
-${structureDescription}
-
-Template Structure Elements: ${JSON.stringify(templateData.structure, null, 2)}
-
-CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
-1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology
-2. Describe what the audience will SEE happening on screen - external, visual story beats
-3. Show character development through ACTIONS and CHOICES, not internal monologue or emotional states
-4. Focus on plot events that connect causally - what happens BECAUSE of previous events
-5. Each act should describe key incidents, confrontations, discoveries, or turning points
-6. Avoid describing what characters "feel," "realize," or "understand" - instead describe what they DO
-7. Character development should be evident through their changing behavior and choices across acts
-
-Generate a detailed breakdown for each structural element. Each element should have:
-- A clear title
-- A 2-3 sentence description of the KEY EVENTS and ACTIONS that occur in this act
-- Key character developments (shown through actions, not feelings)
-- Important plot points (concrete incidents that advance the story)
-
-Return the response as a valid JSON object with each structural element as a property. 
-
-IMPORTANT: Your response must be ONLY valid JSON, with no additional text, markdown formatting, or explanations. Start with { and end with }.
-
-Example format:
-{
-  "act1_setup": {
-    "name": "Act 1: Setup",
-    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
-  },
-  "act1_inciting_incident": {
-    "name": "Inciting Incident", 
-    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
-  }
-}`;
+    // Use our new prompt builder system
+    const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
 
     // Auto-save the generated structure locally
     const projectId = uuidv4();

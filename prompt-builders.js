@@ -71,6 +71,29 @@ function replacePlaceholders(template, placeholders) {
 }
 
 /**
+ * GENERATE STRUCTURE DESCRIPTION
+ * Creates a detailed description of the template structure for AI generation
+ */
+function generateStructureDescription(templateData) {
+    if (!templateData || !templateData.structure) {
+        return "Standard narrative structure with clear beginning, middle, and end.";
+    }
+    
+    let description = `${templateData.name} Structure:\n`;
+    
+    // Build description based on template structure
+    const structureKeys = Object.keys(templateData.structure);
+    description += `This template consists of ${structureKeys.length} major structural elements:\n`;
+    
+    structureKeys.forEach((key, index) => {
+        const element = templateData.structure[key];
+        description += `${index + 1}. ${element.name || key}: ${element.description || 'A key structural element'}\n`;
+    });
+    
+    return description;
+}
+
+/**
  * STRUCTURE GENERATION PROMPT BUILDER
  * Builds prompts for generating story structure (acts, themes, progression)
  */
@@ -78,19 +101,30 @@ function buildStructurePrompt(storyInput, templateData) {
     // Load the structure generation template
     const template = loadTemplate('structure-generation');
     
+    // Build influences section if provided
+    const influencesSection = storyInput.influences ? `
+${storyInput.influences.directors && storyInput.influences.directors.length > 0 ? 
+  `- Directorial Influences: ${storyInput.influences.directors.join(', ')}` : ''}
+${storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0 ? 
+  `- Screenwriting Influences: ${storyInput.influences.screenwriters.join(', ')}` : ''}
+${storyInput.influences.films && storyInput.influences.films.length > 0 ? 
+  `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
+    
+    // Generate detailed description of the template structure
+    const structureDescription = generateStructureDescription(templateData);
+    
     // Prepare placeholders with actual project data
     const placeholders = {
         PROJECT_TITLE: storyInput.title,
         PROJECT_LOGLINE: storyInput.logline,
         PROJECT_CHARACTERS: storyInput.characters,
         PROJECT_TONE: storyInput.tone,
-        TOTAL_SCENES: storyInput.totalScenes,
+        TOTAL_SCENES: storyInput.totalScenes || 70,
         TEMPLATE_NAME: templateData.name,
-        TEMPLATE_DESCRIPTION: templateData.description,
         INFLUENCE_PROMPT: storyInput.influencePrompt || '',
-        DIRECTORIAL_INFLUENCES: storyInput.influences?.directors?.join(', ') || '',
-        SCREENWRITING_INFLUENCES: storyInput.influences?.screenwriters?.join(', ') || '',
-        FILM_INFLUENCES: storyInput.influences?.films?.join(', ') || ''
+        STRUCTURE_DESCRIPTION: structureDescription,
+        TEMPLATE_STRUCTURE: JSON.stringify(templateData.structure, null, 2),
+        INFLUENCES_SECTION: influencesSection
     };
     
     // Replace placeholders and return the complete prompt
