@@ -5117,6 +5117,45 @@ function updateStepHeaderProgressMeter(stepNumber) {
     const textElement = progressMeter.querySelector('.progress-text');
     
     if (circle && textElement) {
+        // Check if we need to add/remove complete state
+        const isComplete = progress >= 100;
+        
+        if (isComplete) {
+            // Add complete state
+            progressMeter.classList.add('complete');
+            
+            // Add checkmark if it doesn't exist
+            if (!progressMeter.querySelector('.progress-checkmark')) {
+                const checkmark = document.createElement('div');
+                checkmark.className = 'progress-checkmark';
+                checkmark.innerHTML = '✓';
+                progressMeter.appendChild(checkmark);
+            }
+            
+            // Add completed label if it doesn't exist
+            if (!progressMeter.nextElementSibling || !progressMeter.nextElementSibling.classList.contains('progress-completed-label')) {
+                const completedLabel = document.createElement('span');
+                completedLabel.className = 'progress-completed-label';
+                completedLabel.textContent = 'Completed';
+                progressMeter.parentNode.insertBefore(completedLabel, progressMeter.nextSibling);
+            }
+        } else {
+            // Remove complete state
+            progressMeter.classList.remove('complete');
+            
+            // Remove checkmark if it exists
+            const existingCheckmark = progressMeter.querySelector('.progress-checkmark');
+            if (existingCheckmark) {
+                existingCheckmark.remove();
+            }
+            
+            // Remove completed label if it exists
+            const existingLabel = progressMeter.nextElementSibling;
+            if (existingLabel && existingLabel.classList.contains('progress-completed-label')) {
+                existingLabel.remove();
+            }
+        }
+        
         // Calculate stroke-dasharray for circular progress
         const circumference = 2 * Math.PI * 16; // radius = 16
         const progressLength = (progress / 100) * circumference;

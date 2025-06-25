@@ -657,6 +657,54 @@ h2 .progress-meter {
     font-weight: 600;
     color: #374151;
     pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+/* Complete state styling */
+.progress-meter.complete .progress-bg {
+    fill: #48bb78;
+    stroke: #48bb78;
+}
+
+.progress-meter.complete .progress-fill {
+    stroke: #48bb78;
+}
+
+.progress-meter.complete .progress-text {
+    opacity: 0;
+}
+
+/* Checkmark for completed state */
+.progress-checkmark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.15s;
+    pointer-events: none;
+}
+
+.progress-meter.complete .progress-checkmark {
+    opacity: 1;
+}
+
+/* Completed text label */
+.progress-completed-label {
+    margin-left: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #48bb78;
+    opacity: 0;
+    transition: opacity 0.3s ease 0.15s;
+    white-space: nowrap;
+}
+
+.progress-meter.complete + .progress-completed-label {
+    opacity: 1;
 }
 
 /* Current step enhancement */
@@ -685,6 +733,15 @@ h2 .progress-meter {
     .progress-meter .progress-text {
         font-size: 10px;
     }
+    
+    .progress-checkmark {
+        font-size: 14px;
+    }
+    
+    .progress-completed-label {
+        font-size: 11px;
+        margin-left: 6px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -696,6 +753,15 @@ h2 .progress-meter {
     
     .progress-meter .progress-text {
         font-size: 9px;
+    }
+    
+    .progress-checkmark {
+        font-size: 12px;
+    }
+    
+    .progress-completed-label {
+        font-size: 10px;
+        margin-left: 4px;
     }
 }
 
