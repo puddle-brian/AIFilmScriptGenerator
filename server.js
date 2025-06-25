@@ -996,6 +996,8 @@ function parseProjectContext(projectContextRaw) {
   return typeof projectContextRaw === 'string' ? JSON.parse(projectContextRaw) : projectContextRaw;
 }
 
+
+
 // API Routes
 
 // Get available plot structure templates
@@ -1853,7 +1855,7 @@ app.get('/api/list-projects', async (req, res) => {
         const userId = userResult.rows[0].id;
         
         const projectsResult = await dbClient.query(
-          'SELECT project_name, project_context, created_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
+          'SELECT project_name, project_context, thumbnail_data, created_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
           [userId]
         );
         
@@ -1869,7 +1871,8 @@ app.get('/api/list-projects', async (req, res) => {
                 totalScenes: projectContext.storyInput.totalScenes,
                 createdAt: row.created_at,
                 logline: projectContext.storyInput.logline,
-                source: 'database'
+                source: 'database',
+                thumbnail_data: row.thumbnail_data // Include thumbnail data for progress calculation
               });
             }
           } catch (error) {

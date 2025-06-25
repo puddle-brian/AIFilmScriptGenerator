@@ -6834,10 +6834,53 @@ const autoSaveManager = {
     }
 };
 
+// Calculate progress for project cards based on available metadata
+function calculateProjectCardProgress(project) {
+    // Step labels and icons for each step
+    const stepInfo = {
+        1: { label: 'Story Concept', icon: '💡' },
+        2: { label: 'Template Selection', icon: '📋' },
+        3: { label: 'Structure Generation', icon: '🏗️' },
+        4: { label: 'Plot Points', icon: '📍' },
+        5: { label: 'Scene Generation', icon: '🎬' },
+        6: { label: 'Dialogue Generation', icon: '💬' },
+        7: { label: 'Script Complete', icon: '✅' }
+    };
+    
+    // Use the same logic as the profile page - check thumbnail_data for currentStep
+    if (project.thumbnail_data && project.thumbnail_data.currentStep) {
+        const currentStep = project.thumbnail_data.currentStep;
+        return {
+            step: currentStep,
+            label: stepInfo[currentStep].label,
+            icon: stepInfo[currentStep].icon
+        };
+    }
+    
+    // Fallback to basic calculation if no thumbnail_data
+    let currentStep = 1; // Default to step 1 (Story Concept)
+    
+    // If we have title and logline, we're at least at step 1
+    if (project.title && project.logline) {
+        currentStep = 1;
+        
+        // If we have a total scenes count, it suggests they've made some progress
+        if (project.totalScenes && project.totalScenes > 0) {
+            currentStep = 2; // Likely at least selected a template
+        }
+    }
+    
+    return {
+        step: currentStep,
+        label: stepInfo[currentStep].label,
+        icon: stepInfo[currentStep].icon
+    };
+}
+
 // Shared Project Card Generator - Reuses the modal card format
 function generateProjectCard(project, context = 'modal') {
-    // Format progress information
-    const progressInfo = project.progress || { step: 1, label: 'Story Concept', icon: '💡' };
+    // Calculate progress based on available project data
+    const progressInfo = calculateProjectCardProgress(project);
     const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
     
     // Different actions based on context
