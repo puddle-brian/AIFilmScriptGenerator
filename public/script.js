@@ -3055,7 +3055,8 @@ async function generateElementPlotPoints(structureKey) {
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 desiredSceneCount: desiredSceneCount,
@@ -3220,7 +3221,8 @@ async function regenerateAllPlotPointsForElement(structureKey) {
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 desiredSceneCount: 4, // Default value

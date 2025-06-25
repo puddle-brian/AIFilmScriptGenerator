@@ -4485,6 +4485,12 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const { projectPath, actKey } = req.params;
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
     
+    // Debug: Check if req.user exists
+    console.log('🔍 DEBUG: req.user in plot points endpoint:', req.user ? 'EXISTS' : 'UNDEFINED');
+    if (req.user) {
+      console.log('🔍 DEBUG: req.user.username:', req.user.username);
+    }
+    
     // Load existing project data from database (unified v2.0 format)
     const plotUsername = req.user.username; // Get from authenticated user
     
