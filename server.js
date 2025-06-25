@@ -1045,10 +1045,10 @@ app.get('/api/templates', async (req, res) => {
     
     // Group templates by category
     const groupedTemplates = {
-      criterion_patterns: {
-        title: "Criterion Patterns",
-        description: "Cinematic narrative structures inspired by art house and international cinema",
-        templates: templates.filter(t => t.category === 'criterion_patterns')
+      essential: {
+        title: "Essential Templates",
+        description: "Widely-used, accessible story structures perfect for beginners and commercial projects",
+        templates: templates.filter(t => t.category === 'essential')
       },
       booker_7_plots: {
         title: "Booker's 7 Basic Plots",
@@ -1064,6 +1064,11 @@ app.get('/api/templates', async (req, res) => {
         title: "The 36 Dramatic Situations (Georges Polti)",
         description: "Classical dramatic situations that form the foundation of all storytelling",
         templates: templates.filter(t => t.category === 'polti_36_situations')
+      },
+      criterion_patterns: {
+        title: "Criterion Patterns",
+        description: "Arthouse and international cinema structures focusing on psychological depth and unconventional narratives",
+        templates: templates.filter(t => t.category === 'criterion_patterns')
       },
       uncategorized: {
         title: "Other Structures",

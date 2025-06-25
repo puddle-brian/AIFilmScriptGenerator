@@ -1,7 +1,7 @@
 {
   "name": "Three-Act Structure",
   "description": "Classic three-act storytelling structure with setup, confrontation, and resolution",
-  "category": "criterion_patterns",
+  "category": "essential",
   "structure": {
     "act1_setup": {
       "name": "Act 1: Setup",

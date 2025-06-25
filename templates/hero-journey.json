@@ -1,7 +1,7 @@
 {
   "name": "Hero's Journey",
   "description": "Joseph Campbell's monomyth structure following the hero's transformative journey through concrete actions and choices",
-  "category": "criterion_patterns",
+  "category": "essential",
   "structure": {
     "ordinary_world": {
       "name": "Ordinary World",
