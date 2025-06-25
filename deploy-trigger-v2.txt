@@ -1,8 +1,12 @@
-Deploy trigger v2.1 - Fixed Vercel serverless directory creation and module export issues
+Deploy trigger v2.2 - Fixed Vercel route precedence issue
 
 Fixes:
-1. Skip directory creation (generated/, templates/) on serverless environment
-2. Proper module.exports for Vercel serverless function deployment
-3. Environment-aware startup logic (serverless vs traditional server)
+1. ✅ Skip directory creation (generated/, templates/) on serverless environment
+2. ✅ Proper module.exports for Vercel serverless function deployment
+3. ✅ Environment-aware startup logic (serverless vs traditional server)
+4. 🆕 Fixed route precedence - root path "/" now properly serves index.html
+
+Issue: The catch-all route "/(.*)" was intercepting root requests before static files
+Solution: Added explicit route for "/" to serve index.html before catch-all
 
 Date: 2025-01-25 
