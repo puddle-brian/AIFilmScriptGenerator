@@ -1511,7 +1511,7 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     console.log(`Project ID: ${projectId}`);
 
     // Save to database in unified v2.0 format (database-only)
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Use the authenticated user
     const projectContext = {
       projectId,
       projectPath: projectFolderName,
