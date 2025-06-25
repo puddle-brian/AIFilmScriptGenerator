@@ -30,19 +30,13 @@ const anthropic = new Anthropic({
 });
 
 // Initialize PostgreSQL client (optimized for serverless)
-const dbClient = process.env.VERCEL ? 
-  new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-    // Serverless optimization
-    max: 1, // Limit pool size for serverless
-    idleTimeoutMillis: 1000,
-    connectionTimeoutMillis: 5000,
-    allowExitOnIdle: true
-  }) :
-  new Client({
-    connectionString: process.env.DATABASE_URL,
-  });
+const dbClient = new Client({
+  connectionString: process.env.DATABASE_URL,
+  // Add SSL and timeout configuration for serverless
+  ssl: process.env.VERCEL ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: process.env.VERCEL ? 5000 : 30000,
+  query_timeout: process.env.VERCEL ? 5000 : 30000,
+});
 
 // Database schema for usage tracking
 const CREATE_USAGE_TRACKING_TABLES = `
@@ -127,13 +121,14 @@ async function initializeDatabase() {
 // Connect to database (optimized for serverless)
 async function connectToDatabase() {
   try {
-    // Test connection with shorter timeout for serverless
     if (process.env.VERCEL) {
-      // In serverless, use pooled connections without persistent connect()
-      console.log('🔧 Using pooled connections for serverless');
+      // In serverless, connect on-demand but don't persist
+      console.log('🔧 Serverless database setup - connection on-demand');
+      // Test connection briefly
+      await dbClient.query('SELECT 1');
       await initializeDatabase();
     } else {
-      // Traditional connection for local development
+      // Traditional persistent connection for local development
       await dbClient.connect();
       console.log('✅ Connected to Neon database');
       await initializeDatabase();
@@ -164,22 +159,11 @@ async function authenticateApiKey(req, res, next) {
   }
 
   try {
-    // Add timeout handling for serverless environment
-    const queryPromise = dbClient.query(
+    // Simple query with built-in timeout handling
+    const user = await dbClient.query(
       'SELECT * FROM users WHERE api_key = $1',
       [apiKey]
     );
-    
-    let user;
-    if (process.env.VERCEL) {
-      // Set 5-second timeout for serverless
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Authentication timeout')), 5000)
-      );
-      user = await Promise.race([queryPromise, timeoutPromise]);
-    } else {
-      user = await queryPromise;
-    }
 
     if (user.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -189,11 +173,7 @@ async function authenticateApiKey(req, res, next) {
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    if (error.message === 'Authentication timeout') {
-      res.status(504).json({ error: 'Authentication timeout - please try again' });
-    } else {
-      res.status(500).json({ error: 'Authentication failed' });
-    }
+    res.status(500).json({ error: 'Authentication failed', details: error.message });
   }
 }
 

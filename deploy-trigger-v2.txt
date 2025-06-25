@@ -1,18 +1,19 @@
-Deploy trigger v2.3 - Fixed serverless database connection pooling
+Deploy trigger v2.4 - Fixed 500 errors with simplified database connection
 
 Fixes:
 1. ✅ Skip directory creation (generated/, templates/) on serverless environment
 2. ✅ Proper module.exports for Vercel serverless function deployment
 3. ✅ Environment-aware startup logic (serverless vs traditional server)
 4. ✅ Fixed route precedence - root path "/" now properly serves index.html
-5. 🆕 Database connection pooling for serverless optimization
+5. 🔄 Reverted Pool to Client with serverless optimizations
 
-Critical Fix: Replaced single Client with Pool for Vercel serverless environment
-- Pool configuration: max=1, idleTimeoutMillis=1000, connectionTimeoutMillis=5000
-- Added SSL configuration for Neon database on Vercel
-- Added authentication timeout handling (5 seconds)
-- Environment-aware database connection management
+Issue: Pool connection caused 500 Internal Server Errors
+Solution: Using Client with:
+- SSL configuration for Vercel environment
+- Shorter timeouts (5000ms) for serverless
+- On-demand connection testing instead of persistent connections
+- Simplified authentication middleware without Promise.race complexity
 
-This should resolve 504 Gateway Timeout and 401 Authentication errors.
+This should fix the 500 errors while maintaining performance improvements.
 
 Date: 2025-01-25 
