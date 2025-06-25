@@ -776,6 +776,12 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     // Save to localStorage immediately
     saveToLocalStorage();
     
+    // Update progress meters and step indicators after story creation
+    updateAllProgressMeters();
+    updateStepIndicators();
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
+    
     console.log('✅ New project initialized:', {
         title: appState.storyInput.title,
         projectPath: appState.projectPath,
@@ -2104,6 +2110,11 @@ function handleStorySubmission() {
     // autoSaveManager.markDirty();
     
     saveToLocalStorage();
+    
+    // Update progress meters and step indicators after story creation
+    updateAllProgressMeters();
+    updateStepIndicators();
+    
     goToStep(2);
 }
 
@@ -2187,7 +2198,6 @@ function selectTemplate(templateId) {
     document.querySelector(`[data-template-id="${templateId}"]`).classList.add('selected');
     
     appState.selectedTemplate = templateId;
-    document.getElementById('selectTemplateBtn').disabled = false;
     
     // Find and display the selected template immediately
     let selectedTemplateData = null;
@@ -2254,7 +2264,6 @@ function changeTemplate() {
     
     // Clear app state
     appState.selectedTemplate = null;
-    document.getElementById('selectTemplateBtn').disabled = true;
     
     // Expand template options
     expandTemplateOptions();
@@ -4841,10 +4850,9 @@ function canNavigateToStep(stepNumber) {
             result = true; // Can always go to step 1
             break;
         case 2:
-            // Need complete story input (title + logline)
+            // Need complete story input (title is sufficient, logline is optional)
             result = !!(appState.storyInput && 
-                       appState.storyInput.title && 
-                       appState.storyInput.logline);
+                       appState.storyInput.title);
             break;
         case 3:
             // Need template selected (Step 2 complete)
@@ -4904,10 +4912,11 @@ function isStepFullyComplete(stepNumber) {
     let result;
     switch (stepNumber) {
         case 1:
-            // Story input is complete if it has a story concept (title + logline)
+            // Story input is complete if it has a title (logline is optional)
             result = !!(appState.storyInput && 
-                        appState.storyInput.title && 
-                        appState.storyInput.logline);
+                        appState.storyInput.title);
+            
+
             break;
         case 2:
             // Template is fully complete if selected and structure is generated
@@ -5119,11 +5128,12 @@ function updateStepHeaderProgressMeter(stepNumber) {
     const progressMeter = document.querySelector(`h2 .progress-meter[data-step="${stepNumber}"]`);
     if (!progressMeter) return;
     
-    // Get progress percentage using ProgressTracker
+    // Calculate progress based on step completion
     let progress = 0;
-    if (window.ProgressTracker) {
-        progress = ProgressTracker.calculateStepProgress(stepNumber, appState);
+    if (isStepFullyComplete(stepNumber)) {
+        progress = 100;
     }
+    // No partial progress - either 0% (not complete) or 100% (complete)
     
     const circle = progressMeter.querySelector('.progress-fill');
     const textElement = progressMeter.querySelector('.progress-text');
