@@ -329,8 +329,14 @@ app.get('/credit-integration-demo', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'credit-integration-demo.html'));
 });
 
-// Ensure directories exist
+// Ensure directories exist (skip on Vercel serverless)
 const ensureDirectories = async () => {
+  // Skip directory creation on Vercel serverless environment
+  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+    console.log('🔧 Skipping directory creation on serverless environment');
+    return;
+  }
+  
   const dirs = ['generated', 'templates'];
   for (const dir of dirs) {
     try {
@@ -4247,17 +4253,7 @@ app.delete('/api/users/:userId/projects', async (req, res) => {
   }
 });
 
-// Start server
-const startServer = async () => {
-  await ensureDirectories();
-  await connectToDatabase();
-  app.listen(PORT, () => {
-    console.log(`🚀 Film Script Generator server running on port ${PORT}`);
-    console.log(`🌐 Access: http://localhost:${PORT}`);
-    console.log('📊 Usage tracking and credit system enabled');
-    console.log('🔐 API key authentication required for all generation endpoints');
-  });
-};
+// Server startup moved to bottom of file for proper Vercel export handling
 
 // Generate plot points for a specific story act (Level 4 generation)
 app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, res) => {
@@ -5726,4 +5722,28 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-startServer().catch(console.error);
+// Start server for local development
+const startServer = async () => {
+  await ensureDirectories();
+  await connectToDatabase();
+  app.listen(PORT, () => {
+    console.log(`🚀 Film Script Generator server running on port ${PORT}`);
+    console.log(`🌐 Access: http://localhost:${PORT}`);
+    console.log('📊 Usage tracking and credit system enabled');
+    console.log('🔐 API key authentication required for all generation endpoints');
+  });
+};
+
+// For Vercel serverless deployment
+if (process.env.VERCEL) {
+  // Initialize database connection for serverless
+  connectToDatabase().then(() => {
+    console.log('🔧 Database connected for serverless environment');
+  }).catch(console.error);
+  
+  // Export the Express app for Vercel
+  module.exports = app;
+} else {
+  // Start traditional server for local development
+  startServer().catch(console.error);
+}

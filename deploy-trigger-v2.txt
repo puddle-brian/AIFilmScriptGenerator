@@ -1,6 +1,8 @@
-Static file serving fix deployed on: 2024-01-09 14:30:00
-Fixed issues:
-- Updated vercel.json to properly handle static files
-- Added explicit routes for CSS/JS files
-- Enhanced static file serving with proper headers
-- This should fix the layout issues on screenplaygenie.com 
+Deploy trigger v2.1 - Fixed Vercel serverless directory creation and module export issues
+
+Fixes:
+1. Skip directory creation (generated/, templates/) on serverless environment
+2. Proper module.exports for Vercel serverless function deployment
+3. Environment-aware startup logic (serverless vs traditional server)
+
+Date: 2025-01-25 
