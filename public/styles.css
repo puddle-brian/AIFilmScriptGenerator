@@ -3785,3 +3785,41 @@ body {
         padding: 0.2rem 0.4rem;
     }
 }
+
+/* Step 5 Scene Count Container */
+.scene-count-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem auto;
+    max-width: fit-content;
+    flex-wrap: nowrap;
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 8px 12px;
+}
+
+/* Inline Screenplay Estimates */
+.screenplay-estimates-inline {
+    color: #495057;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.screenplay-estimates-inline span {
+    white-space: nowrap;
+}
+
+/* Scene count input - compact width for 3 digits */
+#totalScenes {
+    width: 80px;
+    text-align: center;
+}
+
+/* Responsive: stack on mobile */
+@media (max-width: 480px) {
+    .estimates-content {
+        font-size: 0.85em;
+    }
+}

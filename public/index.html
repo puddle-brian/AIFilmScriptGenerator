@@ -371,10 +371,12 @@
                 <p class="step-description">Generate scenes for each story act using the plot points as guidance.</p>
                 
                 <!-- Scene Configuration -->
-                <div class="form-group" style="max-width: 300px; margin-bottom: 1.5rem;">
-                    <label for="totalScenes">Total Scenes Target</label>
-                    <input type="number" id="totalScenes" name="totalScenes" value="70" min="20" max="150" required>
-                    <small class="form-help">Target number of scenes for the entire script (used for generation calculations)</small>
+                <div class="scene-count-container">
+                    <label for="totalScenes" style="margin-right: 8px; flex-shrink: 0;">Number of Scenes:</label>
+                    <input type="number" id="totalScenes" name="totalScenes" value="70" min="20" max="150" required style="margin-right: 12px; flex-shrink: 0;">
+                    <span id="screenplayEstimates" class="screenplay-estimates-inline" style="display: none; flex-shrink: 0;">
+                        <span id="runtimeEst">~70 min</span> • <span id="scenesPerPlotEst">4.4 scenes/plot</span> • <span id="costEst">~$15</span>
+                    </span>
                 </div>
                 
                 <!-- Scenes Generation Options -->

@@ -4725,6 +4725,11 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         if (appState.generatedStructure) {
             displayScenes(appState.generatedScenes || {});
         }
+        
+        // Initialize compact screenplay calculator
+        setTimeout(() => {
+            initializeCompactCalculator();
+        }, 100);
     } else if (stepNumber === 6 && appState.generatedScenes) {
         // Step 6: Dialogue Generation
         displayDialogueGeneration();
@@ -6750,4 +6755,118 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
 // Generate scenes for a specific plot point (optional future enhancement)
 async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
     showToast('Individual plot point scene generation coming soon! Use "Generate Scenes" for the full act for now.', 'info');
+}
+
+// Compact Screenplay Calculator - Simple, encapsulated functionality
+function initializeCompactCalculator() {
+    const totalScenesInput = document.getElementById('totalScenes');
+    const estimatesContainer = document.getElementById('screenplayEstimates');
+    
+    if (!totalScenesInput || !estimatesContainer) return;
+    
+    // Set up input listener
+    totalScenesInput.addEventListener('input', updateCompactEstimates);
+    
+    // Update estimates when model changes
+    const modelSelectors = ['modelSelect', 'modelSelectMain'];
+    modelSelectors.forEach(selectorId => {
+        const selector = document.getElementById(selectorId);
+        if (selector) {
+            selector.addEventListener('change', updateCompactEstimates);
+        }
+    });
+    
+    // Initial calculation
+    updateCompactEstimates();
+}
+
+function updateCompactEstimates() {
+    const totalScenesInput = document.getElementById('totalScenes');
+    const estimatesContainer = document.getElementById('screenplayEstimates');
+    
+    if (!totalScenesInput || !estimatesContainer) return;
+    
+    const sceneCount = parseInt(totalScenesInput.value) || 70;
+    
+    // Save to app state
+    if (appState.storyInput) {
+        appState.storyInput.totalScenes = sceneCount;
+        saveToLocalStorage();
+    }
+    
+    // Calculate estimates using real data
+    const estimates = calculateCompactEstimates(sceneCount);
+    
+    // Update display
+    updateCompactEstimateElements(estimates);
+    
+    // Show the estimates container
+    estimatesContainer.style.display = 'block';
+}
+
+function calculateCompactEstimates(sceneCount) {
+    // Count actual plot points from app state (more accurate than assumptions)
+    let totalPlotPoints = 0;
+    if (appState.plotPoints) {
+        Object.values(appState.plotPoints).forEach(actPlotPoints => {
+            if (actPlotPoints.plotPoints) {
+                totalPlotPoints += actPlotPoints.plotPoints.length;
+            }
+        });
+    }
+    
+    // Fallback if no plot points yet (user might be planning ahead)
+    if (totalPlotPoints === 0) {
+        const structureCount = appState.generatedStructure ? Object.keys(appState.generatedStructure).length : 3;
+        totalPlotPoints = structureCount * 4; // Standard assumption: 4 plot points per act
+    }
+    
+    // Runtime calculation (industry standard: ~1 minute per scene)
+    const runtime = Math.round(sceneCount * 1.2); // Slightly more realistic estimate
+    
+    // Scenes per plot point
+    const scenesPerPlot = (sceneCount / totalPlotPoints).toFixed(1);
+    
+    // Token-based cost estimation
+    const selectedModel = getSelectedModel();
+    const modelPricing = {
+        'claude-sonnet-4-20250514': { input: 3, output: 15 },
+        'claude-3-5-sonnet-20241022': { input: 3, output: 15 },
+        'claude-3-5-haiku-20241022': { input: 1, output: 5 },
+        'claude-3-haiku-20240307': { input: 0.25, output: 1.25 }
+    };
+    
+    const pricing = modelPricing[selectedModel] || modelPricing['claude-3-5-sonnet-20241022'];
+    
+    // Realistic token estimates per scene:
+    const inputTokensPerScene = 1200; // Prompt + context + plot points
+    const outputTokensPerScene = 150; // Generated scene content (~100-150 words, very compact JSON)
+    
+    // Calculate total tokens
+    const totalInputTokens = sceneCount * inputTokensPerScene;
+    const totalOutputTokens = sceneCount * outputTokensPerScene;
+    
+    // Calculate cost (pricing is per million tokens)
+    const inputCost = (totalInputTokens / 1000000) * pricing.input;
+    const outputCost = (totalOutputTokens / 1000000) * pricing.output;
+    const totalCost = inputCost + outputCost;
+    
+    // Round to reasonable precision
+    const displayCost = totalCost < 1 ? `~$${totalCost.toFixed(2)}` : `~$${Math.round(totalCost)}`;
+    
+    return {
+        runtime: `~${runtime} min`,
+        scenesPerPlot: `${scenesPerPlot} scenes/plot`,
+        cost: displayCost
+    };
+}
+
+function updateCompactEstimateElements(estimates) {
+    const runtimeEst = document.getElementById('runtimeEst');
+    const scenesPerPlotEst = document.getElementById('scenesPerPlotEst');
+    const costEst = document.getElementById('costEst');
+    
+    if (runtimeEst) runtimeEst.textContent = estimates.runtime;
+    if (scenesPerPlotEst) scenesPerPlotEst.textContent = estimates.scenesPerPlot;
+    if (costEst) costEst.textContent = estimates.cost;
 }
