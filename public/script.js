@@ -3087,6 +3087,11 @@ async function generateElementPlotPoints(structureKey) {
             console.log('🔍 PROGRESS UPDATE: Updating progress meters after plot points generation');
             updateAllProgressMeters();
             
+            // 🔥 FIX: Update navigation system when individual plot points are generated
+            updateStepIndicators();
+            updateUniversalNavigation();
+            updateBreadcrumbNavigation();
+            
             showToast(`Generated ${data.totalPlotPoints} plot points for ${structureKey}!`, 'success');
             saveToLocalStorage();
         } else {
@@ -3493,6 +3498,11 @@ function checkPlotPointsCompletion() {
         }
     }
     
+    // 🔥 FIX: Update navigation system when plot points completion changes
+    updateStepIndicators();
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
+    
     return allGenerated;
 }
 
@@ -3663,6 +3673,11 @@ async function generateAllScenes() {
         
         // 🔥 Refresh credits after successful generation
         window.creditWidget.refreshAfterOperation();
+        
+        // 🔥 FIX: Update navigation system when scenes are generated
+        updateStepIndicators();
+        updateUniversalNavigation();
+        updateBreadcrumbNavigation();
         
         hideLoading();
         showToast(`Successfully generated scenes for ${actsWithPlotPoints.length} acts!`, 'success');
@@ -4423,6 +4438,11 @@ async function generateDialogue(structureKey, sceneIndex) {
                 window.editableBlocks[blockId].updateContent(data.dialogue);
             }
             
+            // 🔥 FIX: Update navigation system when individual dialogue is generated
+            updateStepIndicators();
+            updateUniversalNavigation();
+            updateBreadcrumbNavigation();
+            
             showToast('Dialogue generated successfully!', 'success');
         } else {
             throw new Error(data.error || 'Failed to generate dialogue');
@@ -4524,6 +4544,11 @@ async function generateAllDialogue() {
         
         // 🔥 Refresh credits after successful generation
         window.creditWidget.refreshAfterOperation();
+        
+        // 🔥 FIX: Update navigation system when dialogue is generated
+        updateStepIndicators();
+        updateUniversalNavigation();
+        updateBreadcrumbNavigation();
         
         hideLoading();
         showToast(`Successfully generated dialogue for ${allScenes.length} scenes!`, 'success');
@@ -7376,6 +7401,11 @@ async function generateScenesForElement(structureKey) {
             // Update progress meters after generating scenes
             console.log('🔍 PROGRESS UPDATE: Updating progress meters after scenes generation');
             updateAllProgressMeters();
+            
+            // 🔥 FIX: Update navigation system when individual scenes are generated
+            updateStepIndicators();
+            updateUniversalNavigation();
+            updateBreadcrumbNavigation();
             
             showToast(`Generated ${data.totalScenesGenerated} scenes for ${structureKey} across ${data.plotPointScenes?.length || 0} plot points!`, 'success');
             saveToLocalStorage();
