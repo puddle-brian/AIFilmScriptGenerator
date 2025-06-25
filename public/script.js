@@ -1645,6 +1645,9 @@ function getSelectedModel() {
 
 // Auto-generation for debugging
 async function autoGenerate() {
+    console.log('🎲 AutoGenerate: Starting...');
+    
+    try {
     // Mad libs style logline generation
     const protagonists = [
         "a reclusive artist", "an aging professor", "a young immigrant", "a former dancer", 
@@ -1696,7 +1699,14 @@ async function autoGenerate() {
     const title = `${titleWords1[Math.floor(Math.random() * titleWords1.length)]} ${titleWords2[Math.floor(Math.random() * titleWords2.length)]}`;
     
     // Load user libraries (which include starter pack content)
+    console.log('🎲 AutoGenerate: Loading user libraries...');
     const userLibraries = await loadUserLibraries();
+    console.log('🎲 AutoGenerate: User libraries loaded:', {
+        directors: userLibraries.directors?.length || 0,
+        screenwriters: userLibraries.screenwriters?.length || 0,
+        films: userLibraries.films?.length || 0,
+        tones: userLibraries.tones?.length || 0
+    });
     
     // Clear existing influences
     appState.influences = { directors: [], screenwriters: [], films: [] };
@@ -1711,26 +1721,41 @@ async function autoGenerate() {
     appState.influences.films = randomFilms;
     
     // Auto-generate sample characters BEFORE creating the project
-    appState.projectCharacters = [
-        { name: "Protagonist", description: characters },
-        { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
-    ];
+    // Use random characters from user's character library (characters are stored as strings)
+    if (userLibraries.characters && userLibraries.characters.length > 0) {
+        const shuffledCharacters = [...userLibraries.characters].sort(() => 0.5 - Math.random());
+        appState.projectCharacters = shuffledCharacters.slice(0, Math.min(3, shuffledCharacters.length)).map(characterName => ({
+            name: characterName,
+            description: `Main character: ${characterName}`,
+            fromLibrary: true
+        }));
+    } else {
+        // Fallback if no characters in library
+        appState.projectCharacters = [
+            { name: "Main Character", description: characters },
+            { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
+        ];
+    }
     
     // Set tone before project initialization
     document.getElementById('tone').value = (userLibraries.tones || [])[Math.floor(Math.random() * (userLibraries.tones?.length || 1))] || '';
     
     // Initialize new project from story concept (this does all the proper setup)
+    console.log('🎲 AutoGenerate: Initializing project with:', { title, logline });
     initializeNewProjectFromStoryConcept(title, logline);
+    console.log('🎲 AutoGenerate: Project initialized. Story concept should now be visible.');
     
     // Set random total scenes after project is initialized
     if (appState.storyInput) {
         appState.storyInput.totalScenes = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
     }
     
-    // Update influence tags after project setup
+    // Update ALL UI displays after project setup
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
+    updateCharacterTags(); // This was missing!
+    updateStoryConceptDisplay(); // This was missing!
     
     console.log('Auto-generated story concept:', {
         title,
@@ -1738,6 +1763,13 @@ async function autoGenerate() {
         characters,
         influences: appState.influences
     });
+    
+    showToast('Auto-generated story concept, characters, and influences!', 'success');
+    
+    } catch (error) {
+        console.error('🎲 AutoGenerate: Error occurred:', error);
+        showToast('Error during auto-generation: ' + error.message, 'error');
+    }
 }
 
 // Initialize application
