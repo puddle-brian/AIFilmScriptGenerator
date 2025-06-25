@@ -844,7 +844,10 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         
         const response = await fetch(url, {
             method: method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
             body: JSON.stringify(isEditing && !isEditing.isNewCharacterEntry ? entryData : entryData)
         });
         
@@ -2769,7 +2772,8 @@ async function saveActContent(actKey, content) {
     const response = await fetch(`/api/edit-content/acts/${appState.projectPath}/${actKey}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-API-Key': appState.apiKey
         },
         body: JSON.stringify({ content })
     });
@@ -3173,7 +3177,8 @@ async function savePlotPointsContent(structureKey, content) {
     const response = await fetch(`/api/edit-content/plot-points/${appState.projectPath}/${structureKey}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-API-Key': appState.apiKey
         },
         body: JSON.stringify({ content })
     });
@@ -3278,7 +3283,8 @@ async function regenerateElementPlotPoint(structureKey, plotPointIndex) {
         const response = await fetch(`/api/regenerate-plot-point/${appState.projectPath}/${structureKey}/${plotPointIndex}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 model: getSelectedModel()
@@ -3614,7 +3620,8 @@ async function generateAllScenes() {
             const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-API-Key': appState.apiKey
                 },
                 body: JSON.stringify({
                     model: getSelectedModel()
@@ -3958,7 +3965,8 @@ async function generateIndividualScene(structureKey, sceneIndex) {
         const response = await fetch(`/api/generate-individual-scene/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 model: getSelectedModel()
@@ -4367,7 +4375,8 @@ async function saveDialogueContent(structureKey, sceneIndex, content) {
     const response = await fetch(`/api/edit-content/dialogue/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-API-Key': appState.apiKey
         },
         body: JSON.stringify({ content })
     });
@@ -4391,7 +4400,8 @@ async function generateDialogue(structureKey, sceneIndex) {
         const response = await fetch('/api/generate-dialogue', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 scene: scene,
@@ -4485,7 +4495,8 @@ async function generateAllDialogue() {
             const response = await fetch('/api/generate-dialogue', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-API-Key': appState.apiKey
                 },
                 body: JSON.stringify({
                     scene: scene,
@@ -4905,7 +4916,8 @@ async function saveProject() {
         const response = await fetch('/api/save-project', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 ...appState,
@@ -5449,7 +5461,8 @@ async function newProject() {
         const response = await fetch('/api/save-project', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 ...appState,
@@ -6286,7 +6299,8 @@ async function saveSceneContent(structureKey, sceneIndex, content) {
     const response = await fetch(`/api/edit-content/scenes/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
         method: 'PUT',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-API-Key': appState.apiKey
         },
         body: JSON.stringify({ content })
     });
@@ -7131,7 +7145,7 @@ const autoSaveManager = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${appState.apiKey}`
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify(projectData)
         });
@@ -7322,7 +7336,8 @@ async function generateScenesForElement(structureKey) {
         const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 model: getSelectedModel()
