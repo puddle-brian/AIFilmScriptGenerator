@@ -4733,6 +4733,10 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     } else if (stepNumber === 6 && appState.generatedScenes) {
         // Step 6: Dialogue Generation
         displayDialogueGeneration();
+        // Initialize dialogue estimates with slight delay to ensure DOM is ready
+        setTimeout(() => {
+            initializeDialogueEstimates();
+        }, 100);
     } else if (stepNumber === 7) {
         // Step 7: Final Script - Auto-assemble script with whatever dialogue we have
         if (Object.keys(appState.generatedDialogues || {}).length > 0) {
@@ -6838,13 +6842,19 @@ function calculateCompactEstimates(sceneCount) {
     
     const pricing = modelPricing[selectedModel] || modelPricing['claude-3-5-sonnet-20241022'];
     
-    // Realistic token estimates per scene:
-    const inputTokensPerScene = 1200; // Prompt + context + plot points
-    const outputTokensPerScene = 150; // Generated scene content (~100-150 words, very compact JSON)
+    // Realistic token estimates for COMPLETE project (scenes + dialogue):
     
-    // Calculate total tokens
-    const totalInputTokens = sceneCount * inputTokensPerScene;
-    const totalOutputTokens = sceneCount * outputTokensPerScene;
+    // Scene generation (compact JSON):
+    const sceneInputTokensPerScene = 1200; // Prompt + context + plot points
+    const sceneOutputTokensPerScene = 150; // Generated scene content (~100-150 words, compact JSON)
+    
+    // Dialogue generation (full screenplay format):
+    const dialogueInputTokensPerScene = 1500; // Scene context + dialogue prompt
+    const dialogueOutputTokensPerScene = 800; // Full screenplay page (~500-800 words with formatting)
+    
+    // Total tokens for complete project (scenes + dialogue)
+    const totalInputTokens = sceneCount * (sceneInputTokensPerScene + dialogueInputTokensPerScene);
+    const totalOutputTokens = sceneCount * (sceneOutputTokensPerScene + dialogueOutputTokensPerScene);
     
     // Calculate cost (pricing is per million tokens)
     const inputCost = (totalInputTokens / 1000000) * pricing.input;
@@ -6854,10 +6864,19 @@ function calculateCompactEstimates(sceneCount) {
     // Round to reasonable precision
     const displayCost = totalCost < 1 ? `~$${totalCost.toFixed(2)}` : `~$${Math.round(totalCost)}`;
     
+    // Get friendly model name
+    const modelNames = {
+        'claude-sonnet-4-20250514': 'Claude 4',
+        'claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
+        'claude-3-5-haiku-20241022': 'Haiku 3.5',
+        'claude-3-haiku-20240307': 'Haiku 3'
+    };
+    const modelDisplayName = modelNames[selectedModel] || 'Claude 3.5';
+    
     return {
         runtime: `~${runtime} min`,
         scenesPerPlot: `${scenesPerPlot} scenes/plot`,
-        cost: displayCost
+        cost: `${displayCost} with ${modelDisplayName}`
     };
 }
 
@@ -6869,4 +6888,54 @@ function updateCompactEstimateElements(estimates) {
     if (runtimeEst) runtimeEst.textContent = estimates.runtime;
     if (scenesPerPlotEst) scenesPerPlotEst.textContent = estimates.scenesPerPlot;
     if (costEst) costEst.textContent = estimates.cost;
+}
+
+// Dialogue Page Estimates - Read-only version based on actual scene count
+function initializeDialogueEstimates() {
+    // Update estimates when model changes
+    const modelSelectors = ['modelSelect', 'modelSelectMain'];
+    modelSelectors.forEach(selectorId => {
+        const selector = document.getElementById(selectorId);
+        if (selector) {
+            // Remove existing listener to avoid duplicates
+            selector.removeEventListener('change', updateDialogueEstimates);
+            selector.addEventListener('change', updateDialogueEstimates);
+        }
+    });
+    
+    updateDialogueEstimates();
+}
+
+function updateDialogueEstimates() {
+    const estimatesContainer = document.getElementById('dialogueScriptEstimates');
+    if (!estimatesContainer) return;
+    
+    // Use target scene count from Step 5 for "cost at completion" estimate
+    let targetScenes = 70; // Default
+    
+    // Get target from app state (saved from Step 5 input)
+    if (appState.storyInput && appState.storyInput.totalScenes) {
+        targetScenes = appState.storyInput.totalScenes;
+    } else {
+        // Fallback: try to get from the input field if still available
+        const totalScenesInput = document.getElementById('totalScenes');
+        if (totalScenesInput && totalScenesInput.value) {
+            targetScenes = parseInt(totalScenesInput.value) || 70;
+        }
+    }
+    
+    // Calculate estimates using target scene count (cost at completion)
+    const estimates = calculateCompactEstimates(targetScenes);
+    
+    // Update dialogue-specific elements
+    const dialogueRuntimeEst = document.getElementById('dialogueRuntimeEst');
+    const dialogueScenesPerPlotEst = document.getElementById('dialogueScenesPerPlotEst');
+    const dialogueCostEst = document.getElementById('dialogueCostEst');
+    
+    if (dialogueRuntimeEst) dialogueRuntimeEst.textContent = estimates.runtime;
+    if (dialogueScenesPerPlotEst) dialogueScenesPerPlotEst.textContent = estimates.scenesPerPlot;
+    if (dialogueCostEst) dialogueCostEst.textContent = estimates.cost;
+    
+    // Show the estimates container
+    estimatesContainer.style.display = 'inline-block';
 }
