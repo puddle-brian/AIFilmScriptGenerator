@@ -268,6 +268,7 @@ class EditableContentBlock {
         this.onSave = options.onSave; // Callback function for saving
         this.onCancel = options.onCancel; // Optional callback for canceling
         this.metadata = options.metadata || {}; // Additional data like structureKey, index, etc.
+        this.hideTitle = options.hideTitle || false; // Option to hide the title header
         this.isEditing = false;
         this.element = null;
         
@@ -283,18 +284,28 @@ class EditableContentBlock {
         this.element.id = blockId;
         
         this.element.innerHTML = `
-            <div class="editable-content-header">
-                <div class="editable-content-title">
-                    ${this.title}
-                    <span class="content-type-badge ${this.type}">${this.type.replace('-', ' ')}</span>
+            ${!this.hideTitle ? `
+                <div class="editable-content-header">
+                    <div class="editable-content-title">
+                        ${this.title}
+                        <span class="content-type-badge ${this.type}">${this.type.replace('-', ' ')}</span>
+                    </div>
+                    <div class="editable-content-actions">
+                        <button class="edit-btn" onclick="editableBlocks['${this.id}'].startEdit()">
+                            ✏️ Edit
+                        </button>
+                    </div>
                 </div>
-                <div class="editable-content-actions">
-                    <button class="edit-btn" onclick="editableBlocks['${this.id}'].startEdit()">
-                        ✏️ Edit
-                    </button>
+            ` : `
+                <div class="editable-content-header-minimal">
+                    <div class="editable-content-actions">
+                        <button class="edit-btn" onclick="editableBlocks['${this.id}'].startEdit()">
+                            ✏️ Edit
+                        </button>
+                    </div>
                 </div>
-            </div>
-            <div class="editable-content-body">
+            `}
+            <div class="editable-content-body${this.hideTitle ? ' compact' : ''}">
                 <div class="editable-content-display">
                     ${this.formatContentForDisplay(this.content)}
                 </div>
@@ -309,9 +320,11 @@ class EditableContentBlock {
                         </button>
                     </div>
                 </div>
-                <div class="editable-content-meta">
-                    Last modified: ${new Date().toLocaleString()}
-                </div>
+                ${!this.hideTitle ? `
+                    <div class="editable-content-meta">
+                        Last modified: ${new Date().toLocaleString()}
+                    </div>
+                ` : ''}
             </div>
         `;
         
@@ -392,12 +405,17 @@ class EditableContentBlock {
         if (typeof content === 'string' && content.startsWith('{')) {
             try {
                 const parsed = JSON.parse(content);
-                return `
-                    <h3>${parsed.title || parsed.name || 'Untitled Scene'}</h3>
-                    <p><strong>Location:</strong> ${parsed.location || 'Not specified'}</p>
-                    <p><strong>Time:</strong> ${parsed.time_of_day || parsed.time || 'Not specified'}</p>
-                    <p><strong>Description:</strong> ${parsed.description || 'No description'}</p>
-                `;
+
+                const containerClass = this.hideTitle ? ' class="scene-content-compact"' : '';
+                let html = `<div${containerClass}>`;
+                if (!this.hideTitle) {
+                    html += `<h3>${parsed.title || parsed.name || 'Untitled Scene'}</h3>`;
+                }
+                html += `<p><strong>Location:</strong> ${parsed.location || 'Not specified'}</p>`;
+                html += `<p><strong>Time:</strong> ${parsed.time_of_day || parsed.time || 'Not specified'}</p>`;
+                html += `<p><strong>Description:</strong> ${parsed.description || 'No description'}</p>`;
+                html += `</div>`;
+                return html;
             } catch (e) {
                 return `<p>${content}</p>`;
             }
@@ -3531,34 +3549,24 @@ function displayScenes(scenes) {
                     <p><strong>Description:</strong> ${storyAct.description}</p>
                     ${storyAct.character_development ? `<p><strong>Character Development:</strong> ${storyAct.character_development}</p>` : ''}
                 </div>
-                ${hasPlotPoints ? `
-                    <div class="plot-points-reference">
-                        <h4>Plot Points for this Act:</h4>
-                        <ol class="hierarchical-plot-points" data-act-number="${currentActIndex + 1}">
-                            ${plotPoints.map((point, index) => {
-                                const plotPointNumber = `${currentActIndex + 1}.${index + 1}`;
-                                return `<li data-plot-number="${plotPointNumber}"><span class="plot-point-number">${plotPointNumber}</span> ${point}</li>`;
-                            }).join('')}
-                        </ol>
-                    </div>
-                ` : `
-                    <div class="plot-points-warning">
-                        <p><strong>⚠️ No plot points found.</strong> Please generate plot points first in Step 4 for better scene coherence.</p>
-                        <p><em>Scene generation will be disabled until plot points are created.</em></p>
-                    </div>
-                `}
-                <div id="scenes-${structureKey}" class="scenes-container">
-                    ${hasScenes ? '' : '<p class="no-scenes">No scenes generated yet. Individual scenes will appear here as you generate them.</p>'}
+                <div id="hierarchical-content-${structureKey}" class="hierarchical-content">
+                    ${hasPlotPoints ? '' : `
+                        <div class="plot-points-warning">
+                            <p><strong>⚠️ No plot points found.</strong> Please generate plot points first in Step 4 for better scene coherence.</p>
+                            <p><em>Scene generation will be disabled until plot points are created.</em></p>
+                        </div>
+                    `}
+                    ${hasScenes ? '' : !hasPlotPoints ? '' : '<p class="no-scenes">No scenes generated yet. Generate scenes to see the hierarchical structure.</p>'}
                 </div>
             `;
             
             console.log(`Appending group element for ${structureKey} to container`);
             container.appendChild(groupElement);
             
-            // Display existing scenes if any
-            if (hasScenes) {
-                console.log(`Displaying ${sceneCount} scenes for ${structureKey}`);
-                displayScenesForElement(structureKey, sceneGroup);
+            // Display existing content hierarchically if any
+            if (hasPlotPoints || hasScenes) {
+                console.log(`Displaying hierarchical content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
+                displayHierarchicalContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
             }
         });
         console.log('Finished creating all scene groups');
@@ -5543,8 +5551,8 @@ window.addEventListener('click', function(e) {
 });
 
 // Display scenes for a specific structural element
-function displayScenesForElement(structureKey, sceneGroup) {
-    const container = document.getElementById(`scenes-${structureKey}`);
+function displayScenesForElement(structureKey, sceneGroup, customContainer = null) {
+    const container = customContainer || document.getElementById(`scenes-${structureKey}`);
     if (!container) return;
     
     container.innerHTML = '';
@@ -6588,4 +6596,158 @@ async function generateScenesForElement(structureKey) {
         showToast('Error generating scenes. Please try again.', 'error');
         hideLoading();
     }
+}
+
+// Display hierarchical content: Act -> Plot Points -> Scenes
+function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNumber) {
+    const container = document.getElementById(`hierarchical-content-${structureKey}`);
+    if (!container) return;
+    
+    // Clear any existing content
+    container.innerHTML = '';
+    
+    const hasPlotPoints = plotPoints && Array.isArray(plotPoints) && plotPoints.length > 0;
+    const hasScenes = sceneGroup && Array.isArray(sceneGroup) && sceneGroup.length > 0;
+    
+    if (!hasPlotPoints && !hasScenes) {
+        container.innerHTML = '<p class="no-content">No plot points or scenes generated yet.</p>';
+        return;
+    }
+    
+    if (!hasPlotPoints && hasScenes) {
+        // Fallback: show scenes without plot point structure
+        container.innerHTML = `
+            <div class="scenes-fallback">
+                <h4>⚠️ Scenes (Generated without plot points)</h4>
+                <p class="warning-text">These scenes were generated without the hierarchical plot point structure. Consider regenerating with plot points for better organization.</p>
+                <div class="flat-scenes-container"></div>
+            </div>
+        `;
+        const flatContainer = container.querySelector('.flat-scenes-container');
+        displayScenesForElement(structureKey, sceneGroup, flatContainer);
+        return;
+    }
+    
+    // Create hierarchical structure: Plot Points -> Scenes
+    plotPoints.forEach((plotPoint, plotPointIndex) => {
+        const plotPointNumber = `${actNumber}.${plotPointIndex + 1}`;
+        
+        // Find scenes that belong to this plot point
+        const plotPointScenes = hasScenes ? sceneGroup.filter(scene => 
+            scene.plotPointIndex === plotPointIndex
+        ) : [];
+        
+        const plotPointElement = document.createElement('div');
+        plotPointElement.className = 'hierarchical-plot-point';
+        plotPointElement.id = `plot-point-${structureKey}-${plotPointIndex}`;
+        
+        // Plot point header
+        const plotPointHeader = document.createElement('div');
+        plotPointHeader.className = 'plot-point-header';
+        plotPointHeader.innerHTML = `
+            <h4 class="plot-point-title">
+                <span class="plot-point-number">${plotPointNumber}</span>
+                <span class="plot-point-text">${plotPoint}</span>
+            </h4>
+            <div class="plot-point-meta">
+                <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
+            </div>
+        `;
+        
+        plotPointElement.appendChild(plotPointHeader);
+        
+        // Scenes container for this plot point
+        const scenesContainer = document.createElement('div');
+        scenesContainer.className = 'plot-point-scenes';
+        scenesContainer.id = `scenes-${structureKey}-${plotPointIndex}`;
+        
+        if (plotPointScenes.length > 0) {
+            // Display scenes for this plot point
+            plotPointScenes.forEach((scene, sceneIndex) => {
+                const sceneNumber = `${plotPointNumber}.${sceneIndex + 1}`;
+                const globalSceneIndex = hasScenes ? sceneGroup.indexOf(scene) : -1;
+                
+                const sceneElement = document.createElement('div');
+                sceneElement.className = 'hierarchical-scene';
+                sceneElement.id = `scene-${structureKey}-${plotPointIndex}-${sceneIndex}`;
+                
+                // Scene header
+                const sceneHeader = document.createElement('div');
+                sceneHeader.className = 'scene-header';
+                sceneHeader.innerHTML = `
+                    <h5 class="scene-title">
+                        <span class="scene-number">${sceneNumber}</span>
+                        <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
+                    </h5>
+                    <div class="scene-actions">
+                        <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${globalSceneIndex})" title="Regenerate this specific scene">
+                            🔄 Regenerate
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${globalSceneIndex})" title="Preview scene prompt">
+                            🔍 Preview
+                        </button>
+                    </div>
+                `;
+                
+                sceneElement.appendChild(sceneHeader);
+                
+                // Scene content (editable)
+                const sceneContent = JSON.stringify(scene);
+                const sceneContentContainer = document.createElement('div');
+                sceneContentContainer.className = 'scene-content-container';
+                sceneElement.appendChild(sceneContentContainer);
+                
+                // Create editable content block for the scene
+                createEditableContentBlock({
+                    id: `hierarchical-scene-${structureKey}-${plotPointIndex}-${sceneIndex}`,
+                    type: 'scenes',
+                    title: '', // Title already shown in header
+                    content: sceneContent,
+                    container: sceneContentContainer,
+                    hideTitle: true, // Don't show duplicate title
+                    metadata: { structureKey: structureKey, sceneIndex: globalSceneIndex, plotPointIndex: plotPointIndex },
+                    onSave: async (newContent, block) => {
+                        // Save the edited scene content
+                        await saveSceneContent(structureKey, globalSceneIndex, newContent);
+                        
+                        // Update the app state
+                        let updatedScene;
+                        try {
+                            updatedScene = JSON.parse(newContent);
+                        } catch (e) {
+                            // If not valid JSON, update description
+                            updatedScene = { ...scene, description: newContent };
+                        }
+                        
+                        if (appState.generatedScenes && appState.generatedScenes[structureKey] && appState.generatedScenes[structureKey][globalSceneIndex]) {
+                            appState.generatedScenes[structureKey][globalSceneIndex] = { ...appState.generatedScenes[structureKey][globalSceneIndex], ...updatedScene };
+                        }
+                        
+                        // Save to local storage
+                        saveToLocalStorage();
+                    }
+                });
+                
+                scenesContainer.appendChild(sceneElement);
+            });
+        } else {
+            // No scenes for this plot point yet
+            scenesContainer.innerHTML = `
+                <div class="no-scenes-for-plot-point">
+                    <p class="placeholder-text">No scenes generated for this plot point yet.</p>
+                    <button class="btn btn-outline btn-sm" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
+                        🎬 Generate Scenes for Plot Point ${plotPointNumber}
+                    </button>
+                </div>
+            `;
+        }
+        
+        plotPointElement.appendChild(scenesContainer);
+        container.appendChild(plotPointElement);
+    });
+}
+
+// Generate scenes for a specific plot point (optional future enhancement)
+async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
+    showToast('Individual plot point scene generation coming soon! Use "Generate Scenes" for the full act for now.', 'info');
 }
