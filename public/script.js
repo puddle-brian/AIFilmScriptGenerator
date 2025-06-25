@@ -1823,6 +1823,36 @@ async function initializeApp() {
             updateInfluenceTags('film');
             updateStoryConceptDisplay();
             
+            // Restore template selection UI if a template was selected
+            if (appState.selectedTemplate && appState.availableTemplates) {
+                setTimeout(() => {
+                    const templateElements = document.querySelectorAll('.template-option');
+                    templateElements.forEach(element => {
+                        const templateIdAttr = element.getAttribute('data-template-id');
+                        if (templateIdAttr === appState.selectedTemplate) {
+                            element.classList.add('selected');
+                            
+                            // Find and display the selected template
+                            let selectedTemplateData = null;
+                            Object.values(appState.availableTemplates).forEach(category => {
+                                if (category.templates) {
+                                    const found = category.templates.find(template => template.id === appState.selectedTemplate);
+                                    if (found) {
+                                        selectedTemplateData = found;
+                                    }
+                                }
+                            });
+                            
+                            if (selectedTemplateData) {
+                                displaySelectedTemplate(selectedTemplateData);
+                                collapseTemplateOptions();
+                                updateTemplatePageForSelection();
+                            }
+                        }
+                    });
+                }, 1000); // Give templates time to load
+            }
+            
             // Update progress meters after restoring state
             if (typeof updateAllProgressMeters === 'function') {
                 updateAllProgressMeters();
@@ -2239,6 +2269,12 @@ function selectTemplate(templateId) {
         setTimeout(() => {
             collapseTemplateOptions();
             updateTemplatePageForSelection();
+            
+            // Update navigation and progress after template selection
+            updateStepIndicators();
+            updateUniversalNavigation();
+            updateBreadcrumbNavigation();
+            updateAllProgressMeters();
         }, 200);
     }
     
@@ -2295,6 +2331,12 @@ function changeTemplate() {
         behavior: 'smooth',
         block: 'start'
     });
+    
+    // Update navigation after template deselection
+    updateStepIndicators();
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
+    updateAllProgressMeters();
     
     saveToLocalStorage();
 }
@@ -5342,6 +5384,26 @@ function startFreshProject() {
         plotPoints: {}
     });
     
+    // Clear template UI selection state
+    document.querySelectorAll('.template-option').forEach(el => {
+        el.classList.remove('selected');
+    });
+    
+    // Hide selected template display
+    const selectedDisplay = document.getElementById('selectedTemplateDisplay');
+    if (selectedDisplay) {
+        selectedDisplay.style.display = 'none';
+    }
+    
+    // Reset template step description
+    const stepDescription = document.getElementById('templateStepDescription');
+    if (stepDescription) {
+        stepDescription.textContent = 'Select a story structure template that best fits your narrative:';
+    }
+    
+    // Expand template options
+    expandTemplateOptions();
+    
     // Clear story concept
     appState.currentStoryConcept = null;
     updateStoryConceptDisplay();
@@ -5606,15 +5668,36 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
                 appState.selectedTemplate = projectData.selectedTemplate;
                 appState.templateData = projectData.templateData;
                 
-                // Update the UI
-                const templateElements = document.querySelectorAll('.template-card');
-                templateElements.forEach(element => {
-                    const templateIdAttr = element.getAttribute('data-template-id');
-                    if (templateIdAttr === projectData.selectedTemplate) {
-                        element.classList.add('selected');
-                        console.log('✅ Template UI restored:', projectData.selectedTemplate);
-                    }
-                });
+                // Update the UI - wait for templates to be loaded
+                setTimeout(() => {
+                    const templateElements = document.querySelectorAll('.template-option');
+                    templateElements.forEach(element => {
+                        const templateIdAttr = element.getAttribute('data-template-id');
+                        if (templateIdAttr === projectData.selectedTemplate) {
+                            element.classList.add('selected');
+                            console.log('✅ Template UI restored:', projectData.selectedTemplate);
+                            
+                            // Find and display the selected template
+                            let selectedTemplateData = null;
+                            if (appState.availableTemplates) {
+                                Object.values(appState.availableTemplates).forEach(category => {
+                                    if (category.templates) {
+                                        const found = category.templates.find(template => template.id === projectData.selectedTemplate);
+                                        if (found) {
+                                            selectedTemplateData = found;
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            if (selectedTemplateData) {
+                                displaySelectedTemplate(selectedTemplateData);
+                                collapseTemplateOptions();
+                                updateTemplatePageForSelection();
+                            }
+                        }
+                    });
+                }, 500); // Give templates time to load
             }
         } catch (error) {
             console.error('Error loading templates:', error);
@@ -6033,6 +6116,9 @@ function displaySelectedTemplate(templateData) {
     category.textContent = templateData.category ? templateData.category.replace('_', ' ').toUpperCase() : '';
     
     display.style.display = 'block';
+    
+    // Load and display act cards for enhanced template selection
+    loadTemplateStructureForActCards(templateData);
 }
 
 // NEW: Display template structure preview in Step 3 (UNIFIED CONTAINERS)
@@ -7465,4 +7551,117 @@ function updateBreadcrumbNavigation() {
             hasAddedAnyStep = true;
         }
     }
+}
+
+// Enhanced Template Selection - Act Cards Functions
+async function loadTemplateStructureForActCards(templateData) {
+    console.log('🎭 Loading template structure for act cards:', templateData.name);
+    
+    try {
+        // Fetch the full template data including structure
+        const response = await fetch(`/api/template/${templateData.id}`);
+        if (!response.ok) {
+            throw new Error('Failed to load template structure');
+        }
+        
+        const fullTemplateData = await response.json();
+        console.log('🎭 Full template data loaded:', fullTemplateData);
+        
+        // Update the header with template name and act count
+        updateActCardsHeader(fullTemplateData.name, Object.keys(fullTemplateData.structure).length);
+        
+        // Create and display act cards
+        createActCards(fullTemplateData.structure);
+        
+        // Show the act cards container
+        const actCardsContainer = document.getElementById('actCardsContainer');
+        if (actCardsContainer) {
+            actCardsContainer.style.display = 'block';
+        }
+        
+    } catch (error) {
+        console.error('Error loading template structure:', error);
+        // Hide act cards container on error
+        const actCardsContainer = document.getElementById('actCardsContainer');
+        if (actCardsContainer) {
+            actCardsContainer.style.display = 'none';
+        }
+    }
+}
+
+function updateActCardsHeader(templateName, actCount) {
+    // Update the header title to show the template and act count
+    const headerTitle = document.querySelector('.act-cards-header h4');
+    if (headerTitle) {
+        headerTitle.textContent = `${templateName} contains ${actCount} acts:`;
+    }
+    
+    // Hide the description/subtitle
+    const headerDescription = document.querySelector('.act-cards-description');
+    if (headerDescription) {
+        headerDescription.style.display = 'none';
+    }
+}
+
+function createActCards(templateStructure) {
+    const actCardsScroll = document.getElementById('actCardsScroll');
+    if (!actCardsScroll || !templateStructure) {
+        console.warn('Act cards container not found or no template structure');
+        return;
+    }
+    
+    // Clear existing cards
+    actCardsScroll.innerHTML = '';
+    
+    // Convert structure object to array with act numbers
+    const acts = Object.entries(templateStructure).map(([key, act], index) => ({
+        key,
+        number: index + 1,
+        name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        description: act.description || 'No description available',
+        elements: act.elements || []
+    }));
+    
+    const totalActs = acts.length;
+    console.log('🎭 Creating act cards for:', totalActs, 'acts');
+    
+    // Create act cards
+    acts.forEach(act => {
+        const actCard = createActCard(act, totalActs);
+        actCardsScroll.appendChild(actCard);
+    });
+}
+
+function createActCard(act, totalActs) {
+    const card = document.createElement('div');
+    card.className = 'act-card';
+    card.setAttribute('data-act-key', act.key);
+    
+    // Truncate title for display (keep full title for tooltip)
+    const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
+    const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
+    
+    // Use consistent act numbering format like the rest of the site
+    const actNumber = `${act.number}/${totalActs}`;
+    
+    card.innerHTML = `
+        <div class="act-card-number">${actNumber}</div>
+        <div class="act-card-title">${truncatedTitle}</div>
+        <div class="act-card-description">${truncatedDescription}</div>
+        <div class="act-card-edit-icon">📝</div>
+        <div class="act-card-tooltip">
+            <strong>${act.name}</strong><br>
+            ${act.description}
+            ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
+        </div>
+    `;
+    
+    // Add click handler for future editing functionality
+    card.addEventListener('click', () => {
+        console.log('🎭 Act card clicked:', act.name);
+        // TODO: Implement editing in Phase 2
+        console.log('Editing functionality coming in Phase 2!');
+    });
+    
+    return card;
 }
