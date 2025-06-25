@@ -4636,6 +4636,11 @@ async function exportScript(format = 'text') {
             downloadFile(scriptText, `${appState.storyInput.title || 'script'}.txt`, 'text/plain');
         }
         
+        // Mark as exported and update step indicators
+        appState.hasExported = true;
+        updateStepIndicators();
+        saveToLocalStorage();
+        
         showToast('Script exported successfully!', 'success');
     } catch (error) {
         console.error('Error exporting script:', error);
@@ -4808,10 +4813,10 @@ function canNavigateToStep(stepNumber) {
             result = true; // Can always go to step 1
             break;
         case 2:
-            result = appState.storyInput && appState.storyInput.title; // Need story input
+            result = !!(appState.storyInput && appState.storyInput.title); // Need story input
             break;
         case 3:
-            result = appState.selectedTemplate || appState.generatedStructure; // Need template selected OR structure already generated
+            result = !!(appState.selectedTemplate || appState.generatedStructure); // Need template selected OR structure already generated
             if (stepNumber === 3) {
                 console.log('Step 3 validation:', {
                     selectedTemplate: appState.selectedTemplate,
@@ -4822,23 +4827,172 @@ function canNavigateToStep(stepNumber) {
             }
             break;
         case 4:
-            result = appState.generatedStructure; // Need structure generated
+            result = !!appState.generatedStructure; // Need structure generated
             break;
         case 5:
-            result = appState.plotPoints && Object.keys(appState.plotPoints).length > 0; // Need plot points generated
+            result = !!(appState.plotPoints && Object.keys(appState.plotPoints).length > 0); // Need plot points generated
             break;
         case 6:
-            result = appState.generatedScenes; // Need scenes generated
+            // Need scenes actually generated (not just empty object)
+            result = !!(appState.generatedScenes && 
+                       Object.keys(appState.generatedScenes).some(key => 
+                           appState.generatedScenes[key] && appState.generatedScenes[key].length > 0
+                       ));
             break;
         case 7:
-            result = Object.keys(appState.generatedDialogues || {}).length > 0; // Need at least some dialogue generated
+            // Need scenes actually generated to export
+            result = !!(appState.generatedScenes && 
+                       Object.keys(appState.generatedScenes).some(key => 
+                           appState.generatedScenes[key] && appState.generatedScenes[key].length > 0
+                       ));
             if (stepNumber === 7) {
+                const sceneCount = Object.keys(appState.generatedScenes || {}).reduce((total, key) => 
+                    total + (appState.generatedScenes[key]?.length || 0), 0);
                 console.log('Step 7 validation:', {
-                    dialogueCount: Object.keys(appState.generatedDialogues || {}).length,
-                    dialogueKeys: Object.keys(appState.generatedDialogues || {}),
+                    hasScenes: !!appState.generatedScenes,
+                    sceneCount: sceneCount,
+                    hasExported: !!appState.hasExported,
                     result: result
                 });
             }
+            break;
+        default:
+            result = false;
+    }
+    
+    return result;
+}
+
+// Check if a step is fully complete (has all necessary content)
+function isStepFullyComplete(stepNumber) {
+    let result;
+    switch (stepNumber) {
+        case 1:
+            // Story input is complete if it has a story concept (title + logline)
+            result = !!(appState.storyInput && 
+                        appState.storyInput.title && 
+                        appState.storyInput.logline);
+            break;
+        case 2:
+            // Template is fully complete if selected and structure is generated
+            result = !!(appState.selectedTemplate && appState.generatedStructure);
+            break;
+        case 3:
+            // Structure is fully complete if generated and all acts have content
+            if (!appState.generatedStructure) {
+                result = false;
+            } else {
+                const structureKeys = Object.keys(appState.generatedStructure);
+                // Must have structure elements AND content for all of them
+                result = structureKeys.length > 0 && structureKeys.every(key => 
+                    appState.generatedStructure[key] && 
+                    appState.generatedStructure[key].description
+                );
+            }
+            
+            // Debug logging for step 3 completion
+            console.log('Step 3 (Structure) completion check:', {
+                hasGeneratedStructure: !!appState.generatedStructure,
+                structureKeys: appState.generatedStructure ? Object.keys(appState.generatedStructure) : [],
+                structureData: appState.generatedStructure,
+                selectedTemplate: appState.selectedTemplate,
+                result: result
+            });
+            break;
+        case 4:
+            // Plot points fully complete if generated for all structure elements
+            if (!appState.plotPoints || !appState.generatedStructure) {
+                result = false;
+            } else {
+                const requiredElements = Object.keys(appState.generatedStructure);
+                // Must have structure elements AND plot points for all of them
+                result = requiredElements.length > 0 && requiredElements.every(key => 
+                    appState.plotPoints[key] && appState.plotPoints[key].length > 0
+                );
+            }
+            
+            // Debug logging for step 4 completion
+            console.log('Step 4 (Plot Points) completion check:', {
+                hasPlotPoints: !!appState.plotPoints,
+                hasGeneratedStructure: !!appState.generatedStructure,
+                plotPointsKeys: appState.plotPoints ? Object.keys(appState.plotPoints) : [],
+                structureKeys: appState.generatedStructure ? Object.keys(appState.generatedStructure) : [],
+                plotPointsData: appState.plotPoints,
+                result: result
+            });
+            break;
+        case 5:
+            // Scenes fully complete if generated for all structure elements
+            if (!appState.generatedScenes || !appState.generatedStructure) {
+                result = false;
+            } else {
+                const sceneKeys = Object.keys(appState.generatedStructure);
+                // Must have structure elements AND scenes for all of them
+                result = sceneKeys.length > 0 && sceneKeys.every(key => 
+                    appState.generatedScenes[key] && appState.generatedScenes[key].length > 0
+                );
+            }
+            
+            // Debug logging for step 5 completion
+            const sceneKeys = appState.generatedStructure ? Object.keys(appState.generatedStructure) : [];
+            const totalScenesCount = sceneKeys.reduce((total, key) => 
+                total + (appState.generatedScenes?.[key]?.length || 0), 0);
+            console.log('Step 5 (Scenes) completion check:', {
+                hasGeneratedScenes: !!appState.generatedScenes,
+                hasGeneratedStructure: !!appState.generatedStructure,
+                sceneKeys: sceneKeys,
+                scenesData: appState.generatedScenes,
+                totalScenes: totalScenesCount,
+                targetScenes: appState.storyInput?.totalScenes,
+                result: result
+            });
+            break;
+        case 6:
+            // Dialogue fully complete if generated for all scenes
+            if (!appState.generatedDialogues || !appState.generatedScenes) {
+                result = false;
+                break;
+            }
+            
+            // Check if there's actually any dialogue content
+            const dialogueKeys = Object.keys(appState.generatedDialogues || {});
+            if (dialogueKeys.length === 0) {
+                result = false;
+                break;
+            }
+            
+            let allScenesHaveDialogue = true;
+            let totalScenes = 0;
+            let dialogueCount = 0;
+            
+            for (const structureKey of Object.keys(appState.generatedScenes)) {
+                const scenes = appState.generatedScenes[structureKey] || [];
+                totalScenes += scenes.length;
+                for (let i = 0; i < scenes.length; i++) {
+                    if (appState.generatedDialogues[`${structureKey}-${i}`]) {
+                        dialogueCount++;
+                    } else {
+                        allScenesHaveDialogue = false;
+                    }
+                }
+            }
+            
+            // Debug logging for step 6 completion
+            console.log('Step 6 (Dialogue) completion check:', {
+                hasGeneratedDialogues: !!appState.generatedDialogues,
+                hasGeneratedScenes: !!appState.generatedScenes,
+                totalScenes,
+                dialogueCount,
+                dialogueKeys: dialogueKeys.length,
+                allScenesHaveDialogue,
+                completionPercentage: totalScenes > 0 ? Math.round((dialogueCount / totalScenes) * 100) : 0
+            });
+            
+            result = allScenesHaveDialogue;
+            break;
+        case 7:
+            // Export is complete only after actually exporting
+            result = !!(appState.hasExported || false);
             break;
         default:
             result = false;
@@ -4879,14 +5033,31 @@ function updateProgressBar() {
 function updateStepIndicators() {
     document.querySelectorAll('.step').forEach((step, index) => {
         const stepNumber = index + 1;
-        step.classList.remove('active', 'completed', 'disabled');
+        step.classList.remove('active', 'completed', 'fully-complete', 'disabled');
         
+        let appliedClass = '';
         if (stepNumber === appState.currentStep) {
             step.classList.add('active');
-        } else if (stepNumber < appState.currentStep) {
+            appliedClass = 'active';
+        } else if (isStepFullyComplete(stepNumber)) {
+            step.classList.add('fully-complete');
+            appliedClass = 'fully-complete';
+        } else if (canNavigateToStep(stepNumber)) {
             step.classList.add('completed');
-        } else if (!canNavigateToStep(stepNumber)) {
+            appliedClass = 'completed';
+        } else {
             step.classList.add('disabled');
+            appliedClass = 'disabled';
+        }
+        
+        // Debug logging for step indicators (can be removed in production)
+        if (stepNumber <= 7) { // Only log first few steps to reduce noise
+            console.log(`Step ${stepNumber} indicator:`, {
+                isCurrentStep: stepNumber === appState.currentStep,
+                isFullyComplete: isStepFullyComplete(stepNumber),
+                canNavigate: canNavigateToStep(stepNumber),
+                appliedClass: appliedClass
+            });
         }
         
         // Add click handler if not already added

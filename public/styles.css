@@ -527,6 +527,10 @@ body {
     background: rgba(255,255,255,0.1);
 }
 
+.step:not(.disabled):hover::before {
+    transform: scale(1.05);
+}
+
 .step.active {
     color: white;
     font-weight: 600;
@@ -540,6 +544,14 @@ body {
     color: #2e86de;
 }
 
+.step.fully-complete {
+    color: #48bb78;
+}
+
+.step.fully-complete:hover {
+    color: #38a169;
+}
+
 .step.disabled {
     cursor: not-allowed;
     opacity: 0.5;
@@ -550,28 +562,54 @@ body {
     background: none;
 }
 
+.step.disabled:hover::before {
+    transform: none;
+}
+
 .step::before {
     content: attr(data-step);
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.2);
+    background: transparent;
+    border: 2px solid rgba(255,255,255,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 8px;
     font-weight: 600;
+    font-size: 0.9rem;
     transition: all 0.3s ease;
+    color: rgba(255,255,255,0.6);
 }
 
 .step.active::before {
     background: #4facfe;
+    border-color: #4facfe;
     color: white;
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.3);
 }
 
 .step.completed::before {
-    background: #4facfe;
+    background: rgba(255,255,255,0.4);
+    border-color: rgba(255,255,255,0.4);
+    color: rgba(255,255,255,0.8);
+}
+
+.step.fully-complete::before {
+    content: "✓";
+    background: #48bb78;
+    border-color: #48bb78;
     color: white;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.step.disabled::before {
+    background: transparent;
+    border-color: rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.4);
 }
 
 /* Cards */
