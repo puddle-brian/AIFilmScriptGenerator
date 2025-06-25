@@ -2591,6 +2591,93 @@ h2 .progress-meter {
     color: white;
 }
 
+/* Editing state styles */
+.act-card.editing {
+    border-color: #10b981;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    background: #f0fdf4;
+}
+
+.act-card.editing .act-card-edit-icon {
+    opacity: 1;
+    color: #10b981;
+    background: #dcfce7;
+}
+
+/* Editable text areas */
+.act-card-title.editable,
+.act-card-description.editable {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+    resize: vertical;
+    min-height: auto;
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
+    overflow: visible;
+}
+
+.act-card-title.editable {
+    font-weight: 600;
+    min-height: 20px;
+}
+
+.act-card-description.editable {
+    min-height: 60px;
+    margin-top: 4px;
+}
+
+.act-card-title.editable:focus,
+.act-card-description.editable:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 2px rgba(79, 172, 254, 0.1);
+}
+
+/* Edit controls */
+.act-card-edit-controls {
+    display: none;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.act-card.editing .act-card-edit-controls {
+    display: flex;
+}
+
+.act-card-edit-btn {
+    padding: 4px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.act-card-edit-btn.save {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+}
+
+.act-card-edit-btn.save:hover {
+    background: #059669;
+}
+
+.act-card-edit-btn.cancel:hover {
+    background: #f3f4f6;
+}
+
 /* Tooltip for act cards */
 .act-card-tooltip {
     position: absolute;

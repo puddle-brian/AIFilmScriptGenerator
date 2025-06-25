@@ -7646,9 +7646,13 @@ function createActCard(act, totalActs) {
     
     card.innerHTML = `
         <div class="act-card-number">${actNumber}</div>
-        <div class="act-card-title">${truncatedTitle}</div>
-        <div class="act-card-description">${truncatedDescription}</div>
+        <div class="act-card-title" data-original="${act.name}">${truncatedTitle}</div>
+        <div class="act-card-description" data-original="${act.description}">${truncatedDescription}</div>
         <div class="act-card-edit-icon">📝</div>
+        <div class="act-card-edit-controls">
+            <button class="act-card-edit-btn save">Save</button>
+            <button class="act-card-edit-btn cancel">Cancel</button>
+        </div>
         <div class="act-card-tooltip">
             <strong>${act.name}</strong><br>
             ${act.description}
@@ -7656,12 +7660,229 @@ function createActCard(act, totalActs) {
         </div>
     `;
     
-    // Add click handler for future editing functionality
-    card.addEventListener('click', () => {
-        console.log('🎭 Act card clicked:', act.name);
-        // TODO: Implement editing in Phase 2
-        console.log('Editing functionality coming in Phase 2!');
+    // Add click handler for editing
+    card.addEventListener('click', (e) => {
+        // Don't trigger editing if clicking on buttons or already editing
+        if (e.target.classList.contains('act-card-edit-btn') || card.classList.contains('editing')) {
+            return;
+        }
+        startEditingActCard(card, act);
+    });
+    
+    // Add button event listeners
+    const saveBtn = card.querySelector('.act-card-edit-btn.save');
+    const cancelBtn = card.querySelector('.act-card-edit-btn.cancel');
+    
+    saveBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        saveActCardChanges(card, act);
+    });
+    
+    cancelBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        cancelActCardEditing(card, act);
     });
     
     return card;
+}
+
+// Enhanced Template Selection - Phase 2: Inline Editing Functions
+function startEditingActCard(card, act) {
+    console.log('🎭 Starting edit mode for act:', act.name);
+    
+    // Add editing class
+    card.classList.add('editing');
+    
+    // Get title and description elements
+    const titleElement = card.querySelector('.act-card-title');
+    const descriptionElement = card.querySelector('.act-card-description');
+    
+    // Convert to editable text areas
+    const titleTextarea = document.createElement('textarea');
+    titleTextarea.className = 'act-card-title editable';
+    titleTextarea.value = titleElement.getAttribute('data-original');
+    titleTextarea.rows = 1;
+    
+    const descriptionTextarea = document.createElement('textarea');
+    descriptionTextarea.className = 'act-card-description editable';
+    descriptionTextarea.value = descriptionElement.getAttribute('data-original');
+    descriptionTextarea.rows = 3;
+    
+    // Replace elements
+    titleElement.replaceWith(titleTextarea);
+    descriptionElement.replaceWith(descriptionTextarea);
+    
+    // Auto-resize textareas
+    autoResizeTextarea(titleTextarea);
+    autoResizeTextarea(descriptionTextarea);
+    
+    // Focus on title
+    titleTextarea.focus();
+    titleTextarea.select();
+    
+    // Add auto-resize listeners
+    titleTextarea.addEventListener('input', () => autoResizeTextarea(titleTextarea));
+    descriptionTextarea.addEventListener('input', () => autoResizeTextarea(descriptionTextarea));
+    
+    // Hide tooltip during editing
+    const tooltip = card.querySelector('.act-card-tooltip');
+    if (tooltip) {
+        tooltip.style.display = 'none';
+    }
+}
+
+function saveActCardChanges(card, act) {
+    console.log('🎭 Saving changes for act:', act.name);
+    
+    // Get current values from textareas
+    const titleTextarea = card.querySelector('.act-card-title.editable');
+    const descriptionTextarea = card.querySelector('.act-card-description.editable');
+    
+    if (!titleTextarea || !descriptionTextarea) {
+        console.error('Could not find editable elements');
+        return;
+    }
+    
+    const newTitle = titleTextarea.value.trim();
+    const newDescription = descriptionTextarea.value.trim();
+    
+    // Validate inputs
+    if (!newTitle) {
+        alert('Act title cannot be empty');
+        titleTextarea.focus();
+        return;
+    }
+    
+    if (!newDescription) {
+        alert('Act description cannot be empty');
+        descriptionTextarea.focus();
+        return;
+    }
+    
+    // Update the act object
+    act.name = newTitle;
+    act.description = newDescription;
+    
+    // Update template data in app state
+    updateTemplateStructureInAppState(act.key, newTitle, newDescription);
+    
+    // Exit editing mode
+    exitEditingMode(card, act);
+    
+    // Show save feedback
+    showActCardSaveFeedback(card, 'Changes saved!');
+    
+    console.log('🎭 Act updated:', { key: act.key, name: newTitle, description: newDescription });
+}
+
+function cancelActCardEditing(card, act) {
+    console.log('🎭 Cancelling edit for act:', act.name);
+    exitEditingMode(card, act);
+}
+
+function exitEditingMode(card, act) {
+    // Remove editing class
+    card.classList.remove('editing');
+    
+    // Get textareas
+    const titleTextarea = card.querySelector('.act-card-title.editable');
+    const descriptionTextarea = card.querySelector('.act-card-description.editable');
+    
+    if (!titleTextarea || !descriptionTextarea) return;
+    
+    // Create display elements with updated content
+    const titleDiv = document.createElement('div');
+    titleDiv.className = 'act-card-title';
+    titleDiv.setAttribute('data-original', act.name);
+    const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
+    titleDiv.textContent = truncatedTitle;
+    
+    const descriptionDiv = document.createElement('div');
+    descriptionDiv.className = 'act-card-description';
+    descriptionDiv.setAttribute('data-original', act.description);
+    const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
+    descriptionDiv.textContent = truncatedDescription;
+    
+    // Replace textareas with display elements
+    titleTextarea.replaceWith(titleDiv);
+    descriptionTextarea.replaceWith(descriptionDiv);
+    
+    // Update tooltip
+    const tooltip = card.querySelector('.act-card-tooltip');
+    if (tooltip) {
+        tooltip.innerHTML = `
+            <strong>${act.name}</strong><br>
+            ${act.description}
+            ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
+        `;
+        tooltip.style.display = '';
+    }
+}
+
+function updateTemplateStructureInAppState(actKey, newTitle, newDescription) {
+    // Update the template data in appState
+    if (appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]) {
+        appState.templateData.structure[actKey].name = newTitle;
+        appState.templateData.structure[actKey].description = newDescription;
+        
+        // Trigger auto-save if available
+        if (window.autoSaveManager) {
+            autoSaveManager.markDirty();
+        }
+        
+        console.log('🎭 Template structure updated in app state');
+    }
+}
+
+function showActCardSaveFeedback(card, message) {
+    // Create feedback element
+    const feedback = document.createElement('div');
+    feedback.className = 'act-card-save-feedback';
+    feedback.textContent = message;
+    feedback.style.cssText = `
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #10b981;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        z-index: 1001;
+        animation: fadeInOut 2s ease-in-out;
+    `;
+    
+    // Add animation keyframes if not already present
+    if (!document.querySelector('#actCardFeedbackStyles')) {
+        const style = document.createElement('style');
+        style.id = 'actCardFeedbackStyles';
+        style.textContent = `
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+                20% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                80% { opacity: 1; transform: translateX(-50%) translateY(0); }
+                100% { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Add to card
+    card.appendChild(feedback);
+    
+    // Remove after animation
+    setTimeout(() => {
+        if (feedback.parentNode) {
+            feedback.parentNode.removeChild(feedback);
+        }
+    }, 2000);
+}
+
+function autoResizeTextarea(textarea) {
+    // Reset height to auto to get the correct scrollHeight
+    textarea.style.height = 'auto';
+    // Set height to scrollHeight to fit content
+    textarea.style.height = textarea.scrollHeight + 'px';
 }
