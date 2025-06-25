@@ -7648,10 +7648,15 @@ function createActCard(act, totalActs) {
         <div class="act-card-number">${actNumber}</div>
         <div class="act-card-title" data-original="${act.name}">${truncatedTitle}</div>
         <div class="act-card-description" data-original="${act.description}">${truncatedDescription}</div>
-        <div class="act-card-edit-icon">📝</div>
+        <div class="act-card-edit-icon">✏️</div>
         <div class="act-card-edit-controls">
-            <button class="act-card-edit-btn save">Save</button>
-            <button class="act-card-edit-btn cancel">Cancel</button>
+            <div class="act-card-edit-primary">
+                <button class="act-card-edit-btn save">Save</button>
+                <button class="act-card-edit-btn cancel">Cancel</button>
+            </div>
+            <div class="act-card-edit-secondary">
+                <!-- Future delete button will go here -->
+            </div>
         </div>
         <div class="act-card-tooltip">
             <strong>${act.name}</strong><br>
@@ -7660,13 +7665,19 @@ function createActCard(act, totalActs) {
         </div>
     `;
     
-    // Add click handler for editing
-    card.addEventListener('click', (e) => {
-        // Don't trigger editing if clicking on buttons or already editing
-        if (e.target.classList.contains('act-card-edit-btn') || card.classList.contains('editing')) {
-            return;
+    // Add click handler for the edit icon only
+    const editIcon = card.querySelector('.act-card-edit-icon');
+    editIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        // Toggle editing mode
+        if (card.classList.contains('editing')) {
+            // If already editing, cancel
+            cancelActCardEditing(card, act);
+        } else {
+            // Start editing
+            startEditingActCard(card, act);
         }
-        startEditingActCard(card, act);
     });
     
     // Add button event listeners
@@ -7689,6 +7700,9 @@ function createActCard(act, totalActs) {
 // Enhanced Template Selection - Phase 2: Inline Editing Functions
 function startEditingActCard(card, act) {
     console.log('🎭 Starting edit mode for act:', act.name);
+    
+    // Close any other cards that are currently being edited
+    closeAllEditingCards();
     
     // Add editing class
     card.classList.add('editing');
@@ -7780,7 +7794,11 @@ function cancelActCardEditing(card, act) {
     exitEditingMode(card, act);
 }
 
-function exitEditingMode(card, act) {
+function exitEditingMode(card, act, silent = false) {
+    if (!silent) {
+        console.log('🎭 Exiting edit mode for act:', act.name);
+    }
+    
     // Remove editing class
     card.classList.remove('editing');
     
@@ -7885,4 +7903,33 @@ function autoResizeTextarea(textarea) {
     textarea.style.height = 'auto';
     // Set height to scrollHeight to fit content
     textarea.style.height = textarea.scrollHeight + 'px';
+}
+
+function closeAllEditingCards() {
+    // Find all cards currently in editing mode
+    const editingCards = document.querySelectorAll('.act-card.editing');
+    
+    if (editingCards.length > 0) {
+        console.log('🎭 Closing', editingCards.length, 'open editing cards');
+    }
+    
+    editingCards.forEach(card => {
+        // Get the act data from the card
+        const actKey = card.getAttribute('data-act-key');
+        
+        // Find the corresponding act object (we'll need to reconstruct it)
+        const titleElement = card.querySelector('.act-card-title.editable') || card.querySelector('.act-card-title');
+        const descriptionElement = card.querySelector('.act-card-description.editable') || card.querySelector('.act-card-description');
+        
+        if (titleElement && descriptionElement) {
+            const act = {
+                key: actKey,
+                name: titleElement.getAttribute('data-original') || titleElement.textContent,
+                description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent
+            };
+            
+            // Cancel editing for this card (without logging since it's auto-close)
+            exitEditingMode(card, act, true);
+        }
+    });
 }
