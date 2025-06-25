@@ -1710,11 +1710,23 @@ async function autoGenerate() {
     appState.influences.screenwriters = randomScreenwriters;
     appState.influences.films = randomFilms;
     
-    // Auto-generate sample characters BEFORE creating the project
-    appState.projectCharacters = [
-        { name: "Protagonist", description: characters },
-        { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
-    ];
+    // Auto-generate sample characters from user library BEFORE creating the project
+    if (userLibraries.characters && userLibraries.characters.length > 0) {
+        // Randomly select 2-4 characters from user's library
+        // Note: userLibraries.characters is an array of character names (strings)
+        const randomCharacterNames = [...userLibraries.characters].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 2);
+        appState.projectCharacters = randomCharacterNames.map(characterName => ({
+            name: characterName,
+            description: `Main character: ${characterName}`,
+            fromLibrary: true
+        }));
+    } else {
+        // Fallback to generated characters if no library characters exist
+        appState.projectCharacters = [
+            { name: "Protagonist", description: characters },
+            { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
+        ];
+    }
     
     // Set tone before project initialization
     document.getElementById('tone').value = (userLibraries.tones || [])[Math.floor(Math.random() * (userLibraries.tones?.length || 1))] || '';
@@ -1731,6 +1743,10 @@ async function autoGenerate() {
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
+    
+    // Update story concept and character displays
+    updateStoryConceptDisplay();
+    updateCharacterTags();
     
     console.log('Auto-generated story concept:', {
         title,
