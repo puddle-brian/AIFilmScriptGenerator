@@ -5349,39 +5349,20 @@ function updateAllProgressMeters() {
 
 // NEW: Progress meter update function for step headers
 function updateStepHeaderProgressMeter(stepNumber) {
-    console.log(`🔍 PROGRESS METER DEBUG: updateStepHeaderProgressMeter called for step ${stepNumber}`);
-    
     const progressMeter = document.querySelector(`h2 .progress-meter[data-step="${stepNumber}"]`);
     if (!progressMeter) {
-        console.log(`🔍 PROGRESS METER DEBUG: No progress meter found for step ${stepNumber}`);
         return;
     }
-    
-    console.log(`🔍 PROGRESS METER DEBUG: Found progress meter for step ${stepNumber}`);
     
     // Calculate progress based on step completion
     let progress = 0;
     if (window.ProgressTracker) {
-        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker available, calculating progress for step ${stepNumber}`);
-        console.log(`🔍 PROGRESS METER DEBUG: Current appState:`, {
-            hasGeneratedStructure: !!appState.generatedStructure,
-            hasPlotPoints: !!appState.plotPoints,
-            hasGeneratedScenes: !!appState.generatedScenes,
-            structureKeys: appState.generatedStructure ? Object.keys(appState.generatedStructure) : [],
-            plotPointsKeys: appState.plotPoints ? Object.keys(appState.plotPoints) : [],
-            scenesKeys: appState.generatedScenes ? Object.keys(appState.generatedScenes) : []
-        });
-        
         progress = ProgressTracker.calculateStepProgress(stepNumber, appState);
-        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker returned ${progress}% for step ${stepNumber}`);
     } else {
-        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker not available, using fallback logic`);
         if (isStepFullyComplete(stepNumber)) {
             progress = 100;
         }
     }
-    
-    console.log(`🔍 PROGRESS METER DEBUG: Final progress for step ${stepNumber}: ${progress}%`);
     // No partial progress - either 0% (not complete) or 100% (complete)
     
     const circle = progressMeter.querySelector('.progress-fill');
@@ -5434,11 +5415,6 @@ function updateStepHeaderProgressMeter(stepNumber) {
         
         circle.style.strokeDasharray = `${progressLength} ${remainingLength}`;
         textElement.textContent = `${progress}%`;
-        
-        // Debug log for first few steps
-        if (stepNumber <= 3) {
-            console.log(`Step ${stepNumber} header progress: ${progress}%`);
-        }
     }
 }
 
