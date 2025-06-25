@@ -2046,30 +2046,8 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
   }
 });
 
-// Delete project endpoint
-app.delete('/api/project/:projectPath', async (req, res) => {
-  try {
-    const projectPath = req.params.projectPath;
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    
-    // Check if project directory exists
-    try {
-      await fs.access(projectDir);
-    } catch (error) {
-      return res.status(404).json({ error: 'Project not found' });
-    }
-    
-    // Recursively delete the project directory
-    await fs.rm(projectDir, { recursive: true, force: true });
-    
-    console.log(`Project deleted: ${projectPath}`);
-    res.json({ message: 'Project deleted successfully', projectPath });
-    
-  } catch (error) {
-    console.error('Error deleting project:', error);
-    res.status(500).json({ error: 'Failed to delete project', details: error.message });
-  }
-});
+// NOTE: Old file-based delete endpoint removed - system now uses database-only storage
+// Projects are deleted via /api/users/:userId/projects endpoint
 
 // Preview scene generation prompt
 app.post('/api/preview-scene-prompt', async (req, res) => {

@@ -1330,17 +1330,16 @@ function editStoryConcept() {
 }
 
 function removeStoryConcept() {
-    appState.currentStoryConcept = null;
-    
-    // Reset the dropdown selection
-    const dropdown = document.getElementById('storyConceptSelect');
-    if (dropdown) {
-        dropdown.value = '';
+    // Confirm with user since this will reset the entire project
+    if (!confirm('Removing the story concept will reset your entire project and clear all generated content. Are you sure you want to continue?')) {
+        return;
     }
     
-    updateStoryConceptDisplay();
-    saveToLocalStorage();
-    showToast('Story concept removed', 'success');
+    // Use the same logic as starting a fresh project
+    // This resets everything: story, template, structure, plot points, scenes, dialogue
+    startFreshProject();
+    
+    showToast('Story concept removed - project reset to start fresh', 'success');
 }
 
 function createNewStoryConcept() {
@@ -5843,11 +5842,21 @@ async function deleteProject(projectPath, projectTitle) {
     try {
         showLoading('Deleting project...');
         
-        // Get current username from app state
-        const username = appState.user?.username || 'guest';
+        // Get current user info from app state
+        const user = appState.user;
+        if (!user || !user.id) {
+            throw new Error('User not authenticated');
+        }
         
-        const response = await fetch(`/api/project/${encodeURIComponent(projectPath)}?username=${encodeURIComponent(username)}`, {
-            method: 'DELETE'
+        const response = await fetch(`/api/users/${user.id}/projects`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': localStorage.getItem('apiKey')
+            },
+            body: JSON.stringify({
+                project_name: projectPath
+            })
         });
         
         if (!response.ok) {
