@@ -29,10 +29,20 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Initialize PostgreSQL client
-const dbClient = new Client({
-  connectionString: process.env.DATABASE_URL,
-});
+// Initialize PostgreSQL client (optimized for serverless)
+const dbClient = process.env.VERCEL ? 
+  new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    // Serverless optimization
+    max: 1, // Limit pool size for serverless
+    idleTimeoutMillis: 1000,
+    connectionTimeoutMillis: 5000,
+    allowExitOnIdle: true
+  }) :
+  new Client({
+    connectionString: process.env.DATABASE_URL,
+  });
 
 // Database schema for usage tracking
 const CREATE_USAGE_TRACKING_TABLES = `
@@ -114,14 +124,26 @@ async function initializeDatabase() {
   }
 }
 
-// Connect to database
+// Connect to database (optimized for serverless)
 async function connectToDatabase() {
   try {
-    await dbClient.connect();
-    console.log('✅ Connected to Neon database');
-    await initializeDatabase();
+    // Test connection with shorter timeout for serverless
+    if (process.env.VERCEL) {
+      // In serverless, use pooled connections without persistent connect()
+      console.log('🔧 Using pooled connections for serverless');
+      await initializeDatabase();
+    } else {
+      // Traditional connection for local development
+      await dbClient.connect();
+      console.log('✅ Connected to Neon database');
+      await initializeDatabase();
+    }
   } catch (error) {
     console.error('❌ Failed to connect to database:', error);
+    // Don't throw error in serverless - let individual queries handle it
+    if (!process.env.VERCEL) {
+      throw error;
+    }
   }
 }
 
@@ -130,7 +152,7 @@ app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
-// Authentication middleware
+// Authentication middleware (optimized for serverless)
 async function authenticateApiKey(req, res, next) {
   const apiKey = req.headers['x-api-key'] || req.query.api_key;
   
@@ -142,10 +164,22 @@ async function authenticateApiKey(req, res, next) {
   }
 
   try {
-    const user = await dbClient.query(
+    // Add timeout handling for serverless environment
+    const queryPromise = dbClient.query(
       'SELECT * FROM users WHERE api_key = $1',
       [apiKey]
     );
+    
+    let user;
+    if (process.env.VERCEL) {
+      // Set 5-second timeout for serverless
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Authentication timeout')), 5000)
+      );
+      user = await Promise.race([queryPromise, timeoutPromise]);
+    } else {
+      user = await queryPromise;
+    }
 
     if (user.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid API key' });
@@ -155,7 +189,11 @@ async function authenticateApiKey(req, res, next) {
     next();
   } catch (error) {
     console.error('Authentication error:', error);
-    res.status(500).json({ error: 'Authentication failed' });
+    if (error.message === 'Authentication timeout') {
+      res.status(504).json({ error: 'Authentication timeout - please try again' });
+    } else {
+      res.status(500).json({ error: 'Authentication failed' });
+    }
   }
 }
 

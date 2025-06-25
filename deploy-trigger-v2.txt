@@ -1,12 +1,18 @@
-Deploy trigger v2.2 - Fixed Vercel route precedence issue
+Deploy trigger v2.3 - Fixed serverless database connection pooling
 
 Fixes:
 1. ✅ Skip directory creation (generated/, templates/) on serverless environment
 2. ✅ Proper module.exports for Vercel serverless function deployment
 3. ✅ Environment-aware startup logic (serverless vs traditional server)
-4. 🆕 Fixed route precedence - root path "/" now properly serves index.html
+4. ✅ Fixed route precedence - root path "/" now properly serves index.html
+5. 🆕 Database connection pooling for serverless optimization
 
-Issue: The catch-all route "/(.*)" was intercepting root requests before static files
-Solution: Added explicit route for "/" to serve index.html before catch-all
+Critical Fix: Replaced single Client with Pool for Vercel serverless environment
+- Pool configuration: max=1, idleTimeoutMillis=1000, connectionTimeoutMillis=5000
+- Added SSL configuration for Neon database on Vercel
+- Added authentication timeout handling (5 seconds)
+- Environment-aware database connection management
+
+This should resolve 504 Gateway Timeout and 401 Authentication errors.
 
 Date: 2025-01-25 
