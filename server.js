@@ -915,7 +915,7 @@ class HierarchicalContext {
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
     
     // Generate hierarchical prompt for multiple scenes from one plot point
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
 MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
 2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
@@ -1771,7 +1771,7 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
 Scene to write dialogue for:
 ${JSON.stringify(scene, null, 2)}`;
         
-        hierarchicalPrompt = hierarchicalContext.generateHierarchicalPrompt(5, customInstructions);
+        hierarchicalPrompt = await hierarchicalContext.generateHierarchicalPrompt(5, customInstructions);
         
         // Use our template system for hierarchical dialogue generation
         prompt = promptBuilders.buildDialoguePrompt(hierarchicalPrompt, scene, context);
@@ -2254,15 +2254,39 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
 6. Use any available plot points as guidance for narrative flow
 7. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic`;
         
-        hierarchicalPrompt = context.generateHierarchicalPrompt(5, customInstructions);
+        hierarchicalPrompt = await context.generateHierarchicalPrompt(5, customInstructions);
         
-        // Use our new prompt builder system for both individual and multiple scenes
+        // Use hierarchical prompt directly instead of template system
         if (existingScene && sceneIndex !== null) {
-          // For individual scene, use the specific individual scene template
-          prompt = promptBuilders.buildIndividualScenePrompt(hierarchicalPrompt);
+          // For individual scene regeneration, use hierarchical prompt directly
+          prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location", 
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+}`;
         } else {
-          // For multiple scenes
-          prompt = promptBuilders.buildScenePrompt(hierarchicalPrompt, sceneCount);
+          // For multiple scenes, use hierarchical prompt directly
+          prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
         }
         
         systemMessage = "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
@@ -2276,8 +2300,8 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
     // Fallback to simple prompt if hierarchical context failed
     if (!hierarchicalPrompt) {
       if (existingScene && sceneIndex !== null) {
-        // Individual scene regeneration prompt using template system
-        const fallbackContext = `Regenerate a single scene for "${storyInput.title}".
+        // Individual scene regeneration prompt - direct approach
+        prompt = `Regenerate a single scene for "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2292,12 +2316,26 @@ STRUCTURAL ELEMENT:
 
 SCENE TO REGENERATE:
 - Position: Scene ${sceneIndex + 1} in this structural element
-- Current title: ${existingScene.title || 'New Scene'}`;
-        
-        prompt = promptBuilders.buildIndividualScenePrompt(fallbackContext);
+- Current title: ${existingScene.title || 'New Scene'}
+
+REQUIREMENTS:
+- Create a single scene that fits this structural element
+- Make it cinematic and specific, not just a plot summary
+- Scene should advance the plot and character development described above
+- Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location", 
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+}`;
       } else {
-        // Multiple scenes generation prompt using template system
-        const fallbackContext = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+        // Multiple scenes generation prompt - direct approach
+        prompt = `Create ${sceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2308,12 +2346,32 @@ STORY CONTEXT:
 STRUCTURAL ELEMENT TO DEVELOP:
 - Name: ${structureElement.name}
 - Description: ${structureElement.description}
-- Character Development: ${structureElement.character_development || 'Not specified'}`;
-        
-        prompt = promptBuilders.buildScenePrompt(fallbackContext, sceneCount);
+- Character Development: ${structureElement.character_development || 'Not specified'}
+
+REQUIREMENTS:
+1. Create exactly ${sceneCount} scenes that develop this structural element
+2. Each scene should advance the plot and character development described above
+3. Make scenes cinematic and specific, not just plot summaries
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
       }
       
-      systemMessage = "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
+      systemMessage = "You are a professional screenwriter generating scenes within a story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
     }
 
     res.json({
@@ -2480,7 +2538,7 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
     await context.buildPlotPointsContext([], 0, projectPath);
     
     // Generate hierarchical prompt for plot points generation (Level 4) with inter-act causality
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 1. Break down this story act into ${desiredSceneCount} causally connected plot points
 2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
@@ -2620,7 +2678,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
     
     // Generate hierarchical prompt for multiple scenes from one plot point
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
 MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
 2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
@@ -2856,7 +2914,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       
       // Generate hierarchical prompt using context system
       console.log('About to generate hierarchical prompt...');
-      const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+      const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
 SCENE GENERATION REQUIREMENTS:
 1. Create exactly ${finalSceneCount} scenes that develop this structural element
 2. Each scene should advance the plot and character development described above
@@ -2870,8 +2928,22 @@ The scenes you generate should feel like organic parts of the complete story str
       
       console.log('Hierarchical prompt generated successfully');
       
-      // Use our new prompt builder system
-      prompt = promptBuilders.buildScenePrompt(hierarchicalPrompt, finalSceneCount);
+      // Use hierarchical prompt directly for multiple scenes generation
+      prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
       
       console.log('About to save context to project...');
       
@@ -2886,8 +2958,8 @@ The scenes you generate should feel like organic parts of the complete story str
     } catch (contextError) {
       console.error('Failed to build hierarchical context, falling back to simple prompt:', contextError);
       
-      // Fallback to simple prompt using template system
-      const fallbackContext = `Create ${finalSceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
+      // Fallback to simple prompt - direct approach
+      prompt = `Create ${finalSceneCount} detailed scenes for this specific structural element of "${storyInput.title}".
 
 STORY CONTEXT:
 - Title: ${storyInput.title}
@@ -2898,9 +2970,29 @@ STORY CONTEXT:
 STRUCTURAL ELEMENT TO DEVELOP:
 - Name: ${structureElement.name}
 - Description: ${structureElement.description}
-- Character Development: ${structureElement.character_development || 'Not specified'}`;
+- Character Development: ${structureElement.character_development || 'Not specified'}
 
-      prompt = promptBuilders.buildScenePrompt(fallbackContext, finalSceneCount);
+REQUIREMENTS:
+1. Create exactly ${finalSceneCount} scenes that develop this structural element
+2. Each scene should advance the plot and character development described above
+3. Make scenes cinematic and specific, not just plot summaries
+4. Vary scene types: some dialogue-heavy, some action, some introspective
+5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night", 
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"]
+    }
+  ]
+}`;
     }
 
     console.log('About to call Anthropic API for scene generation...');
@@ -3079,7 +3171,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     context.buildSceneContext(sceneIndexNum, plotPointIndex, existingScene, elementScenes.length);
     
     // Generate hierarchical prompt using context system
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
 SCENE GENERATION REQUIREMENTS:
 1. This scene must serve the OVERALL STORY STRUCTURE and advance the narrative
 2. It must fulfill the specific PURPOSE of its structural element
@@ -3090,8 +3182,18 @@ SCENE GENERATION REQUIREMENTS:
 
 The scene you generate should feel like an organic part of the complete story structure, not an isolated fragment.`);
     
-    // Use our new prompt builder system for individual scene generation
-    const prompt = promptBuilders.buildIndividualScenePrompt(hierarchicalPrompt);
+    // Use hierarchical prompt directly for individual scene generation
+    const prompt = `${hierarchicalPrompt}
+
+Return ONLY valid JSON in this exact format:
+{
+  "title": "Scene Title",
+  "location": "Specific location", 
+  "time_of_day": "Morning/Afternoon/Evening/Night",
+  "description": "What happens in this scene - be specific and visual",
+  "characters": ["Character1", "Character2"],
+  "emotional_beats": ["primary emotion", "secondary emotion"]
+}`;
 
     // Save updated context to project
     await context.saveToProject(projectPath);
@@ -3100,7 +3202,7 @@ The scene you generate should feel like an organic part of the complete story st
       model: model,
       max_tokens: 1000,
       temperature: 0.7,
-      system: "Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
+      system: "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
       messages: [
         {
           role: "user",
@@ -4711,7 +4813,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
     
     // Generate hierarchical prompt for individual plot point regeneration
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 INDIVIDUAL PLOT POINT REGENERATION:
 1. You are regenerating plot point #${plotPointIndexNum + 1} of ${existingPlotPoints.length} in this story act
 2. The current plot point is: "${targetPlotPoint}"
@@ -4851,7 +4953,7 @@ app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
     await context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
     
     // Generate hierarchical prompt for individual plot point regeneration
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 INDIVIDUAL PLOT POINT REGENERATION:
 1. You are regenerating plot point #${plotPointIndexNum + 1} of ${existingPlotPoints.length} in this story act
 2. The current plot point is: "${targetPlotPoint}"
@@ -5810,7 +5912,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
     
     // Generate hierarchical prompt for multiple scenes from one plot point
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(5, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
 MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
 2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
