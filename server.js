@@ -4,7 +4,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Anthropic = require('@anthropic-ai/sdk');
-const { Client } = require('pg');
+const { Client, Pool } = require('pg');
 const promptBuilders = require('./prompt-builders');
 require('dotenv').config();
 
@@ -29,14 +29,26 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-// Initialize PostgreSQL client (optimized for serverless)
-const dbClient = new Client({
-  connectionString: process.env.DATABASE_URL,
-  // Add SSL and timeout configuration for serverless
-  ssl: process.env.VERCEL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: process.env.VERCEL ? 15000 : 30000,
-  query_timeout: process.env.VERCEL ? 15000 : 30000,
-});
+// Initialize PostgreSQL client (serverless-optimized with connection pooling)
+const dbClient = process.env.VERCEL ? 
+  new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    max: 3, // Small pool for serverless
+    min: 0, // Allow scaling to zero
+    acquire: 15000, // 15 second acquire timeout
+    idle: 10000, // Close idle connections after 10 seconds
+    evict: 30000, // Remove stale connections
+    createTimeoutMillis: 15000,
+    acquireTimeoutMillis: 15000,
+    idleTimeoutMillis: 10000,
+    reapIntervalMillis: 1000,
+    createRetryIntervalMillis: 2000,
+    propagateCreateError: false
+  }) :
+  new Client({
+    connectionString: process.env.DATABASE_URL,
+  });
 
 // Database schema for usage tracking
 const CREATE_USAGE_TRACKING_TABLES = `
@@ -156,20 +168,26 @@ async function authenticateApiKey(req, res, next) {
   }
 
   try {
+    console.log('🔐 Authenticating API key:', apiKey.substring(0, 10) + '...');
+    
     // Simple query with built-in timeout handling
     const user = await dbClient.query(
       'SELECT * FROM users WHERE api_key = $1',
       [apiKey]
     );
 
+    console.log('✅ Authentication query successful, found', user.rows.length, 'users');
+
     if (user.rows.length === 0) {
       return res.status(401).json({ error: 'Invalid API key' });
     }
 
     req.user = user.rows[0];
+    console.log('✅ User authenticated:', user.rows[0].username);
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('❌ Authentication error:', error.message);
+    console.error('❌ Error details:', error);
     res.status(500).json({ error: 'Authentication failed', details: error.message });
   }
 }
@@ -5751,8 +5769,14 @@ const startServer = async () => {
 
 // For Vercel serverless deployment
 if (process.env.VERCEL) {
-  // Skip database initialization in serverless startup
-  console.log('🔧 Serverless mode - database connections on-demand');
+  // Initialize database for serverless with timeout protection
+  console.log('🔧 Serverless mode - initializing database with pooling');
+  
+  initializeDatabase().then(() => {
+    console.log('✅ Serverless database initialized successfully');
+  }).catch((error) => {
+    console.error('⚠️  Serverless database initialization failed:', error.message);
+  });
   
   // Export the Express app for Vercel
   module.exports = app;
