@@ -1767,6 +1767,10 @@ async function initializeApp() {
     updateProgressBar();
     updateStepIndicators();
     
+    // Update universal navigation buttons and breadcrumbs
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
+    
     // Populate dropdowns from JSON files
     await populateDropdowns();
     
@@ -2384,6 +2388,7 @@ async function generateStructureWithCustomPrompt() {
             });
             
             displayStructure(data.structure, appState.customPrompt.userPrompt, appState.customPrompt.systemMessage);
+            updateUniversalNavigation(); // Update navigation after structure generation
             goToStep(3);
             showToast('Plot structure generated with custom prompt!', 'success');
         } else {
@@ -2456,6 +2461,7 @@ async function generateStructure() {
             });
             
             displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
+            updateUniversalNavigation(); // Update navigation after structure generation
             goToStep(3);
             showToast('Plot structure generated successfully!', 'success');
         } else {
@@ -2751,9 +2757,9 @@ async function regenerateStructure() {
     await generateStructure();
 }
 
-// Approve structure and generate scenes
-async function approveStructure() {
-    console.log('Structure approved, proceeding to plot points generation');
+// Navigate to plot points (removed approval concept)
+async function goToPlotPoints() {
+    console.log('Navigating to plot points generation');
     goToStep(4); // Go to plot points step
     await displayPlotPointsGeneration();
 }
@@ -3981,10 +3987,10 @@ async function regenerateScenes(method = 'simple') {
     }
 }
 
-// Approve scenes and go to dialogue generation
-function approveScenes() {
+// Navigate to dialogue generation (removed approval concept)
+function goToDialogue() {
     if (!appState.generatedScenes) {
-        showToast('No scenes to approve.', 'error');
+        showToast('No scenes available for dialogue generation.', 'error');
         return;
     }
     
@@ -4655,6 +4661,8 @@ async function exportScript(format = 'text') {
         // Mark as exported and update step indicators
         appState.hasExported = true;
         updateStepIndicators();
+        updateUniversalNavigation();
+        updateBreadcrumbNavigation();
         saveToLocalStorage();
         
         showToast('Script exported successfully!', 'success');
@@ -4807,6 +4815,10 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     appState.currentStep = stepNumber;
     updateProgressBar();
     updateStepIndicators();
+    
+    // Update universal navigation buttons and breadcrumbs
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
     
     // Update project header if project is loaded
     if (appState.storyInput) {
@@ -7253,4 +7265,119 @@ function updateDialogueEstimates() {
     
     // Show the estimates container
     estimatesContainer.style.display = 'inline-block';
+}
+
+// Universal navigation system - replaces approval-based navigation
+function updateUniversalNavigation() {
+    const currentStep = appState.currentStep;
+    
+    // Get the current step's actions container
+    const actionsContainer = document.querySelector(`#step${currentStep} .step-actions`);
+    if (!actionsContainer) return;
+    
+    // Clear existing buttons
+    actionsContainer.innerHTML = '';
+    
+    // Add Back button (if not on step 1)
+    if (currentStep > 1) {
+        const backBtn = document.createElement('button');
+        backBtn.className = 'btn btn-secondary';
+        backBtn.textContent = 'Back';
+        backBtn.onclick = () => goToStep(currentStep - 1);
+        actionsContainer.appendChild(backBtn);
+    }
+    
+    // Add Forward button (if next step is available) or special actions for final step
+    const nextStep = currentStep + 1;
+    if (nextStep <= 7 && canNavigateToStep(nextStep)) {
+        const forwardBtn = document.createElement('button');
+        forwardBtn.className = 'btn btn-primary';
+        forwardBtn.textContent = getForwardButtonText(currentStep, nextStep);
+        forwardBtn.onclick = () => goToStep(nextStep);
+        actionsContainer.appendChild(forwardBtn);
+    } else if (currentStep === 7) {
+        // Final step - add export and start over buttons
+        if (Object.keys(appState.generatedDialogues || {}).length > 0) {
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'btn btn-success';
+            exportBtn.textContent = 'Export Script';
+            exportBtn.onclick = () => exportScript();
+            actionsContainer.appendChild(exportBtn);
+        }
+        
+        const startOverBtn = document.createElement('button');
+        startOverBtn.className = 'btn btn-secondary';
+        startOverBtn.textContent = 'Start New Script';
+        startOverBtn.onclick = () => startOver();
+        actionsContainer.appendChild(startOverBtn);
+    }
+}
+
+// Get appropriate text for forward button based on current step
+function getForwardButtonText(currentStep, nextStep) {
+    const stepNames = {
+        1: 'Story Input',
+        2: 'Template',
+        3: 'Acts',
+        4: 'Plot Points', 
+        5: 'Scenes',
+        6: 'Dialogue',
+        7: 'Export'
+    };
+    
+    return `Continue to ${stepNames[nextStep]}`;
+}
+
+// Update breadcrumb navigation to match step availability
+function updateBreadcrumbNavigation() {
+    const currentStep = appState.currentStep;
+    const breadcrumbContainer = document.querySelector(`#step${currentStep} .step-breadcrumb`);
+    
+    if (!breadcrumbContainer) return;
+    
+    // Clear existing breadcrumbs
+    breadcrumbContainer.innerHTML = '';
+    
+    const stepNames = {
+        1: 'Story Input',
+        2: 'Template', 
+        3: 'Acts',
+        4: 'Plot Points',
+        5: 'Scenes',
+        6: 'Dialogue',
+        7: 'Export'
+    };
+    
+    // Build breadcrumb path showing ALL accessible steps (not just up to current)
+    let hasAddedAnyStep = false;
+    
+    for (let step = 1; step <= 7; step++) {
+        // Only show accessible steps or current step
+        if (step === currentStep || canNavigateToStep(step)) {
+            if (hasAddedAnyStep) {
+                // Add separator
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '→';
+                breadcrumbContainer.appendChild(separator);
+            }
+            
+            if (step === currentStep) {
+                // Current step - not clickable
+                const current = document.createElement('span');
+                current.className = 'breadcrumb-current';
+                current.textContent = stepNames[step];
+                breadcrumbContainer.appendChild(current);
+            } else {
+                // Accessible step - clickable
+                const button = document.createElement('button');
+                button.className = 'breadcrumb-btn';
+                button.textContent = stepNames[step];
+                button.onclick = () => goToStep(step);
+                breadcrumbContainer.appendChild(button);
+            }
+            
+            hasAddedAnyStep = true;
+        }
+    }
 }

@@ -525,6 +525,7 @@ body {
 .step:hover {
     color: rgba(255,255,255,0.9);
     background: rgba(255,255,255,0.1);
+    cursor: pointer;
 }
 
 .step:not(.disabled):hover::before {
@@ -1827,6 +1828,12 @@ h2 .progress-meter {
 .breadcrumb-current {
     color: #2d3748;
     font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.breadcrumb-disabled {
+    color: rgba(45, 55, 72, 0.4);
+    font-weight: 400;
     font-size: 0.9rem;
 }
 
