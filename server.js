@@ -381,7 +381,7 @@ const ensureDirectories = async () => {
 };
 
 // Generate detailed description of a story structure template
-function generateStructureDescription(templateData) {
+async function generateStructureDescription(templateData) {
   const name = templateData.name;
   const description = templateData.description || '';
   const category = templateData.category || '';
@@ -404,7 +404,32 @@ function generateStructureDescription(templateData) {
   // Add detailed breakdown of the story acts
   if (templateData.structure) {
     structureDesc += `\n\nStory Acts:`;
-    Object.entries(templateData.structure).forEach(([key, act]) => {
+    
+    // 🔧 FIX: Preserve original template order by loading the original template file
+    let originalOrder = [];
+    try {
+      if (templateData.id) {
+        const fs = require('fs').promises;
+        const path = require('path');
+        const originalTemplatePath = path.join(__dirname, 'templates', `${templateData.id}.json`);
+        const originalTemplateContent = await fs.readFile(originalTemplatePath, 'utf8');
+        const originalTemplate = JSON.parse(originalTemplateContent);
+        if (originalTemplate.structure) {
+          originalOrder = Object.keys(originalTemplate.structure);
+        }
+      }
+    } catch (error) {
+      console.log('Could not load original template for ordering, using current order');
+      originalOrder = Object.keys(templateData.structure);
+    }
+    
+    // Use original order if available, otherwise fall back to current order
+    const keysToUse = originalOrder.length > 0 ? originalOrder : Object.keys(templateData.structure);
+    
+    keysToUse.forEach(key => {
+      const act = templateData.structure[key];
+      if (!act) return; // Skip if act doesn't exist in current structure
+      
       if (typeof act === 'string') {
         structureDesc += `\n- ${key}: ${act}`;
       } else if (act && typeof act === 'object') {
@@ -650,7 +675,7 @@ class HierarchicalContext {
   }
 
   // Generate a hierarchical prompt from the context chain
-  generateHierarchicalPrompt(targetLevel = 5, customInstructions = '') {
+  async generateHierarchicalPrompt(targetLevel = 5, customInstructions = '') {
     let prompt = '';
     
     // Level 1: Story Foundation with Full Creative Context
@@ -691,7 +716,7 @@ class HierarchicalContext {
       prompt += `${structure.template.name}\n`;
       
       // Generate template description
-      const templateDescription = generateStructureDescription(structure.template);
+      const templateDescription = await generateStructureDescription(structure.template);
       prompt += `${templateDescription}\n\n`;
       
       // If we have a current act context, show only that act
@@ -1083,12 +1108,34 @@ app.get('/api/template/:templateId', async (req, res) => {
 // Preview the prompt that would be used for structure generation
 app.post('/api/preview-prompt', async (req, res) => {
   try {
-    const { storyInput, template } = req.body;
+    const { storyInput, template, customTemplateData } = req.body;
     
-    // Load the selected template
-    const templatePath = path.join(__dirname, 'templates', `${template}.json`);
-    const templateContent = await fs.readFile(templatePath, 'utf8');
-    const templateData = JSON.parse(templateContent);
+    // 🔧 Use customized template data if provided, otherwise load from file
+    let templateData;
+    let debugInfo = {};
+    
+    if (customTemplateData && customTemplateData.structure) {
+      console.log('🎭 Using customized template data for prompt preview');
+      templateData = customTemplateData;
+      debugInfo.source = 'customized';
+      debugInfo.structureKeys = Object.keys(customTemplateData.structure);
+      // Sample a few acts to verify customizations
+      const firstActKey = Object.keys(customTemplateData.structure)[0];
+      if (firstActKey) {
+        debugInfo.sampleAct = {
+          key: firstActKey,
+          name: customTemplateData.structure[firstActKey].name,
+          description: customTemplateData.structure[firstActKey].description
+        };
+      }
+    } else {
+      console.log('🎭 Loading original template data from file');
+      const templatePath = path.join(__dirname, 'templates', `${template}.json`);
+      const templateContent = await fs.readFile(templatePath, 'utf8');
+      templateData = JSON.parse(templateContent);
+      debugInfo.source = 'original_file';
+      debugInfo.structureKeys = templateData.structure ? Object.keys(templateData.structure) : [];
+    }
     
     const influencePrompt = storyInput.influencePrompt || '';
     const influencesSection = storyInput.influences ? `
@@ -1100,7 +1147,7 @@ ${storyInput.influences.films && storyInput.influences.films.length > 0 ?
   `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
 
     // Generate a detailed description of the template structure
-    const structureDescription = generateStructureDescription(templateData);
+    const structureDescription = await generateStructureDescription(templateData);
     
     const prompt = `${influencePrompt}Based on the following story concept, generate a detailed plot structure using the ${templateData.name} format that embodies these artistic sensibilities:
 
@@ -1150,7 +1197,8 @@ Example format:
     res.json({
       prompt: prompt,
       template: templateData,
-      systemMessage: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON."
+      systemMessage: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON.",
+      debugInfo: debugInfo // Include debug info in response
     });
   } catch (error) {
     console.error('Error generating prompt preview:', error);
@@ -1379,17 +1427,24 @@ Project ID: ${customProjectId}
 app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async (req, res) => {
   try {
     console.log('Received structure generation request:', req.body);
-    const { storyInput, template, model = "claude-sonnet-4-20250514" } = req.body;
+    const { storyInput, template, customTemplateData, model = "claude-sonnet-4-20250514" } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
       return res.status(500).json({ error: 'API key not configured' });
     }
     
-    // Load the selected template
-    const templatePath = path.join(__dirname, 'templates', `${template}.json`);
-    const templateContent = await fs.readFile(templatePath, 'utf8');
-    const templateData = JSON.parse(templateContent);
+    // 🔧 Use customized template data if provided, otherwise load from file
+    let templateData;
+    if (customTemplateData && customTemplateData.structure) {
+      console.log('🎭 Using customized template data for structure generation');
+      templateData = customTemplateData;
+    } else {
+      console.log('🎭 Loading original template data from file');
+      const templatePath = path.join(__dirname, 'templates', `${template}.json`);
+      const templateContent = await fs.readFile(templatePath, 'utf8');
+      templateData = JSON.parse(templateContent);
+    }
     
     // Use our new prompt builder system
     const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
@@ -1451,7 +1506,7 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
       projectPath: projectFolderName,
       storyInput,
       selectedTemplate: template,
-      templateData: templateData,
+      templateData: templateData, // 🔧 This now contains user's customized template data
       generatedStructure: structureData,
       plotPoints: {},
       generatedScenes: {},

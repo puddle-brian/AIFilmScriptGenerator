@@ -2343,6 +2343,11 @@ function changeTemplate() {
 
 // Preview prompt that will be sent to Claude
 async function previewPrompt() {
+    console.log('🔍 DEBUG: previewPrompt() called');
+    console.log('🔍 DEBUG: appState.selectedTemplate:', appState.selectedTemplate);
+    console.log('🔍 DEBUG: appState.templateData exists:', !!appState.templateData);
+    console.log('🔍 DEBUG: appState.templateData structure exists:', !!(appState.templateData && appState.templateData.structure));
+    
     if (!appState.selectedTemplate) {
         showToast('Please select a template first.', 'error');
         return;
@@ -2362,6 +2367,26 @@ async function previewPrompt() {
         };
     }
     
+    console.log('🔍 DEBUG: About to send request with:', {
+        storyInput: storyInput.title,
+        template: appState.selectedTemplate,
+        hasCustomTemplateData: !!appState.templateData,
+        customTemplateDataKeys: appState.templateData ? Object.keys(appState.templateData) : []
+    });
+    
+    if (appState.templateData && appState.templateData.structure) {
+        console.log('🔍 DEBUG: Custom template structure keys:', Object.keys(appState.templateData.structure));
+        // Log a sample act to verify customizations
+        const firstActKey = Object.keys(appState.templateData.structure)[0];
+        if (firstActKey) {
+            console.log('🔍 DEBUG: Sample act data:', {
+                key: firstActKey,
+                name: appState.templateData.structure[firstActKey].name,
+                description: appState.templateData.structure[firstActKey].description
+            });
+        }
+    }
+    
     try {
         showLoading('Generating prompt preview...');
         
@@ -2372,11 +2397,19 @@ async function previewPrompt() {
             },
             body: JSON.stringify({
                 storyInput: storyInput,
-                template: appState.selectedTemplate
+                template: appState.selectedTemplate,
+                customTemplateData: appState.templateData // 🔧 Send customized template data
             })
         });
         
+        console.log('🔍 DEBUG: Response received, status:', response.status);
+        
         const data = await response.json();
+        
+        console.log('🔍 DEBUG: Server response data:', {
+            hasDebugInfo: !!data.debugInfo,
+            debugInfo: data.debugInfo
+        });
         
         if (response.ok) {
             // Store original prompt
@@ -2508,6 +2541,7 @@ async function generateStructure() {
             body: JSON.stringify({
                 storyInput: appState.storyInput,
                 template: appState.selectedTemplate,
+                customTemplateData: appState.templateData, // 🔧 Send customized template data
                 model: getSelectedModel()
             })
         });
@@ -5595,6 +5629,20 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     // Temporary fallbacks for legacy localStorage data (can be removed after migration period)
     appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
     appState.templateData = projectData.templateData || projectData.template;
+    
+    // 🔍 DEBUG: Log restored template data
+    console.log('🔍 DEBUG: Template data restoration:', {
+        selectedTemplate: appState.selectedTemplate,
+        hasTemplateData: !!appState.templateData,
+        templateDataSource: projectData.templateData ? 'projectData.templateData' : (projectData.template ? 'projectData.template (legacy)' : 'none'),
+        templateData: appState.templateData ? {
+            id: appState.templateData.id,
+            name: appState.templateData.name,
+            hasStructure: !!appState.templateData.structure,
+            structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : [],
+            hasOriginalOrder: !!appState.templateData.originalOrder
+        } : null
+    });
     appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
     appState.plotPoints = projectData.plotPoints || {};
     appState.generatedScenes = projectData.generatedScenes || projectData.scenes || {};
@@ -5701,7 +5749,37 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
                             }
                             
                             if (selectedTemplateData) {
-                                displaySelectedTemplate(selectedTemplateData);
+                                // 🔧 Use customized template data from database if available
+                                const templateDataToDisplay = projectData.templateData || selectedTemplateData;
+                                console.log('🔍 DEBUG: Template restoration:');
+                                console.log('  - selectedTemplateData:', selectedTemplateData.name);
+                                console.log('  - projectData.templateData exists:', !!projectData.templateData);
+                                console.log('  - Using templateDataToDisplay:', templateDataToDisplay.name);
+                                console.log('  - templateDataToDisplay has customizations:', templateDataToDisplay !== selectedTemplateData);
+                                
+                                // 🔧 CRITICAL FIX: Don't call displaySelectedTemplate if we already have customized template data
+                                // This prevents overwriting the restored customizations
+                                if (projectData.templateData && projectData.templateData.structure) {
+                                    console.log('🔧 SKIPPING displaySelectedTemplate - using existing customized data');
+                                    // Just update the UI elements without calling loadTemplateStructureForActCards
+                                    const display = document.getElementById('selectedTemplateDisplay');
+                                    const name = document.getElementById('selectedTemplateName');
+                                    const description = document.getElementById('selectedTemplateDescription');
+                                    const category = document.getElementById('selectedTemplateCategory');
+                                    
+                                    if (display && name && description && category) {
+                                        name.textContent = templateDataToDisplay.name;
+                                        description.textContent = templateDataToDisplay.description;
+                                        category.textContent = templateDataToDisplay.category ? templateDataToDisplay.category.replace('_', ' ').toUpperCase() : '';
+                                        display.style.display = 'block';
+                                    }
+                                    
+                                    // Load act cards with the CUSTOMIZED data
+                                    loadTemplateStructureForActCards(templateDataToDisplay);
+                                } else {
+                                    console.log('🔧 CALLING displaySelectedTemplate - no customizations found');
+                                    displaySelectedTemplate(templateDataToDisplay);
+                                }
                                 collapseTemplateOptions();
                                 updateTemplatePageForSelection();
                             }
@@ -6116,6 +6194,41 @@ function goToNextStep() {
 
 // Display selected template on Acts page
 function displaySelectedTemplate(templateData) {
+    console.log('🔍 DEBUG: displaySelectedTemplate called with:', {
+        templateName: templateData.name,
+        templateId: templateData.id,
+        hasStructure: !!templateData.structure,
+        structureKeys: templateData.structure ? Object.keys(templateData.structure) : []
+    });
+    console.log('🔍 DEBUG: Current appState.templateData before display:', appState.templateData ? {
+        id: appState.templateData.id,
+        name: appState.templateData.name,
+        hasStructure: !!appState.templateData.structure,
+        structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : []
+    } : 'null');
+    
+    // 🔧 GUARD: Don't overwrite existing customized template data during restoration
+    if (appState.templateData && appState.templateData.structure && 
+        appState.templateData.id === templateData.id &&
+        Object.keys(appState.templateData.structure).length > 0) {
+        console.log('🔧 GUARD: Preventing displaySelectedTemplate from overwriting existing customized data');
+        console.log('🔧 GUARD: Existing structure keys:', Object.keys(appState.templateData.structure));
+        
+        // Just update the UI display without calling loadTemplateStructureForActCards
+        const display = document.getElementById('selectedTemplateDisplay');
+        const name = document.getElementById('selectedTemplateName');
+        const description = document.getElementById('selectedTemplateDescription');
+        const category = document.getElementById('selectedTemplateCategory');
+        
+        if (display && name && description && category) {
+            name.textContent = appState.templateData.name;
+            description.textContent = appState.templateData.description;
+            category.textContent = appState.templateData.category ? appState.templateData.category.replace('_', ' ').toUpperCase() : '';
+            display.style.display = 'block';
+        }
+        return; // Exit early to prevent overwriting
+    }
+    
     const display = document.getElementById('selectedTemplateDisplay');
     const name = document.getElementById('selectedTemplateName');
     const description = document.getElementById('selectedTemplateDescription');
@@ -6145,7 +6258,24 @@ async function displayTemplateStructurePreview() {
         displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
         return;
     }
+
+    // 🔧 FIX: Check for existing templateData with user edits FIRST
+    if (appState.templateData && appState.templateData.structure) {
+        console.log('Using existing template data with user edits:', appState.templateData.name);
+        
+        // Use the EXISTING structure container - unified approach!
+        const structureContainer = document.getElementById('structureContent');
+        if (!structureContainer) {
+            console.log('Structure container not found');
+            return;
+        }
+        
+        // Create preview using the modified template data (with user edits)
+        createFullTemplatePreview(appState.templateData, structureContainer);
+        return;
+    }
     
+    // Fallback: If no edited template data exists, load fresh template data
     try {
         // Get template data from existing templates (no server call needed)
         const templateData = await getTemplateDataFromExistingTemplates(appState.selectedTemplate);
@@ -6164,7 +6294,7 @@ async function displayTemplateStructurePreview() {
             console.log('Structure container not found');
             return;
         }
-        
+
         // Clear existing content
         structureContainer.innerHTML = '';
         
@@ -6857,6 +6987,13 @@ const autoSaveManager = {
         console.log('  - structure keys (legacy):', Object.keys(appState.structure || {}));
         console.log('  - plotPoints keys:', Object.keys(appState.plotPoints || {}));
         console.log('  - generatedScenes keys:', Object.keys(appState.generatedScenes || {}));
+        console.log('  - 🎭 templateData:', appState.templateData ? {
+            id: appState.templateData.id,
+            name: appState.templateData.name,
+            hasStructure: !!appState.templateData.structure,
+            structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : [],
+            hasOriginalOrder: !!appState.templateData.originalOrder
+        } : 'null');
         
         const projectData = {
             ...appState,
@@ -7567,22 +7704,56 @@ function updateBreadcrumbNavigation() {
 // Enhanced Template Selection - Act Cards Functions
 async function loadTemplateStructureForActCards(templateData) {
     console.log('🎭 Loading template structure for act cards:', templateData.name);
+    console.log('🔍 DEBUG: Current appState.templateData:', appState.templateData);
+    console.log('🔍 DEBUG: Incoming templateData:', templateData);
     
     try {
-        // Fetch the full template data including structure
-        const response = await fetch(`/api/template/${templateData.id}`);
-        if (!response.ok) {
-            throw new Error('Failed to load template structure');
+        // 🔧 FIX #3: Check if we already have customized template data
+        // Compare by name since database templateData might not have id field
+        const templateMatches = appState.templateData && 
+            (appState.templateData.id === templateData.id || 
+             appState.templateData.name === templateData.name) && 
+            appState.templateData.structure;
+        
+        if (templateMatches) {
+            console.log('🎭 Using existing customized template data (preserving user edits)');
+            console.log('🔍 DEBUG: Using customized structure keys:', Object.keys(appState.templateData.structure));
+            const existingTemplateData = appState.templateData;
+            
+            // Update the header with template name and act count
+            updateActCardsHeader(existingTemplateData.name, Object.keys(existingTemplateData.structure).length);
+            
+            // Create and display act cards with existing (potentially edited) data
+            await createActCards(existingTemplateData.structure);
+        } else {
+            console.log('🎭 Fetching fresh template data from server');
+            console.log('🔍 DEBUG: Condition failed because:');
+            console.log('  - appState.templateData exists:', !!appState.templateData);
+            console.log('  - ID match:', appState.templateData?.id === templateData.id);
+            console.log('  - Structure exists:', !!appState.templateData?.structure);
+            
+            // Fetch the full template data including structure
+            const response = await fetch(`/api/template/${templateData.id}`);
+            if (!response.ok) {
+                throw new Error('Failed to load template structure');
+            }
+            
+            const fullTemplateData = await response.json();
+            console.log('🎭 Full template data loaded:', fullTemplateData);
+            
+            // Store template data in appState for editing (ensure ID is included)
+            appState.templateData = {
+                ...fullTemplateData,
+                id: templateData.id // Ensure ID is preserved for future comparisons
+            };
+            console.log('🎭 Template data stored in appState for editing');
+            
+            // Update the header with template name and act count
+            updateActCardsHeader(fullTemplateData.name, Object.keys(fullTemplateData.structure).length);
+            
+            // Create and display act cards
+            await createActCards(fullTemplateData.structure);
         }
-        
-        const fullTemplateData = await response.json();
-        console.log('🎭 Full template data loaded:', fullTemplateData);
-        
-        // Update the header with template name and act count
-        updateActCardsHeader(fullTemplateData.name, Object.keys(fullTemplateData.structure).length);
-        
-        // Create and display act cards
-        createActCards(fullTemplateData.structure);
         
         // Show the act cards container
         const actCardsContainer = document.getElementById('actCardsContainer');
@@ -7614,7 +7785,7 @@ function updateActCardsHeader(templateName, actCount) {
     }
 }
 
-function createActCards(templateStructure) {
+async function createActCards(templateStructure) {
     const actCardsScroll = document.getElementById('actCardsScroll');
     if (!actCardsScroll || !templateStructure) {
         console.warn('Act cards container not found or no template structure');
@@ -7624,14 +7795,56 @@ function createActCards(templateStructure) {
     // Clear existing cards
     actCardsScroll.innerHTML = '';
     
-    // Convert structure object to array with act numbers
-    const acts = Object.entries(templateStructure).map(([key, act], index) => ({
-        key,
-        number: index + 1,
-        name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-        description: act.description || 'No description available',
-        elements: act.elements || []
-    }));
+    // 🔧 FIX: Preserve original act order by fetching from original template file
+    let acts = [];
+    
+    // Always get the correct order from the original template file
+    if (appState.selectedTemplate) {
+        try {
+            // Fetch the original template to get the correct key order
+            const response = await fetch(`/api/template/${appState.selectedTemplate}`);
+            if (response.ok) {
+                const originalTemplate = await response.json();
+                const originalOrder = Object.keys(originalTemplate.structure);
+                console.log('🔧 Using original template order:', originalOrder);
+                
+                // Use original order but with customized content
+                acts = originalOrder.map((key, index) => {
+                    const act = templateStructure[key];
+                    if (act) {
+                        return {
+                            key,
+                            number: index + 1,
+                            name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                            description: act.description || 'No description available',
+                            elements: act.elements || []
+                        };
+                    }
+                }).filter(Boolean);
+            } else {
+                throw new Error('Failed to fetch original template');
+            }
+        } catch (error) {
+            console.warn('Could not fetch original template order, using current order:', error);
+            // Fallback: Use current object order
+            acts = Object.entries(templateStructure).map(([key, act], index) => ({
+                key,
+                number: index + 1,
+                name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                description: act.description || 'No description available',
+                elements: act.elements || []
+            }));
+        }
+    } else {
+        // Fallback: Use current object order (for backwards compatibility)
+        acts = Object.entries(templateStructure).map(([key, act], index) => ({
+            key,
+            number: index + 1,
+            name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            description: act.description || 'No description available',
+            elements: act.elements || []
+        }));
+    }
     
     const totalActs = acts.length;
     console.log('🎭 Creating act cards for:', totalActs, 'acts');
@@ -7797,6 +8010,11 @@ function saveActCardChanges(card, act) {
     // Show save feedback
     showActCardSaveFeedback(card, 'Changes saved!');
     
+    // 🔧 Save to database immediately (consistent with database-first architecture)
+    if (window.autoSaveManager) {
+        autoSaveManager.saveImmediately();
+    }
+    
     console.log('🎭 Act updated:', { key: act.key, name: newTitle, description: newDescription });
 }
 
@@ -7849,17 +8067,47 @@ function exitEditingMode(card, act, silent = false) {
 }
 
 function updateTemplateStructureInAppState(actKey, newTitle, newDescription) {
+    console.log('🔍 DEBUG: updateTemplateStructureInAppState called:', { actKey, newTitle, newDescription });
+    console.log('🔍 DEBUG: Current appState.templateData exists:', !!appState.templateData);
+    console.log('🔍 DEBUG: Current structure exists:', !!(appState.templateData && appState.templateData.structure));
+    console.log('🔍 DEBUG: Available structure keys:', appState.templateData && appState.templateData.structure ? Object.keys(appState.templateData.structure) : 'none');
+    console.log('🔍 DEBUG: Act key exists:', !!(appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]));
+    
     // Update the template data in appState
     if (appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]) {
+        console.log('🔍 DEBUG: Before update:', {
+            name: appState.templateData.structure[actKey].name,
+            description: appState.templateData.structure[actKey].description
+        });
+        
         appState.templateData.structure[actKey].name = newTitle;
         appState.templateData.structure[actKey].description = newDescription;
         
+        console.log('🔍 DEBUG: After update:', {
+            name: appState.templateData.structure[actKey].name,
+            description: appState.templateData.structure[actKey].description
+        });
+        
         // Trigger auto-save if available
         if (window.autoSaveManager) {
+            console.log('🔍 DEBUG: Triggering auto-save...');
             autoSaveManager.markDirty();
         }
         
         console.log('🎭 Template structure updated in app state');
+        console.log('🔍 DEBUG: Full templateData after update:', {
+            id: appState.templateData.id,
+            name: appState.templateData.name,
+            structureKeys: Object.keys(appState.templateData.structure)
+        });
+    } else {
+        console.error('🚨 DEBUG: Failed to update template structure - missing data:', {
+            hasTemplateData: !!appState.templateData,
+            hasStructure: !!(appState.templateData && appState.templateData.structure),
+            hasActKey: !!(appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]),
+            actKey,
+            availableKeys: appState.templateData && appState.templateData.structure ? Object.keys(appState.templateData.structure) : 'none'
+        });
     }
 }
 
@@ -7928,19 +8176,37 @@ function closeAllEditingCards() {
         // Get the act data from the card
         const actKey = card.getAttribute('data-act-key');
         
-        // Find the corresponding act object (we'll need to reconstruct it)
-        const titleElement = card.querySelector('.act-card-title.editable') || card.querySelector('.act-card-title');
-        const descriptionElement = card.querySelector('.act-card-description.editable') || card.querySelector('.act-card-description');
-        
-        if (titleElement && descriptionElement) {
+        // 🔧 FIX: Get act data from appState.templateData instead of DOM reconstruction
+        if (appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]) {
             const act = {
                 key: actKey,
-                name: titleElement.getAttribute('data-original') || titleElement.textContent,
-                description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent
+                name: appState.templateData.structure[actKey].name,
+                description: appState.templateData.structure[actKey].description
             };
+            
+            console.log('🔧 Closing card for act:', act.name, 'using data from appState');
             
             // Cancel editing for this card (without logging since it's auto-close)
             exitEditingMode(card, act, true);
+        } else {
+            console.warn('🚨 Could not find act data for key:', actKey, 'in appState.templateData');
+            
+            // Fallback: Try to reconstruct from DOM (original behavior)
+            const titleElement = card.querySelector('.act-card-title.editable') || card.querySelector('.act-card-title');
+            const descriptionElement = card.querySelector('.act-card-description.editable') || card.querySelector('.act-card-description');
+            
+            if (titleElement && descriptionElement) {
+                const act = {
+                    key: actKey,
+                    name: titleElement.getAttribute('data-original') || titleElement.textContent || 'Untitled Act',
+                    description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent || 'No description'
+                };
+                
+                console.log('🔧 Using fallback DOM reconstruction for act:', act.name);
+                
+                // Cancel editing for this card (without logging since it's auto-close)
+                exitEditingMode(card, act, true);
+            }
         }
     });
 }
