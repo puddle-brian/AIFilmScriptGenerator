@@ -676,9 +676,17 @@ class HierarchicalContext {
 
   // Generate a hierarchical prompt from the context chain
   async generateHierarchicalPrompt(targetLevel = 5, customInstructions = '') {
+    console.log(`🔍 HIERARCHICAL DEBUG: generateHierarchicalPrompt called with targetLevel=${targetLevel}`);
+    console.log(`🔍 HIERARCHICAL DEBUG: Available contexts:`, Object.keys(this.contexts));
+    
     let prompt = '';
     
     // Level 1: Story Foundation with Full Creative Context
+    if (this.contexts.story) {
+      console.log(`🔍 HIERARCHICAL DEBUG: Adding story context`);
+    } else {
+      console.log(`⚠️  HIERARCHICAL DEBUG: No story context available!`);
+    }
     if (this.contexts.story) {
       const story = this.contexts.story.data;
       
@@ -809,6 +817,9 @@ class HierarchicalContext {
       prompt += `SPECIFIC INSTRUCTIONS:\n${customInstructions}\n\n`;
     }
 
+    console.log(`🔍 HIERARCHICAL DEBUG: Generated prompt length: ${prompt.length} characters`);
+    console.log(`🔍 HIERARCHICAL DEBUG: Prompt preview (first 200 chars):`, prompt.substring(0, 200));
+    
     return prompt;
   }
 
@@ -4472,7 +4483,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     // Generate hierarchical prompt for plot points generation (Level 4) with enhanced inter-act causality
     // First, temporarily build plot points context to load previous acts' plot points
     await context.buildPlotPointsContext([], 0, projectPath);
-    const hierarchicalPrompt = context.generateHierarchicalPrompt(4, `
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 1. Break down this story act into 4 causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
 2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
