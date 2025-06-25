@@ -1710,36 +1710,27 @@ async function autoGenerate() {
     appState.influences.screenwriters = randomScreenwriters;
     appState.influences.films = randomFilms;
     
-    // Create story concept
-    appState.currentStoryConcept = {
-        title: title,
-        logline: logline,
-        fromLibrary: false
-    };
-    updateStoryConceptDisplay();
-    
-    // Auto-generate sample characters
+    // Auto-generate sample characters BEFORE creating the project
     appState.projectCharacters = [
         { name: "Protagonist", description: characters },
         { name: "Supporting Character", description: "A key figure in the protagonist's journey" }
     ];
-    updateCharacterTags();
     
-    // Set random total scenes (will be set when user reaches Step 5)
-    appState.storyInput.totalScenes = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
-    
+    // Set tone before project initialization
     document.getElementById('tone').value = (userLibraries.tones || [])[Math.floor(Math.random() * (userLibraries.tones?.length || 1))] || '';
     
-    // Update influence tags
+    // Initialize new project from story concept (this does all the proper setup)
+    initializeNewProjectFromStoryConcept(title, logline);
+    
+    // Set random total scenes after project is initialized
+    if (appState.storyInput) {
+        appState.storyInput.totalScenes = Math.floor(Math.random() * 50) + 40; // 40-90 scenes
+    }
+    
+    // Update influence tags after project setup
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
-    
-    // Mark as dirty to trigger auto-save for all the changes
-    appState.pendingChanges = true;
-    if (autoSaveManager) {
-        autoSaveManager.markDirty();
-    }
     
     console.log('Auto-generated story concept:', {
         title,
