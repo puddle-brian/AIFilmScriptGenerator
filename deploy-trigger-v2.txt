@@ -1,19 +1,18 @@
-Deploy trigger v2.4 - Fixed 500 errors with simplified database connection
+Deploy trigger v2.5 - Improved serverless database timeout handling
 
 Fixes:
 1. ✅ Skip directory creation (generated/, templates/) on serverless environment
 2. ✅ Proper module.exports for Vercel serverless function deployment
 3. ✅ Environment-aware startup logic (serverless vs traditional server)
 4. ✅ Fixed route precedence - root path "/" now properly serves index.html
-5. 🔄 Reverted Pool to Client with serverless optimizations
+5. 🔄 Optimized database connection for serverless
 
-Issue: Pool connection caused 500 Internal Server Errors
-Solution: Using Client with:
-- SSL configuration for Vercel environment
-- Shorter timeouts (5000ms) for serverless
-- On-demand connection testing instead of persistent connections
-- Simplified authentication middleware without Promise.race complexity
+Critical improvements:
+- Increased timeouts from 5000ms to 15000ms for cold starts
+- Removed database initialization from serverless startup completely
+- On-demand connections only when needed (no persistent connections)
+- Simplified connection logic to reduce startup overhead
 
-This should fix the 500 errors while maintaining performance improvements.
+Should fix "Query read timeout" errors and 500 responses.
 
 Date: 2025-01-25 

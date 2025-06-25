@@ -34,8 +34,8 @@ const dbClient = new Client({
   connectionString: process.env.DATABASE_URL,
   // Add SSL and timeout configuration for serverless
   ssl: process.env.VERCEL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: process.env.VERCEL ? 5000 : 30000,
-  query_timeout: process.env.VERCEL ? 5000 : 30000,
+  connectionTimeoutMillis: process.env.VERCEL ? 15000 : 30000,
+  query_timeout: process.env.VERCEL ? 15000 : 30000,
 });
 
 // Database schema for usage tracking
@@ -122,11 +122,8 @@ async function initializeDatabase() {
 async function connectToDatabase() {
   try {
     if (process.env.VERCEL) {
-      // In serverless, connect on-demand but don't persist
-      console.log('🔧 Serverless database setup - connection on-demand');
-      // Test connection briefly
-      await dbClient.query('SELECT 1');
-      await initializeDatabase();
+      // In serverless, skip initialization - let queries connect on demand
+      console.log('🔧 Serverless mode - database connection on-demand');
     } else {
       // Traditional persistent connection for local development
       await dbClient.connect();
@@ -5754,10 +5751,8 @@ const startServer = async () => {
 
 // For Vercel serverless deployment
 if (process.env.VERCEL) {
-  // Initialize database connection for serverless
-  connectToDatabase().then(() => {
-    console.log('🔧 Database connected for serverless environment');
-  }).catch(console.error);
+  // Skip database initialization in serverless startup
+  console.log('🔧 Serverless mode - database connections on-demand');
   
   // Export the Express app for Vercel
   module.exports = app;
