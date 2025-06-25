@@ -3977,6 +3977,40 @@ function approveScenes() {
     showToast('Ready to generate dialogue!', 'success');
 }
 
+// Helper function to calculate hierarchical scene number
+function calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene) {
+    // Get the act number from the structure keys
+    const structureKeys = appState.generatedStructure ? Object.keys(appState.generatedStructure) : [];
+    const actNumber = structureKeys.indexOf(structureKey) + 1;
+    
+    // Get plot points for this structure
+    const plotPoints = appState.plotPoints && appState.plotPoints[structureKey] 
+        ? appState.plotPoints[structureKey].plotPoints || []
+        : [];
+    
+    // If scene has plotPointIndex, use it
+    if (scene.plotPointIndex !== undefined && scene.plotPointIndex !== null) {
+        const plotPointNumber = scene.plotPointIndex + 1;
+        
+        // Count scenes in the same plot point that come before this one
+        const allScenes = appState.generatedScenes[structureKey] || [];
+        const scenesInSamePlotPoint = allScenes.filter(s => s.plotPointIndex === scene.plotPointIndex);
+        const positionInPlotPoint = scenesInSamePlotPoint.findIndex(s => s === scene) + 1;
+        
+        return `${actNumber}.${plotPointNumber}.${positionInPlotPoint}`;
+    }
+    
+    // Fallback: if no plotPointIndex, try to estimate based on position
+    if (plotPoints.length > 0) {
+        const plotPointNumber = Math.floor(sceneIndex / Math.ceil(appState.generatedScenes[structureKey].length / plotPoints.length)) + 1;
+        const positionInPlotPoint = (sceneIndex % Math.ceil(appState.generatedScenes[structureKey].length / plotPoints.length)) + 1;
+        return `${actNumber}.${plotPointNumber}.${positionInPlotPoint}`;
+    }
+    
+    // Final fallback: just use scene index with act number
+    return `${actNumber}.1.${sceneIndex + 1}`;
+}
+
 // Display dialogue generation interface
 function displayDialogueGeneration() {
     const container = document.getElementById('dialogueContent');
@@ -4009,7 +4043,9 @@ function displayDialogueGeneration() {
                     });
                 }
                 
-                const sceneTitle = `${scene.title || scene.name || 'Untitled Scene'} - Dialogue`;
+                // Calculate hierarchical scene number
+                const sceneNumber = calculateHierarchicalSceneNumber(structureKey, index, scene);
+                const sceneTitle = `<span class="scene-number">${sceneNumber}</span> <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'} - Dialogue</span>`;
                 
                 createEditableContentBlock({
                     id: `dialogue-${structureKey}-${index}`,
