@@ -2506,40 +2506,16 @@ h2 .progress-meter {
 
 .act-cards-scroll {
     display: flex;
+    flex-wrap: wrap;
     gap: 16px;
-    overflow-x: auto;
     padding: 8px 0 16px 0;
-    scroll-behavior: smooth;
-    cursor: grab;
-}
-
-.act-cards-scroll:active {
-    cursor: grabbing;
-}
-
-/* Hide scrollbar but keep functionality */
-.act-cards-scroll::-webkit-scrollbar {
-    height: 6px;
-}
-
-.act-cards-scroll::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 3px;
-}
-
-.act-cards-scroll::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
-    border-radius: 3px;
-}
-
-.act-cards-scroll::-webkit-scrollbar-thumb:hover {
-    background: #a0aec0;
 }
 
 /* Individual Act Cards */
 .act-card {
-    flex-shrink: 0;
-    width: 180px;
+    flex: 1 1 calc(25% - 12px);
+    min-width: 160px;
+    max-width: 200px;
     background: white;
     border: 2px solid #e2e8f0;
     border-radius: 8px;
@@ -2653,18 +2629,20 @@ h2 .progress-meter {
 
 /* Responsive design for act cards */
 @media (max-width: 768px) {
-    .act-cards-scroll {
-        flex-direction: column;
-        gap: 12px;
-    }
-    
     .act-card {
-        width: 100%;
-        flex-shrink: 1;
+        flex: 1 1 calc(50% - 8px);
+        min-width: 140px;
     }
     
     .act-card-tooltip {
         width: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .act-card {
+        flex: 1 1 100%;
+        max-width: none;
     }
 }
 
