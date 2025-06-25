@@ -1292,6 +1292,37 @@ h2 .progress-meter {
     margin-bottom: 15px;
 }
 
+/* Enhanced scene content formatting for better space usage */
+.editable-content-display p {
+    margin: 8px 0;
+    line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.editable-content-display p:first-child {
+    margin-top: 0;
+}
+
+.editable-content-display p:last-child {
+    margin-bottom: 0;
+}
+
+/* Compact scene metadata line */
+.editable-content-display p strong {
+    font-weight: 600;
+}
+
+/* Scene content compact mode - tighter spacing */
+.scene-content-compact p {
+    margin: 6px 0 !important;
+    line-height: 1.4;
+}
+
+.scene-content-compact p:first-child {
+    margin-top: 0 !important;
+}
+
 .scene-characters {
     display: flex;
     flex-wrap: wrap;
@@ -4402,3 +4433,4 @@ h2 .progress-meter {
         font-size: 0.85em;
     }
 }
+

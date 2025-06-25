@@ -411,8 +411,8 @@ class EditableContentBlock {
                 if (!this.hideTitle) {
                     html += `<h3>${parsed.title || parsed.name || 'Untitled Scene'}</h3>`;
                 }
-                html += `<p><strong>Location:</strong> ${parsed.location || 'Not specified'}</p>`;
-                html += `<p><strong>Time:</strong> ${parsed.time_of_day || parsed.time || 'Not specified'}</p>`;
+                // Combine location and time on one line to save vertical space
+                html += `<p><strong>${parsed.location || 'Not specified'}</strong> • <strong>${parsed.time_of_day || parsed.time || 'Not specified'}</strong></p>`;
                 html += `<p><strong>Description:</strong> ${parsed.description || 'No description'}</p>`;
                 html += `</div>`;
                 return html;
@@ -3078,6 +3078,10 @@ async function generateElementPlotPoints(structureKey) {
             // Display the generated plot points
             displayElementPlotPoints(structureKey, data.plotPoints);
             
+            // Update progress meters after generating plot points
+            console.log('🔍 PROGRESS UPDATE: Updating progress meters after plot points generation');
+            updateAllProgressMeters();
+            
             showToast(`Generated ${data.totalPlotPoints} plot points for ${structureKey}!`, 'success');
             saveToLocalStorage();
         } else {
@@ -5345,14 +5349,39 @@ function updateAllProgressMeters() {
 
 // NEW: Progress meter update function for step headers
 function updateStepHeaderProgressMeter(stepNumber) {
+    console.log(`🔍 PROGRESS METER DEBUG: updateStepHeaderProgressMeter called for step ${stepNumber}`);
+    
     const progressMeter = document.querySelector(`h2 .progress-meter[data-step="${stepNumber}"]`);
-    if (!progressMeter) return;
+    if (!progressMeter) {
+        console.log(`🔍 PROGRESS METER DEBUG: No progress meter found for step ${stepNumber}`);
+        return;
+    }
+    
+    console.log(`🔍 PROGRESS METER DEBUG: Found progress meter for step ${stepNumber}`);
     
     // Calculate progress based on step completion
     let progress = 0;
-    if (isStepFullyComplete(stepNumber)) {
-        progress = 100;
+    if (window.ProgressTracker) {
+        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker available, calculating progress for step ${stepNumber}`);
+        console.log(`🔍 PROGRESS METER DEBUG: Current appState:`, {
+            hasGeneratedStructure: !!appState.generatedStructure,
+            hasPlotPoints: !!appState.plotPoints,
+            hasGeneratedScenes: !!appState.generatedScenes,
+            structureKeys: appState.generatedStructure ? Object.keys(appState.generatedStructure) : [],
+            plotPointsKeys: appState.plotPoints ? Object.keys(appState.plotPoints) : [],
+            scenesKeys: appState.generatedScenes ? Object.keys(appState.generatedScenes) : []
+        });
+        
+        progress = ProgressTracker.calculateStepProgress(stepNumber, appState);
+        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker returned ${progress}% for step ${stepNumber}`);
+    } else {
+        console.log(`🔍 PROGRESS METER DEBUG: ProgressTracker not available, using fallback logic`);
+        if (isStepFullyComplete(stepNumber)) {
+            progress = 100;
+        }
     }
+    
+    console.log(`🔍 PROGRESS METER DEBUG: Final progress for step ${stepNumber}: ${progress}%`);
     // No partial progress - either 0% (not complete) or 100% (complete)
     
     const circle = progressMeter.querySelector('.progress-fill');
@@ -7350,6 +7379,10 @@ async function generateScenesForElement(structureKey) {
             
             // Refresh the scenes display
             displayScenes(appState.generatedScenes);
+            
+            // Update progress meters after generating scenes
+            console.log('🔍 PROGRESS UPDATE: Updating progress meters after scenes generation');
+            updateAllProgressMeters();
             
             showToast(`Generated ${data.totalScenesGenerated} scenes for ${structureKey} across ${data.plotPointScenes?.length || 0} plot points!`, 'success');
             saveToLocalStorage();

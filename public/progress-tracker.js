@@ -68,29 +68,64 @@ class ProgressTracker {
    * Proportional based on completed plot points
    */
   static calculatePlotPointsProgress(appState) {
-    if (!appState.generatedStructure) return 0;
-    const structureKeys = Object.keys(appState.generatedStructure);
-    if (structureKeys.length === 0) return 0;
+    console.log('🔍 PROGRESS DEBUG: calculatePlotPointsProgress called');
+    console.log('🔍 PROGRESS DEBUG: appState.generatedStructure exists:', !!appState.generatedStructure);
+    console.log('🔍 PROGRESS DEBUG: appState.plotPoints exists:', !!appState.plotPoints);
     
-    if (!appState.plotPoints) return 0;
+    if (!appState.generatedStructure) {
+      console.log('🔍 PROGRESS DEBUG: No generatedStructure, returning 0%');
+      return 0;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    console.log('🔍 PROGRESS DEBUG: structureKeys:', structureKeys);
+    
+    if (structureKeys.length === 0) {
+      console.log('🔍 PROGRESS DEBUG: No structure keys, returning 0%');
+      return 0;
+    }
+    
+    if (!appState.plotPoints) {
+      console.log('🔍 PROGRESS DEBUG: No plotPoints object, returning 0%');
+      return 0;
+    }
+    
+    console.log('🔍 PROGRESS DEBUG: plotPoints keys:', Object.keys(appState.plotPoints));
+    console.log('🔍 PROGRESS DEBUG: plotPoints data:', appState.plotPoints);
     
     const completedKeys = structureKeys.filter(key => {
       const plotPoints = appState.plotPoints[key];
+      console.log(`🔍 PROGRESS DEBUG: Checking ${key}, plotPoints:`, plotPoints);
+      
       if (!plotPoints) return false;
       
       // Handle both array and string formats
       if (Array.isArray(plotPoints)) {
-        return plotPoints.length > 0 && plotPoints.some(point => 
+        const hasContent = plotPoints.length > 0 && plotPoints.some(point => 
           point && typeof point === 'string' && point.trim().length > 0
         );
+        console.log(`🔍 PROGRESS DEBUG: ${key} array has content:`, hasContent);
+        return hasContent;
       } else if (typeof plotPoints === 'string') {
-        return plotPoints.trim().length > 0;
+        const hasContent = plotPoints.trim().length > 0;
+        console.log(`🔍 PROGRESS DEBUG: ${key} string has content:`, hasContent);
+        return hasContent;
+      } else if (typeof plotPoints === 'object') {
+        // Handle object format (might be new structure)
+        const hasContent = Object.keys(plotPoints).length > 0;
+        console.log(`🔍 PROGRESS DEBUG: ${key} object has content:`, hasContent);
+        return hasContent;
       }
       
+      console.log(`🔍 PROGRESS DEBUG: ${key} unknown format, returning false`);
       return false;
     });
     
-    return Math.round((completedKeys.length / structureKeys.length) * 100);
+    console.log('🔍 PROGRESS DEBUG: completedKeys:', completedKeys);
+    const progress = Math.round((completedKeys.length / structureKeys.length) * 100);
+    console.log('🔍 PROGRESS DEBUG: calculated progress:', progress);
+    
+    return progress;
   }
   
   /**
@@ -98,31 +133,63 @@ class ProgressTracker {
    * Proportional based on completed scenes
    */
   static calculateScenesProgress(appState) {
-    if (!appState.generatedStructure) return 0;
-    const structureKeys = Object.keys(appState.generatedStructure);
-    if (structureKeys.length === 0) return 0;
+    console.log('🔍 SCENES PROGRESS DEBUG: calculateScenesProgress called');
+    console.log('🔍 SCENES PROGRESS DEBUG: appState.generatedStructure exists:', !!appState.generatedStructure);
+    console.log('🔍 SCENES PROGRESS DEBUG: appState.generatedScenes exists:', !!appState.generatedScenes);
     
-    if (!appState.generatedScenes) return 0;
+    if (!appState.generatedStructure) {
+      console.log('🔍 SCENES PROGRESS DEBUG: No generatedStructure, returning 0%');
+      return 0;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    console.log('🔍 SCENES PROGRESS DEBUG: structureKeys:', structureKeys);
+    
+    if (structureKeys.length === 0) {
+      console.log('🔍 SCENES PROGRESS DEBUG: No structure keys, returning 0%');
+      return 0;
+    }
+    
+    if (!appState.generatedScenes) {
+      console.log('🔍 SCENES PROGRESS DEBUG: No generatedScenes object, returning 0%');
+      return 0;
+    }
+    
+    console.log('🔍 SCENES PROGRESS DEBUG: generatedScenes keys:', Object.keys(appState.generatedScenes));
+    console.log('🔍 SCENES PROGRESS DEBUG: generatedScenes data:', appState.generatedScenes);
     
     const completedKeys = structureKeys.filter(key => {
       const scenes = appState.generatedScenes[key];
+      console.log(`🔍 SCENES PROGRESS DEBUG: Checking ${key}, scenes:`, scenes);
+      
       if (!scenes) return false;
       
       // Handle both array and object formats
       if (Array.isArray(scenes)) {
-        return scenes.length > 0 && scenes.some(scene => 
+        const hasContent = scenes.length > 0 && scenes.some(scene => 
           scene && (typeof scene === 'string' ? scene.trim().length > 0 : true)
         );
+        console.log(`🔍 SCENES PROGRESS DEBUG: ${key} array has content:`, hasContent);
+        return hasContent;
       } else if (typeof scenes === 'object') {
-        return Object.keys(scenes).length > 0;
+        const hasContent = Object.keys(scenes).length > 0;
+        console.log(`🔍 SCENES PROGRESS DEBUG: ${key} object has content:`, hasContent);
+        return hasContent;
       } else if (typeof scenes === 'string') {
-        return scenes.trim().length > 0;
+        const hasContent = scenes.trim().length > 0;
+        console.log(`🔍 SCENES PROGRESS DEBUG: ${key} string has content:`, hasContent);
+        return hasContent;
       }
       
+      console.log(`🔍 SCENES PROGRESS DEBUG: ${key} unknown format, returning false`);
       return false;
     });
     
-    return Math.round((completedKeys.length / structureKeys.length) * 100);
+    console.log('🔍 SCENES PROGRESS DEBUG: completedKeys:', completedKeys);
+    const progress = Math.round((completedKeys.length / structureKeys.length) * 100);
+    console.log('🔍 SCENES PROGRESS DEBUG: calculated progress:', progress);
+    
+    return progress;
   }
   
   /**
