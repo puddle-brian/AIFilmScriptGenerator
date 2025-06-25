@@ -1303,6 +1303,11 @@ function updateStoryConceptDisplay() {
         displayContainer.style.display = 'none';
         displayContainer.innerHTML = '';
     }
+    
+    // Update progress meters when story concept changes
+    if (typeof updateAllProgressMeters === 'function') {
+        updateAllProgressMeters();
+    }
 }
 
 function editStoryConcept() {
@@ -1786,6 +1791,11 @@ async function initializeApp() {
             updateInfluenceTags('film');
             updateStoryConceptDisplay();
             
+            // Update progress meters after restoring state
+            if (typeof updateAllProgressMeters === 'function') {
+                updateAllProgressMeters();
+            }
+            
             // If we have a loaded project path, restore the full project
             if (appState.projectPath && appState.isLoadedProject) {
                 console.log('Restoring loaded project from localStorage:', appState.projectPath);
@@ -1840,6 +1850,12 @@ async function initializeApp() {
             console.error('Error loading saved state:', e);
         }
     }
+    
+    // Final progress meter update after everything is initialized
+    if (typeof updateAllProgressMeters === 'function') {
+        updateAllProgressMeters();
+    }
+    
     console.log('=== INITIALIZE APP COMPLETE ===');
 }
 
@@ -5074,6 +5090,46 @@ function updateStepIndicators() {
             step.addEventListener('click', () => handleStepClick(stepNumber));
         }
     });
+    
+    // Update progress meters in step headers
+    updateAllProgressMeters();
+}
+
+// Update all progress meters in step headers
+function updateAllProgressMeters() {
+    for (let stepNumber = 1; stepNumber <= 7; stepNumber++) {
+        updateStepHeaderProgressMeter(stepNumber);
+    }
+}
+
+// NEW: Progress meter update function for step headers
+function updateStepHeaderProgressMeter(stepNumber) {
+    const progressMeter = document.querySelector(`h2 .progress-meter[data-step="${stepNumber}"]`);
+    if (!progressMeter) return;
+    
+    // Get progress percentage using ProgressTracker
+    let progress = 0;
+    if (window.ProgressTracker) {
+        progress = ProgressTracker.calculateStepProgress(stepNumber, appState);
+    }
+    
+    const circle = progressMeter.querySelector('.progress-fill');
+    const textElement = progressMeter.querySelector('.progress-text');
+    
+    if (circle && textElement) {
+        // Calculate stroke-dasharray for circular progress
+        const circumference = 2 * Math.PI * 16; // radius = 16
+        const progressLength = (progress / 100) * circumference;
+        const remainingLength = circumference - progressLength;
+        
+        circle.style.strokeDasharray = `${progressLength} ${remainingLength}`;
+        textElement.textContent = `${progress}%`;
+        
+        // Debug log for first few steps
+        if (stepNumber <= 3) {
+            console.log(`Step ${stepNumber} header progress: ${progress}%`);
+        }
+    }
 }
 
 // Start over
@@ -5260,6 +5316,11 @@ function hideToast() {
 function saveToLocalStorage() {
     try {
         localStorage.setItem('filmScriptGenerator', JSON.stringify(appState));
+        
+        // Update progress meters when state changes
+        if (typeof updateAllProgressMeters === 'function') {
+            updateAllProgressMeters();
+        }
     } catch (error) {
         console.error('Error saving to localStorage:', error);
     }

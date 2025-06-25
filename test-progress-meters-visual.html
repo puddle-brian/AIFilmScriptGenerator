@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Progress Meters Visual Test</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .test-container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        
+        .test-section {
+            margin: 40px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-section h2 {
+            color: white;
+            margin-bottom: 20px;
+        }
+        
+        .test-row {
+            display: flex;
+            align-items: center;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+        
+        .test-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+            min-width: 200px;
+            margin-right: 20px;
+        }
+        
+        .progress-demo {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .step-demo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .step-demo.active {
+            color: white;
+            font-weight: 600;
+        }
+        
+        .step-demo.completed {
+            color: #4facfe;
+        }
+        
+        .step-demo.fully-complete {
+            color: #48bb78;
+        }
+        
+        .step-demo.disabled {
+            opacity: 0.5;
+        }
+        
+        .step-demo::before {
+            content: attr(data-step);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: transparent;
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .step-demo.active::before {
+            background: #4facfe;
+            border-color: #4facfe;
+            color: white;
+        }
+        
+        .step-demo.completed::before {
+            background: rgba(255,255,255,0.4);
+            border-color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .step-demo.fully-complete::before {
+            content: "✓";
+            background: #48bb78;
+            border-color: #48bb78;
+            color: white;
+        }
+        
+        .controls {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .controls button {
+            margin: 5px;
+            padding: 8px 16px;
+            background: #4facfe;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .controls button:hover {
+            background: #2e86de;
+        }
+        
+        .controls input[type="range"] {
+            width: 200px;
+            margin: 0 10px;
+        }
+        
+        .controls label {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1 style="color: white; text-align: center; margin-bottom: 40px;">Progress Meters Visual Test</h1>
+        
+        <div class="test-section">
+            <h2>Static Progress Examples</h2>
+            
+            <div class="test-row">
+                <div class="test-label">0% - Empty</div>
+                <div class="progress-demo">
+                    <div class="step-demo" data-step="1">
+                        Story Input
+                        <div class="progress-meter" data-progress="0">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="0 100.48" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">25% - Quarter</div>
+                <div class="progress-demo">
+                    <div class="step-demo active" data-step="2">
+                        Template
+                        <div class="progress-meter" data-progress="25">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="25.12 75.36" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">25%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">50% - Half</div>
+                <div class="progress-demo">
+                    <div class="step-demo active" data-step="3">
+                        Structure
+                        <div class="progress-meter" data-progress="50">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="50.24 50.24" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">50%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">75% - Three Quarters</div>
+                <div class="progress-demo">
+                    <div class="step-demo active" data-step="4">
+                        Plot Points
+                        <div class="progress-meter" data-progress="75">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="75.36 25.12" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">75%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">100% - Complete</div>
+                <div class="progress-demo">
+                    <div class="step-demo fully-complete" data-step="5">
+                        Scenes
+                        <div class="progress-meter" data-progress="100">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="100.48 0" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">100%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Interactive Progress Control</h2>
+            
+            <div class="controls">
+                <label for="progressSlider">Progress:</label>
+                <input type="range" id="progressSlider" min="0" max="100" value="0">
+                <span id="progressValue">0%</span>
+                
+                <button onclick="setProgress(0)">0%</button>
+                <button onclick="setProgress(25)">25%</button>
+                <button onclick="setProgress(50)">50%</button>
+                <button onclick="setProgress(75)">75%</button>
+                <button onclick="setProgress(100)">100%</button>
+                <button onclick="animateProgress()">Animate</button>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">Interactive Demo</div>
+                <div class="progress-demo">
+                    <div class="step-demo active" data-step="6" id="interactiveStep">
+                        Dialogue
+                        <div class="progress-meter" id="interactiveMeter">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="0 100.48" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step State Variations</h2>
+            
+            <div class="test-row">
+                <div class="test-label">Disabled Step</div>
+                <div class="progress-demo">
+                    <div class="step-demo disabled" data-step="7">
+                        Export
+                        <div class="progress-meter" data-progress="0">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="0 100.48" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">0%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="test-row">
+                <div class="test-label">Completed Step</div>
+                <div class="progress-demo">
+                    <div class="step-demo completed" data-step="1">
+                        Story Input
+                        <div class="progress-meter" data-progress="100">
+                            <svg viewBox="0 0 40 40">
+                                <circle class="progress-bg" cx="20" cy="20" r="16"></circle>
+                                <circle class="progress-fill" cx="20" cy="20" r="16" 
+                                        stroke-dasharray="100.48 0" stroke-dashoffset="0"></circle>
+                            </svg>
+                            <div class="progress-text">100%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="progress-tracker.js"></script>
+    <script>
+        // Interactive controls
+        const slider = document.getElementById('progressSlider');
+        const progressValue = document.getElementById('progressValue');
+        const interactiveMeter = document.getElementById('interactiveMeter');
+        const interactiveStep = document.getElementById('interactiveStep');
+        
+        function updateProgressMeter(meterElement, percentage) {
+            const circle = meterElement.querySelector('.progress-fill');
+            const textElement = meterElement.querySelector('.progress-text');
+            
+            // Calculate stroke-dasharray for circular progress
+            const circumference = 2 * Math.PI * 16; // radius = 16
+            const progressLength = (percentage / 100) * circumference;
+            const remainingLength = circumference - progressLength;
+            
+            circle.style.strokeDasharray = `${progressLength} ${remainingLength}`;
+            textElement.textContent = `${percentage}%`;
+        }
+        
+        function setProgress(percentage) {
+            slider.value = percentage;
+            progressValue.textContent = `${percentage}%`;
+            updateProgressMeter(interactiveMeter, percentage);
+            
+            // Update step state based on progress
+            interactiveStep.className = 'step-demo';
+            if (percentage === 100) {
+                interactiveStep.classList.add('fully-complete');
+            } else if (percentage > 0) {
+                interactiveStep.classList.add('active');
+            }
+        }
+        
+        function animateProgress() {
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                setProgress(progress);
+                
+                if (progress >= 100) {
+                    clearInterval(interval);
+                }
+            }, 50);
+        }
+        
+        // Slider event listener
+        slider.addEventListener('input', (e) => {
+            const percentage = parseInt(e.target.value);
+            setProgress(percentage);
+        });
+        
+        // Test Progress Tracker integration
+        function testProgressTracker() {
+            const testState = {
+                title: "Test Movie",
+                logline: "A test movie about testing.",
+                selectedTemplate: "three-act",
+                generatedStructure: {
+                    "act1": { "setup": "Opening" },
+                    "act2": { "confrontation": "Middle" },
+                    "act3": { "resolution": "End" }
+                },
+                plotPoints: {
+                    "act1": "Hero introduced",
+                    "act2": "Conflict escalates",
+                    "act3": "Resolution achieved"
+                },
+                generatedScenes: {
+                    "act1": "Scene 1 content",
+                    "act2": "Scene 2 content"
+                },
+                dialogue: {
+                    "act1": "Character dialogue here"
+                }
+            };
+            
+            console.log('\n=== Progress Tracker Test ===');
+            if (window.ProgressTracker) {
+                ProgressTracker.debugProgress(testState);
+            } else {
+                console.log('ProgressTracker not loaded');
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            setProgress(0);
+            testProgressTracker();
+        });
+    </script>
+</body>
+</html> 
