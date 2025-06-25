@@ -4486,7 +4486,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
     
     // Load existing project data from database (unified v2.0 format)
-    const plotUsername = 'guest'; // TODO: Get from user session/auth
+    const plotUsername = req.user.username; // Get from authenticated user
     
     // Get user and project from database
     const plotUserResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [plotUsername]);
@@ -4668,7 +4668,7 @@ Create 4 plot points using "But and Therefore" logic to create dramatic tension 
     await context.saveToProject(projectPath);
 
     // Save plot points to database (unified v2.0 format)
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     
     // Get user and project from database
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
