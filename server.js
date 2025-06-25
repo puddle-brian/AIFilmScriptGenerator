@@ -5964,6 +5964,127 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Diagnostic endpoint for structure generation issues
+app.post('/api/debug/structure-generation', authenticateApiKey, async (req, res) => {
+  const diagnostics = {
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    checks: {}
+  };
+
+  try {
+    // Check 1: Authentication
+    diagnostics.checks.authentication = {
+      status: 'ok',
+      user: req.user ? req.user.username : 'missing',
+      userId: req.user ? req.user.id : null
+    };
+
+    // Check 2: Environment Variables
+    diagnostics.checks.environment = {
+      status: process.env.ANTHROPIC_API_KEY ? 'ok' : 'missing',
+      hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      nodeEnv: process.env.NODE_ENV
+    };
+
+    // Check 3: Database Connection
+    try {
+      const dbTest = await dbClient.query('SELECT NOW() as current_time');
+      diagnostics.checks.database = {
+        status: 'ok',
+        connected: true,
+        currentTime: dbTest.rows[0].current_time
+      };
+    } catch (dbError) {
+      diagnostics.checks.database = {
+        status: 'error',
+        connected: false,
+        error: dbError.message
+      };
+    }
+
+    // Check 4: User Lookup
+    if (req.user) {
+      try {
+        const userResult = await dbClient.query('SELECT id, username, credits_remaining FROM users WHERE username = $1', [req.user.username]);
+        diagnostics.checks.userLookup = {
+          status: userResult.rows.length > 0 ? 'ok' : 'user_not_found',
+          found: userResult.rows.length > 0,
+          userData: userResult.rows[0] || null
+        };
+      } catch (userError) {
+        diagnostics.checks.userLookup = {
+          status: 'error',
+          error: userError.message
+        };
+      }
+    }
+
+    // Check 5: User Projects Table
+    try {
+      const tableCheck = await dbClient.query(`
+        SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = 'user_projects'
+        ORDER BY ordinal_position
+      `);
+      diagnostics.checks.userProjectsTable = {
+        status: tableCheck.rows.length > 0 ? 'ok' : 'table_missing',
+        exists: tableCheck.rows.length > 0,
+        columns: tableCheck.rows.map(row => `${row.column_name} (${row.data_type})`)
+      };
+    } catch (tableError) {
+      diagnostics.checks.userProjectsTable = {
+        status: 'error',
+        error: tableError.message
+      };
+    }
+
+    // Check 6: Prompt Builders
+    try {
+      const testStoryInput = { title: 'Test', characters: [] };
+      const testTemplateData = { name: 'Test Template', structure: {} };
+      const testPrompt = promptBuilders.buildStructurePrompt(testStoryInput, testTemplateData);
+      diagnostics.checks.promptBuilders = {
+        status: 'ok',
+        working: true,
+        promptLength: testPrompt.length
+      };
+    } catch (promptError) {
+      diagnostics.checks.promptBuilders = {
+        status: 'error',
+        working: false,
+        error: promptError.message
+      };
+    }
+
+    // Check 7: TrackedAnthropic API
+    try {
+      const trackedApiTest = trackedAnthropic.getAllModelPricing();
+      diagnostics.checks.anthropicApi = {
+        status: 'ok',
+        initialized: true,
+        modelsAvailable: Object.keys(trackedApiTest).length
+      };
+    } catch (apiError) {
+      diagnostics.checks.anthropicApi = {
+        status: 'error',
+        initialized: false,
+        error: apiError.message
+      };
+    }
+
+    res.json(diagnostics);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Diagnostic failed',
+      details: error.message,
+      partialDiagnostics: diagnostics
+    });
+  }
+});
+
 // Add v2 endpoints for compatibility
 app.post('/api/v2/auth/login', async (req, res) => {
   try {

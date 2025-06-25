@@ -68,6 +68,7 @@
     <div class="test-section error">
         <h2>🎬 Generate Structure Test</h2>
         <p>Test the exact endpoint that's failing in your logs.</p>
+        <button onclick="testStructureDiagnostics()">Diagnose Structure Issues</button>
         <button onclick="testGenerateStructure()">Test Generate Structure</button>
         <div id="generateResult" class="result" style="display: none;"></div>
     </div>
@@ -278,6 +279,55 @@
         function clearLocalStorage() {
             localStorage.clear();
             log('🧹 LocalStorage cleared', 'storageResult');
+        }
+
+        // Test Structure Diagnostics
+        async function testStructureDiagnostics() {
+            clearLog('generateResult');
+            const apiKey = localStorage.getItem('apiKey');
+            
+            if (!apiKey) {
+                log('❌ No API key found. Run registration and login tests first.', 'generateResult');
+                return;
+            }
+            
+            log('🔄 Running structure generation diagnostics...', 'generateResult');
+            
+            try {
+                const response = await fetch('/api/debug/structure-generation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Diagnostics completed successfully!`, 'generateResult');
+                    
+                    // Log each check result
+                    Object.entries(data.checks).forEach(([checkName, result]) => {
+                        const status = result.status === 'ok' ? '✅' : '❌';
+                        log(`${status} ${checkName}: ${result.status}`, 'generateResult');
+                        
+                        if (result.error) {
+                            log(`   Error: ${result.error}`, 'generateResult');
+                        }
+                        if (result.details) {
+                            log(`   Details: ${JSON.stringify(result.details)}`, 'generateResult');
+                        }
+                    });
+                    
+                    // Show full diagnostic data
+                    log(`📊 Full diagnostics: ${JSON.stringify(data, null, 2)}`, 'generateResult');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Diagnostics failed: ${response.status} - ${errorText}`, 'generateResult');
+                }
+            } catch (error) {
+                log(`❌ Diagnostics error: ${error.message}`, 'generateResult');
+            }
         }
 
         // Test Generate Structure (the failing endpoint)
