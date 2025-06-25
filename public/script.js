@@ -2274,6 +2274,12 @@ function changeTemplate() {
     // Expand template options
     expandTemplateOptions();
     
+    // Update navigation state - template deselection should reset navigation
+    updateStepIndicators();
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
+    updateAllProgressMeters();
+    
     // Scroll to template options
     document.getElementById('templateOptions').scrollIntoView({
         behavior: 'smooth',
