@@ -2390,6 +2390,34 @@ async function previewPrompt() {
     try {
         showLoading('Generating prompt preview...');
         
+        // 🔧 Fix template key order before sending to server (same as generateStructure)
+        let customTemplateData = appState.templateData;
+        if (customTemplateData && customTemplateData.structure) {
+            try {
+                // Load original template to get correct key order
+                const originalTemplateResponse = await fetch(`/api/template/${appState.selectedTemplate}`);
+                if (originalTemplateResponse.ok) {
+                    const originalTemplate = await originalTemplateResponse.json();
+                    if (originalTemplate.structure) {
+                        // Create new structure with correct order
+                        const orderedStructure = {};
+                        Object.keys(originalTemplate.structure).forEach(key => {
+                            if (customTemplateData.structure[key]) {
+                                orderedStructure[key] = customTemplateData.structure[key];
+                            }
+                        });
+                        customTemplateData = {
+                            ...customTemplateData,
+                            structure: orderedStructure
+                        };
+                        console.log('🔧 Fixed template key order for preview:', Object.keys(orderedStructure));
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not fix template order for preview, using current order:', error);
+            }
+        }
+
         const response = await fetch('/api/preview-prompt', {
             method: 'POST',
             headers: {
@@ -2398,7 +2426,7 @@ async function previewPrompt() {
             body: JSON.stringify({
                 storyInput: storyInput,
                 template: appState.selectedTemplate,
-                customTemplateData: appState.templateData // 🔧 Send customized template data
+                customTemplateData: customTemplateData // 🔧 Send order-corrected template data
             })
         });
         
@@ -2532,6 +2560,34 @@ async function generateStructure() {
     try {
         showLoading('Generating plot structure...');
         
+        // 🔧 Fix template key order before sending to server
+        let customTemplateData = appState.templateData;
+        if (customTemplateData && customTemplateData.structure) {
+            try {
+                // Load original template to get correct key order
+                const originalTemplateResponse = await fetch(`/api/template/${appState.selectedTemplate}`);
+                if (originalTemplateResponse.ok) {
+                    const originalTemplate = await originalTemplateResponse.json();
+                    if (originalTemplate.structure) {
+                        // Create new structure with correct order
+                        const orderedStructure = {};
+                        Object.keys(originalTemplate.structure).forEach(key => {
+                            if (customTemplateData.structure[key]) {
+                                orderedStructure[key] = customTemplateData.structure[key];
+                            }
+                        });
+                        customTemplateData = {
+                            ...customTemplateData,
+                            structure: orderedStructure
+                        };
+                        console.log('🔧 Fixed template key order for generation:', Object.keys(orderedStructure));
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not fix template order, using current order:', error);
+            }
+        }
+
         const response = await fetch('/api/generate-structure', {
             method: 'POST',
             headers: {
@@ -2541,7 +2597,7 @@ async function generateStructure() {
             body: JSON.stringify({
                 storyInput: appState.storyInput,
                 template: appState.selectedTemplate,
-                customTemplateData: appState.templateData, // 🔧 Send customized template data
+                customTemplateData: customTemplateData, // 🔧 Send order-corrected template data
                 model: getSelectedModel()
             })
         });
@@ -2969,6 +3025,33 @@ async function generateElementPlotPoints(structureKey) {
     try {
         showLoading(`Generating plot points for ${structureKey}...`);
         
+        // 🔧 Fix template key order before sending to server (same as generateStructure)
+        let customTemplateData = appState.templateData;
+        if (customTemplateData && customTemplateData.structure) {
+            try {
+                // Load original template to get correct key order
+                const originalTemplateResponse = await fetch(`/api/template/${appState.selectedTemplate}`);
+                if (originalTemplateResponse.ok) {
+                    const originalTemplate = await originalTemplateResponse.json();
+                    if (originalTemplate.structure) {
+                        // Create ordered structure using original template keys
+                        const orderedStructure = {};
+                        Object.keys(originalTemplate.structure).forEach(key => {
+                            if (customTemplateData.structure[key]) {
+                                orderedStructure[key] = customTemplateData.structure[key];
+                            }
+                        });
+                        customTemplateData = {
+                            ...customTemplateData,
+                            structure: orderedStructure
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('🔧 Could not fix template order:', error);
+            }
+        }
+
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
@@ -2976,7 +3059,8 @@ async function generateElementPlotPoints(structureKey) {
             },
             body: JSON.stringify({
                 desiredSceneCount: desiredSceneCount,
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                customTemplateData: customTemplateData // 🔧 Send customized template data
             })
         });
         
@@ -3102,6 +3186,33 @@ async function regenerateAllPlotPointsForElement(structureKey) {
     try {
         showLoading(`Regenerating plot points for ${structureKey}...`);
         
+        // 🔧 Fix template key order before sending to server (same as generateElementPlotPoints)
+        let customTemplateData = appState.templateData;
+        if (customTemplateData && customTemplateData.structure) {
+            try {
+                // Load original template to get correct key order
+                const originalTemplateResponse = await fetch(`/api/template/${appState.selectedTemplate}`);
+                if (originalTemplateResponse.ok) {
+                    const originalTemplate = await originalTemplateResponse.json();
+                    if (originalTemplate.structure) {
+                        // Create ordered structure using original template keys
+                        const orderedStructure = {};
+                        Object.keys(originalTemplate.structure).forEach(key => {
+                            if (customTemplateData.structure[key]) {
+                                orderedStructure[key] = customTemplateData.structure[key];
+                            }
+                        });
+                        customTemplateData = {
+                            ...customTemplateData,
+                            structure: orderedStructure
+                        };
+                    }
+                }
+            } catch (error) {
+                console.warn('🔧 Could not fix template order:', error);
+            }
+        }
+
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
@@ -3109,7 +3220,8 @@ async function regenerateAllPlotPointsForElement(structureKey) {
             },
             body: JSON.stringify({
                 desiredSceneCount: 4, // Default value
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                customTemplateData: customTemplateData // 🔧 Send customized template data
             })
         });
         

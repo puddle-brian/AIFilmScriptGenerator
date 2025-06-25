@@ -2070,14 +2070,56 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
       
       console.log(`✅ Loaded unified project from database: "${projectContext.storyInput?.title || projectPath}"`);
       
-      // Return unified v2.0 format - no field mapping needed
+      // 🔧 Fix template and structure key order after loading from database
+      let fixedTemplateData = projectContext.templateData;
+      let fixedGeneratedStructure = projectContext.generatedStructure;
+      
+      if (projectContext.selectedTemplate && projectContext.templateData && projectContext.templateData.structure) {
+        try {
+          const fs = require('fs').promises;
+          const path = require('path');
+          const templatePath = path.join(__dirname, 'templates', `${projectContext.selectedTemplate}.json`);
+          const originalTemplateData = JSON.parse(await fs.readFile(templatePath, 'utf8'));
+          
+          if (originalTemplateData.structure) {
+            // Fix templateData order
+            const orderedTemplateStructure = {};
+            Object.keys(originalTemplateData.structure).forEach(key => {
+              if (projectContext.templateData.structure[key]) {
+                orderedTemplateStructure[key] = projectContext.templateData.structure[key];
+              }
+            });
+            fixedTemplateData = {
+              ...projectContext.templateData,
+              structure: orderedTemplateStructure
+            };
+            
+            // Fix generatedStructure order to match template
+            if (projectContext.generatedStructure) {
+              const orderedGeneratedStructure = {};
+              Object.keys(originalTemplateData.structure).forEach(key => {
+                if (projectContext.generatedStructure[key]) {
+                  orderedGeneratedStructure[key] = projectContext.generatedStructure[key];
+                }
+              });
+              fixedGeneratedStructure = orderedGeneratedStructure;
+            }
+            
+            console.log(`🔧 Fixed template and structure key order for project: ${projectContext.selectedTemplate}`);
+          }
+        } catch (error) {
+          console.warn(`🔧 Could not fix template order for ${projectContext.selectedTemplate}:`, error.message);
+        }
+      }
+      
+      // Return unified v2.0 format with fixed key order
       const fullProjectData = {
         projectPath: projectPath,
         projectId: projectContext.projectId,
         storyInput: projectContext.storyInput,
         selectedTemplate: projectContext.selectedTemplate,
-        templateData: projectContext.templateData,
-        generatedStructure: projectContext.generatedStructure,
+        templateData: fixedTemplateData,
+        generatedStructure: fixedGeneratedStructure,
         plotPoints: projectContext.plotPoints,
         generatedScenes: projectContext.generatedScenes,
         generatedDialogues: projectContext.generatedDialogues,
@@ -4328,7 +4370,7 @@ app.delete('/api/users/:userId/projects', async (req, res) => {
 app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { desiredSceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
+    const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
     
     // Load existing project data from database (unified v2.0 format)
     const plotUsername = 'guest'; // TODO: Get from user session/auth
@@ -4352,7 +4394,25 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, r
     }
     
     const plotProjectContext = parseProjectContext(plotProjectResult.rows[0].project_context);
-    const { generatedStructure: structure, storyInput, templateData } = plotProjectContext;
+    const { generatedStructure: structure, storyInput } = plotProjectContext;
+    
+    // 🔧 Use customized template data if provided, otherwise fall back to database version
+    const templateData = customTemplateData || plotProjectContext.templateData;
+    
+    if (customTemplateData) {
+      console.log('🎭 Using customized template data for plot points generation');
+    } else {
+      console.log('📁 Using database template data for plot points generation');
+    }
+    
+    // 🔍 Debug: Show what structure data we're using
+    console.log(`🔍 DEBUG: Structure data for ${actKey}:`);
+    if (structure && structure[actKey]) {
+      console.log(`  📝 Act name: "${structure[actKey].name}"`);
+      console.log(`  📝 Act description: "${structure[actKey].description?.substring(0, 100)}..."`);
+    } else {
+      console.log(`  ⚠️  No structure data found for ${actKey}`);
+    }
     
     if (!structure[actKey]) {
       return res.status(400).json({ error: 'Invalid act key' });

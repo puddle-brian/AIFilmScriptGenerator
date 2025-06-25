@@ -52,16 +52,8 @@ Generate a detailed breakdown for each structural element. Each element should h
 
 Return the response as a valid JSON object with each structural element as a property. 
 
+CRITICAL: Use the EXACT structure keys from the Template Structure Elements above. Do not create your own keys or names.
+
 IMPORTANT: Your response must be ONLY valid JSON, with no additional text, markdown formatting, or explanations. Start with { and end with }.
 
-Example format:
-{
-  "act1_setup": {
-    "name": "Act 1: Setup",
-    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
-  },
-  "act1_inciting_incident": {
-    "name": "Inciting Incident", 
-    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
-  }
-} 
+The JSON structure should match the Template Structure Elements exactly, using the same keys and updating the names/descriptions based on the story content while preserving the template's structural intent. 
