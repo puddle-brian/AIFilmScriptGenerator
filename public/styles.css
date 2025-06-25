@@ -2459,6 +2459,11 @@ body {
 .editable-content-display {
     line-height: 1.6;
     color: #444;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .editable-content-display h3 {
