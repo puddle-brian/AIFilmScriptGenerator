@@ -5459,8 +5459,8 @@ app.post('/api/admin/create-user', authenticateApiKey, async (req, res) => {
   }
 });
 
-// Get model pricing information
-app.get('/api/model-pricing', authenticateApiKey, async (req, res) => {
+// Get model pricing information (PUBLIC - no auth required)
+app.get('/api/model-pricing', async (req, res) => {
   try {
     const pricing = trackedAnthropic.getAllModelPricing();
     

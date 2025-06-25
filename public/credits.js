@@ -40,20 +40,11 @@ async function loadCreditData() {
     isLoadingCredits = true;
     
     try {
-        // Load user stats and model pricing in parallel
-        const [statsResponse, pricingResponse] = await Promise.all([
-            fetchWithAuth(CREDIT_ENDPOINTS.myStats),
-            fetch(CREDIT_ENDPOINTS.modelPricing)
-        ]);
+        // Check if user is authenticated
+        const apiKey = localStorage.getItem('apiKey');
         
-        if (statsResponse.ok) {
-            const statsData = await statsResponse.json();
-            updateCreditDisplay(statsData);
-            updateUsageHistory(statsData.recentUsage || []);
-        } else {
-            console.warn('Failed to load user stats:', await statsResponse.text());
-            showOfflineMode();
-        }
+        // Always load model pricing (public endpoint)
+        const pricingResponse = await fetch(CREDIT_ENDPOINTS.modelPricing);
         
         if (pricingResponse.ok) {
             const pricingData = await pricingResponse.json();
@@ -61,6 +52,28 @@ async function loadCreditData() {
             updateModelPricingDisplay(pricingData);
         } else {
             console.warn('Failed to load model pricing:', await pricingResponse.text());
+        }
+        
+        // Only load user stats if user is authenticated
+        if (apiKey) {
+            try {
+                const statsResponse = await fetchWithAuth(CREDIT_ENDPOINTS.myStats);
+                
+                if (statsResponse.ok) {
+                    const statsData = await statsResponse.json();
+                    updateCreditDisplay(statsData);
+                    updateUsageHistory(statsData.recentUsage || []);
+                } else {
+                    console.warn('Failed to load user stats:', await statsResponse.text());
+                    showOfflineMode();
+                }
+            } catch (error) {
+                console.error('Error loading user stats:', error);
+                showOfflineMode();
+            }
+        } else {
+            // User not authenticated - show guest mode
+            showGuestMode();
         }
         
     } catch (error) {
@@ -275,6 +288,19 @@ function showLowCreditsWarning(credits) {
     } else {
         profileContainer.insertBefore(warning, profileContainer.firstChild);
     }
+}
+
+/**
+ * Show Guest Mode
+ */
+function showGuestMode() {
+    const creditsAmount = document.getElementById('creditsAmount');
+    const balanceNumber = document.getElementById('balanceNumber');
+    
+    if (creditsAmount) creditsAmount.textContent = '0';
+    if (balanceNumber) balanceNumber.textContent = '0';
+    
+    console.log('Credit system in guest mode - user not authenticated');
 }
 
 /**
