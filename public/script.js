@@ -425,7 +425,7 @@ class EditableContentBlock {
     
     formatDialogueContent(content) {
         // Format dialogue content with proper screenplay formatting
-        return `<pre class="screenplay-content">${content}</pre>`;
+        return `<pre class="screenplay-content dialogue-content">${content}</pre>`;
     }
     
     startEdit() {
