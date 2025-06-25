@@ -4480,7 +4480,7 @@ app.delete('/api/users/:userId/projects', async (req, res) => {
 // Server startup moved to bottom of file for proper Vercel export handling
 
 // Generate plot points for a specific story act (Level 4 generation)
-app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', async (req, res) => {
+app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
