@@ -5964,6 +5964,139 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
+// Add v2 endpoints for compatibility
+app.post('/api/v2/auth/login', async (req, res) => {
+  try {
+    const { email, password, rememberMe = false } = req.body;
+    
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    
+    // Find user by email
+    const result = await dbClient.query(
+      'SELECT id, username, email, password_hash, api_key, credits_remaining, is_admin, email_verified FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    const user = result.rows[0];
+    
+    // Verify password
+    const bcrypt = require('bcrypt');
+    const passwordValid = await bcrypt.compare(password, user.password_hash);
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Update last login (non-critical)
+    try {
+      await dbClient.query('UPDATE users SET updated_at = NOW() WHERE id = $1', [user.id]);
+    } catch (updateError) {
+      console.log('Last login update failed:', updateError.message);
+    }
+    
+    // Return user data and API key
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        credits_remaining: user.credits_remaining,
+        is_admin: user.is_admin,
+        email_verified: user.email_verified
+      },
+      apiKey: user.api_key,
+      rememberMe
+    });
+    
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed. Please try again.' });
+  }
+});
+
+app.post('/api/v2/auth/register', async (req, res) => {
+  try {
+    const { username, email, password, emailUpdates = false } = req.body;
+    
+    // Validation
+    if (!username || !email || !password) {
+      return res.status(400).json({ error: 'Username, email, and password are required' });
+    }
+    
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({ error: 'Username must be 3-30 characters long' });
+    }
+    
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, underscore, and hyphen' });
+    }
+    
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+    }
+    
+    // Check if user already exists
+    const existingUser = await dbClient.query(
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [username, email]
+    );
+    
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Username or email already exists' });
+    }
+    
+    // Hash password
+    const bcrypt = require('bcrypt');
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    
+    // Generate API key
+    const crypto = require('crypto');
+    const apiKey = 'user_' + crypto.randomBytes(32).toString('hex');
+    
+    // Create user with initial credits (100 free credits = $1.00)
+    const result = await dbClient.query(`
+      INSERT INTO users (
+        username, email, password_hash, api_key, 
+        credits_remaining, total_credits_purchased, 
+        email_updates, email_verified, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+      RETURNING id, username, email, api_key, credits_remaining, created_at
+    `, [username, email, hashedPassword, apiKey, 100, 100, emailUpdates, false]);
+    
+    const user = result.rows[0];
+    
+    console.log(`New user registered via v2: ${username} (${email})`);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        credits_remaining: user.credits_remaining,
+        created_at: user.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('Registration error:', error);
+    if (error.code === '23505') { // Unique constraint violation
+      res.status(400).json({ error: 'Username or email already exists' });
+    } else {
+      res.status(500).json({ error: 'Registration failed. Please try again.' });
+    }
+  }
+});
+
 // Start server for local development
 const startServer = async () => {
   await ensureDirectories();

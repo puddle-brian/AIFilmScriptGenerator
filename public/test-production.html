@@ -3,129 +3,344 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Production Database Test</title>
+    <title>Production Test - Authentication Debug</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
-        button { padding: 10px 20px; margin: 10px; background: #007cba; color: white; border: none; cursor: pointer; }
-        button:hover { background: #005a8a; }
-        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-left: 4px solid #007cba; }
-        .error { border-left-color: #dc3545; background: #f8d7da; }
-        .success { border-left-color: #28a745; background: #d4edda; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .warning { background-color: #fff3cd; border-color: #ffeaa7; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .result { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 3px; }
+        pre { background: #f1f1f1; padding: 10px; border-radius: 3px; overflow-x: auto; }
     </style>
 </head>
 <body>
-    <h1>Production Database Test - SCREENPLAY GENIE</h1>
-    
-    <div class="test-section">
-        <h3>1. Test Database Migration</h3>
-        <button onclick="testMigration()">Run Database Migration</button>
-        <div id="migration-result" class="result" style="display: none;"></div>
+    <h1>🧪 Production Authentication Debug</h1>
+    <p>This page tests the authentication flow and API endpoints in production.</p>
+
+    <!-- Environment Check -->
+    <div class="test-section info">
+        <h2>🔧 Environment Check</h2>
+        <p>Current URL: <code id="currentUrl"></code></p>
+        <p>Environment: <code id="environment"></code></p>
+        <button onclick="checkEnvironment()">Check Environment</button>
+        <div id="envResult" class="result" style="display: none;"></div>
     </div>
-    
-    <div class="test-section">
-        <h3>2. Test Registration</h3>
-        <button onclick="testRegistration()">Test User Registration</button>
-        <div id="registration-result" class="result" style="display: none;"></div>
+
+    <!-- API Connectivity Test -->
+    <div class="test-section info">
+        <h2>🌐 API Connectivity</h2>
+        <p>Test basic API connectivity without authentication.</p>
+        <button onclick="testApiConnectivity()">Test API Health</button>
+        <div id="apiResult" class="result" style="display: none;"></div>
     </div>
-    
-    <div class="test-section">
-        <h3>3. Check Database Schema</h3>
-        <button onclick="checkSchema()">Check Users Table Schema</button>
-        <div id="schema-result" class="result" style="display: none;"></div>
+
+    <!-- Public Endpoints Test -->
+    <div class="test-section info">
+        <h2>🔓 Public Endpoints Test</h2>
+        <p>Test endpoints that should work without authentication.</p>
+        <button onclick="testPublicEndpoints()">Test Public Endpoints</button>
+        <div id="publicResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Authentication Flow Test -->
+    <div class="test-section warning">
+        <h2>🔐 Authentication Flow Test</h2>
+        <p>Test user registration and login flow.</p>
+        <button onclick="testRegistration()">Test Registration</button>
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="testAuthenticatedEndpoint()">Test Authenticated Endpoint</button>
+        <div id="authResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Local Storage Debug -->
+    <div class="test-section info">
+        <h2>💾 Local Storage Debug</h2>
+        <p>Check what's stored in localStorage.</p>
+        <button onclick="debugLocalStorage()">Debug Local Storage</button>
+        <button onclick="clearLocalStorage()">Clear Local Storage</button>
+        <div id="storageResult" class="result" style="display: none;"></div>
+    </div>
+
+    <!-- Generate Structure Test -->
+    <div class="test-section error">
+        <h2>🎬 Generate Structure Test</h2>
+        <p>Test the exact endpoint that's failing in your logs.</p>
+        <button onclick="testGenerateStructure()">Test Generate Structure</button>
+        <div id="generateResult" class="result" style="display: none;"></div>
     </div>
 
     <script>
-        async function testMigration() {
-            const resultDiv = document.getElementById('migration-result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = 'Running migration...';
-            resultDiv.className = 'result';
+        // Utility functions
+        function log(message, containerId) {
+            const container = document.getElementById(containerId);
+            container.style.display = 'block';
+            container.innerHTML += `<p>${new Date().toLocaleTimeString()}: ${message}</p>`;
+        }
+
+        function clearLog(containerId) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            container.style.display = 'none';
+        }
+
+        // Environment Check
+        function checkEnvironment() {
+            clearLog('envResult');
+            
+            const url = window.location.href;
+            const isProduction = url.includes('screenplaygenie.com') || url.includes('vercel.app');
+            const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+            
+            document.getElementById('currentUrl').textContent = url;
+            document.getElementById('environment').textContent = isProduction ? 'Production' : (isLocal ? 'Local' : 'Unknown');
+            
+            log(`✅ URL: ${url}`, 'envResult');
+            log(`✅ Environment: ${isProduction ? 'Production' : (isLocal ? 'Local' : 'Unknown')}`, 'envResult');
+            log(`✅ User Agent: ${navigator.userAgent}`, 'envResult');
+        }
+
+        // Test API Connectivity
+        async function testApiConnectivity() {
+            clearLog('apiResult');
+            log('🔄 Testing API connectivity...', 'apiResult');
             
             try {
-                const response = await fetch('/api/admin/migrate-database', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                const data = await response.json();
-                
+                const response = await fetch('/api/health');
                 if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.innerHTML = `
-                        <strong>Migration completed!</strong><br>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                    const data = await response.json();
+                    log(`✅ API Health: ${JSON.stringify(data)}`, 'apiResult');
                 } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.innerHTML = `
-                        <strong>Migration failed:</strong><br>
-                        ${data.error || 'Unknown error'}<br>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                    log(`❌ API Health failed: ${response.status} ${response.statusText}`, 'apiResult');
                 }
             } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `<strong>Network error:</strong> ${error.message}`;
+                log(`❌ API Health error: ${error.message}`, 'apiResult');
             }
         }
-        
+
+        // Test Public Endpoints
+        async function testPublicEndpoints() {
+            clearLog('publicResult');
+            log('🔄 Testing public endpoints...', 'publicResult');
+            
+            // Test model pricing (should work without auth now)
+            try {
+                log('🔄 Testing /api/model-pricing...', 'publicResult');
+                const pricingResponse = await fetch('/api/model-pricing');
+                if (pricingResponse.ok) {
+                    const pricingData = await pricingResponse.json();
+                    log(`✅ Model pricing loaded: ${pricingData.pricing.length} models`, 'publicResult');
+                } else {
+                    const errorText = await pricingResponse.text();
+                    log(`❌ Model pricing failed: ${pricingResponse.status} - ${errorText}`, 'publicResult');
+                }
+            } catch (error) {
+                log(`❌ Model pricing error: ${error.message}`, 'publicResult');
+            }
+
+            // Test template loading
+            try {
+                log('🔄 Testing /api/templates...', 'publicResult');
+                const templatesResponse = await fetch('/api/templates');
+                if (templatesResponse.ok) {
+                    const templatesData = await templatesResponse.json();
+                    log(`✅ Templates loaded: ${Object.keys(templatesData).length} templates`, 'publicResult');
+                } else {
+                    log(`❌ Templates failed: ${templatesResponse.status}`, 'publicResult');
+                }
+            } catch (error) {
+                log(`❌ Templates error: ${error.message}`, 'publicResult');
+            }
+        }
+
+        // Test Registration
         async function testRegistration() {
-            const resultDiv = document.getElementById('registration-result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = 'Testing registration...';
-            resultDiv.className = 'result';
+            clearLog('authResult');
+            log('🔄 Testing user registration...', 'authResult');
             
             const testUser = {
-                username: 'testuser' + Date.now(),
-                email: 'test' + Date.now() + '@example.com',
+                username: `testuser_${Date.now()}`,
+                email: `test_${Date.now()}@example.com`,
                 password: 'testpassword123'
             };
             
             try {
                 const response = await fetch('/api/auth/register', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(testUser)
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
-                    resultDiv.className = 'result success';
-                    resultDiv.innerHTML = `
-                        <strong>Registration successful!</strong><br>
-                        User: ${data.user.username}<br>
-                        Credits: ${data.user.credits_remaining}<br>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                    log(`✅ Registration successful: ${testUser.username}`, 'authResult');
+                    log(`✅ User data: ${JSON.stringify(data.user)}`, 'authResult');
+                    
+                    // Store test user for login test
+                    localStorage.setItem('testUser', JSON.stringify(testUser));
                 } else {
-                    resultDiv.className = 'result error';
-                    resultDiv.innerHTML = `
-                        <strong>Registration failed:</strong><br>
-                        ${data.error || 'Unknown error'}<br>
-                        <pre>${JSON.stringify(data, null, 2)}</pre>
-                    `;
+                    log(`❌ Registration failed: ${data.error}`, 'authResult');
                 }
             } catch (error) {
-                resultDiv.className = 'result error';
-                resultDiv.innerHTML = `<strong>Network error:</strong> ${error.message}`;
+                log(`❌ Registration error: ${error.message}`, 'authResult');
             }
         }
-        
-        async function checkSchema() {
-            const resultDiv = document.getElementById('schema-result');
-            resultDiv.style.display = 'block';
-            resultDiv.innerHTML = 'Checking schema...';
-            resultDiv.className = 'result';
+
+        // Test Login
+        async function testLogin() {
+            clearLog('authResult');
+            const testUser = JSON.parse(localStorage.getItem('testUser') || '{}');
             
-            // This would need a dedicated endpoint to check schema
-            resultDiv.innerHTML = 'Schema check endpoint not implemented yet. Use migration test instead.';
+            if (!testUser.email) {
+                log('❌ No test user found. Run registration test first.', 'authResult');
+                return;
+            }
+            
+            log('🔄 Testing user login...', 'authResult');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: testUser.email,
+                        password: testUser.password
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ Login successful: ${data.user.username}`, 'authResult');
+                    log(`✅ API Key received: ${data.apiKey.substring(0, 20)}...`, 'authResult');
+                    
+                    // Store API key for authenticated tests
+                    localStorage.setItem('apiKey', data.apiKey);
+                    localStorage.setItem('userData', JSON.stringify(data.user));
+                } else {
+                    log(`❌ Login failed: ${data.error}`, 'authResult');
+                }
+            } catch (error) {
+                log(`❌ Login error: ${error.message}`, 'authResult');
+            }
         }
+
+        // Test Authenticated Endpoint
+        async function testAuthenticatedEndpoint() {
+            clearLog('authResult');
+            const apiKey = localStorage.getItem('apiKey');
+            
+            if (!apiKey) {
+                log('❌ No API key found. Run login test first.', 'authResult');
+                return;
+            }
+            
+            log('🔄 Testing authenticated endpoint...', 'authResult');
+            
+            try {
+                const response = await fetch('/api/my-stats', {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ User stats loaded: ${data.user.username}`, 'authResult');
+                    log(`✅ Credits: ${data.user.credits_remaining}`, 'authResult');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ User stats failed: ${response.status} - ${errorText}`, 'authResult');
+                }
+            } catch (error) {
+                log(`❌ User stats error: ${error.message}`, 'authResult');
+            }
+        }
+
+        // Debug Local Storage
+        function debugLocalStorage() {
+            clearLog('storageResult');
+            log('🔄 Debugging localStorage...', 'storageResult');
+            
+            const keys = ['apiKey', 'userData', 'filmScriptGenerator', 'testUser'];
+            
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                if (value) {
+                    log(`✅ ${key}: ${value.substring(0, 100)}${value.length > 100 ? '...' : ''}`, 'storageResult');
+                } else {
+                    log(`❌ ${key}: Not found`, 'storageResult');
+                }
+            });
+        }
+
+        function clearLocalStorage() {
+            localStorage.clear();
+            log('🧹 LocalStorage cleared', 'storageResult');
+        }
+
+        // Test Generate Structure (the failing endpoint)
+        async function testGenerateStructure() {
+            clearLog('generateResult');
+            const apiKey = localStorage.getItem('apiKey');
+            
+            if (!apiKey) {
+                log('❌ No API key found. Run registration and login tests first.', 'generateResult');
+                return;
+            }
+            
+            log('🔄 Testing structure generation...', 'generateResult');
+            
+            const testStoryInput = {
+                title: "Test Story",
+                logline: "A test story for debugging",
+                characters: [{ name: "Test Character", description: "A test character" }],
+                totalScenes: 10
+            };
+            
+            const testTemplateData = {
+                name: "Three Act",
+                structure: {
+                    act1: { name: "Act 1", description: "Setup" },
+                    act2: { name: "Act 2", description: "Confrontation" },
+                    act3: { name: "Act 3", description: "Resolution" }
+                }
+            };
+            
+            try {
+                const response = await fetch('/api/generate-structure', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    },
+                    body: JSON.stringify({
+                        storyInput: testStoryInput,
+                        template: 'three-act',
+                        customTemplateData: testTemplateData,
+                        model: 'claude-3-5-haiku-20241022'
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ Structure generation successful!`, 'generateResult');
+                    log(`✅ Generated structure keys: ${Object.keys(data.generatedStructure || {})}`, 'generateResult');
+                } else {
+                    const errorText = await response.text();
+                    log(`❌ Structure generation failed: ${response.status} - ${errorText}`, 'generateResult');
+                }
+            } catch (error) {
+                log(`❌ Structure generation error: ${error.message}`, 'generateResult');
+            }
+        }
+
+        // Initialize
+        window.onload = function() {
+            checkEnvironment();
+            debugLocalStorage();
+        };
     </script>
 </body>
 </html> 
