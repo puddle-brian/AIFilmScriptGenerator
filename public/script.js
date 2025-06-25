@@ -4833,6 +4833,16 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         updateInfluenceTags('screenwriter');
         updateInfluenceTags('film');
         updateStoryConceptDisplay();
+    } else if (stepNumber === 2) {
+        // Step 2: Template Selection - Show selected template or template options
+        console.log('Step 2 - Template Selection');
+        if (appState.selectedTemplate) {
+            // Template already selected - hide template options
+            collapseTemplateOptions();
+        } else {
+            // No template selected - show template options
+            expandTemplateOptions();
+        }
     } else if (stepNumber === 3) {
         // Step 3: Acts Generation - Show template structure preview
         console.log('Step 3 - Acts Generation');
@@ -6111,6 +6121,7 @@ function displaySelectedTemplate(templateData) {
     const description = document.getElementById('selectedTemplateDescription');
     const category = document.getElementById('selectedTemplateCategory');
     
+    // Update the existing elements (keeping the original HTML structure intact)
     name.textContent = templateData.name;
     description.textContent = templateData.description;
     category.textContent = templateData.category ? templateData.category.replace('_', ' ').toUpperCase() : '';
