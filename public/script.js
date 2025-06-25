@@ -4813,10 +4813,14 @@ function canNavigateToStep(stepNumber) {
             result = true; // Can always go to step 1
             break;
         case 2:
-            result = !!(appState.storyInput && appState.storyInput.title); // Need story input
+            // Need complete story input (title + logline)
+            result = !!(appState.storyInput && 
+                       appState.storyInput.title && 
+                       appState.storyInput.logline);
             break;
         case 3:
-            result = !!(appState.selectedTemplate || appState.generatedStructure); // Need template selected OR structure already generated
+            // Need template selected (Step 2 complete)
+            result = !!appState.selectedTemplate;
             if (stepNumber === 3) {
                 console.log('Step 3 validation:', {
                     selectedTemplate: appState.selectedTemplate,
@@ -4827,7 +4831,13 @@ function canNavigateToStep(stepNumber) {
             }
             break;
         case 4:
-            result = !!appState.generatedStructure; // Need structure generated
+            // Need structure with actual content generated
+            result = !!(appState.generatedStructure && 
+                       Object.keys(appState.generatedStructure).length > 0 &&
+                       Object.keys(appState.generatedStructure).some(key => 
+                           appState.generatedStructure[key] && 
+                           appState.generatedStructure[key].description
+                       ));
             break;
         case 5:
             result = !!(appState.plotPoints && Object.keys(appState.plotPoints).length > 0); // Need plot points generated
@@ -4840,11 +4850,9 @@ function canNavigateToStep(stepNumber) {
                        ));
             break;
         case 7:
-            // Need scenes actually generated to export
-            result = !!(appState.generatedScenes && 
-                       Object.keys(appState.generatedScenes).some(key => 
-                           appState.generatedScenes[key] && appState.generatedScenes[key].length > 0
-                       ));
+            // Need some dialogue generated for meaningful script export
+            result = !!(appState.generatedDialogues && 
+                       Object.keys(appState.generatedDialogues).length > 0);
             if (stepNumber === 7) {
                 const sceneCount = Object.keys(appState.generatedScenes || {}).reduce((total, key) => 
                     total + (appState.generatedScenes[key]?.length || 0), 0);
