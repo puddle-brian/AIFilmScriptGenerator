@@ -908,7 +908,13 @@ class HierarchicalContext {
       const currentAct = this.contexts.act.data;
       prompt += `CURRENT STORY ACT:\n`;
       prompt += `${currentAct.name}\n`;
-      prompt += `Purpose: ${currentAct.description}\n\n`;
+      prompt += `Purpose: ${currentAct.description}\n`;
+      
+      // Include character development if available
+      if (currentAct.characterDevelopment) {
+        prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
+      }
+      prompt += '\n';
     }
 
     // Level 5: Scene Context
