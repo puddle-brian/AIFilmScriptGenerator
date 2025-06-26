@@ -1,38 +1,69 @@
 {
   "name": "Transformation",
-  "description": "A character undergoes fundamental change, becoming a completely different person",
+  "description": "Ronald Tobias's archetypal plot where a character undergoes fundamental change",
   "category": "tobias_20_plots",
-  "examples": "Jekyll and Hyde, The Fly, Shrek",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Tobias's transformation structure emphasizing the gradual change process and pivotal moments",
   "structure": {
+    "status_quo": {
+      "name": "Status Quo",
+      "description": "The character exists in their current state, unaware of the need for change",
+      "elements": ["Current State", "Established Patterns", "Resistance to Change", "Comfort Zone"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
+    },
     "catalyst": {
       "name": "Catalyst",
-      "description": "An event or force triggers the transformation process",
-      "elements": ["Change Agent", "Transformation Begun", "Point of No Return"]
+      "description": "An event or realization triggers the need for transformation",
+      "elements": ["Triggering Event", "Awareness Dawns", "Discomfort Begins", "Change Initiated"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "initial_change": {
-      "name": "Initial Change",
-      "description": "The first signs of transformation become apparent",
-      "elements": ["Physical Changes", "Behavioral Shifts", "Identity Confusion"]
+    "resistance": {
+      "name": "Resistance",
+      "description": "The character struggles against the change, clinging to old ways",
+      "elements": ["Fighting Change", "Old Habits", "Internal Conflict", "External Pressure"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "struggle": {
-      "name": "Struggle",
-      "description": "The character fights against or tries to control the change",
-      "elements": ["Resistance", "Internal Conflict", "Desperate Measures"]
+    "experimentation": {
+      "name": "Experimentation",
+      "description": "The character begins to try new approaches and behaviors",
+      "elements": ["New Attempts", "Trial and Error", "Small Victories", "Learning Process"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "acceptance": {
-      "name": "Acceptance",
-      "description": "The character begins to accept their new nature",
-      "elements": ["Self-Recognition", "New Abilities", "Changed Perspective"]
-    },
-    "integration": {
-      "name": "Integration",
-      "description": "The character learns to live with their transformed self",
-      "elements": ["Balance Found", "New Identity", "Relationships Rebuilt"]
+    "crisis": {
+      "name": "Crisis",
+      "description": "A major test determines whether the transformation will succeed",
+      "elements": ["Ultimate Test", "Make or Break", "Old vs New", "Decisive Moment"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "new_equilibrium": {
       "name": "New Equilibrium",
-      "description": "A stable state is reached with the transformed character",
-      "elements": ["Acceptance by Others", "New Normal", "Growth Completed"]
+      "description": "The character emerges transformed, having integrated the change",
+      "elements": ["Transformation Complete", "New Identity", "Changed Perspective", "Integration"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

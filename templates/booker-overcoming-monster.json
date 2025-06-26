@@ -1,43 +1,60 @@
 {
   "name": "Overcoming the Monster",
-  "description": "The hero must defeat a threatening force (physical or metaphorical monster) to restore peace and order",
+  "description": "Christopher Booker's archetypal plot where the hero must defeat a threatening force",
   "category": "booker_7_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Booker's 5-stage structure with emphasis on the final confrontation and preparation phases",
   "examples": "Jaws, Star Wars, Lord of the Rings",
   "structure": {
-    "anticipation": {
+    "anticipation_stage": {
       "name": "Anticipation Stage",
-      "description": "The monster's presence is felt, creating fear and anticipation in the community",
-      "elements": ["Monster's Shadow", "Growing Threat", "Initial Fear"]
+      "description": "The hero becomes aware of the monster and the threat it poses",
+      "elements": ["Threat Revealed", "Call to Action", "Initial Fear", "Community in Danger"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "call_to_adventure": {
-      "name": "Call to Adventure",
-      "description": "The hero is called upon or chooses to confront the monster",
-      "elements": ["Hero Identified", "Mission Accepted", "Stakes Established"]
+    "dream_stage": {
+      "name": "Dream Stage",
+      "description": "The hero sets out with confidence, initial success against lesser challenges",
+      "elements": ["Journey Begins", "Early Success", "Confidence Building", "Gathering Allies"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "getting_out": {
-      "name": "Getting Out",
-      "description": "The hero begins the journey, leaving safety to face the monster",
-      "elements": ["Departure", "Crossing Threshold", "Point of No Return"]
+    "frustration_stage": {
+      "name": "Frustration Stage",
+      "description": "The hero encounters the monster's true power and faces setbacks",
+      "elements": ["First Real Encounter", "True Power Revealed", "Setbacks", "Doubt Creeps In"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "initial_fascination": {
-      "name": "Initial Fascination",
-      "description": "Early encounters reveal the monster's power, but also weaknesses",
-      "elements": ["First Confrontation", "Monster's Power Revealed", "Hope Glimpsed"]
+    "nightmare_stage": {
+      "name": "Nightmare Stage",
+      "description": "The hero faces their darkest hour and seems doomed to fail",
+      "elements": ["Darkest Hour", "All Seems Lost", "Monster Triumphant", "Hero's Lowest Point"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "frustration": {
-      "name": "Frustration",
-      "description": "The monster proves more dangerous than expected, setbacks occur",
-      "elements": ["Plans Fail", "Casualties Mount", "Doubt Creeps In"]
-    },
-    "nightmare": {
-      "name": "Nightmare",
-      "description": "The monster seems unbeatable, all seems lost",
-      "elements": ["Darkest Hour", "Hero Nearly Defeated", "Ultimate Test"]
-    },
-    "thrilling_escape": {
-      "name": "Thrilling Escape and Final Victory",
-      "description": "Through courage, sacrifice, or insight, the hero defeats the monster",
-      "elements": ["Final Battle", "Monster Defeated", "Order Restored"]
+    "final_triumph": {
+      "name": "Final Triumph",
+      "description": "The hero overcomes the monster through courage, wisdom, or sacrifice",
+      "elements": ["Final Confrontation", "Monster Defeated", "Victory Achieved", "World Saved"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

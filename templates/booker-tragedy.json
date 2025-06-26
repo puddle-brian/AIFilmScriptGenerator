@@ -1,33 +1,60 @@
 {
   "name": "Tragedy",
-  "description": "A flawed hero's character defects lead to their downfall despite initial promise",
+  "description": "Christopher Booker's archetypal plot where the hero's flaws lead to their downfall",
   "category": "booker_7_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Booker's tragedy structure with emphasis on the fatal flaw and inevitable downfall",
   "examples": "Romeo and Juliet, Macbeth, Breaking Bad",
   "structure": {
     "anticipation_stage": {
       "name": "Anticipation Stage",
-      "description": "The hero begins with promise but harbors a fatal flaw",
-      "elements": ["Hero's Potential", "Fatal Flaw Hinted", "Initial Success"]
+      "description": "The hero is introduced with a fatal flaw that will lead to their doom",
+      "elements": ["Hero Introduction", "Fatal Flaw Revealed", "Seeds of Destruction", "Initial Success"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "dream_stage": {
       "name": "Dream Stage",
-      "description": "The hero achieves initial success and seems destined for greatness",
-      "elements": ["Early Victories", "Growing Power", "Overconfidence"]
+      "description": "The hero seems to be succeeding, but the flaw grows stronger",
+      "elements": ["Apparent Success", "Growing Confidence", "Flaw Strengthens", "Warning Signs"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "frustration_stage": {
       "name": "Frustration Stage",
-      "description": "The first serious obstacles appear, often due to the hero's flaw",
-      "elements": ["Opposition Emerges", "Flaw Manifests", "First Failures"]
+      "description": "Things begin to go wrong as the hero's flaw creates problems",
+      "elements": ["Problems Emerge", "Flaw Creates Conflict", "Relationships Strain", "First Consequences"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "nightmare_stage": {
       "name": "Nightmare Stage",
-      "description": "The hero's flaw consumes them, leading to destructive behavior",
-      "elements": ["Self-Destruction", "Moral Corruption", "Isolation"]
+      "description": "The hero's world collapses as their flaw leads to catastrophe",
+      "elements": ["World Collapses", "Catastrophic Consequences", "All is Lost", "Isolation"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "destruction": {
-      "name": "Destruction",
-      "description": "The inevitable catastrophic end, often affecting others as well",
-      "elements": ["Final Catastrophe", "Hero's Downfall", "Consequences for Others"]
+      "name": "Destruction or Death",
+      "description": "The hero faces the ultimate consequence of their fatal flaw",
+      "elements": ["Final Reckoning", "Ultimate Price", "Destruction Complete", "Tragic End"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 3,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

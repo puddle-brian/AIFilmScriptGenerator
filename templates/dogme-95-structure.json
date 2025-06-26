@@ -1,42 +1,59 @@
 {
-  "name": "Dogme 95 Structure (Naturalistic Social Drama)",
-  "description": "Raw, handheld naturalistic approach focusing on authentic human behavior and social dynamics",
+  "name": "Dogme 95 Structure",
+  "description": "Lars von Trier's naturalistic narrative emphasizing raw emotion and authentic human behavior",
   "category": "criterion_patterns",
+  "total_plot_points": 30,
+  "distribution_philosophy": "Based on Dogme 95 principles emphasizing naturalistic development and emotional authenticity",
   "structure": {
-    "family_gathering": {
-      "name": "Family/Group Gathering",
-      "description": "Characters assemble for a specific social occasion, tensions simmer beneath surface civility",
-      "elements": ["Arrival Dynamics", "Hidden Tensions", "Social Facades"]
+    "naturalistic_setup": {
+      "name": "Naturalistic Setup",
+      "description": "Characters and situation established through natural, everyday interactions",
+      "elements": ["Natural Behavior", "Everyday Setting", "Authentic Dialogue", "Real Relationships"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "underlying_conflicts": {
-      "name": "Underlying Conflicts",
-      "description": "Past grievances and current resentments begin to surface through natural interactions",
-      "elements": ["Old Wounds", "Unspoken Resentments", "Class/Power Dynamics"]
+    "emotional_catalyst": {
+      "name": "Emotional Catalyst",
+      "description": "A realistic event triggers emotional responses and character development",
+      "elements": ["Real-World Event", "Emotional Trigger", "Natural Conflict", "Human Response"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "alcohol_catalyst": {
-      "name": "Social Lubricant/Catalyst",
-      "description": "Alcohol, celebration, or stress removes inhibitions and social filters",
-      "elements": ["Lowered Defenses", "Truth Telling", "Behavioral Changes"]
+    "raw_exploration": {
+      "name": "Raw Exploration",
+      "description": "Extended exploration of authentic human emotions and relationships",
+      "elements": ["Emotional Honesty", "Relationship Dynamics", "Psychological Truth", "Human Complexity"],
+      "distribution": {
+        "percentage": 35.0,
+        "plotPoints": 11,
+        "narrative_weight": "major"
+      }
     },
-    "eruption_of_truth": {
-      "name": "Eruption of Truth",
-      "description": "Suppressed emotions and secrets explode in raw, uncomfortable confrontations",
-      "elements": ["Public Humiliation", "Secret Revelations", "Emotional Violence"]
+    "crisis_point": {
+      "name": "Crisis Point",
+      "description": "Emotional tensions reach a breaking point",
+      "elements": ["Emotional Peak", "Relationship Strain", "Truth Emerges", "Breaking Point"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 4,
+        "narrative_weight": "major"
+      }
     },
-    "group_fragmentation": {
-      "name": "Group Fragmentation",
-      "description": "The social unit breaks apart as individuals choose sides or flee",
-      "elements": ["Alliance Shifts", "Abandonment", "Isolation"]
-    },
-    "individual_reckoning": {
-      "name": "Individual Reckoning",
-      "description": "Characters face the consequences of revealed truths about themselves and others",
-      "elements": ["Self-Confrontation", "Moral Inventory", "Relationship Assessment"]
-    },
-    "fragile_reconciliation": {
-      "name": "Fragile Reconciliation",
-      "description": "Tentative attempts at healing or acceptance of permanent damage",
-      "elements": ["Awkward Apologies", "Conditional Forgiveness", "Changed Relationships"]
+    "naturalistic_resolution": {
+      "name": "Naturalistic Resolution",
+      "description": "Resolution emerges naturally from character choices and consequences",
+      "elements": ["Natural Consequence", "Character Growth", "Realistic Outcome", "Human Truth"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

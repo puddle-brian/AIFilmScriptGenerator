@@ -1,38 +1,49 @@
 {
   "name": "Supplication",
-  "description": "A person in distress appeals to another for help or mercy",
+  "description": "Georges Polti's dramatic situation where a character must plead for mercy, help, or forgiveness",
   "category": "polti_36_situations",
-  "examples": "Antigone pleading for burial rights, Oliver Twist asking for more food",
+  "total_plot_points": 30,
+  "distribution_philosophy": "Based on Polti's supplication situation emphasizing the need, plea, and response to the request for mercy",
   "structure": {
-    "desperation": {
-      "name": "Desperation",
-      "description": "The supplicant faces a dire situation requiring outside help",
-      "elements": ["Crisis Established", "Need Identified", "Powerlessness Revealed"]
+    "the_need": {
+      "name": "The Need",
+      "description": "A desperate situation arises requiring help from another",
+      "elements": ["Crisis Develops", "Desperation Grows", "Help Needed", "Pride Challenged"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "approach": {
+    "the_approach": {
       "name": "The Approach",
-      "description": "The supplicant seeks out the person who has the power to help",
-      "elements": ["Authority Identified", "Access Sought", "Preparation Made"]
+      "description": "The supplicant prepares to ask for help",
+      "elements": ["Decision to Ask", "Approach Planned", "Courage Gathered", "Humility Embraced"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "supplication": {
-      "name": "The Supplication",
-      "description": "The formal request for help is made",
-      "elements": ["Plea Delivered", "Vulnerability Shown", "Stakes Revealed"]
+    "the_plea": {
+      "name": "The Plea",
+      "description": "The supplicant makes their desperate request",
+      "elements": ["Request Made", "Vulnerability Shown", "Case Presented", "Mercy Sought"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "consideration": {
-      "name": "Consideration",
-      "description": "The powerful person weighs the request and its implications",
-      "elements": ["Decision Process", "Competing Interests", "Moral Weight"]
-    },
-    "response": {
-      "name": "Response",
-      "description": "The answer is given - help granted, denied, or conditional",
-      "elements": ["Decision Rendered", "Terms Set", "Consequences Begin"]
-    },
-    "aftermath": {
-      "name": "Aftermath",
-      "description": "The results of the supplication play out",
-      "elements": ["Help Received/Denied", "New Dynamics", "Lesson Learned"]
+    "the_response": {
+      "name": "The Response",
+      "description": "The person in power decides whether to grant mercy",
+      "elements": ["Decision Made", "Mercy Granted", "Help Given", "Resolution Achieved"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

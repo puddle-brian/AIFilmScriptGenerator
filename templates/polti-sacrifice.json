@@ -1,38 +1,49 @@
 {
-  "name": "Self-Sacrificing for a Loved One",
-  "description": "A character gives up something precious to save or help someone they love",
+  "name": "Sacrifice",
+  "description": "Georges Polti's dramatic situation where a character must give up something precious for a greater good",
   "category": "polti_36_situations",
-  "examples": "A Tale of Two Cities, Casablanca, The Gift of the Magi",
+  "total_plot_points": 30,
+  "distribution_philosophy": "Based on Polti's sacrifice situation emphasizing the dilemma, decision, and consequences of sacrifice",
   "structure": {
-    "threat_to_loved_one": {
-      "name": "Threat to Loved One",
-      "description": "Someone the protagonist loves faces danger or need",
-      "elements": ["Danger Identified", "Love Established", "Stakes Set"]
+    "the_dilemma": {
+      "name": "The Dilemma",
+      "description": "A situation arises where sacrifice becomes necessary",
+      "elements": ["Crisis Emerges", "Choice Required", "Stakes Established", "Moral Pressure"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "recognition": {
-      "name": "Recognition",
-      "description": "The protagonist realizes they can help through sacrifice",
-      "elements": ["Solution Seen", "Cost Understood", "Choice Presented"]
+    "the_struggle": {
+      "name": "The Struggle",
+      "description": "The character wrestles with the decision to sacrifice",
+      "elements": ["Internal Conflict", "Weighing Options", "Moral Wrestling", "Doubt and Fear"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "internal_struggle": {
-      "name": "Internal Struggle",
-      "description": "The protagonist wrestles with the decision to sacrifice",
-      "elements": ["Doubt and Fear", "Love vs Self-Interest", "Moral Weight"]
-    },
-    "decision": {
+    "the_decision": {
       "name": "The Decision",
-      "description": "The protagonist chooses to make the sacrifice",
-      "elements": ["Choice Made", "Path Committed", "Love Triumphs"]
+      "description": "The character commits to making the sacrifice",
+      "elements": ["Choice Made", "Commitment Given", "Point of No Return", "Courage Found"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "sacrifice": {
+    "the_sacrifice": {
       "name": "The Sacrifice",
-      "description": "The protagonist gives up what they value for their loved one",
-      "elements": ["Act Performed", "Price Paid", "Love Demonstrated"]
-    },
-    "consequence": {
-      "name": "Consequence",
-      "description": "The results of the sacrifice unfold",
-      "elements": ["Loved One Saved", "Transformation", "Noble Purpose Fulfilled"]
+      "description": "The character gives up what they value most",
+      "elements": ["Sacrifice Made", "Price Paid", "Loss Endured", "Greater Good Served"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

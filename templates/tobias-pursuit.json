@@ -1,38 +1,60 @@
 {
   "name": "Pursuit",
-  "description": "A relentless chase between pursuer and pursued, with constantly shifting advantages",  
+  "description": "Ronald Tobias's archetypal plot where one character relentlessly chases another",
   "category": "tobias_20_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Tobias's pursuit structure emphasizing the chase dynamic and escalating tension",
   "examples": "The Fugitive, North by Northwest, Mad Max: Fury Road",
   "structure": {
     "inciting_incident": {
       "name": "Inciting Incident",
-      "description": "An event sets the chase in motion",
-      "elements": ["Crime Committed", "False Accusation", "Chase Triggered"]
+      "description": "An event triggers the need for one character to pursue another",
+      "elements": ["Crime Committed", "Escape Made", "Hunt Begins", "Stakes Established"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "the_chase_begins": {
-      "name": "The Chase Begins",
-      "description": "The pursuit is officially launched",
-      "elements": ["Hunters Mobilized", "Trail Picked Up", "Race Against Time"]
+    "initial_pursuit": {
+      "name": "Initial Pursuit",
+      "description": "The pursuer begins the chase, establishing the dynamic",
+      "elements": ["Chase Begins", "First Clues", "Trail Established", "Determination Shown"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "false_leads": {
-      "name": "False Leads",
-      "description": "Misdirection and near-misses complicate the pursuit",
-      "elements": ["Wrong Turns", "Close Calls", "Temporary Escapes"]
+    "escalation": {
+      "name": "Escalation",
+      "description": "The chase intensifies with increasing stakes and obstacles",
+      "elements": ["Stakes Rise", "Near Misses", "Obstacles Increase", "Tension Builds"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "closing_in": {
-      "name": "Closing In",
-      "description": "The pursuer gains ground on the pursued",
-      "elements": ["Distance Shortened", "Options Limited", "Pressure Increased"]
+    "complications": {
+      "name": "Complications",
+      "description": "Unexpected developments complicate the pursuit",
+      "elements": ["Unexpected Turns", "Third Parties", "Moral Dilemmas", "Sympathies Shift"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "cornered": {
-      "name": "Cornered",
-      "description": "The pursued is trapped with seemingly no escape",
-      "elements": ["Final Stand", "Last Resort", "Truth Moment"]
-    },
-    "resolution": {
-      "name": "Resolution",
-      "description": "The chase concludes with capture, escape, or revelation",
-      "elements": ["Justice Served", "Truth Revealed", "Chase Ended"]
+    "final_confrontation": {
+      "name": "Final Confrontation",
+      "description": "Pursuer and pursued face each other in the climactic encounter",
+      "elements": ["Face to Face", "Truth Revealed", "Justice Served", "Resolution Achieved"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

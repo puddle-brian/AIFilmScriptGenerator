@@ -1,43 +1,80 @@
 {
   "name": "The Quest",
-  "description": "The hero embarks on a journey to find something precious or reach a distant goal",
+  "description": "Christopher Booker's archetypal plot where the hero journeys to obtain a precious object or reach a goal",
   "category": "booker_7_plots",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on Booker's quest structure with emphasis on the journey and trials, following the classic adventure pattern",
   "examples": "Lord of the Rings, Indiana Jones, Finding Nemo",
   "structure": {
-    "call_to_adventure": {
-      "name": "Call to Adventure",
-      "description": "The hero learns of the precious object or goal and decides to pursue it",
-      "elements": ["Quest Object Revealed", "Motivation Established", "Journey Begins"]
+    "call_to_quest": {
+      "name": "Call to Quest",
+      "description": "The hero learns of a precious object or goal that must be obtained",
+      "elements": ["Quest Revealed", "Motivation Established", "Stakes Defined", "Goal Identified"],
+      "distribution": {
+        "percentage": 12.5,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "companions": {
-      "name": "Companions",
-      "description": "The hero gathers allies and companions for the journey",
-      "elements": ["Team Formation", "Skills Complemented", "Bonds Forged"]
+    "preparation": {
+      "name": "Preparation and Departure",
+      "description": "The hero prepares for the journey and gathers companions",
+      "elements": ["Gathering Allies", "Preparation", "Equipment", "Departure"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "journey": {
-      "name": "The Journey",
-      "description": "The hero and companions face obstacles and challenges",
-      "elements": ["Obstacles Encountered", "Skills Tested", "Progress Made"]
+    "journey_begins": {
+      "name": "Journey Begins",
+      "description": "The hero sets out and faces initial challenges",
+      "elements": ["First Steps", "Early Obstacles", "Learning Rules", "Team Building"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "arrival": {
-      "name": "Arrival and Frustration",
-      "description": "Reaching the goal location brings new, unexpected challenges",
-      "elements": ["Destination Reached", "New Obstacles", "Complications Arise"]
+    "trials_and_tests": {
+      "name": "Trials and Tests",
+      "description": "The hero faces a series of increasingly difficult challenges",
+      "elements": ["Multiple Challenges", "Character Testing", "Skills Developed", "Bonds Forged"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 10,
+        "narrative_weight": "major"
+      }
     },
-    "ordeal": {
-      "name": "The Ordeal",
-      "description": "The hero faces the greatest challenge to obtain the goal",
-      "elements": ["Ultimate Test", "Sacrifice Required", "All Seems Lost"]
+    "approach_goal": {
+      "name": "Approach to Goal",
+      "description": "The hero nears the object of the quest and faces the greatest danger",
+      "elements": ["Final Approach", "Greatest Danger", "Ultimate Test", "Preparation for End"],
+      "distribution": {
+        "percentage": 12.5,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "reward": {
-      "name": "The Reward",
-      "description": "The quest object is obtained or the goal is achieved",
-      "elements": ["Goal Achieved", "Transformation", "Victory Won"]
+    "final_ordeal": {
+      "name": "Final Ordeal",
+      "description": "The hero faces the ultimate challenge to obtain the goal",
+      "elements": ["Ultimate Challenge", "Final Battle", "Supreme Test", "All or Nothing"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "return": {
-      "name": "The Journey Home",
-      "description": "The hero returns with the prize, often facing new challenges",
-      "elements": ["Homeward Journey", "Changed Hero", "New Wisdom"]
+    "goal_achieved": {
+      "name": "Goal Achieved",
+      "description": "The hero obtains the object and returns transformed",
+      "elements": ["Quest Complete", "Object Obtained", "Return Journey", "Transformation"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

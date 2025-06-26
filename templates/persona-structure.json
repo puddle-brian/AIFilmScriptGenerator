@@ -1,42 +1,59 @@
 {
-  "name": "Persona Structure (Psychological Chamber)",
-  "description": "Two characters in isolation, exploring identity, performance, and the dissolution of self",
+  "name": "Persona Structure",
+  "description": "Ingmar Bergman's psychological narrative exploring identity, performance, and authentic self",
   "category": "criterion_patterns",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Bergman's psychological structure emphasizing identity crisis and the dissolution of personas",
   "structure": {
-    "initial_separation": {
-      "name": "Initial Separation",
-      "description": "Establish the two main characters and their distinct identities/situations",
-      "elements": ["Character A's Crisis", "Character B's Role", "Isolation Setting"]
+    "established_persona": {
+      "name": "Established Persona",
+      "description": "The protagonist's public identity and social mask are established",
+      "elements": ["Public Identity", "Social Role", "Performance Mode", "Mask Worn"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "tentative_connection": {
-      "name": "Tentative Connection",
-      "description": "Characters begin to interact, initial boundaries established",
-      "elements": ["First Interactions", "Power Dynamics", "Mutual Observation"]
+    "cracks_appear": {
+      "name": "Cracks Appear",
+      "description": "The persona begins to show signs of strain and instability",
+      "elements": ["Mask Slips", "Performance Breaks", "Stress Shows", "Authenticity Glimpsed"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "role_exploration": {
-      "name": "Role Exploration",
-      "description": "Characters test different personas and relationship dynamics",
-      "elements": ["Caretaker/Patient", "Confessor/Listener", "Performer/Audience"]
+    "identity_crisis": {
+      "name": "Identity Crisis",
+      "description": "The protagonist faces a fundamental crisis of identity",
+      "elements": ["Self-Questioning", "Reality Confusion", "Role Rejection", "Existential Doubt"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "boundary_blurring": {
-      "name": "Boundary Blurring",
-      "description": "The distinction between characters begins to break down",
-      "elements": ["Shared Experiences", "Identity Confusion", "Psychological Merging"]
+    "dissolution": {
+      "name": "Dissolution",
+      "description": "The persona completely breaks down, revealing the authentic self",
+      "elements": ["Mask Removed", "Truth Exposed", "Vulnerability Shown", "Authentic Self"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "crisis_revelation": {
-      "name": "Crisis/Revelation",
-      "description": "A moment of brutal honesty or psychological breakdown",
-      "elements": ["Mask Removal", "Truth Confrontation", "Psychological Violence"]
-    },
-    "attempted_separation": {
-      "name": "Attempted Separation",
-      "description": "Characters try to reestablish boundaries and distinct identities",
-      "elements": ["Rejection of Connection", "Return to Roles", "Defensive Mechanisms"]
-    },
-    "ambiguous_resolution": {
-      "name": "Ambiguous Resolution",
-      "description": "Ending that questions the nature of identity and human connection",
-      "elements": ["Unresolved Tension", "Continued Ambiguity", "Existential Questions"]
+    "reconstruction": {
+      "name": "Reconstruction",
+      "description": "A new understanding of self emerges from the breakdown",
+      "elements": ["New Identity", "Authentic Living", "Integrated Self", "Honest Existence"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 3,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

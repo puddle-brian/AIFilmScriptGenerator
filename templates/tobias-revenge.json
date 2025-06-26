@@ -1,38 +1,60 @@
 {
   "name": "Revenge",
-  "description": "A protagonist seeks retribution against those who have wronged them",
+  "description": "Ronald Tobias's archetypal plot driven by the need to settle a score or right a wrong",
   "category": "tobias_20_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Tobias's revenge structure emphasizing the wrong, planning, and final confrontation",
   "examples": "The Count of Monte Cristo, Kill Bill, Gladiator",
   "structure": {
     "the_wrong": {
       "name": "The Wrong",
-      "description": "The protagonist suffers a grave injustice or loss",
-      "elements": ["Initial Harm", "Personal Loss", "Injustice Established"]
+      "description": "A terrible injustice is committed against the protagonist or someone they care about",
+      "elements": ["Injustice Committed", "Victim Harmed", "Perpetrator Identified", "Motivation Established"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "recognition": {
       "name": "Recognition",
-      "description": "The protagonist realizes the extent of the wrong and who is responsible",
-      "elements": ["Truth Revealed", "Culprit Identified", "Motivation Crystallized"]
+      "description": "The protagonist recognizes the need for revenge and commits to action",
+      "elements": ["Vow of Revenge", "Commitment Made", "Point of No Return", "Justice Sought"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "the_vow": {
-      "name": "The Vow",
-      "description": "The protagonist commits to seeking revenge",
-      "elements": ["Promise Made", "Path Chosen", "Point of No Return"]
+    "preparation": {
+      "name": "Preparation",
+      "description": "The protagonist plans and prepares for their revenge",
+      "elements": ["Planning Revenge", "Gathering Resources", "Learning Skills", "Strategic Thinking"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "pursuit": {
-      "name": "The Pursuit",
-      "description": "The protagonist hunts down the target and gathers power",
-      "elements": ["Target Pursued", "Strength Gathered", "Plan Formed"]
+      "name": "Pursuit",
+      "description": "The protagonist actively pursues their target, facing obstacles",
+      "elements": ["Active Pursuit", "Obstacles Encountered", "Cat and Mouse", "Getting Closer"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "confrontation": {
       "name": "Confrontation",
-      "description": "The protagonist faces the antagonist in direct conflict",
-      "elements": ["Face-to-Face Meeting", "Truth Revealed", "Stakes Raised"]
-    },
-    "justice": {
-      "name": "Justice",
-      "description": "Revenge is achieved, but at what cost?",
-      "elements": ["Retribution Delivered", "Price Paid", "Moral Reckoning"]
+      "description": "The final confrontation between the protagonist and their target",
+      "elements": ["Final Confrontation", "Truth Revealed", "Justice Served", "Revenge Complete"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

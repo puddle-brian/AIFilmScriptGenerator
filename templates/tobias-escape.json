@@ -1,38 +1,60 @@
 {
   "name": "Escape",
-  "description": "A protagonist must break free from physical, emotional, or psychological imprisonment",
+  "description": "Ronald Tobias's archetypal plot where a character must break free from confinement or oppression",
   "category": "tobias_20_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Tobias's escape structure emphasizing the imprisonment, planning, and execution of the escape",
   "examples": "The Shawshank Redemption, Room, Cast Away",
   "structure": {
     "imprisonment": {
       "name": "Imprisonment",
-      "description": "The protagonist is trapped in an unacceptable situation",
-      "elements": ["Confinement Established", "Limitations Defined", "Desperation Set"]
+      "description": "The protagonist finds themselves trapped or confined against their will",
+      "elements": ["Trapped", "Confined", "Freedom Lost", "Desperation Begins"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "recognition": {
       "name": "Recognition",
-      "description": "The protagonist realizes escape is necessary and possible",
-      "elements": ["Hope Discovered", "Opportunity Glimpsed", "Determination Born"]
+      "description": "The protagonist realizes they must escape and commits to action",
+      "elements": ["Escape Necessary", "Will to Freedom", "Commitment Made", "Hope Ignited"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "preparation": {
-      "name": "Preparation",
-      "description": "The protagonist plans and prepares for the escape attempt",
-      "elements": ["Plan Developed", "Resources Gathered", "Allies Found"]
+    "planning": {
+      "name": "Planning",
+      "description": "The protagonist develops a plan and gathers resources for escape",
+      "elements": ["Plan Developed", "Resources Gathered", "Allies Found", "Preparation Made"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "first_attempt": {
-      "name": "First Attempt",
-      "description": "The initial escape attempt, often unsuccessful",
-      "elements": ["Plan Executed", "Obstacles Encountered", "Setback Experienced"]
+    "execution": {
+      "name": "Execution",
+      "description": "The escape plan is put into action with mounting tension",
+      "elements": ["Plan Executed", "Obstacles Faced", "Near Discovery", "Tension Peaks"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "renewed_effort": {
-      "name": "Renewed Effort",
-      "description": "Learning from failure, the protagonist tries again",
-      "elements": ["Lessons Learned", "New Strategy", "Determination Renewed"]
-    },
-    "breakthrough": {
-      "name": "Breakthrough",
-      "description": "The protagonist finally achieves freedom",
-      "elements": ["Barrier Broken", "Freedom Achieved", "New Life Begun"]
+    "freedom": {
+      "name": "Freedom",
+      "description": "The protagonist achieves freedom and faces the consequences",
+      "elements": ["Freedom Achieved", "New Challenges", "Price Paid", "Liberation Complete"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

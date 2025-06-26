@@ -1,38 +1,59 @@
 {
   "name": "Rebirth",
-  "description": "A character trapped in darkness or evil is redeemed through love or sacrifice",
+  "description": "Christopher Booker's archetypal plot where a character is redeemed through love or spiritual awakening",
   "category": "booker_7_plots",
-  "examples": "A Christmas Carol, Beauty and the Beast, Groundhog Day",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Booker's rebirth structure emphasizing the fall, imprisonment, and redemptive awakening",
   "structure": {
-    "initial_darkness": {
-      "name": "Initial Darkness",
-      "description": "The protagonist is trapped in a dark, selfish, or corrupted state",
-      "elements": ["Spiritual Death", "Isolation", "Negative Behavior"]
+    "initial_state": {
+      "name": "Initial State",
+      "description": "The character is shown in a state of spiritual or emotional darkness",
+      "elements": ["Spiritual Darkness", "Emotional Coldness", "Isolation", "Incomplete Life"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "catalyst": {
-      "name": "Catalyst",
-      "description": "An event or person enters the protagonist's life as a force for change",
-      "elements": ["Agent of Change", "Challenge Presented", "Opportunity for Growth"]
+    "call_to_life": {
+      "name": "Call to Life",
+      "description": "An innocent figure or pure love enters the character's world",
+      "elements": ["Innocent Appears", "Pure Love", "Light in Darkness", "Possibility of Change"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "resistance": {
       "name": "Resistance",
-      "description": "The protagonist initially resists change, clinging to old ways",
-      "elements": ["Denial", "Old Patterns", "Fear of Change"]
-    },
-    "growing_awareness": {
-      "name": "Growing Awareness",
-      "description": "The protagonist begins to see the need for change",
-      "elements": ["Self-Recognition", "Glimpses of Truth", "Internal Conflict"]
+      "description": "The character initially resists or fails to recognize the redemptive force",
+      "elements": ["Rejection of Love", "Continued Darkness", "Missed Opportunities", "Stubborn Pride"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "crisis": {
       "name": "Crisis",
-      "description": "A crucial moment where the protagonist must choose transformation or remain trapped",
-      "elements": ["Moment of Truth", "Ultimate Test", "Choice Required"]
+      "description": "A moment of truth where the character must choose between old and new ways",
+      "elements": ["Moment of Truth", "Critical Choice", "Love Threatened", "Last Chance"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "transformation": {
-      "name": "Transformation",
-      "description": "The protagonist chooses change and is spiritually reborn",
-      "elements": ["Redemption", "New Life", "Love Triumphs"]
+    "final_awakening": {
+      "name": "Final Awakening",
+      "description": "The character experiences spiritual rebirth and embraces love",
+      "elements": ["Spiritual Awakening", "Love Embraced", "Transformation Complete", "New Life"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

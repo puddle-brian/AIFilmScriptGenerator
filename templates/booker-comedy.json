@@ -1,38 +1,59 @@
 {
   "name": "Comedy",
-  "description": "Confusion and misunderstandings lead to chaos, but ultimately resolution and harmony",
+  "description": "Christopher Booker's archetypal plot where confusion and misunderstanding lead to joyful resolution",
   "category": "booker_7_plots",
-  "examples": "Romantic comedies, mistaken identity stories",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Booker's comedy structure with emphasis on building confusion and the satisfying resolution",
   "structure": {
-    "setup": {
-      "name": "Setup",
-      "description": "Establish the characters and their relationships in a state of imbalance",
-      "elements": ["Character Introduction", "Initial Conflict", "Misunderstanding Seeds"]
+    "initial_situation": {
+      "name": "Initial Situation",
+      "description": "Characters are introduced in a state of confusion or potential conflict",
+      "elements": ["Character Introduction", "Initial Confusion", "Seeds of Conflict", "Status Quo"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "complication": {
       "name": "Complication",
-      "description": "A misunderstanding or deception creates confusion",
-      "elements": ["Mistaken Identity", "Lies Told", "Confusion Multiplies"]
+      "description": "Misunderstandings and confusion multiply, creating comic situations",
+      "elements": ["Misunderstandings Begin", "Comic Situations", "Confusion Multiplies", "Stakes Rise"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "mounting_confusion": {
-      "name": "Mounting Confusion",
-      "description": "The initial complication spirals into greater chaos",
-      "elements": ["Complications Multiply", "Characters at Cross-Purposes", "Absurd Situations"]
+    "development": {
+      "name": "Development",
+      "description": "The confusion reaches its peak, with maximum comic potential",
+      "elements": ["Peak Confusion", "Maximum Comedy", "Situations Spiral", "Characters Struggle"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 10,
+        "narrative_weight": "major"
+      }
     },
     "crisis": {
       "name": "Crisis",
-      "description": "The confusion reaches its peak, threatening relationships",
-      "elements": ["Truth Nearly Revealed", "Relationships Strained", "Maximum Chaos"]
-    },
-    "revelation": {
-      "name": "Revelation",
-      "description": "The truth comes out, clearing up misunderstandings",
-      "elements": ["Truth Revealed", "Deceptions Exposed", "Understanding Dawns"]
+      "description": "The confusion threatens to become serious, requiring resolution",
+      "elements": ["Serious Consequences", "Threat of Real Harm", "Need for Resolution", "Turning Point"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "resolution": {
       "name": "Resolution",
-      "description": "Harmony is restored, often with marriages or reunions",
-      "elements": ["Conflicts Resolved", "Love Triumphs", "New Order Established"]
+      "description": "All misunderstandings are cleared up, leading to harmony and joy",
+      "elements": ["Truth Revealed", "Misunderstandings Cleared", "Harmony Restored", "Joyful Ending"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

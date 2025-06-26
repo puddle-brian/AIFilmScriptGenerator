@@ -1,38 +1,60 @@
 {
   "name": "Love",
-  "description": "The journey of romantic love from initial attraction through obstacles to union",
-  "category": "tobias_20_plots", 
+  "description": "Ronald Tobias's archetypal plot centered on romantic love and the obstacles that test it",
+  "category": "tobias_20_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Tobias's love structure emphasizing the meeting, obstacles, and triumph or tragedy of love",
   "examples": "Casablanca, The Princess Bride, Titanic",
   "structure": {
     "attraction": {
       "name": "Attraction",
-      "description": "Two people are drawn to each other despite differences",
-      "elements": ["First Meeting", "Mutual Interest", "Chemistry Established"]
+      "description": "Two people meet and are drawn to each other, love begins to bloom",
+      "elements": ["First Meeting", "Mutual Attraction", "Love Sparked", "Initial Connection"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "declaration": {
       "name": "Declaration",
-      "description": "Feelings are acknowledged and expressed",
-      "elements": ["Love Confessed", "Commitment Considered", "Future Envisioned"]
+      "description": "Love is acknowledged and declared between the characters",
+      "elements": ["Love Confessed", "Mutual Recognition", "Commitment Made", "Happiness Shared"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "obstacles": {
       "name": "Obstacles",
-      "description": "External or internal forces threaten to keep the lovers apart",
-      "elements": ["Barriers Emerge", "Society Opposes", "Internal Doubts"]
+      "description": "External forces or internal conflicts threaten to keep the lovers apart",
+      "elements": ["Barriers Emerge", "Opposition Faced", "Conflicts Arise", "Love Tested"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 11,
+        "narrative_weight": "major"
+      }
     },
-    "separation": {
-      "name": "Separation",
-      "description": "The lovers are forced apart by circumstances",
-      "elements": ["Physical Distance", "Emotional Barriers", "Misunderstandings"]
+    "crisis": {
+      "name": "Crisis",
+      "description": "The greatest threat to love emerges, forcing a crucial decision",
+      "elements": ["Ultimate Test", "Separation Threatened", "Sacrifice Required", "All or Nothing"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "testing": {
-      "name": "Testing",
-      "description": "Love is tested through trials and temptations",
-      "elements": ["Loyalty Questioned", "Sacrifices Required", "True Feelings Revealed"]
-    },
-    "reunion": {
-      "name": "Reunion",
-      "description": "Love triumphs and the couple is united",
-      "elements": ["Obstacles Overcome", "Truth Prevails", "Love Conquers All"]
+    "resolution": {
+      "name": "Resolution",
+      "description": "Love either triumphs over obstacles or ends in tragedy",
+      "elements": ["Final Choice", "Love Triumphs", "Union Achieved", "Happiness Restored"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

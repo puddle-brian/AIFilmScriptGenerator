@@ -2931,6 +2931,21 @@ async function goToPlotPoints() {
     await displayPlotPointsGeneration();
 }
 
+// Update total plot points and recalculate distributions
+function updateTotalPlotPoints(newTotal) {
+    const totalValue = parseInt(newTotal);
+    if (totalValue >= 20 && totalValue <= 80) {
+        appState.totalPlotPoints = totalValue;
+        console.log(`📊 Updated total plot points to: ${totalValue}`);
+        
+        // Regenerate the plot points interface with new distributions
+        displayPlotPointsGeneration();
+        
+        // Save to localStorage
+        saveToLocalStorage();
+    }
+}
+
 // Display plot points generation interface
 async function displayPlotPointsGeneration() {
     const container = document.getElementById('plotPointsContent');
@@ -2940,14 +2955,58 @@ async function displayPlotPointsGeneration() {
         return;
     }
 
+    // Plot point distribution system active - using template-based defaults
+
     let html = '<div class="plot-points-generation">';
     html += '<p class="generation-info"><strong>Generate plot points for each story act.</strong> These will create the causal narrative spine that guides scene creation.</p>';
+    
+    // Add total plot points configuration
+    const defaultTotal = appState.templateData?.total_plot_points || 40;
+    const currentTotal = appState.totalPlotPoints || defaultTotal;
+    
+    html += `
+        <div class="total-plot-points-config" style="margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 10px;">
+                <label for="totalPlotPoints" style="font-weight: 600; color: #374151;">Total Plot Points:</label>
+                <input type="number" id="totalPlotPoints" value="${currentTotal}" min="20" max="80" 
+                       style="width: 80px; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px;"
+                       onchange="updateTotalPlotPoints(this.value)">
+                <span style="color: #6b7280; font-size: 0.9em;">Default: ${defaultTotal}</span>
+            </div>
+            <p style="margin: 0; color: #6b7280; font-size: 0.85em;">
+                This total will be distributed across all acts based on their narrative importance. You can override individual act values after generation.
+            </p>
+        </div>
+    `;
     
     // First, try to load existing plot points from the project
     await loadExistingPlotPoints();
     
     // Display each story act with plot points generation
     Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
+        // Get recommended plot points from template distribution
+        const templateDistribution = appState.templateData?.structure?.[structureKey]?.distribution;
+        const totalPlotPoints = appState.totalPlotPoints || appState.templateData?.total_plot_points || 40;
+        
+        let recommendedPlotPoints = 4; // Default fallback
+        if (templateDistribution && templateDistribution.percentage) {
+            // Calculate based on percentage of total
+            recommendedPlotPoints = Math.round((templateDistribution.percentage / 100) * totalPlotPoints);
+            recommendedPlotPoints = Math.max(1, recommendedPlotPoints); // Minimum 1 plot point
+        } else if (templateDistribution && templateDistribution.plotPoints) {
+            // Use fixed value from template (legacy)
+            recommendedPlotPoints = templateDistribution.plotPoints;
+        }
+        
+        // Optional debug logging (remove in production)
+        // console.log(`🎯 Plot Points for ${structureKey}: ${recommendedPlotPoints} plot points`);
+        
+        // Create options with the optimal value auto-selected
+        const createOption = (value, label) => {
+            const isSelected = value === recommendedPlotPoints;
+            return `<option value="${value}" ${isSelected ? 'selected' : ''}>${label}</option>`;
+        };
+        
         html += `
             <div class="structure-element-card" id="plotPoints-${structureKey}">
                 <div class="element-header">
@@ -2955,11 +3014,16 @@ async function displayPlotPointsGeneration() {
                     <div class="element-actions">
                         <div class="plot-points-controls">
                             <select class="plot-points-count-select" id="plotPointsCount-${structureKey}">
-                                <option value="2">2 Plot Points</option>
-                                <option value="3">3 Plot Points</option>
-                                <option value="4" selected>4 Plot Points</option>
-                                <option value="5">5 Plot Points</option>
-                                <option value="6">6 Plot Points</option>
+                                ${createOption(1, '1 Plot Point')}
+                                ${createOption(2, '2 Plot Points')}
+                                ${createOption(3, '3 Plot Points')}
+                                ${createOption(4, '4 Plot Points')}
+                                ${createOption(5, '5 Plot Points')}
+                                ${createOption(6, '6 Plot Points')}
+                                ${createOption(7, '7 Plot Points')}
+                                ${createOption(8, '8 Plot Points')}
+                                ${createOption(9, '9 Plot Points')}
+                                ${createOption(10, '10 Plot Points')}
                             </select>
                             <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
                                 📋 Generate Plot Points

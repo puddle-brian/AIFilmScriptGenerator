@@ -1,42 +1,59 @@
 {
-  "name": "8½ Structure (Stream of Consciousness)",
-  "description": "Reality, memory, and fantasy interweave in a non-linear exploration of artistic crisis and personal identity",
+  "name": "8½ Structure",
+  "description": "Federico Fellini's meta-narrative structure blending reality, memory, and artistic creation",
   "category": "criterion_patterns",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on Fellini's autobiographical structure emphasizing creative crisis and artistic breakthrough",
   "structure": {
-    "present_crisis": {
-      "name": "Present Crisis",
-      "description": "Establish the protagonist's current creative and personal paralysis",
-      "elements": ["Artistic Block", "Personal Relationships in Crisis", "External Pressures"]
+    "creative_crisis": {
+      "name": "Creative Crisis",
+      "description": "The artist protagonist faces a creative block or artistic crisis",
+      "elements": ["Artistic Block", "Professional Pressure", "Creative Doubt", "Identity Crisis"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "childhood_memories": {
-      "name": "Childhood Memories",
-      "description": "Formative experiences that shaped the protagonist's psyche and artistic vision",
-      "elements": ["Foundational Trauma", "Early Influences", "Loss of Innocence"]
+    "reality_fragments": {
+      "name": "Reality Fragments",
+      "description": "Present reality intrudes with professional and personal demands",
+      "elements": ["External Pressures", "Professional Meetings", "Personal Relationships", "Real World Demands"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 10,
+        "narrative_weight": "major"
+      }
     },
-    "fantasy_sequences": {
-      "name": "Fantasy Sequences",
-      "description": "Idealized or surreal scenarios that reveal inner desires and fears",
-      "elements": ["Wish Fulfillment", "Symbolic Imagery", "Subconscious Desires"]
+    "memory_intrusions": {
+      "name": "Memory Intrusions",
+      "description": "Past memories and experiences surface unexpectedly",
+      "elements": ["Childhood Memories", "Past Relationships", "Formative Experiences", "Nostalgic Moments"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "relationship_fragments": {
-      "name": "Relationship Fragments",
-      "description": "Non-linear exploration of past and present relationships",
-      "elements": ["Wife/Partner Dynamics", "Muse Figures", "Mother/Father Relationships"]
+    "fantasy_escapes": {
+      "name": "Fantasy Escapes",
+      "description": "The protagonist escapes into elaborate fantasies and dreams",
+      "elements": ["Dream Sequences", "Fantasy Scenarios", "Wish Fulfillment", "Surreal Imagery"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "artistic_process": {
-      "name": "Artistic Process",
-      "description": "Meta-commentary on the creative process and artistic responsibility",
-      "elements": ["Creative Struggles", "Artistic Integrity", "Commercial Pressures"]
-    },
-    "integration_attempt": {
-      "name": "Integration Attempt",
-      "description": "Protagonist tries to synthesize all elements into coherent artistic vision",
-      "elements": ["Bringing Together Fragments", "Accepting Contradictions", "Creative Breakthrough"]
-    },
-    "circular_resolution": {
-      "name": "Circular Resolution",
-      "description": "Ending that loops back to beginning with new understanding or continued uncertainty",
-      "elements": ["Return to Starting Point", "Transformed Perspective", "Ongoing Journey"]
+    "artistic_breakthrough": {
+      "name": "Artistic Breakthrough",
+      "description": "Integration of reality, memory, and fantasy leads to creative resolution",
+      "elements": ["Creative Solution", "Artistic Vision", "Integration Complete", "New Direction"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

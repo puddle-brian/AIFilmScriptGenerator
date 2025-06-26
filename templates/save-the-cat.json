@@ -2,81 +2,158 @@
   "name": "Save the Cat",
   "description": "Blake Snyder's 15-beat structure for commercial storytelling",
   "category": "essential",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on Blake Snyder's page timing for a 110-page screenplay, with major development in Fun & Games and Finale",
   "structure": {
     "opening_image": {
-      "name": "Opening Image (1)",
+      "name": "Opening Image",
       "description": "A visual that represents the struggle and tone of the story",
-      "elements": ["Visual Metaphor", "Tone Established", "Character's Problem Hinted"]
+      "elements": ["Visual Metaphor", "Tone Established", "Character's Problem Hinted"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     },
     "theme_stated": {
-      "name": "Theme Stated (5)",
+      "name": "Theme Stated",
       "description": "During the setup, someone asks a question or makes a statement that is the theme",
-      "elements": ["Central Question", "Life Lesson", "Story's Heart"]
+      "elements": ["Central Question", "Life Lesson", "Story's Heart"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     },
     "setup": {
-      "name": "Set-Up (1-10)",
+      "name": "Set-Up",
       "description": "Introduce the hero, the stakes, and the goal of the story",
-      "elements": ["Hero Introduction", "Status Quo", "What's at Stake"]
+      "elements": ["Hero Introduction", "Status Quo", "What's at Stake"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
     "catalyst": {
-      "name": "Catalyst (12)",
+      "name": "Catalyst",
       "description": "The inciting incident that sets the story in motion",
-      "elements": ["Life-Changing Event", "No Going Back", "New Direction"]
+      "elements": ["Life-Changing Event", "No Going Back", "New Direction"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "debate": {
-      "name": "Debate (12-25)",
+      "name": "Debate",
       "description": "The hero weighs whether to take on the challenge",
-      "elements": ["Should I Go?", "Fear vs. Need", "Internal Conflict"]
+      "elements": ["Should I Go?", "Fear vs. Need", "Internal Conflict"],
+      "distribution": {
+        "percentage": 12.5,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
     "break_into_two": {
-      "name": "Break Into Two (25)",
+      "name": "Break Into Two",
       "description": "The hero decides to take on the challenge and enters Act 2",
-      "elements": ["Choice Made", "New World Entered", "Adventure Begins"]
+      "elements": ["Choice Made", "New World Entered", "Adventure Begins"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     },
     "b_story": {
-      "name": "B Story (30)",
+      "name": "B Story",
       "description": "A subplot that carries the theme of the movie",
-      "elements": ["Secondary Character", "Theme Explored", "Emotional Journey"]
+      "elements": ["Secondary Character", "Theme Explored", "Emotional Journey"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "fun_and_games": {
-      "name": "Fun and Games (30-55)",
+      "name": "Fun and Games",
       "description": "The premise of the movie is explored - the trailer moments",
-      "elements": ["Promise of Premise", "Trailer Moments", "Audience Expectations Met"]
+      "elements": ["Promise of Premise", "Trailer Moments", "Audience Expectations Met"],
+      "distribution": {
+        "percentage": 22.5,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "midpoint": {
-      "name": "Midpoint (55)",
+      "name": "Midpoint",
       "description": "An up or down moment that changes the direction of the story",
-      "elements": ["False Victory/Defeat", "Stakes Raised", "New Information"]
+      "elements": ["False Victory/Defeat", "Stakes Raised", "New Information"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "bad_guys_close_in": {
-      "name": "Bad Guys Close In (55-75)",
+      "name": "Bad Guys Close In",
       "description": "Forces of antagonism gather momentum against the hero",
-      "elements": ["External Pressure", "Internal Doubts", "Team Falls Apart"]
+      "elements": ["External Pressure", "Internal Doubts", "Team Falls Apart"],
+      "distribution": {
+        "percentage": 17.5,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
     "all_is_lost": {
-      "name": "All Is Lost (75)",
+      "name": "All Is Lost",
       "description": "The hero's lowest point - the moment of greatest despair",
-      "elements": ["Lowest Point", "Hope Lost", "Death Moment"]
+      "elements": ["Lowest Point", "Hope Lost", "Death Moment"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     },
     "dark_night_of_soul": {
-      "name": "Dark Night of the Soul (75-85)",
+      "name": "Dark Night of the Soul",
       "description": "The hero mourns the loss and processes the journey so far",
-      "elements": ["Reflection", "Processing Loss", "Finding Inner Strength"]
+      "elements": ["Reflection", "Processing Loss", "Finding Inner Strength"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "break_into_three": {
-      "name": "Break Into Three (85)",
+      "name": "Break Into Three",
       "description": "The hero finds the solution to the problem",
-      "elements": ["A-ha Moment", "Solution Found", "New Approach"]
+      "elements": ["A-ha Moment", "Solution Found", "New Approach"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     },
     "finale": {
-      "name": "Finale (85-110)",
+      "name": "Finale",
       "description": "The hero applies the new lesson and defeats the antagonist",
-      "elements": ["Final Battle", "Lessons Applied", "Old vs. New Self"]
+      "elements": ["Final Battle", "Lessons Applied", "Old vs. New Self"],
+      "distribution": {
+        "percentage": 22.5,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "final_image": {
-      "name": "Final Image (110)",
+      "name": "Final Image",
       "description": "A visual that represents the change that has occurred",
-      "elements": ["Transformation Complete", "New Normal", "Growth Shown"]
+      "elements": ["Transformation Complete", "New Normal", "Growth Shown"],
+      "distribution": {
+        "percentage": 2.5,
+        "plotPoints": 1,
+        "narrative_weight": "transition"
+      }
     }
   }
 } 

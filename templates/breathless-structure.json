@@ -1,42 +1,59 @@
 {
-  "name": "Breathless Structure (Nouvelle Vague)",
-  "description": "Improvised, episodic structure following characters living moment to moment with existential detachment",
+  "name": "Breathless Structure",
+  "description": "Jean-Luc Godard's nouvelle vague narrative emphasizing spontaneity and improvisation",
   "category": "criterion_patterns",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Godard's improvisational structure with emphasis on character moments and spontaneous developments",
   "structure": {
-    "impulsive_act": {
-      "name": "Impulsive Act",
-      "description": "Protagonist commits to action without full consideration of consequences",
-      "elements": ["Spontaneous Decision", "Criminal Act", "Point of No Return"]
+    "spontaneous_beginning": {
+      "name": "Spontaneous Beginning",
+      "description": "The story begins in the middle of action without extensive setup",
+      "elements": ["In Media Res", "Character in Motion", "Immediate Action", "No Exposition"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "urban_drift": {
-      "name": "Urban Drift",
-      "description": "Characters move through city spaces, engaging in seemingly casual interactions",
-      "elements": ["Wandering Through City", "Casual Encounters", "Philosophical Conversations"]
+    "character_exploration": {
+      "name": "Character Exploration",
+      "description": "Extended sequences exploring character psychology and relationships",
+      "elements": ["Character Study", "Relationship Dynamics", "Internal Life", "Behavioral Patterns"],
+      "distribution": {
+        "percentage": 35.0,
+        "plotPoints": 12,
+        "narrative_weight": "major"
+      }
     },
-    "romantic_interlude": {
-      "name": "Romantic Interlude",
-      "description": "Extended sequences exploring relationship dynamics and sexual tension",
-      "elements": ["Seduction Attempts", "Power Games", "Intimate Conversations"]
+    "improvised_developments": {
+      "name": "Improvised Developments",
+      "description": "Plot developments emerge organically from character actions",
+      "elements": ["Organic Plot", "Character-Driven Events", "Spontaneous Turns", "Natural Consequences"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "existential_discussions": {
-      "name": "Existential Discussions",
-      "description": "Characters debate life, death, love, and meaning in seemingly casual moments",
-      "elements": ["Philosophical Debates", "Literary References", "Cultural Commentary"]
+    "existential_crisis": {
+      "name": "Existential Crisis",
+      "description": "Characters face philosophical or existential dilemmas",
+      "elements": ["Philosophical Questions", "Existential Doubt", "Meaning Questioned", "Identity Crisis"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "consequences_emerge": {
-      "name": "Consequences Emerge",
-      "description": "The reality of earlier actions begins to intrude on the drift",
-      "elements": ["Police Investigation", "Past Catches Up", "Freedom Threatened"]
-    },
-    "betrayal_revelation": {
-      "name": "Betrayal/Revelation",
-      "description": "Trust is broken or hidden motivations are revealed",
-      "elements": ["Character Betrayal", "True Motivations", "Illusions Shattered"]
-    },
-    "fatalistic_ending": {
-      "name": "Fatalistic Ending",
-      "description": "Conclusion that accepts the inevitability of consequences",
-      "elements": ["Acceptance of Fate", "Final Gesture", "Existential Resignation"]
+    "ambiguous_resolution": {
+      "name": "Ambiguous Resolution",
+      "description": "The ending is open to interpretation, avoiding clear closure",
+      "elements": ["Open Ending", "Ambiguous Fate", "Questions Remain", "Interpretive Space"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

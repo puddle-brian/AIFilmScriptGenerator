@@ -1,42 +1,59 @@
 {
-  "name": "Bicycle Thieves Structure (Neorealist Social Drama)",
-  "description": "Working-class protagonist faces moral dilemmas in pursuit of basic survival and dignity",
+  "name": "Bicycle Thieves Structure",
+  "description": "Vittorio De Sica's neorealist narrative emphasizing social realism and human dignity",
   "category": "criterion_patterns",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on De Sica's neorealist structure emphasizing social conditions and the search for dignity",
   "structure": {
-    "economic_setup": {
-      "name": "Economic Setup",
-      "description": "Establish the protagonist's precarious economic situation and social context",
-      "elements": ["Financial Desperation", "Social Conditions", "Family Responsibilities"]
+    "economic_necessity": {
+      "name": "Economic Necessity",
+      "description": "The protagonist faces economic hardship requiring immediate action",
+      "elements": ["Poverty Established", "Job Opportunity", "Basic Needs", "Family Pressure"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     },
-    "opportunity_appears": {
-      "name": "Opportunity Appears",
-      "description": "A chance for economic stability presents itself",
-      "elements": ["Job Opportunity", "Required Investment", "Hope for Future"]
+    "hope_and_opportunity": {
+      "name": "Hope and Opportunity",
+      "description": "A chance for improvement appears but requires sacrifice",
+      "elements": ["Job Secured", "Hope Kindled", "Investment Made", "Future Glimpsed"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "initial_success": {
-      "name": "Initial Success",
-      "description": "Protagonist begins to build toward stability",
-      "elements": ["Work Begins", "Family Pride", "Sense of Purpose"]
+    "theft_and_loss": {
+      "name": "Theft and Loss",
+      "description": "The means of survival is stolen, creating desperate circumstances",
+      "elements": ["Theft Occurs", "Livelihood Threatened", "Desperation Sets In", "System Fails"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "catastrophic_loss": {
-      "name": "Catastrophic Loss",
-      "description": "The foundation of stability is suddenly removed",
-      "elements": ["Theft/Loss", "Immediate Crisis", "System Indifference"]
-    },
-    "desperate_search": {
-      "name": "Desperate Search",
-      "description": "Protagonist pursues recovery through increasingly desperate means",
-      "elements": ["Official Channels Fail", "Personal Investigation", "Growing Desperation"]
+    "the_search": {
+      "name": "The Search",
+      "description": "The protagonist searches through the city for what was lost",
+      "elements": ["Desperate Search", "City Exploration", "Social Encounters", "Class Divisions"],
+      "distribution": {
+        "percentage": 35.0,
+        "plotPoints": 12,
+        "narrative_weight": "major"
+      }
     },
     "moral_compromise": {
       "name": "Moral Compromise",
-      "description": "Protagonist faces choice between ethics and survival",
-      "elements": ["Temptation to Steal", "Moral Boundary Crossed", "Justification Attempts"]
-    },
-    "humanizing_revelation": {
-      "name": "Humanizing Revelation",
-      "description": "Recognition of shared humanity even in moral failure",
-      "elements": ["Empathy for Others", "Understanding Systemic Forces", "Dignity in Defeat"]
+      "description": "Desperation leads to moral compromise and loss of dignity",
+      "elements": ["Dignity Lost", "Moral Failure", "Shame Experienced", "Human Frailty"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

@@ -1,42 +1,69 @@
 {
-  "name": "Rashomon Structure (Multiple Perspectives)",
-  "description": "Multiple narrators tell conflicting versions of the same events, revealing subjective truth and human nature",
+  "name": "Rashomon Structure",
+  "description": "Kurosawa's multiple perspective narrative where the same events are told from different viewpoints",
   "category": "criterion_patterns",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on Kurosawa's structure emphasizing the central event and multiple retellings with equal weight",
   "structure": {
-    "frame_opening": {
-      "name": "Frame Opening",
-      "description": "Establish the framing device - characters discussing or investigating the central event",
-      "elements": ["Setting the Frame", "Initial Mystery", "Unreliable Narrators Introduced"]
+    "framing_device": {
+      "name": "Framing Device",
+      "description": "The setup that establishes why multiple versions of the story will be told",
+      "elements": ["Investigation Setup", "Reason for Retelling", "Witnesses Gathered", "Central Mystery"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
     "first_perspective": {
       "name": "First Perspective",
-      "description": "The first narrator's version of events, establishing baseline narrative",
-      "elements": ["Narrator Introduction", "Their Version of Truth", "Character Motivations Revealed"]
+      "description": "The first version of events from one character's viewpoint",
+      "elements": ["First Account", "Character's Truth", "Subjective Reality", "Initial Version"],
+      "distribution": {
+        "percentage": 22.5,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "second_perspective": {
-      "name": "Second Perspective", 
-      "description": "Second narrator contradicts or adds to the first version",
-      "elements": ["Contradictory Details", "New Information", "Different Character Focus"]
+      "name": "Second Perspective",
+      "description": "The same events retold from a different character's viewpoint",
+      "elements": ["Contradictory Account", "Different Truth", "New Details", "Conflicting Version"],
+      "distribution": {
+        "percentage": 22.5,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "third_perspective": {
       "name": "Third Perspective",
-      "description": "Third narrator provides another layer of contradiction or revelation",
-      "elements": ["Further Contradictions", "Hidden Motivations", "Moral Complexity"]
+      "description": "A third version that further complicates the truth",
+      "elements": ["Third Account", "More Contradictions", "Deeper Complexity", "Additional Truth"],
+      "distribution": {
+        "percentage": 22.5,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
     "fourth_perspective": {
       "name": "Fourth Perspective (Optional)",
-      "description": "Additional perspective that may be more objective or equally subjective",
-      "elements": ["Witness Account", "Outside Perspective", "New Evidence"]
+      "description": "An additional perspective that may reveal hidden truths",
+      "elements": ["Final Account", "Hidden Truth", "Objective Reality", "Resolution Attempt"],
+      "distribution": {
+        "percentage": 12.5,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "synthesis_revelation": {
-      "name": "Synthesis/Revelation",
-      "description": "Attempt to reconcile the different versions or accept their irreducibility",
-      "elements": ["Truth Remains Elusive", "Human Nature Explored", "Moral Ambiguity"]
-    },
-    "frame_closing": {
-      "name": "Frame Closing",
-      "description": "Return to framing device with new understanding or continued uncertainty",
-      "elements": ["Characters React", "Philosophical Implications", "Ambiguous Resolution"]
+    "synthesis": {
+      "name": "Synthesis or Ambiguity",
+      "description": "The resolution that either reveals truth or embraces the ambiguity",
+      "elements": ["Truth Revealed", "Ambiguity Maintained", "Philosophical Resolution", "Final Understanding"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

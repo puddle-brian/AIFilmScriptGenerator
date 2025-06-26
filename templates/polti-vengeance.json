@@ -1,38 +1,49 @@
 {
-  "name": "Crime Pursued by Vengeance",
-  "description": "A criminal act triggers pursuit by an avenger seeking justice",
+  "name": "Vengeance",
+  "description": "Georges Polti's dramatic situation where a character seeks retribution for a wrong",
   "category": "polti_36_situations",
-  "examples": "Hamlet pursuing his father's murderer, The Bride in Kill Bill",
+  "total_plot_points": 30,
+  "distribution_philosophy": "Based on Polti's vengeance situation emphasizing the crime, pursuit of justice, and moral reckoning",
   "structure": {
     "the_crime": {
       "name": "The Crime",
-      "description": "A significant wrongdoing is committed",
-      "elements": ["Crime Committed", "Victim Harmed", "Injustice Done"]
+      "description": "A terrible wrong is committed that demands vengeance",
+      "elements": ["Wrong Committed", "Victim Harmed", "Injustice Done", "Blood Debt"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "discovery": {
-      "name": "Discovery",
-      "description": "The crime is discovered and the avenger becomes aware",
-      "elements": ["Truth Revealed", "Perpetrator Identified", "Obligation Born"]
+    "the_avenger": {
+      "name": "The Avenger",
+      "description": "Someone takes up the cause of vengeance",
+      "elements": ["Avenger Emerges", "Oath Sworn", "Justice Sought", "Mission Accepted"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "vow_of_vengeance": {
-      "name": "Vow of Vengeance",
-      "description": "The avenger commits to pursuing justice",
-      "elements": ["Oath Taken", "Mission Accepted", "Path Chosen"]
-    },
-    "pursuit": {
+    "the_pursuit": {
       "name": "The Pursuit",
-      "description": "The avenger hunts the criminal",
-      "elements": ["Trail Followed", "Obstacles Faced", "Determination Shown"]
+      "description": "The avenger pursues the wrongdoer",
+      "elements": ["Hunt Begins", "Trail Followed", "Justice Pursued", "Obstacles Faced"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 9,
+        "narrative_weight": "major"
+      }
     },
-    "confrontation": {
-      "name": "Confrontation",
-      "description": "Avenger and criminal face each other",
-      "elements": ["Final Meeting", "Truth Exposed", "Justice Demanded"]
-    },
-    "resolution": {
-      "name": "Resolution",
-      "description": "Justice is served or vengeance is achieved",
-      "elements": ["Punishment Delivered", "Balance Restored", "Price Paid"]
+    "the_reckoning": {
+      "name": "The Reckoning",
+      "description": "Avenger and wrongdoer face each other",
+      "elements": ["Confrontation", "Truth Revealed", "Justice Delivered", "Price Paid"],
+      "distribution": {
+        "percentage": 25.0,
+        "plotPoints": 7,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

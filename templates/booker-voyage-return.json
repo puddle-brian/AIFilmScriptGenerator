@@ -1,43 +1,70 @@
 {
   "name": "Voyage and Return",
-  "description": "The hero travels to a strange new world, has adventures, then returns home transformed",
+  "description": "Christopher Booker's archetypal plot where a character journeys to a strange world and returns transformed",
   "category": "booker_7_plots",
+  "total_plot_points": 35,
+  "distribution_philosophy": "Based on Booker's voyage structure emphasizing the strange world experience and transformation upon return",
   "examples": "Alice in Wonderland, The Wizard of Oz, Avatar",
   "structure": {
-    "anticipation_stage": {
-      "name": "Anticipation Stage",
-      "description": "Life in the ordinary world before the journey",
-      "elements": ["Normal Life", "Restlessness", "Desire for Adventure"]
+    "ordinary_world": {
+      "name": "Ordinary World",
+      "description": "The character exists in their familiar, everyday environment",
+      "elements": ["Familiar Setting", "Normal Life", "Status Quo", "Comfort Zone"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "journey": {
-      "name": "The Journey",
-      "description": "The hero travels to or discovers the strange new world",
-      "elements": ["Portal Crossed", "New World Entered", "Wonder and Confusion"]
+    "call_to_adventure": {
+      "name": "Call to Adventure",
+      "description": "An opportunity or force draws the character away from their world",
+      "elements": ["Portal Opens", "Invitation Extended", "Curiosity Aroused", "Journey Begins"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "first_wonder": {
-      "name": "First Wonder",
-      "description": "Initial fascination with the strange new world",
-      "elements": ["Magical Discoveries", "New Rules Learned", "Temporary Paradise"]
+    "strange_world": {
+      "name": "Strange World",
+      "description": "The character enters and explores a world with different rules and logic",
+      "elements": ["New Rules", "Strange Inhabitants", "Different Logic", "Wonder and Confusion"],
+      "distribution": {
+        "percentage": 30.0,
+        "plotPoints": 10,
+        "narrative_weight": "major"
+      }
     },
-    "frustration": {
-      "name": "Frustration",
-      "description": "The new world reveals its darker, more dangerous aspects",
-      "elements": ["Threats Emerge", "Dangers Revealed", "Homesickness Grows"]
+    "initial_fascination": {
+      "name": "Initial Fascination",
+      "description": "The character is initially enchanted by the strange world's possibilities",
+      "elements": ["Wonder", "New Experiences", "Magical Encounters", "Freedom from Rules"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "nightmare": {
-      "name": "Nightmare",
-      "description": "The hero is trapped or threatened in the strange world",
-      "elements": ["Serious Peril", "Desperation", "Need to Escape"]
+    "growing_threat": {
+      "name": "Growing Threat",
+      "description": "The strange world reveals its dangerous or unsustainable nature",
+      "elements": ["Danger Emerges", "Price Revealed", "Trap Discovered", "Need to Escape"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "thrilling_escape": {
-      "name": "Thrilling Escape",
-      "description": "The hero escapes and returns to the familiar world",
-      "elements": ["Dramatic Escape", "Return Journey", "Portal Recrossed"]
-    },
-    "return": {
-      "name": "Return Transformed",
-      "description": "The hero returns home changed by the experience",
-      "elements": ["Wisdom Gained", "Growth Achieved", "New Perspective"]
+    "escape_and_return": {
+      "name": "Escape and Return",
+      "description": "The character escapes the strange world and returns home transformed",
+      "elements": ["Escape", "Return Journey", "Home Again", "Wisdom Gained"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     }
   }
 } 

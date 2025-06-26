@@ -2,70 +2,128 @@
   "name": "Hero's Journey",
   "description": "Joseph Campbell's monomyth structure following the hero's transformative journey through concrete actions and choices",
   "category": "essential",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on Campbell's monomyth with emphasis on major transformation stages: departure (30%), initiation (50%), return (20%)",
   "structure": {
     "ordinary_world": {
       "name": "Ordinary World",
-      "description": "The hero's normal life shown through daily actions and routine behaviors",
-      "elements": ["Daily Routine Actions", "Character Behavior", "Specific Problems to Solve"],
-      "action_examples": ["Hero performs daily job", "Character interacts with family", "Specific obstacle blocks goal"]
+      "description": "The hero's normal life before transformation begins",
+      "elements": ["Status Quo", "Character Introduction", "Familiar Environment"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "major"
+      }
     },
     "call_to_adventure": {
       "name": "Call to Adventure",
-      "description": "A specific event or person disrupts the hero's world with a concrete challenge",
-      "elements": ["Specific Disrupting Event", "Clear Mission Offered", "Tangible Stakes"],
-      "action_examples": ["Messenger arrives with urgent news", "Hero discovers evidence of crime", "Character receives desperate phone call"]
+      "description": "The hero is presented with a problem or challenge",
+      "elements": ["Inciting Incident", "Challenge Presented", "Disruption"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "refusal_of_call": {
       "name": "Refusal of the Call",
-      "description": "The hero actively avoids or rejects the challenge through specific actions",
-      "elements": ["Active Avoidance Behavior", "Excuse-Making Actions", "Clinging to Routine"],
-      "action_examples": ["Hero throws away the message", "Character lies to avoid responsibility", "Hero physically runs from the situation"]
+      "description": "The hero hesitates or refuses the adventure",
+      "elements": ["Hesitation", "Fear", "Reluctance"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "meeting_mentor": {
       "name": "Meeting the Mentor",
-      "description": "The hero encounters a wise figure who gives advice, guidance, or magical gifts",
-      "elements": ["Wise Guide", "Gifts/Tools", "Encouragement"]
+      "description": "The hero encounters a wise figure who gives advice or magical gifts",
+      "elements": ["Wisdom Gained", "Guidance Received", "Tools/Knowledge Given"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "crossing_threshold": {
       "name": "Crossing the First Threshold",
-      "description": "The hero commits to the adventure and enters the special world",
-      "elements": ["Point of No Return", "Entering Special World", "First Challenges"]
+      "description": "The hero commits to the adventure and enters a new world",
+      "elements": ["Commitment Made", "New World Entered", "Point of No Return"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     },
     "tests_allies_enemies": {
       "name": "Tests, Allies, and Enemies",
-      "description": "The hero faces challenges and makes allies and enemies in the special world",
-      "elements": ["New Rules", "Allies Gained", "Enemies Revealed", "Skills Tested"]
+      "description": "The hero faces challenges and makes allies and enemies in the new world",
+      "elements": ["Learning Rules", "Building Relationships", "Facing Obstacles", "Character Development"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "approach": {
+    "approach_inmost_cave": {
       "name": "Approach to the Inmost Cave",
       "description": "The hero prepares for the major challenge in the special world",
-      "elements": ["Preparation", "Final Planning", "Inner Fears Faced"]
+      "elements": ["Preparation", "Strategy", "Gathering Courage", "Final Planning"],
+      "distribution": {
+        "percentage": 7.5,
+        "plotPoints": 3,
+        "narrative_weight": "major"
+      }
     },
     "ordeal": {
       "name": "The Ordeal",
-      "description": "The hero confronts a life-threatening situation requiring decisive action",
-      "elements": ["Physical Danger", "Impossible Choice", "Do-or-Die Moment"],
-      "action_examples": ["Hero must choose who to save", "Character faces armed opponent", "Hero must sacrifice something precious to survive"]
+      "description": "The hero faces their greatest fear or most difficult challenge",
+      "elements": ["Greatest Challenge", "Death/Rebirth", "Transformation Catalyst", "Crisis Point"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "major"
+      }
     },
     "reward": {
-      "name": "The Reward",
+      "name": "Reward (Seizing the Sword)",
       "description": "The hero survives and gains something from the experience",
-      "elements": ["Surviving Death", "Gaining Treasure", "New Wisdom"]
+      "elements": ["Victory", "Reward Gained", "Knowledge/Power Acquired", "Survival"],
+      "distribution": {
+        "percentage": 7.5,
+        "plotPoints": 3,
+        "narrative_weight": "major"
+      }
     },
     "road_back": {
       "name": "The Road Back",
       "description": "The hero begins the journey back to the ordinary world",
-      "elements": ["Returning Home", "New Challenges", "Commitment to Change"]
+      "elements": ["Return Journey", "Pursuit", "Recommitment", "Chase"],
+      "distribution": {
+        "percentage": 7.5,
+        "plotPoints": 3,
+        "narrative_weight": "major"
+      }
     },
     "resurrection": {
       "name": "Resurrection",
       "description": "The hero faces a final test and is transformed by the experience",
-      "elements": ["Final Test", "Transformation", "New Self Emerges"]
+      "elements": ["Final Test", "Purification", "Transformation Complete", "Death/Rebirth"],
+      "distribution": {
+        "percentage": 12.5,
+        "plotPoints": 5,
+        "narrative_weight": "major"
+      }
     },
-    "return_with_elixir": {
+    "return_elixir": {
       "name": "Return with the Elixir",
-      "description": "The hero returns home transformed and with something to benefit the ordinary world",
-      "elements": ["Homecoming", "Sharing Wisdom", "World Changed"]
+      "description": "The hero returns home transformed and able to benefit others",
+      "elements": ["Homecoming", "Sharing Wisdom", "New Normal", "Benefit to Others"],
+      "distribution": {
+        "percentage": 5.0,
+        "plotPoints": 2,
+        "narrative_weight": "minor"
+      }
     }
   }
 } 

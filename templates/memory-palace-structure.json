@@ -1,42 +1,59 @@
 {
-  "name": "Memory Palace Structure (Subjective Time)",
-  "description": "Non-linear exploration of memory, time, and subjective reality where past, present, and imagined future interweave",
+  "name": "Memory Palace Structure",
+  "description": "Non-linear narrative structure exploring memory, time, and subjective experience",
   "category": "criterion_patterns",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Based on memory-driven structure emphasizing past/present connections and emotional revelations",
   "structure": {
-    "present_anchor": {
-      "name": "Present Anchor",
-      "description": "Establish a concrete present moment that serves as the anchor point for temporal journeys",
-      "elements": ["Current Location", "Immediate Situation", "Protagonist's State of Mind"]
+    "present_trigger": {
+      "name": "Present Trigger",
+      "description": "A current event triggers memories and begins the journey into the past",
+      "elements": ["Memory Catalyst", "Present Moment", "Emotional Trigger", "Journey Begins"],
+      "distribution": {
+        "percentage": 10.0,
+        "plotPoints": 4,
+        "narrative_weight": "minor"
+      }
     },
-    "memory_trigger": {
-      "name": "Memory Trigger",
-      "description": "An object, person, or sensation that opens the floodgates to the past",
-      "elements": ["Sensory Catalyst", "Emotional Recognition", "Time Displacement Begins"]
+    "memory_exploration": {
+      "name": "Memory Exploration",
+      "description": "Extended exploration of memories, moving non-linearly through time",
+      "elements": ["Past Events", "Memory Fragments", "Emotional Landscapes", "Time Shifts"],
+      "distribution": {
+        "percentage": 40.0,
+        "plotPoints": 16,
+        "narrative_weight": "major"
+      }
     },
-    "layered_recollection": {
-      "name": "Layered Recollection",
-      "description": "Multiple time periods exist simultaneously, memories within memories",
-      "elements": ["Nested Flashbacks", "Contradictory Versions", "Temporal Overlap"]
+    "hidden_connections": {
+      "name": "Hidden Connections",
+      "description": "Patterns and connections between past and present emerge",
+      "elements": ["Pattern Recognition", "Causal Links", "Hidden Truths", "Understanding Grows"],
+      "distribution": {
+        "percentage": 20.0,
+        "plotPoints": 8,
+        "narrative_weight": "major"
+      }
     },
-    "subjective_reconstruction": {
-      "name": "Subjective Reconstruction",
-      "description": "The protagonist actively reconstructs or reimagines past events",
-      "elements": ["Wishful Thinking", "Guilt Revision", "Fantasy Integration"]
+    "revelation": {
+      "name": "Revelation",
+      "description": "A crucial truth about the past is revealed",
+      "elements": ["Truth Unveiled", "Missing Piece", "Understanding Complete", "Emotional Impact"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     },
-    "temporal_confusion": {
-      "name": "Temporal Confusion",
-      "description": "The boundaries between past, present, and imagined future dissolve",
-      "elements": ["Time Loops", "Causal Uncertainty", "Reality Questioning"]
-    },
-    "revelation_through_repetition": {
-      "name": "Revelation Through Repetition",
-      "description": "Truth emerges through repeated scenes with subtle variations",
-      "elements": ["Obsessive Return", "Detail Variations", "Gradual Clarity"]
-    },
-    "acceptance_or_madness": {
-      "name": "Acceptance or Madness",
-      "description": "Protagonist either integrates the temporal experience or succumbs to confusion",
-      "elements": ["Psychological Resolution", "Continued Uncertainty", "New Understanding"]
+    "integration": {
+      "name": "Integration",
+      "description": "Past and present are integrated, leading to resolution or acceptance",
+      "elements": ["Past Accepted", "Present Informed", "Healing Begins", "New Understanding"],
+      "distribution": {
+        "percentage": 15.0,
+        "plotPoints": 6,
+        "narrative_weight": "major"
+      }
     }
   }
 } 
