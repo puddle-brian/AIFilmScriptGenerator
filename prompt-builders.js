@@ -142,10 +142,18 @@ function buildPlotPointsPrompt(hierarchicalContext, plotPointCount = 4, finalSce
     // Load the plot points generation template  
     const template = loadTemplate('plot-points-generation');
     
-    // Generate dynamic JSON examples based on plot point count
+    // Generate dynamic JSON examples based on plot point count with BUT/THEREFORE logic
     const dynamicExamples = [];
     for (let i = 1; i <= plotPointCount; i++) {
-        dynamicExamples.push(`    "Plot point ${i} as a simple string describing the action"`);
+        if (i === 1) {
+            dynamicExamples.push(`    "Plot point ${i} that establishes the situation for this act"`);
+        } else if (i % 2 === 0) {
+            // Even numbers use "But" for conflict/complications
+            dynamicExamples.push(`    "But plot point ${i} that introduces conflict or complication"`);
+        } else {
+            // Odd numbers (except 1) use "Therefore" for consequences/progress
+            dynamicExamples.push(`    "Therefore plot point ${i} that shows consequence or progress"`);
+        }
     }
     const exampleArray = dynamicExamples.join(',\n');
     

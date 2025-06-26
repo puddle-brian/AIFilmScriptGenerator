@@ -616,6 +616,13 @@ function addInfluence(type) {
         console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${value}" to appState.influences`);
         console.log('  - Current influences:', appState.influences);
         
+        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
+        if (appState.storyInput) {
+            appState.storyInput.influences = appState.influences;
+            appState.storyInput.influencePrompt = buildInfluencePrompt();
+            console.log('  - Synchronized to storyInput.influences');
+        }
+        
         updateInfluenceTags(type);
         saveToLocalStorage();
         
@@ -735,8 +742,11 @@ function initializeNewProjectFromStoryConcept(title, logline) {
         title: title,
         logline: logline || '',
         characters: appState.projectCharacters || [],
+        charactersData: appState.projectCharacters || [],
         totalScenes: document.getElementById('totalScenes')?.value || '70',
         tone: document.getElementById('tone')?.value || '',
+        influences: appState.influences || { directors: [], screenwriters: [], films: [] },
+        influencePrompt: buildInfluencePrompt(),
         customPrompt: null,
         storyConcept: {
             title: title,
@@ -940,6 +950,13 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                         console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${name}" to appState.influences`);
                         console.log('  - Current influences:', appState.influences);
                         
+                        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
+                        if (appState.storyInput) {
+                            appState.storyInput.influences = appState.influences;
+                            appState.storyInput.influencePrompt = buildInfluencePrompt();
+                            console.log('  - Synchronized to storyInput.influences');
+                        }
+                        
                         updateInfluenceTags(type);
                         saveToLocalStorage();
                         
@@ -982,6 +999,14 @@ function removeInfluence(type, value) {
     const index = appState.influences[type + 's'].indexOf(value);
     if (index > -1) {
         appState.influences[type + 's'].splice(index, 1);
+        
+        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
+        if (appState.storyInput) {
+            appState.storyInput.influences = appState.influences;
+            appState.storyInput.influencePrompt = buildInfluencePrompt();
+            console.log('🔄 REMOVE INFLUENCE: Synchronized to storyInput.influences');
+        }
+        
         updateInfluenceTags(type);
         saveToLocalStorage();
         
@@ -2155,7 +2180,7 @@ function handleStorySubmission() {
         charactersData: appState.projectCharacters, // Store structured character data
         tone: formData.get('tone'),
         totalScenes: 70, // Default value, will be configurable in scenes step
-        influences: appState.influences,
+        influences: appState.influences, // Synchronized with current appState.influences
         influencePrompt: buildInfluencePrompt(),
         storyConcept: appState.currentStoryConcept // Store the full story concept
     };
@@ -7326,6 +7351,13 @@ const autoSaveManager = {
             appState.projectPath = `${titleSlug}_${timestamp}`;
         }
         
+        // 🔧 SYNC FIX: Ensure storyInput.influences stays synchronized with appState.influences
+        if (appState.storyInput && appState.influences) {
+            appState.storyInput.influences = appState.influences;
+            appState.storyInput.influencePrompt = buildInfluencePrompt();
+            console.log('🔄 AUTO-SAVE: Synchronized influences to storyInput:', appState.influences);
+        }
+        
         // DEBUG: Log what we're about to save
         console.log('🔍 AUTO-SAVE DEBUG: Current appState before saving:');
         console.log('  - generatedStructure keys:', Object.keys(appState.generatedStructure || {}));
@@ -7339,6 +7371,11 @@ const autoSaveManager = {
             structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : [],
             hasOriginalOrder: !!appState.templateData.originalOrder
         } : 'null');
+        console.log('  - 🎬 influences sync:', {
+            appStateInfluences: appState.influences,
+            storyInputInfluences: appState.storyInput?.influences,
+            areEqual: JSON.stringify(appState.influences) === JSON.stringify(appState.storyInput?.influences)
+        });
         
         const projectData = {
             ...appState,

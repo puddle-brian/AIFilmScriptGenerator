@@ -485,6 +485,7 @@ class HierarchicalContext {
     // Enhanced influences - use project-level influences if available
     const influences = fullContext.influences || storyInput.influences || {};
     
+
     this.contexts.story = {
       level: 1,
       type: 'story',
@@ -912,8 +913,8 @@ class HierarchicalContext {
             prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
           });
           
-          // Current act focus
-          if (this.contexts.act) {
+          // Current act focus (only show if not already shown in structure context)
+          if (this.contexts.act && !this.contexts.structure) {
             const currentAct = this.contexts.act.data;
             prompt += `\n**FOCUS FOR THIS ACT (${currentAct.name}):**\n`;
             prompt += `${currentAct.description}\n\n`;
@@ -1655,8 +1656,8 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
       generatedScenes: {},
       generatedDialogues: {},
       currentStep: 3,
-      influences: {},
-      projectCharacters: [],
+      influences: storyInput.influences || {},
+      projectCharacters: storyInput.charactersData || storyInput.projectCharacters || [],
       generatedAt: new Date().toISOString()
     };
     
