@@ -5951,15 +5951,13 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
       return res.status(400).json({ error: 'Invalid plot point index' });
     }
 
-    const sceneDistribution = plotPointsData.sceneDistribution || [];
-    const plotPointInfo = sceneDistribution[plotPointIndexNum];
+    // Calculate scene distribution dynamically (original working approach)
+    const totalScenesForAct = plotPointsData.totalScenesForAct || 70; // From calculator
+    const plotPointsCount = plotPointsArray.length;
+    const scenesPerPlotPoint = Math.ceil(totalScenesForAct / plotPointsCount);
     
-    if (!plotPointInfo) {
-      return res.status(400).json({ error: 'Scene distribution not found. Please regenerate plot points.' });
-    }
-    
-    const sceneCount = plotPointInfo.sceneCount;
-    const plotPoint = plotPointInfo.plotPoint;
+    const sceneCount = scenesPerPlotPoint;
+    const plotPoint = plotPointsArray[plotPointIndexNum];
     
     // Initialize and load hierarchical context
     const context = new HierarchicalContext();
@@ -6025,10 +6023,10 @@ Return ONLY valid JSON in this exact format:
       plotPoint: plotPoint,
       sceneCount: sceneCount,
       plotPointIndex: plotPointIndexNum,
-      isKeyPlot: plotPointInfo.isKeyPlot,
+      isKeyPlot: false, // Simple distribution - all plot points treated equally
       hierarchicalPrompt: hierarchicalPrompt,
       usedHierarchicalContext: true,
-      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". This is the TRUE hierarchical approach where each plot point generates its allocated scenes.`
+      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using simple even distribution: ${sceneCount} scenes per plot point.`
     });
 
   } catch (error) {
