@@ -142,12 +142,20 @@ function buildPlotPointsPrompt(hierarchicalContext, plotPointCount = 4, finalSce
     // Load the plot points generation template  
     const template = loadTemplate('plot-points-generation');
     
+    // Generate dynamic JSON examples based on plot point count
+    const dynamicExamples = [];
+    for (let i = 1; i <= plotPointCount; i++) {
+        dynamicExamples.push(`    "Plot point ${i} as a simple string describing the action"`);
+    }
+    const exampleArray = dynamicExamples.join(',\n');
+    
     // Prepare placeholders with actual project data
     const placeholders = {
         HIERARCHICAL_CONTEXT: hierarchicalContext || '',
         PLOT_POINT_COUNT: plotPointCount,
         FINAL_SCENE_COUNT: finalSceneCount,
-        CUSTOM_INSTRUCTIONS: options.customInstructions || ''
+        CUSTOM_INSTRUCTIONS: options.customInstructions || '',
+        DYNAMIC_EXAMPLES: exampleArray
     };
     
     // Replace placeholders and return the complete prompt

@@ -3188,20 +3188,59 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     // Clear existing content
     container.innerHTML = '';
     
-    // Extract plot point text from objects if needed
+    // Debug: Log the incoming plot points format
+    console.log(`🔍 DEBUG: Displaying plot points for ${structureKey}:`, plotPoints);
+    console.log(`🔍 DEBUG: Plot points type:`, typeof plotPoints, `isArray:`, Array.isArray(plotPoints));
+    if (Array.isArray(plotPoints) && plotPoints.length > 0) {
+        console.log(`🔍 DEBUG: First plot point type:`, typeof plotPoints[0], plotPoints[0]);
+    }
+    
+    // Extract plot point text from the database structure
     let normalizedPlotPoints = [];
-    if (Array.isArray(plotPoints)) {
+    
+    // Handle database format: object with plotPoints array inside
+    if (typeof plotPoints === 'object' && plotPoints !== null && !Array.isArray(plotPoints)) {
+        // This is the database object format with metadata
+        if (plotPoints.plotPoints && Array.isArray(plotPoints.plotPoints)) {
+            console.log(`🔧 DEBUG: Extracting plotPoints array from database object`);
+            normalizedPlotPoints = plotPoints.plotPoints.map(point => typeof point === 'string' ? point : String(point));
+        } else {
+            console.warn('Database object does not contain plotPoints array:', plotPoints);
+            normalizedPlotPoints = [JSON.stringify(plotPoints)];
+        }
+    }
+    // Handle direct array format
+    else if (Array.isArray(plotPoints)) {
         normalizedPlotPoints = plotPoints.map(point => {
             if (typeof point === 'string') {
                 return point;
             } else if (typeof point === 'object' && point !== null) {
-                // Extract the plotPoint text from the object
-                return point.plotPoint || point.description || point.text || JSON.stringify(point);
+                // Extract the plotPoint text from the object - handle multiple possible formats
+                const plotText = point.plotPoint || point.description || point.text || point.content;
+                if (plotText && typeof plotText === 'string') {
+                    return plotText;
+                }
+                // If none of the standard properties exist, try to find the actual text content
+                const keys = Object.keys(point);
+                for (const key of keys) {
+                    if (typeof point[key] === 'string' && point[key].length > 10) {
+                        return point[key];
+                    }
+                }
+                // Last resort: stringify but clean it up
+                console.warn('Plot point object format not recognized:', point);
+                return JSON.stringify(point);
             }
             return String(point);
         });
-    } else {
+    }
+    // Handle single string
+    else if (typeof plotPoints === 'string') {
         normalizedPlotPoints = [plotPoints];
+    }
+    // Handle other formats
+    else {
+        normalizedPlotPoints = [String(plotPoints)];
     }
     
     // Create editable content block for plot points  

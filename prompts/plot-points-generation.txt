@@ -3,9 +3,7 @@
 Return ONLY a JSON object with this exact structure:
 {
   "plotPoints": [
-    "Plot point 1 as a simple string describing the action",
-    "Plot point 2 as a simple string describing the action",
-    "Plot point 3 as a simple string describing the action"
+{{DYNAMIC_EXAMPLES}}
     // Generate exactly {{PLOT_POINT_COUNT}} plot points as simple strings
   ]
 }
