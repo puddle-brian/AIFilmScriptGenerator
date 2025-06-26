@@ -1083,50 +1083,26 @@ Return ONLY valid JSON in this exact format:
 
   // Calculate intelligent scene distribution across plot points
   calculateSceneDistribution(plotPoints, totalScenesForAct, actKey) {
-    const totalPlotPoints = plotPoints.length;
-    const baseScenesPerPlot = Math.floor(totalScenesForAct / totalPlotPoints);
-    const extraScenes = totalScenesForAct % totalPlotPoints;
+    // 🔧 SINGLE SOURCE OF TRUTH: Use same calculation as preview system
+    const totalMovieScenes = 70; // From calculator widget (same as preview)
+    const totalPlotPoints = 25; // Total across all acts (same as preview)
+    const scenesPerPlotPointFloat = totalMovieScenes / totalPlotPoints; // 70/25 = 2.8
+    const scenesPerPlotPoint = Math.ceil(scenesPerPlotPointFloat); // Round up to 3
     
-    // Define key plot point patterns that deserve more scenes
-    const keyPlotPatterns = [
-      'catalyst', 'crisis', 'climax', 'transformation', 'confrontation', 
-      'revelation', 'inciting', 'turning point', 'moment of truth'
-    ];
+    console.log(`🔧 SINGLE SOURCE OF TRUTH (SAME AS PREVIEW):
+  📊 Total movie scenes: ${totalMovieScenes}
+  📊 Total plot points: ${totalPlotPoints}
+  📊 Scenes per plot point: ${scenesPerPlotPointFloat.toFixed(1)} → ${scenesPerPlotPoint}
+  🎯 Each plot point gets: ${scenesPerPlotPoint} scenes`);
     
     const sceneDistribution = plotPoints.map((plotPoint, index) => {
-      // Safely extract text from plotPoint (handle both string and object formats)
-      const plotText = (typeof plotPoint === 'string' ? plotPoint : plotPoint.description || plotPoint.text || '').toLowerCase();
-      const actName = actKey.toLowerCase();
-      
-      // Determine if this is a key plot point deserving extra scenes
-      const isKeyPlot = keyPlotPatterns.some(pattern => 
-        plotText.includes(pattern) || actName.includes(pattern)
-      ) || index === 0 || index === plotPoints.length - 1; // First and last are usually key
-      
-      // Distribute extra scenes to key plot points first
-      const extraSceneBonus = isKeyPlot && index < extraScenes ? 1 : 
-                             !isKeyPlot && (index >= totalPlotPoints - extraScenes) ? 1 : 0;
-      
-      const sceneCount = Math.max(1, baseScenesPerPlot + extraSceneBonus); // Minimum 1 scene per plot point
-      
       return {
         plotPoint,
-        sceneCount,
-        isKeyPlot,
+        sceneCount: scenesPerPlotPoint,
+        isKeyPlot: false, // Simplified: no complex key plot logic
         plotPointIndex: index
       };
     });
-    
-    // Verify total scenes match target
-    const totalDistributed = sceneDistribution.reduce((sum, dist) => sum + dist.sceneCount, 0);
-    
-    // Adjust if there's a mismatch (shouldn't happen, but safety check)
-    if (totalDistributed !== totalScenesForAct) {
-      console.log(`Scene distribution mismatch: ${totalDistributed} distributed vs ${totalScenesForAct} target`);
-      // Add remaining scenes to the last plot point
-      const difference = totalScenesForAct - totalDistributed;
-      sceneDistribution[sceneDistribution.length - 1].sceneCount += difference;
-    }
     
     return sceneDistribution;
   }
@@ -1528,7 +1504,7 @@ Project ID: ${customProjectId}
       structure: structureData,
       template: templateData,
       storyInput,
-      projectId,
+      projectId: structureProjectId,
       projectPath: projectFolderName,
       savedLocally: true,
       customPromptUsed: true
@@ -5097,14 +5073,15 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     } else if (plotPointsData.plotPoints) {
       // New format: object with metadata
       plotPoints = plotPointsData.plotPoints;
-      totalScenesForAct = plotPointsData.totalScenesForAct || 12;
+      // 🔧 DON'T use stored totalScenesForAct - use calculator widget value instead
+      // totalScenesForAct = plotPointsData.totalScenesForAct || 12;
     } else {
       return res.status(400).json({ error: 'Invalid plot points data format.' });
     }
-    
-    // Calculate scene distribution on the fly (this is the correct approach)
+
+    // 🔧 SINGLE SOURCE OF TRUTH: Use calculateSceneDistribution method (same as preview)
     const context = new HierarchicalContext();
-    const sceneDistribution = context.calculateSceneDistribution(plotPoints, totalScenesForAct, actKey);
+    const sceneDistribution = context.calculateSceneDistribution(plotPoints, null, actKey);
     
     console.log(`Generating all scenes for act: ${actKey}`);
     console.log(`Scene distribution:`, sceneDistribution.map((dist, i) => 
@@ -5951,13 +5928,12 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
       return res.status(400).json({ error: 'Invalid plot point index' });
     }
 
-    // Calculate scene distribution dynamically (original working approach)
-    const totalScenesForAct = plotPointsData.totalScenesForAct || 70; // From calculator
-    const plotPointsCount = plotPointsArray.length;
-    const scenesPerPlotPoint = Math.ceil(totalScenesForAct / plotPointsCount);
-    
-    const sceneCount = scenesPerPlotPoint;
     const plotPoint = plotPointsArray[plotPointIndexNum];
+    
+    // 🔧 SINGLE SOURCE OF TRUTH: Use calculateSceneDistribution method
+    const tempContext = new HierarchicalContext();
+    const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey);
+    const sceneCount = sceneDistribution[0].sceneCount;
     
     // Initialize and load hierarchical context
     const context = new HierarchicalContext();
@@ -5977,7 +5953,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     context.buildActContext(actKey, structure[actKey], actPosition);
     
     // Build plot points context
-    await context.buildPlotPointsContext(plotPointsArray, plotPointsData.totalScenesForAct, projectPath, req.user.username);
+    await context.buildPlotPointsContext(plotPointsArray, 70, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -6026,7 +6002,7 @@ Return ONLY valid JSON in this exact format:
       isKeyPlot: false, // Simple distribution - all plot points treated equally
       hierarchicalPrompt: hierarchicalPrompt,
       usedHierarchicalContext: true,
-      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using simple even distribution: ${sceneCount} scenes per plot point.`
+      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using calculator widget value: ${sceneCount} scenes per plot point (from 70 total scenes).`
     });
 
   } catch (error) {
