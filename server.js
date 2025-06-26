@@ -585,6 +585,7 @@ class HierarchicalContext {
       console.log(`🔗 Loading previous plot points for ${currentActKey} from database:`);
       console.log(`  📝 Previous acts: ${previousActKeys.join(', ')}`);
       console.log(`  👤 Using username: ${username}`);
+      console.log(`  📁 Project path: "${projectPath}"`);
       
       // Load from database using provided username
       const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -597,17 +598,32 @@ class HierarchicalContext {
       const userId = userResult.rows[0].id;
       
       // Get project context from database
+      console.log(`  🔍 Querying database: user_id=${userId}, project_name="${projectPath}"`);
       const projectResult = await dbClient.query(
         'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
         [userId, projectPath]
       );
       
+      console.log(`  📊 Query result: ${projectResult.rows.length} rows found`);
       if (projectResult.rows.length === 0) {
         console.log('  ⚠️  Project not found in database');
+        // Let's also check what projects DO exist for this user
+        const allProjectsResult = await dbClient.query(
+          'SELECT project_name FROM user_projects WHERE user_id = $1',
+          [userId]
+        );
+        console.log(`  📋 Available projects for user: ${allProjectsResult.rows.map(row => `"${row.project_name}"`).join(', ')}`);
         return [];
       }
       
       const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+      
+      console.log(`  🔍 Project context keys: ${Object.keys(projectContext).join(', ')}`);
+      if (projectContext.plotPoints) {
+        console.log(`  📋 Plot points structure keys: ${Object.keys(projectContext.plotPoints).join(', ')}`);
+      } else {
+        console.log('  ⚠️  No plotPoints key found in project context');
+      }
       
       if (!projectContext.plotPoints) {
         console.log('  ⚠️  No plot points found in project context');
@@ -617,19 +633,50 @@ class HierarchicalContext {
       for (const actKey of previousActKeys) {
         try {
           const actPlotPointsData = projectContext.plotPoints[actKey];
+          console.log(`  🔍 Checking act "${actKey}": ${actPlotPointsData ? 'EXISTS' : 'NOT FOUND'}`);
+          if (actPlotPointsData) {
+            console.log(`    📊 Act data keys: ${Object.keys(actPlotPointsData).join(', ')}`);
+            if (actPlotPointsData.plotPoints) {
+              console.log(`    📝 Plot points type: ${Array.isArray(actPlotPointsData.plotPoints) ? 'Array' : typeof actPlotPointsData.plotPoints}`);
+              console.log(`    📝 Plot points length: ${Array.isArray(actPlotPointsData.plotPoints) ? actPlotPointsData.plotPoints.length : 'N/A'}`);
+            }
+          }
           
-          if (actPlotPointsData && actPlotPointsData.plotPoints && Array.isArray(actPlotPointsData.plotPoints)) {
-            // Add act context to each plot point for better understanding
-            const actPlotPoints = actPlotPointsData.plotPoints.map((plotPoint, index) => ({
-              actKey: actKey,
-              actName: this.contexts.structure.data.structure[actKey]?.name || actKey,
-              plotPoint: plotPoint,
-              plotPointIndex: index,
-              isLastInAct: index === actPlotPointsData.plotPoints.length - 1
-            }));
+          if (actPlotPointsData) {
+            // Handle both array format and numeric index format
+            let plotPoints = [];
             
-            previousPlotPoints.push(...actPlotPoints);
-            console.log(`  ✅ Loaded ${actPlotPointsData.plotPoints.length} plot points from ${actKey} (database)`);
+            if (actPlotPointsData.plotPoints && Array.isArray(actPlotPointsData.plotPoints)) {
+              // New format: plotPoints array
+              plotPoints = actPlotPointsData.plotPoints;
+              console.log(`    ✅ Found ${plotPoints.length} plot points for ${actKey} (array format)`);
+            } else {
+              // Legacy format: numeric indices (0, 1, 2, 3...)
+              const numericKeys = Object.keys(actPlotPointsData)
+                .filter(key => /^\d+$/.test(key))
+                .sort((a, b) => parseInt(a) - parseInt(b));
+              
+              if (numericKeys.length > 0) {
+                plotPoints = numericKeys.map(key => actPlotPointsData[key]);
+                console.log(`    ✅ Found ${plotPoints.length} plot points for ${actKey} (numeric format)`);
+              }
+            }
+            
+            if (plotPoints.length > 0) {
+              // Add act context to each plot point for better understanding
+              const actPlotPoints = plotPoints.map((plotPoint, index) => ({
+                actKey: actKey,
+                actName: this.contexts.structure.data.structure[actKey]?.name || actKey,
+                plotPoint: typeof plotPoint === 'string' ? plotPoint : (plotPoint.plotPoint || JSON.stringify(plotPoint)),
+                plotPointIndex: index,
+                isLastInAct: index === plotPoints.length - 1
+              }));
+              
+              previousPlotPoints.push(...actPlotPoints);
+              console.log(`  ✅ Loaded ${plotPoints.length} plot points from ${actKey} (database)`);
+            } else {
+              console.log(`  ⚠️  No plot points found for ${actKey} in database`);
+            }
           } else {
             console.log(`  ⚠️  No plot points found for ${actKey} in database`);
           }
