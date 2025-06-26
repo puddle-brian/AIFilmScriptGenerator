@@ -579,15 +579,17 @@ class HierarchicalContext {
       throw new Error('Structure context must be built before act context');
     }
 
+
+
     this.contexts.act = {
       level: 3,
       type: 'act',
       parentContext: this.contexts.structure,
       data: {
         key: actKey,
-        name: act.name,
-        description: act.description,
-        characterDevelopment: act.character_development,
+        name: act?.name || actKey,
+        description: act?.description || 'No description available',
+        characterDevelopment: act?.character_development || 'No character development available',
         position: actPosition,
         totalActs: this.contexts.structure.data.totalActs
       },
