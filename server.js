@@ -6011,9 +6011,17 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     const plotPoint = plotPointsArray[plotPointIndexNum];
     
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
+    console.log(`🔥 PREVIEW ENDPOINT DEBUG:
+  📊 totalScenes from frontend: ${totalScenes}
+  📊 projectContext.storyInput.totalScenes: ${projectContext?.storyInput?.totalScenes}
+  📊 plotPoint: ${plotPoint}`);
+    
     const tempContext = new HierarchicalContext();
     const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey, totalScenes, projectContext);
     const sceneCount = sceneDistribution[0].sceneCount;
+    
+    console.log(`🔥 PREVIEW CALCULATION RESULT:
+  📊 sceneCount for this plot point: ${sceneCount}`);
     
     // Initialize and load hierarchical context
     const context = new HierarchicalContext();
