@@ -532,7 +532,7 @@ class HierarchicalContext {
   }
 
   // Build Level 4: Plot Points Context (builds on act) - ENHANCED with previous acts' plot points
-  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null) {
+  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null, username = 'guest') {
     if (!this.contexts.act) {
       throw new Error('Act context must be built before plot points context');
     }
@@ -540,7 +540,7 @@ class HierarchicalContext {
     // Load previous acts' plot points for inter-act causality
     let previousPlotPoints = [];
     if (projectPath) {
-      previousPlotPoints = await this.loadPreviousActsPlotPoints(projectPath);
+      previousPlotPoints = await this.loadPreviousActsPlotPoints(projectPath, username);
     } else {
       console.log(`🔍 No projectPath provided, skipping previous acts loading`);
     }
@@ -563,7 +563,7 @@ class HierarchicalContext {
   }
 
   // Load plot points from all previous acts for inter-act causality (database version)
-  async loadPreviousActsPlotPoints(projectPath) {
+  async loadPreviousActsPlotPoints(projectPath, username = 'guest') {
     try {
       if (!this.contexts.structure || !this.contexts.act) {
         return [];
@@ -584,9 +584,9 @@ class HierarchicalContext {
       
       console.log(`🔗 Loading previous plot points for ${currentActKey} from database:`);
       console.log(`  📝 Previous acts: ${previousActKeys.join(', ')}`);
+      console.log(`  👤 Using username: ${username}`);
       
-      // Load from database instead of file system
-      const username = 'guest'; // TODO: Get from user session/auth
+      // Load from database using provided username
       const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
       
       if (userResult.rows.length === 0) {
@@ -698,9 +698,9 @@ class HierarchicalContext {
       prompt += `STORY DETAILS:\n`;
       prompt += `- Title: ${story.title}\n`;
       prompt += `- Logline: ${story.logline}\n`;
-      prompt += `- Main Characters: ${story.characters}\n`;
+      prompt += `- Main Characters: ${Array.isArray(story.characters) ? story.characters.map(char => typeof char === 'object' ? char.name || JSON.stringify(char) : char).join(', ') : story.characters}\n`;
       prompt += `- Tone: ${story.tone || story.genre}\n`;
-      prompt += `- Target Scene Count: ${story.totalScenes} scenes\n`;
+      console.log(`🔧 DEBUG: Story context built WITHOUT target scene count`);
       
       // Add detailed influences section if available
       if (story.influences && Object.keys(story.influences).length > 0) {
@@ -976,7 +976,8 @@ Return ONLY valid JSON in this exact format:
     ];
     
     const sceneDistribution = plotPoints.map((plotPoint, index) => {
-      const plotText = plotPoint.toLowerCase();
+      // Safely extract text from plotPoint (handle both string and object formats)
+      const plotText = (typeof plotPoint === 'string' ? plotPoint : plotPoint.description || plotPoint.text || '').toLowerCase();
       const actName = actKey.toLowerCase();
       
       // Determine if this is a key plot point deserving extra scenes
@@ -2498,19 +2499,15 @@ Focus on creating a strong narrative spine where each element leads logically to
 });
 
 // Preview plot point generation prompt for specific act (new endpoint)
-app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
+app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, structureKey, desiredSceneCount = 3 } = req.body;
     
-    // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    // 🔧 CRITICAL FIX: desiredSceneCount is actually the desired PLOT POINT count from the dropdown
+    const desiredPlotPointCount = desiredSceneCount || 4; // User's selected plot point count
     
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const userId = userResult.rows[0].id;
+    // Load project data from database using authenticated user
+    const userId = req.user.id;
     const projectResult = await dbClient.query(
       'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
       [userId, projectPath]
@@ -2544,12 +2541,12 @@ app.post('/api/preview-act-plot-points-prompt', async (req, res) => {
     context.buildActContext(structureKey, storyAct, actPosition);
     
     // Build plot points context to load previous acts' plot points for preview
-    await context.buildPlotPointsContext([], 0, projectPath);
+    await context.buildPlotPointsContext([], 0, projectPath, req.user?.username || 'guest');
     
     // Generate hierarchical prompt for plot points generation (Level 4) with inter-act causality
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
-1. Break down this story act into ${desiredSceneCount} causally connected plot points
+1. Break down this story act into ${desiredPlotPointCount} causally connected plot points (these will be expanded into ${desiredPlotPointCount} total scenes)
 2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
 3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
 4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
@@ -2557,7 +2554,7 @@ PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 6. Show character development through ACTIONS and CHOICES, not internal monologue
 7. Each plot point should create a specific dramatic situation or encounter
 8. Make events unpredictable and cinematic while serving the character arc
-9. Do NOT reference specific scene content - these plot points will guide scene creation
+9. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${desiredPlotPointCount} scenes for this act
 
 INTER-ACT CAUSAL CONNECTION:
 - If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
@@ -2586,21 +2583,22 @@ EXAMPLES OF GOOD PLOT POINTS:
 
 AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
 
-Create ${desiredSceneCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
+Create ${desiredPlotPointCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
-    // Use our new prompt builder system for preview
-    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredSceneCount, desiredSceneCount);
+    // Build the actual final prompt that gets sent to the AI
+    const finalPrompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, desiredPlotPointCount);
 
     const systemMessage = "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events - never internal feelings. Focus on visual conflicts, character choices under pressure, and specific dramatic situations with urgency. Always respond with valid JSON.";
 
     res.json({
-      prompt: prompt,
+      prompt: finalPrompt,
       systemMessage: systemMessage,  
       promptType: 'act_plot_points',
       storyAct: storyAct,
       structureKey: structureKey,
-      desiredSceneCount: desiredSceneCount,
-      hierarchicalPrompt: hierarchicalPrompt
+      desiredSceneCount: desiredPlotPointCount,
+      hierarchicalPrompt: hierarchicalPrompt,
+      previewNote: "This is the EXACT prompt sent to the AI for plot points generation. The hierarchical context provides story continuity, while the template ensures proper formatting."
     });
 
   } catch (error) {
@@ -4494,6 +4492,9 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const { projectPath, actKey } = req.params;
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
     
+    // 🔧 CRITICAL FIX: desiredSceneCount is actually the desired PLOT POINT count from the dropdown
+    const desiredPlotPointCount = desiredSceneCount || 4; // User's selected plot point count
+    
     // Debug: Check if req.user exists
     console.log('🔍 DEBUG: req.user in plot points endpoint:', req.user ? 'EXISTS' : 'UNDEFINED');
     if (req.user) {
@@ -4602,7 +4603,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     await context.buildPlotPointsContext([], 0, projectPath);
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
-1. Break down this story act into 4 causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
+1. Break down this story act into ${desiredPlotPointCount} causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
 2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
 3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
 4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
@@ -4639,12 +4640,12 @@ EXAMPLES OF GOOD PLOT POINTS:
 
 AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
 
-Create 4 plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
+Create ${desiredPlotPointCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
     
     // Use our new prompt builder system
-    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, 4, finalSceneCount);
+    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, finalSceneCount);
 
-    console.log(`Generating 4 plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
+    console.log(`Generating ${desiredPlotPointCount} plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
     
     const completion = await anthropic.messages.create({
       model: model,
@@ -4679,7 +4680,7 @@ Create 4 plot points using "But and Therefore" logic to create dramatic tension 
     const sceneDistribution = context.calculateSceneDistribution(plotPointsData.plotPoints, finalSceneCount, actKey);
     
     // Update plot points context with the generated plot points
-    await context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount, projectPath);
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, finalSceneCount, projectPath, req.user.username);
     await context.saveToProject(projectPath);
 
     // Save plot points to database (unified v2.0 format)

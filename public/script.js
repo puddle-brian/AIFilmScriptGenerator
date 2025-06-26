@@ -3187,8 +3187,24 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     // Clear existing content
     container.innerHTML = '';
     
-    // Create editable content block for plot points
-    const plotPointsContent = Array.isArray(plotPoints) ? JSON.stringify(plotPoints) : plotPoints;
+    // Extract plot point text from objects if needed
+    let normalizedPlotPoints = [];
+    if (Array.isArray(plotPoints)) {
+        normalizedPlotPoints = plotPoints.map(point => {
+            if (typeof point === 'string') {
+                return point;
+            } else if (typeof point === 'object' && point !== null) {
+                // Extract the plotPoint text from the object
+                return point.plotPoint || point.description || point.text || JSON.stringify(point);
+            }
+            return String(point);
+        });
+    } else {
+        normalizedPlotPoints = [plotPoints];
+    }
+    
+    // Create editable content block for plot points  
+    const plotPointsContent = normalizedPlotPoints;
     const actName = appState.generatedStructure[structureKey]?.name || structureKey.replace(/_/g, ' ').toUpperCase();
     
     // Get act progress notation (X/Y format)
@@ -3508,7 +3524,8 @@ async function previewElementPlotPointsPrompt(structureKey) {
         const response = await fetch('/api/preview-act-plot-points-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 projectPath: appState.projectPath,

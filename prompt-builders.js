@@ -26,20 +26,23 @@ const path = require('path');
 const templateCache = {};
 
 function loadTemplate(templateName) {
-    // If we've already loaded this template, use the cached version
-    if (templateCache[templateName]) {
-        return templateCache[templateName];
-    }
+    // TEMPORARY: Always reload templates to avoid caching issues during development
+    // TODO: Re-enable caching in production
+    // if (templateCache[templateName]) {
+    //     return templateCache[templateName];
+    // }
     
     try {
         // Build the path to the template file
         const templatePath = path.join(__dirname, 'prompts', `${templateName}.txt`);
         
-        // Read the template file
+        // Read the template file fresh every time (for now)
         const templateContent = fs.readFileSync(templatePath, 'utf8');
         
-        // Cache it for next time (improves performance)
+        // Cache it for next time (disabled for now)
         templateCache[templateName] = templateContent;
+        
+        console.log(`🔄 Loaded template: ${templateName}.txt (${templateContent.length} chars)`);
         
         return templateContent;
     } catch (error) {
