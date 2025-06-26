@@ -894,6 +894,15 @@ class HierarchicalContext {
         if (lastPreviousPlotPoint) {
           prompt += `\n🔗 CONNECT FROM: "${lastPreviousPlotPoint.plotPoint}"\n`;
           prompt += `The first plot point of this act should logically follow from this final plot point of the previous act.\n\n`;
+          
+          // Add current act focus right after causal connection
+          if (this.contexts.act) {
+            const currentAct = this.contexts.act.data;
+            prompt += `CURRENT ACT FOCUS:\n`;
+            prompt += `While the inter-act causality above connects the story flow, THIS act specifically focuses on:\n`;
+            prompt += `**${currentAct.name}**\n`;
+            prompt += `Purpose: ${currentAct.description}\n\n`;
+          }
         }
       }
       
