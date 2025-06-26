@@ -4257,20 +4257,11 @@ ${'='.repeat(50)}`;
     }
 
     
-    // Save final script to local folder if projectPath is provided
-    if (projectPath) {
-      const projectDir = path.join(__dirname, 'generated', projectPath);
-      const finalScriptDir = path.join(projectDir, '04_final_script');
-      
-      const scriptTitle = (fullProjectData.storyInput.title || 'script').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_');
-      const scriptFile = path.join(finalScriptDir, `${scriptTitle}_final.txt`);
-      const scriptJsonFile = path.join(finalScriptDir, `${scriptTitle}_complete_project.json`);
-      
-      await fs.writeFile(scriptFile, script);
-      await fs.writeFile(scriptJsonFile, JSON.stringify(fullProjectData, null, 2));
-      
-      console.log(`Final script saved to: ${scriptFile}`);
-    }
+    console.log('✅ Script generated successfully:', { 
+      format, 
+      title: fullProjectData.storyInput.title,
+      scriptLength: script.length 
+    });
     
     // Set appropriate content type and filename based on format
     const title = fullProjectData.storyInput.title || 'script';
