@@ -1803,7 +1803,7 @@ app.post('/api/generate-dialogue', async (req, res) => {
 });
 
 // Preview dialogue generation prompt
-app.post('/api/preview-dialogue-prompt', async (req, res) => {
+app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) => {
   console.log('Dialogue prompt preview endpoint called!');
   try {
     const { scene, storyInput, context, projectPath, structureKey, sceneIndex } = req.body;
@@ -5909,7 +5909,7 @@ app.get('/login.html', (req, res) => {
 });
 
 // Preview hierarchical plot point scene generation prompt
-app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIndex', async (req, res) => {
+app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIndex', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;

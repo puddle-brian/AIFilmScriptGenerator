@@ -4040,7 +4040,8 @@ async function previewElementScenesPrompt(structureKey) {
         const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${structureKey}/0`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 model: 'claude-sonnet-4-20250514'
@@ -4230,7 +4231,8 @@ async function previewAllScenesPrompt() {
         const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${firstActKey}/0`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 model: 'claude-sonnet-4-20250514'
@@ -5111,7 +5113,8 @@ async function previewAllDialoguePrompts() {
         const response = await fetch('/api/preview-dialogue-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 scene: firstScene.scene,
@@ -7204,7 +7207,8 @@ async function previewDialoguePrompt(structureKey, sceneIndex) {
         const response = await fetch('/api/preview-dialogue-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 scene: scene,
