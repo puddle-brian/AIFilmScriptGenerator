@@ -1030,7 +1030,7 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
 8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
-This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
     const prompt = `${hierarchicalPrompt}
 
@@ -2775,7 +2775,7 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
 8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
-This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
     const prompt = `${hierarchicalPrompt}
 
@@ -5994,7 +5994,7 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
 8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
 
-This plot point is ${plotPointInfo.isKeyPlot ? 'a KEY plot point' : 'a regular plot point'} in the story structure.`);
+This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
     const prompt = `${hierarchicalPrompt}
 
