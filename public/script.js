@@ -4037,6 +4037,10 @@ async function previewElementScenesPrompt(structureKey) {
     try {
         showLoading('Generating hierarchical scene generation prompt preview...');
         
+        // Get current totalScenes value from calculator widget
+        const totalScenesInput = document.getElementById('totalScenes');
+        const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
+        
         // Use the new hierarchical plot-point-level preview (show first plot point as example)
         const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${structureKey}/0`, {
             method: 'POST',
@@ -4045,7 +4049,8 @@ async function previewElementScenesPrompt(structureKey) {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514'
+                model: 'claude-sonnet-4-20250514',
+                totalScenes: currentTotalScenes
             })
         });
         
@@ -4133,6 +4138,10 @@ async function generateAllScenes() {
         showLoading(`Generating scenes for ${actsWithPlotPoints.length} acts with plot points...`);
         
         // Generate scenes for each structural element that has plot points sequentially
+        // Get current totalScenes value from calculator widget
+        const totalScenesInput = document.getElementById('totalScenes');
+        const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
+        
         for (const structureKey of actsWithPlotPoints) {
             console.log(`Generating scenes for: ${structureKey}`);
             
@@ -4143,7 +4152,8 @@ async function generateAllScenes() {
                     'X-API-Key': appState.apiKey
                 },
                 body: JSON.stringify({
-                    model: getSelectedModel()
+                    model: getSelectedModel(),
+                    totalScenes: currentTotalScenes
                 })
             });
             
@@ -4228,6 +4238,10 @@ async function previewAllScenesPrompt() {
         const firstActKey = actsWithPlotPoints[0];
         const structureElement = appState.generatedStructure[firstActKey];
         
+        // Get current totalScenes value from calculator widget
+        const totalScenesInput = document.getElementById('totalScenes');
+        const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
+        
         // Use the new hierarchical plot-point-level preview
         const response = await fetch(`/api/preview-plot-point-scene-prompt/${appState.projectPath}/${firstActKey}/0`, {
             method: 'POST',
@@ -4236,7 +4250,8 @@ async function previewAllScenesPrompt() {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                model: 'claude-sonnet-4-20250514'
+                model: 'claude-sonnet-4-20250514',
+                totalScenes: currentTotalScenes
             })
         });
         
@@ -7900,6 +7915,10 @@ async function generateScenesForElement(structureKey) {
     try {
         showLoading(`Generating scenes for ${structureKey} using hierarchical plot points...`);
         
+        // Get current totalScenes value from calculator widget
+        const totalScenesInput = document.getElementById('totalScenes');
+        const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
+        
         // Use the proper hierarchical scene generation endpoint
         const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
@@ -7908,7 +7927,8 @@ async function generateScenesForElement(structureKey) {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                totalScenes: currentTotalScenes
             })
         });
         

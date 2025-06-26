@@ -1082,16 +1082,32 @@ Return ONLY valid JSON in this exact format:
   }
 
   // Calculate intelligent scene distribution across plot points
-  calculateSceneDistribution(plotPoints, totalScenesForAct, actKey) {
-    // 🔧 SINGLE SOURCE OF TRUTH: Use same calculation as preview system
-    const totalMovieScenes = 70; // From calculator widget (same as preview)
-    const totalPlotPoints = 25; // Total across all acts (same as preview)
-    const scenesPerPlotPointFloat = totalMovieScenes / totalPlotPoints; // 70/25 = 2.8
-    const scenesPerPlotPoint = Math.ceil(scenesPerPlotPointFloat); // Round up to 3
+  calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalMovieScenes = null, projectContext = null) {
+    // Calculate total plot points across all acts from project context
+    let totalPlotPoints = plotPoints.length; // Default to current act's plot points
     
-    console.log(`🔧 SINGLE SOURCE OF TRUTH (SAME AS PREVIEW):
-  📊 Total movie scenes: ${totalMovieScenes}
-  📊 Total plot points: ${totalPlotPoints}
+    if (projectContext && projectContext.plotPoints) {
+      // Calculate actual total plot points across all acts
+      totalPlotPoints = 0;
+      Object.values(projectContext.plotPoints).forEach(actPlotPoints => {
+        if (actPlotPoints.plotPoints && Array.isArray(actPlotPoints.plotPoints)) {
+          totalPlotPoints += actPlotPoints.plotPoints.length;
+        } else if (Array.isArray(actPlotPoints)) {
+          totalPlotPoints += actPlotPoints.length;
+        }
+      });
+    }
+    
+    // Use provided totalMovieScenes or fall back to story input or default
+    const storyTotalScenes = projectContext?.storyInput?.totalScenes || 70;
+    const calculatedTotalScenes = totalMovieScenes || storyTotalScenes;
+    
+    const scenesPerPlotPointFloat = calculatedTotalScenes / totalPlotPoints;
+    const scenesPerPlotPoint = Math.ceil(scenesPerPlotPointFloat); // Round up to ensure adequate scenes
+    
+    console.log(`🔧 DYNAMIC SCENE DISTRIBUTION CALCULATION:
+  📊 Total movie scenes: ${calculatedTotalScenes} (from ${totalMovieScenes ? 'parameter' : 'story input'})
+  📊 Total plot points: ${totalPlotPoints} (across all acts)
   📊 Scenes per plot point: ${scenesPerPlotPointFloat.toFixed(1)} → ${scenesPerPlotPoint}
   🎯 Each plot point gets: ${scenesPerPlotPoint} scenes`);
     
@@ -5030,7 +5046,7 @@ Return ONLY a JSON object with this exact structure:
 app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { model = "claude-sonnet-4-20250514" } = req.body;
+    const { model = "claude-sonnet-4-20250514", totalScenes = null } = req.body;
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
@@ -5079,9 +5095,9 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
       return res.status(400).json({ error: 'Invalid plot points data format.' });
     }
 
-    // 🔧 SINGLE SOURCE OF TRUTH: Use calculateSceneDistribution method (same as preview)
+    // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
     const context = new HierarchicalContext();
-    const sceneDistribution = context.calculateSceneDistribution(plotPoints, null, actKey);
+    const sceneDistribution = context.calculateSceneDistribution(plotPoints, null, actKey, totalScenes, projectContext);
     
     console.log(`Generating all scenes for act: ${actKey}`);
     console.log(`Scene distribution:`, sceneDistribution.map((dist, i) => 
@@ -5889,7 +5905,7 @@ app.get('/login.html', (req, res) => {
 app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIndex', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
-    const { model = "claude-sonnet-4-20250514" } = req.body;
+    const { model = "claude-sonnet-4-20250514", totalScenes = null } = req.body;
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
@@ -5930,9 +5946,9 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
 
     const plotPoint = plotPointsArray[plotPointIndexNum];
     
-    // 🔧 SINGLE SOURCE OF TRUTH: Use calculateSceneDistribution method
+    // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
     const tempContext = new HierarchicalContext();
-    const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey);
+    const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey, totalScenes, projectContext);
     const sceneCount = sceneDistribution[0].sceneCount;
     
     // Initialize and load hierarchical context
@@ -5952,8 +5968,9 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     const actPosition = Object.keys(structure).indexOf(actKey) + 1;
     context.buildActContext(actKey, structure[actKey], actPosition);
     
-    // Build plot points context
-    await context.buildPlotPointsContext(plotPointsArray, 70, projectPath, req.user.username);
+    // Build plot points context with dynamic total scenes (use provided totalScenes or fallback)
+    const currentTotalScenes = totalScenes || projectContext?.storyInput?.totalScenes || 70;
+    await context.buildPlotPointsContext(plotPointsArray, currentTotalScenes, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -6002,7 +6019,7 @@ Return ONLY valid JSON in this exact format:
       isKeyPlot: false, // Simple distribution - all plot points treated equally
       hierarchicalPrompt: hierarchicalPrompt,
       usedHierarchicalContext: true,
-      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using calculator widget value: ${sceneCount} scenes per plot point (from 70 total scenes).`
+      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using dynamic calculation: ${sceneCount} scenes per plot point (from ${currentTotalScenes} total scenes).`
     });
 
   } catch (error) {
