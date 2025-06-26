@@ -4825,8 +4825,23 @@ function displayDialogueGeneration() {
                 const sceneId = `${structureKey}-${index}`;
                 
                 // Check if dialogue already exists for this scene
-                let dialogueContent = 'Click "Generate Dialogue" to create the screenplay for this scene.';
+                let dialogueContent = '';
                 let hasExistingDialogue = false;
+                
+                // Format scene description for display
+                let sceneDescription = '';
+                if (scene.location && scene.time_of_day) {
+                    sceneDescription = `${scene.location} • ${scene.time_of_day}\n\n`;
+                } else if (scene.location) {
+                    sceneDescription = `${scene.location}\n\n`;
+                }
+                
+                if (scene.description) {
+                    sceneDescription += `${scene.description}\n\n`;
+                }
+                
+                // Set default content with scene description
+                dialogueContent = sceneDescription + 'Click "Generate Dialogue" to create the screenplay for this scene.';
                 
                 // First check the direct scene ID format
                 if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
