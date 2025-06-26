@@ -8524,6 +8524,9 @@ function updateCompactEstimates() {
 }
 
 function calculateCompactEstimates(sceneCount) {
+    // 🔥 FIX: Always use the input field value, not existing project data
+    // This shows what the user is PLANNING to generate, not what they currently have
+    
     // Count actual plot points from app state (more accurate than assumptions)
     let totalPlotPoints = 0;
     if (appState.plotPoints) {
@@ -8545,6 +8548,11 @@ function calculateCompactEstimates(sceneCount) {
     
     // Scenes per plot point
     const scenesPerPlot = (sceneCount / totalPlotPoints).toFixed(1);
+    
+    console.log(`🔥 CALCULATOR DEBUG:
+  📊 Input field scenes: ${sceneCount}
+  📊 Total plot points: ${totalPlotPoints}
+  📊 Scenes per plot: ${scenesPerPlot}`);
     
     // Token-based cost estimation
     const selectedModel = getSelectedModel();
