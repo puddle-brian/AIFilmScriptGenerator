@@ -2010,21 +2010,76 @@ app.post('/api/auto-save-project', async (req, res) => {
   }
 });
 
-// Save project (legacy endpoint - will be removed)
+// Save project (legacy endpoint - redirects to auto-save)
 app.post('/api/save-project', async (req, res) => {
   try {
-    const projectId = req.body.projectId || uuidv4();
+    console.log('⚠️ Legacy /api/save-project called - redirecting to auto-save');
+    
     const projectData = req.body;
+    const username = projectData.username || 'guest';
     
-    const projectDir = path.join(__dirname, 'generated', projectId);
-    await fs.mkdir(projectDir, { recursive: true });
+    // Generate project name from path or title
+    const projectPath = projectData.projectPath || 
+      (projectData.storyInput?.title ? 
+        `${projectData.storyInput.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}` :
+        `untitled_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}`);
     
-    const projectFile = path.join(projectDir, 'project.json');
-    await fs.writeFile(projectFile, JSON.stringify(projectData, null, 2));
+    // Create unified project context in v2.0 format
+    const projectContext = {
+      projectId: projectData.projectId || uuidv4(),
+      projectPath: projectPath,
+      storyInput: projectData.storyInput || {},
+      selectedTemplate: projectData.selectedTemplate,
+      templateData: projectData.templateData,
+      generatedStructure: projectData.generatedStructure,
+      plotPoints: projectData.plotPoints || {},
+      generatedScenes: projectData.generatedScenes || {},
+      generatedDialogues: projectData.generatedDialogues || {},
+      currentStep: projectData.currentStep || 1,
+      influences: projectData.influences || {},
+      projectCharacters: projectData.projectCharacters || [],
+      generatedAt: new Date().toISOString()
+    };
     
-    res.json({ projectId, message: 'Project saved successfully' });
+    // Create thumbnail data for project listing
+    const thumbnailData = {
+      title: projectData.storyInput?.title || 'Untitled Project',
+      genre: projectData.storyInput?.genre || 'Unknown',
+      tone: projectData.storyInput?.tone || '',
+      structure: projectData.templateData?.name || '',
+      currentStep: projectData.currentStep || 1,
+      totalScenes: projectData.storyInput?.totalScenes || 70
+    };
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Save to database using unified format
+    const result = await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       ON CONFLICT (user_id, project_name) 
+       DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()
+       RETURNING *`,
+      [userId, projectPath, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
+    );
+    
+    console.log(`✅ Legacy save-project redirected to auto-save: "${thumbnailData.title}"`);
+    
+    // Return legacy-compatible response
+    res.json({ 
+      projectId: projectContext.projectId, 
+      projectPath: projectPath,
+      message: 'Project saved successfully' 
+    });
+    
   } catch (error) {
-    console.error('Error saving project:', error);
+    console.error('Error in legacy save-project redirect:', error);
     res.status(500).json({ error: 'Failed to save project' });
   }
 });
@@ -3834,131 +3889,30 @@ Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "descri
   }
 });
 
-// Export final script with professional formatting
+// Export final script with professional formatting (v2.0 database format)
 app.post('/api/export', async (req, res) => {
   try {
     const { projectData, format = 'text', projectPath } = req.body;
     
-    // If we have a projectPath, load all the actual content from the project directory
-    let fullProjectData = projectData;
-    if (projectPath) {
-      try {
-        const projectDir = path.join(__dirname, 'generated', projectPath);
-        
-        // Load scenes if they exist
-        const scenesFile = path.join(projectDir, '02_scenes', 'scenes.json');
-        let scenesData = null;
-        try {
-          const scenesContent = await fs.readFile(scenesFile, 'utf8');
-          scenesData = JSON.parse(scenesContent);
-          console.log('Scenes data loaded successfully. Keys:', Object.keys(scenesData));
-        } catch (error) {
-          console.log('No scenes file found or error reading scenes:', error.message);
-        }
-        
-        // Load dialogues in proper story order using scenes structure
-        const dialogueDir = path.join(projectDir, '03_dialogue');
-        const dialogueContent = [];
-        
-        // If we have scenes data, use it to order dialogues properly
-        if (scenesData && scenesData.scenes) {
-          console.log('Using scenes structure for ordering. Available acts:', Object.keys(scenesData.scenes));
-          
-          // Load the original structure to get the correct act ordering
-          let structureKeys = Object.keys(scenesData.scenes);
-          try {
-            // Try to load from database first
-            const username = req.user.username; // Get from authenticated user
-            const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-            
-            if (userResult.rows.length > 0) {
-              const userId = userResult.rows[0].id;
-              const projectResult = await dbClient.query(
-                'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-                [userId, projectPath.split('/').pop()]
-              );
-              
-              if (projectResult.rows.length > 0) {
-                const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-                if (projectContext.generatedStructure) {
-                  structureKeys = Object.keys(projectContext.generatedStructure);
-                  console.log('Using database structure order:', structureKeys);
-                } else {
-                  throw new Error('No structure in database');
-                }
-              } else {
-                throw new Error('Project not found in database');
-              }
-            } else {
-              throw new Error('User not found in database');
-            }
-          } catch (error) {
-            console.log('Could not load structure from database, using scenes order:', error.message);
-          }
-          
-          // Get scene titles in story order
-          const orderedSceneTitles = [];
-          
-          for (const structureKey of structureKeys) {
-            const sceneGroup = scenesData.scenes[structureKey];
-            if (sceneGroup && sceneGroup.scenes) {
-              console.log(`Processing act ${structureKey} with ${sceneGroup.scenes.length} scenes`);
-              for (const scene of sceneGroup.scenes) {
-                orderedSceneTitles.push(scene.title);
-                console.log(`Added scene to order: ${scene.title}`);
-              }
-            }
-          }
-          
-          console.log('Final scene order:', orderedSceneTitles.slice(0, 5), '... (first 5 scenes)');
-          
-          // Load dialogues in story order
-          for (const sceneTitle of orderedSceneTitles) {
-            try {
-              const dialogueFiles = await fs.readdir(dialogueDir);
-              // Find the dialogue file for this scene (matches scene title)
-              const matchingFile = dialogueFiles.find(file => 
-                file.startsWith(sceneTitle.replace(/\s+/g, '_'))
-              );
-              
-              if (matchingFile) {
-                const content = await fs.readFile(path.join(dialogueDir, matchingFile), 'utf8');
-                dialogueContent.push({ filename: matchingFile, content: content, sceneTitle: sceneTitle });
-              }
-            } catch (error) {
-              console.log(`Error loading dialogue for scene: ${sceneTitle}`);
-            }
-          }
-        } else {
-          // Fallback: load all dialogue files alphabetically
-          try {
-            const dialogueFiles = await fs.readdir(dialogueDir);
-            dialogueFiles.sort();
-            
-            for (const file of dialogueFiles) {
-              if (file.endsWith('.txt')) {
-                try {
-                  const content = await fs.readFile(path.join(dialogueDir, file), 'utf8');
-                  dialogueContent.push({ filename: file, content: content });
-                } catch (error) {
-                  console.log(`Error reading dialogue file ${file}`);
-                }
-              }
-            }
-          } catch (error) {
-            console.log('No dialogue directory found');
-          }
-        }
-        
-        fullProjectData = {
-          ...projectData,
-          scenes: scenesData,
-          dialogueContent: dialogueContent
-        };
-      } catch (error) {
-        console.log('Error loading project content, using basic data');
-      }
+    console.log('🎬 Export request:', { format, projectPath: projectPath ? 'exists' : 'none' });
+    
+    // Validate required data for export
+    if (!projectData.storyInput) {
+      return res.status(400).json({ error: 'No story input data found' });
     }
+    
+    console.log('📊 Export data check:', {
+      hasGeneratedScenes: !!projectData.generatedScenes,
+      sceneKeys: Object.keys(projectData.generatedScenes || {}),
+      hasGeneratedDialogues: !!projectData.generatedDialogues,
+      dialogueKeys: Object.keys(projectData.generatedDialogues || {}),
+      hasStoryInput: !!projectData.storyInput,
+      title: projectData.storyInput.title
+    });
+    
+    // Use projectData directly since everything is now in database v2.0 format
+    // No file system access needed - all data is in the projectData object
+    const fullProjectData = projectData;
     
     // Generate script based on format
     let script;
@@ -3987,8 +3941,31 @@ app.post('/api/export', async (req, res) => {
       script += `Written by: [Author Name]\n\n`;
       script += `LOGLINE: ${data.storyInput.logline}\n\n`;
       script += `GENRE: ${data.storyInput.genre || data.storyInput.tone || 'Drama'}\n\n`;
-      script += `CHARACTERS: ${data.storyInput.characters}\n\n`;
+      
+      // Handle characters - could be array or string
+      if (data.storyInput.characters) {
+        if (Array.isArray(data.storyInput.characters)) {
+          script += `CHARACTERS: ${data.storyInput.characters.join(', ')}\n\n`;
+        } else {
+          script += `CHARACTERS: ${data.storyInput.characters}\n\n`;
+        }
+      }
+      
+      // Handle projectCharacters array from v2.0 format
+      if (data.projectCharacters && Array.isArray(data.projectCharacters)) {
+        script += `MAIN CHARACTERS:\n`;
+        data.projectCharacters.forEach(char => {
+          script += `${char.name} - ${char.description}\n`;
+        });
+        script += '\n';
+      }
+      
       script += `FADE IN:\n\n`;
+      
+      // Add scenes and dialogue from v2.0 database format
+      script += generateContentFromV2Format(data);
+      
+      script += '\n\nFADE OUT.\n\nTHE END';
       return script;
     }
     
@@ -3996,19 +3973,48 @@ app.post('/api/export', async (req, res) => {
       let script = generateTitlePage(data);
       script += '\n\n\nFADE IN:\n\n';
       
-      // Add dialogue content in professional format
-      if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach((dialogueData, index) => {
-          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
-          script += formatDialogueForScreenplay(dialogueText);
-          if (index > 0 && (index + 1) % 3 === 0) {
-            script += '\n\n                         [PAGE BREAK]\n\n';
+      // Add content from v2.0 database format
+      script += generateContentFromV2Format(data);
+      
+      script += '\n\nFADE OUT.\n\nTHE END';
+      return script;
+    }
+    
+    function generateContentFromV2Format(data) {
+      let content = '';
+      
+      // Process structure in order
+      if (data.generatedStructure && data.generatedScenes && data.generatedDialogues) {
+        const structureKeys = Object.keys(data.generatedStructure);
+        let sceneNumber = 1;
+        
+        structureKeys.forEach(structureKey => {
+          const scenes = data.generatedScenes[structureKey];
+          const act = data.generatedStructure[structureKey];
+          
+          if (act) {
+            content += `\n\n=== ${act.name.toUpperCase()} ===\n\n`;
+          }
+          
+          if (scenes && Array.isArray(scenes)) {
+            scenes.forEach((scene, index) => {
+              content += `\n${sceneNumber}. ${scene.location.toUpperCase()} - ${scene.time_of_day.toUpperCase()}\n\n`;
+              content += `${scene.description}\n\n`;
+              
+              // Add dialogue if available
+              const dialogueKey = `${structureKey}_${index}`;
+              if (data.generatedDialogues[dialogueKey]) {
+                content += formatDialogueForScreenplay(data.generatedDialogues[dialogueKey]);
+              }
+              
+              content += '\n\n';
+              sceneNumber++;
+            });
           }
         });
       }
       
-      script += '\n\nFADE OUT.\n\nTHE END';
-      return script;
+      return content;
     }
     
     function generateTitlePage(data) {
