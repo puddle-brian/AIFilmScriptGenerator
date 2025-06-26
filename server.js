@@ -467,18 +467,35 @@ class HierarchicalContext {
   }
 
   // Build Level 1: Story Foundation Context
-  buildStoryContext(storyInput, originalPrompt = null, systemMessage = null) {
+  buildStoryContext(storyInput, originalPrompt = null, systemMessage = null, projectContext = null) {
+    // If we have full project context from database, use that for richer information
+    const fullContext = projectContext || {};
+    
+    // Enhanced character handling - use structured character data if available
+    let charactersDisplay = storyInput.characters;
+    if (fullContext.projectCharacters && Array.isArray(fullContext.projectCharacters) && fullContext.projectCharacters.length > 0) {
+      charactersDisplay = fullContext.projectCharacters.map(char => {
+        if (typeof char === 'object' && char.name) {
+          return char.description ? `${char.name} (${char.description})` : char.name;
+        }
+        return char;
+      }).join(', ');
+    }
+    
+    // Enhanced influences - use project-level influences if available
+    const influences = fullContext.influences || storyInput.influences || {};
+    
     this.contexts.story = {
       level: 1,
       type: 'story',
       data: {
         title: storyInput.title,
         logline: storyInput.logline,
-        characters: storyInput.characters,
+        characters: charactersDisplay,
         tone: storyInput.tone,
         genre: storyInput.genre,
         totalScenes: storyInput.totalScenes || 70,
-        influences: storyInput.influences || {},
+        influences: influences,
         originalPrompt: originalPrompt,
         systemMessage: systemMessage
       },
@@ -806,9 +823,36 @@ class HierarchicalContext {
       prompt += `STORY DETAILS:\n`;
       prompt += `- Title: ${story.title}\n`;
       prompt += `- Logline: ${story.logline}\n`;
-      prompt += `- Main Characters: ${Array.isArray(story.characters) ? story.characters.map(char => typeof char === 'object' ? char.name || JSON.stringify(char) : char).join(', ') : story.characters}\n`;
-      prompt += `- Tone: ${story.tone || story.genre}\n`;
-      console.log(`🔧 DEBUG: Story context built WITHOUT target scene count`);
+      
+      // Enhanced character display with descriptions if available
+      if (Array.isArray(story.characters)) {
+        const characterDetails = story.characters.map(char => {
+          if (typeof char === 'object' && char.name) {
+            return char.description ? `${char.name} (${char.description})` : char.name;
+          }
+          return char;
+        }).join(', ');
+        prompt += `- Main Characters: ${characterDetails}\n`;
+        console.log(`🔧 DEBUG: Enhanced character display with descriptions: ${characterDetails}`);
+      } else {
+        prompt += `- Main Characters: ${story.characters}\n`;
+        console.log(`🔧 DEBUG: Story context built WITHOUT enhanced character descriptions`);
+      }
+      
+      // Add tone and genre
+      if (story.tone && story.genre && story.tone !== story.genre) {
+        prompt += `- Tone: ${story.tone}\n`;
+        prompt += `- Genre: ${story.genre}\n`;
+      } else {
+        prompt += `- Tone: ${story.tone || story.genre}\n`;
+      }
+      
+      // Add total scenes for scope context
+      if (story.totalScenes) {
+        prompt += `- Target Length: ${story.totalScenes} scenes\n`;
+      }
+      
+      console.log(`🔧 DEBUG: Story context built with enhanced details`);
       
       // Add detailed influences section if available
       if (story.influences && Object.keys(story.influences).length > 0) {
@@ -825,38 +869,17 @@ class HierarchicalContext {
       prompt += '\n';
     }
 
-    // Level 2: Structure Template Overview with Description
+    // Level 2: Streamlined Structure Context - Focus on Current Act Only
     if (this.contexts.structure && targetLevel >= 2) {
       const structure = this.contexts.structure.data;
-      prompt += `STRUCTURE OVERVIEW:\n`;
-      prompt += `${structure.template.name}\n`;
+      prompt += `STRUCTURE: ${structure.template.name}\n\n`;
       
-      // Generate template description
-      const templateDescription = await generateStructureDescription(structure.template);
-      prompt += `${templateDescription}\n\n`;
-      
-      // If we have a current act context, show only that act
+      // Always show current act if available - this is what we're working on
       if (this.contexts.act) {
         const currentAct = this.contexts.act.data;
         prompt += `CURRENT STORY ACT:\n`;
         prompt += `${currentAct.name}\n`;
-        prompt += `Purpose: ${currentAct.description}\n`;
-        if (currentAct.character_developments || currentAct.character_development) {
-          prompt += `Character Development: ${currentAct.character_developments || currentAct.character_development}\n`;
-        }
-        prompt += '\n';
-      } else {
-        // Show all acts only when not generating for a specific act
-        prompt += `GENERATED STORY ACTS:\n`;
-        Object.entries(structure.structure).forEach(([key, act]) => {
-          prompt += `${key}: ${act.name}\n`;
-          prompt += `  Purpose: ${act.description}\n`;
-          if (act.character_developments || act.character_development) {
-            prompt += `  Character Development: ${act.character_developments || act.character_development}\n`;
-          }
-          // Note: Excluding existing plot_points to avoid confusion when generating new ones
-          prompt += '\n';
-        });
+        prompt += `Purpose: ${currentAct.description}\n\n`;
       }
     }
 
@@ -869,51 +892,33 @@ class HierarchicalContext {
       prompt += `- Character Development: ${act.characterDevelopment || 'Not specified'}\n\n`;
     }
 
-    // Level 4: Plot Points Context - ENHANCED with previous acts' plot points
+    // Level 4: Streamlined Plot Points Context
     if (this.contexts.plotPoints && targetLevel >= 4) {
       const plotPoints = this.contexts.plotPoints.data;
       
-      // Include previous acts' plot points for inter-act causality
-      if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
-        prompt += `PREVIOUS ACTS' PLOT POINTS (for causal continuity):\n`;
-        
-        let currentActKey = '';
-        plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
-          // Group by act for better readability
-          if (prevPlotPoint.actKey !== currentActKey) {
-            currentActKey = prevPlotPoint.actKey;
-            prompt += `\n${prevPlotPoint.actName} (${prevPlotPoint.actKey}):\n`;
-          }
+              // Show ALL previous plot points for story coherence (essential for causality)
+        if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
+          prompt += `STORY PROGRESSION (Previous Plot Points):\n`;
           
-          const marker = prevPlotPoint.isLastInAct ? ' ← LAST IN ACT' : '';
-          prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
-        });
-        
-        // Highlight the last plot point from the previous act for direct causal connection
-        const lastPreviousPlotPoint = plotPoints.previousPlotPoints[plotPoints.previousPlotPoints.length - 1];
-        if (lastPreviousPlotPoint) {
-          prompt += `\n🔗 CONNECT FROM: "${lastPreviousPlotPoint.plotPoint}"\n`;
-          prompt += `The first plot point of this act should logically follow from this final plot point of the previous act.\n\n`;
+          let currentActKey = '';
+          plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
+            // Group by act for better readability
+            if (prevPlotPoint.actKey !== currentActKey) {
+              currentActKey = prevPlotPoint.actKey;
+              prompt += `\n${prevPlotPoint.actName}:\n`;
+            }
+            
+            const marker = prevPlotPoint.isLastInAct ? ' 🔗' : '';
+            prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
+          });
           
-          // Add current act focus right after causal connection
+          // Current act focus
           if (this.contexts.act) {
             const currentAct = this.contexts.act.data;
-            prompt += `CURRENT ACT FOCUS:\n`;
-            prompt += `While the inter-act causality above connects the story flow, THIS act specifically focuses on:\n`;
-            prompt += `**${currentAct.name}**\n`;
-            prompt += `Purpose: ${currentAct.description}\n\n`;
+            prompt += `\n**FOCUS FOR THIS ACT (${currentAct.name}):**\n`;
+            prompt += `${currentAct.description}\n\n`;
           }
         }
-      }
-      
-      // Current act's plot points (if they exist)
-      if (plotPoints.plotPoints && plotPoints.plotPoints.length > 0) {
-        prompt += `PLOT POINTS FOR THIS ACT:\n`;
-        plotPoints.plotPoints.forEach((point, index) => {
-          prompt += `${index + 1}. ${point}\n`;
-        });
-        prompt += `\nDistribution: ${plotPoints.sceneDistribution}\n\n`;
-      }
     }
 
     // Level 5: Scene Context
@@ -1003,7 +1008,7 @@ class HierarchicalContext {
     const storyInput = projectContext.storyInput;
     
     // Build context from database data
-    context.buildStoryContext(storyInput, null, null);
+    context.buildStoryContext(storyInput, null, null, projectContext);
     context.buildStructureContext(structure, projectContext.templateData);
     
     // Build act context
@@ -2649,7 +2654,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
@@ -2660,47 +2665,18 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     // Build plot points context to load previous acts' plot points for preview
     await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     
-    // Generate hierarchical prompt for plot points generation (Level 4) with inter-act causality
+    // Generate hierarchical prompt for plot points generation (Level 4) with streamlined instructions
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
-PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
-1. Break down this story act into ${desiredPlotPointCount} causally connected plot points (these will be expanded into ${desiredPlotPointCount} total scenes)
-2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
-3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
-4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
-5. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
-6. Show character development through ACTIONS and CHOICES, not internal monologue
-7. Each plot point should create a specific dramatic situation or encounter
-8. Make events unpredictable and cinematic while serving the character arc
-9. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${desiredPlotPointCount} scenes for this act
+TASK: Generate ${desiredPlotPointCount} plot points for this story act.
 
-INTER-ACT CAUSAL CONNECTION:
-- If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
-- Use "THEREFORE" to show how this act follows logically from the previous act's conclusion
-- Don't repeat previous events, but build upon their consequences
-- Maintain character momentum and story energy across act boundaries
+KEY REQUIREMENTS:
+• Each plot point = a concrete ACTION or EVENT (not feelings)
+• Connect causally: if there's a 🔗 connection above, start from that
+• Show character through choices under pressure
+• Create visual, filmable moments with specific locations
+• Use "BUT/THEREFORE" logic for dramatic flow
 
-CHARACTER ARC THROUGH ACTION:
-- Show character growth through CHOICES under pressure
-- Reveal personality through HOW characters act, not what they think
-- Use physical behavior to show emotional states
-- Force characters to make decisions that reveal their true nature
-
-CINEMATIC SPECIFICITY:
-- Include specific locations that serve the story (not just "a room")
-- Add time pressure or urgency to create tension
-- Introduce physical obstacles or concrete goals
-- Create visual conflicts that can be filmed dramatically
-
-EXAMPLES OF GOOD PLOT POINTS:
-- "She saves a child from a burning building"
-- "Police surround him with weapons drawn"  
-- "He breaks into an abandoned school to sleep"
-- "He must choose between saving his friend or escaping before the building collapses"
-- "She discovers the hidden evidence just as her phone battery dies"
-
-AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
-
-Create ${desiredPlotPointCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
+AVOID: Internal thoughts, generic locations, passive descriptions`);
     
     // Build the actual final prompt that gets sent to the AI
     const finalPrompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, desiredPlotPointCount);
@@ -2787,7 +2763,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
@@ -2986,7 +2962,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       // If context doesn't exist, rebuild it from project data
       if (!context.contexts.story) {
         console.log('Rebuilding context from project data...');
-        context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+        context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
         context.buildStructureContext(structure, projectContext.template);
       }
       
@@ -3277,7 +3253,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     // If context doesn't exist, rebuild it from project data
     if (!context.contexts.story) {
       console.log('Rebuilding context from project data...');
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.template);
     }
     
@@ -4672,7 +4648,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, plotProjectContext.lastUsedPrompt, plotProjectContext.lastUsedSystemMessage);
+      context.buildStoryContext(storyInput, plotProjectContext.lastUsedPrompt, plotProjectContext.lastUsedSystemMessage, plotProjectContext);
       context.buildStructureContext(structure, templateData);
     }
     
@@ -4720,45 +4696,16 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     // First, temporarily build plot points context to load previous acts' plot points
     await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
-PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
-1. Break down this story act into ${desiredPlotPointCount} causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
-2. CRITICAL: If previous acts' plot points are shown above, your FIRST plot point must logically continue from the last plot point of the previous act
-3. Each plot point must describe a CONCRETE ACTION or EVENT that happens - not internal feelings
-4. Focus on external, visual story beats that could be filmed - what does the audience SEE happening?
-5. Plot points should connect causally using "BUT" (conflict) and "THEREFORE" (consequence)
-6. Show character development through ACTIONS and CHOICES, not internal monologue
-7. Each plot point should create a specific dramatic situation or encounter
-8. Make events unpredictable and cinematic while serving the character arc
-9. Some plot points will be expanded into multiple scenes (sequences) to reach the target of ${finalSceneCount} scenes for this act
+TASK: Generate ${desiredPlotPointCount} plot points for this story act.
 
-INTER-ACT CAUSAL CONNECTION:
-- If there's a "CONNECT FROM" instruction above, begin this act as a direct consequence of that previous plot point
-- Use "THEREFORE" to show how this act follows logically from the previous act's conclusion
-- Don't repeat previous events, but build upon their consequences
-- Maintain character momentum and story energy across act boundaries
+KEY REQUIREMENTS:
+• Each plot point = a concrete ACTION or EVENT (not feelings)
+• Connect causally: if there's a 🔗 connection above, start from that
+• Show character through choices under pressure
+• Create visual, filmable moments with specific locations
+• Use "BUT/THEREFORE" logic for dramatic flow
 
-CHARACTER ARC THROUGH ACTION:
-- Show character growth through CHOICES under pressure
-- Reveal personality through HOW characters act, not what they think
-- Use physical behavior to show emotional states
-- Force characters to make decisions that reveal their true nature
-
-CINEMATIC SPECIFICITY:
-- Include specific locations that serve the story (not just "a room")
-- Add time pressure or urgency to create tension
-- Introduce physical obstacles or concrete goals
-- Create visual conflicts that can be filmed dramatically
-
-EXAMPLES OF GOOD PLOT POINTS:
-- "She saves a child from a burning building"
-- "Police surround him with weapons drawn"  
-- "He breaks into an abandoned school to sleep"
-- "He must choose between saving his friend or escaping before the building collapses"
-- "She discovers the hidden evidence just as her phone battery dies"
-
-AVOID internal states like "feels lonely" or "contemplates" - show these through what the character DOES.
-
-Create ${desiredPlotPointCount} plot points using "But and Therefore" logic to create dramatic tension and causal flow.`);
+AVOID: Internal thoughts, generic locations, passive descriptions`);
     
     // Use our new prompt builder system
     const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, finalSceneCount);
@@ -6047,7 +5994,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage);
+      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
