@@ -2469,7 +2469,8 @@ async function previewPrompt() {
         const response = await fetch('/api/preview-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: storyInput,
@@ -4554,7 +4555,8 @@ async function previewScenePrompt(structureKey, sceneIndex) {
         const response = await fetch('/api/preview-scene-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
@@ -4629,7 +4631,8 @@ async function previewPlotPointPrompt(structureKey, sceneIndex) {
         const response = await fetch('/api/preview-plot-point-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
@@ -6674,7 +6677,8 @@ async function previewAllPlotPointsPrompt() {
         const response = await fetch('/api/preview-plot-point-prompt', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,

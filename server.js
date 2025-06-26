@@ -1227,7 +1227,7 @@ app.get('/api/template/:templateId', async (req, res) => {
 });
 
 // Preview the prompt that would be used for structure generation
-app.post('/api/preview-prompt', async (req, res) => {
+app.post('/api/preview-prompt', authenticateApiKey, async (req, res) => {
   try {
     const { storyInput, template, customTemplateData } = req.body;
     
@@ -1571,7 +1571,7 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
 
     // Auto-save the generated structure locally
-    const projectId = uuidv4();
+    const structureProjectId = uuidv4();
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
     const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
@@ -1636,12 +1636,12 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     }
 
     console.log(`✅ Structure generated for project: ${projectFolderName}`);
-    console.log(`Project ID: ${projectId}`);
+    console.log(`Project ID: ${structureProjectId}`);
 
     // Save to database in unified v2.0 format (database-only)
     const username = req.user.username; // Use the authenticated user
     const projectContext = {
-      projectId,
+      projectId: structureProjectId,
       projectPath: projectFolderName,
       storyInput,
       selectedTemplate: template,
@@ -1685,7 +1685,7 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     }
 
     res.json({
-      projectId,
+      projectId: structureProjectId,
       projectPath: projectFolderName,
       storyInput,
       selectedTemplate: template,
@@ -2289,7 +2289,7 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
 // Projects are deleted via /api/users/:userId/projects endpoint
 
 // Preview scene generation prompt
-app.post('/api/preview-scene-prompt', async (req, res) => {
+app.post('/api/preview-scene-prompt', authenticateApiKey, async (req, res) => {
   try {
     const { storyInput, structureElement, sceneCount = 3, existingScene = null, sceneIndex = null, projectPath = null } = req.body;
     
@@ -2517,7 +2517,7 @@ Return ONLY valid JSON in this exact format:
 });
 
 // Preview plot point generation prompt
-app.post('/api/preview-plot-point-prompt', async (req, res) => {
+app.post('/api/preview-plot-point-prompt', authenticateApiKey, async (req, res) => {
   try {
     const { storyInput, structure, templateData, structureElements, targetScene = null, sceneIndex = null, structureElement = null } = req.body;
     
