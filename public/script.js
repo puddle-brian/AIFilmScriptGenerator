@@ -8547,11 +8547,19 @@ function calculateCompactEstimates(sceneCount) {
     // Count actual plot points from app state (more accurate than assumptions)
     let totalPlotPoints = 0;
     if (appState.plotPoints) {
-        Object.values(appState.plotPoints).forEach(actPlotPoints => {
+        console.log('🔍 PLOT POINTS DEBUG:', appState.plotPoints);
+        Object.entries(appState.plotPoints).forEach(([actKey, actPlotPoints]) => {
             if (actPlotPoints.plotPoints) {
+                console.log(`  📊 ${actKey}: ${actPlotPoints.plotPoints.length} plot points`);
                 totalPlotPoints += actPlotPoints.plotPoints.length;
+            } else if (Array.isArray(actPlotPoints)) {
+                console.log(`  📊 ${actKey}: ${actPlotPoints.length} plot points (array format)`);
+                totalPlotPoints += actPlotPoints.length;
+            } else {
+                console.log(`  ❌ ${actKey}: invalid format`, actPlotPoints);
             }
         });
+        console.log(`  🎯 TOTAL PLOT POINTS: ${totalPlotPoints}`);
     }
     
     // Fallback if no plot points yet (user might be planning ahead)
