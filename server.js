@@ -1102,7 +1102,8 @@ Return ONLY valid JSON in this exact format:
     
     // 🔥 FIX: Always prioritize the user's current input (totalMovieScenes) over cached values
     const storyTotalScenes = projectContext?.storyInput?.totalScenes || 70;
-    const calculatedTotalScenes = totalMovieScenes || storyTotalScenes;
+    // CRITICAL: If totalMovieScenes is provided (from frontend), ALWAYS use it, never fall back
+    const calculatedTotalScenes = totalMovieScenes !== null ? totalMovieScenes : storyTotalScenes;
     
     console.log(`🔥 DEBUG SCENE CALCULATION:
   📊 totalMovieScenes (from frontend): ${totalMovieScenes}
@@ -1111,7 +1112,7 @@ Return ONLY valid JSON in this exact format:
   📊 totalPlotPoints: ${totalPlotPoints}`);
     
     const scenesPerPlotPointFloat = calculatedTotalScenes / totalPlotPoints;
-    const scenesPerPlotPoint = Math.ceil(scenesPerPlotPointFloat); // Round up to ensure adequate scenes
+    const scenesPerPlotPoint = Math.round(scenesPerPlotPointFloat); // Use normal rounding instead of always rounding up
     
     console.log(`🔧 DYNAMIC SCENE DISTRIBUTION CALCULATION:
   📊 Total movie scenes: ${calculatedTotalScenes} (from ${totalMovieScenes ? 'parameter' : 'story input'})
