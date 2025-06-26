@@ -5807,7 +5807,7 @@ async function saveProject() {
     try {
         showLoading('Saving project...');
         
-        const response = await fetch('/api/save-project', {
+        const response = await fetch('/api/auto-save-project', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5815,6 +5815,7 @@ async function saveProject() {
             },
             body: JSON.stringify({
                 ...appState,
+                username: appState.user?.username || 'guest',
                 timestamp: new Date().toISOString()
             })
         });
@@ -5823,7 +5824,8 @@ async function saveProject() {
         
         if (response.ok) {
             appState.projectId = data.projectId;
-            showToast(`Project saved! ID: ${data.projectId}`, 'success');
+            appState.projectPath = data.projectPath;
+            showToast(`Project saved! (${data.projectPath})`, 'success');
         } else {
             throw new Error(data.error || 'Failed to save project');
         }
@@ -6352,7 +6354,7 @@ async function newProject() {
         // Save current project first
         showLoading('Saving current project...');
         
-        const response = await fetch('/api/save-project', {
+        const response = await fetch('/api/auto-save-project', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -6360,6 +6362,7 @@ async function newProject() {
             },
             body: JSON.stringify({
                 ...appState,
+                username: appState.user?.username || 'guest',
                 timestamp: new Date().toISOString()
             })
         });
@@ -6367,7 +6370,7 @@ async function newProject() {
         const data = await response.json();
         
         if (response.ok) {
-            showToast(`Current project saved! (ID: ${data.projectId}) Starting new project...`, 'success');
+            showToast(`Current project saved! (${data.projectPath}) Starting new project...`, 'success');
             
             // Start fresh project after successful save
             setTimeout(() => {
