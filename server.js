@@ -493,6 +493,9 @@ class HierarchicalContext {
       throw new Error('Story context must be built before structure context');
     }
     
+    // Get acts in correct chronological order based on template
+    const actKeys = this.getChronologicalActOrder(templateData, structure);
+    
     this.contexts.structure = {
       level: 2,
       type: 'structure',
@@ -500,12 +503,56 @@ class HierarchicalContext {
       data: {
         template: templateData,
         structure: structure,
-        actKeys: Object.keys(structure),
-        totalActs: Object.keys(structure).length
+        actKeys: actKeys,
+        totalActs: actKeys.length
       },
       generatedAt: new Date().toISOString()
     };
     return this.contexts.structure;
+  }
+
+  // Get acts in correct chronological order based on template structure
+  getChronologicalActOrder(templateData, structure) {
+    // Define the correct chronological order for common templates
+    const templateOrders = {
+      'three-act': ['setup', 'confrontation_first_half', 'midpoint', 'confrontation_second_half', 'crisis', 'climax', 'resolution'],
+      'save-the-cat': ['opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'],
+      'hero-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
+      'booker-quest': ['preparation', 'call_to_quest', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
+      'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_nightmare'],
+      'booker-rags-to-riches': ['initial_wretchedness', 'call_to_adventure', 'getting_out', 'initial_success', 'getting_closer', 'final_crisis', 'final_triumph'],
+      'booker-voyage-return': ['anticipation_stage', 'journey_begins', 'first_challenges', 'adaptation', 'new_world_experience', 'longing_for_home', 'return_journey', 'readjustment'],
+      'booker-comedy': ['confusion_stage', 'dressing_up_stage', 'complications_stage', 'final_nightmare', 'resolution'],
+      'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction_stage'],
+      'booker-rebirth': ['initial_imprisonment', 'call_to_change', 'resistance', 'crisis', 'transformation']
+    };
+    
+    // Get template name from templateData
+    const templateName = templateData?.name?.toLowerCase().replace(/[^a-z-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown';
+    
+    // Try to match template name to known orders
+    let chronologicalOrder = null;
+    for (const [key, order] of Object.entries(templateOrders)) {
+      if (templateName.includes(key) || key.includes(templateName)) {
+        chronologicalOrder = order;
+        break;
+      }
+    }
+    
+    // If we have a known order, filter it to only include acts that exist in the structure
+    if (chronologicalOrder) {
+      const existingActs = chronologicalOrder.filter(actKey => structure[actKey]);
+      if (existingActs.length > 0) {
+        console.log(`🔧 Using chronological order for template "${templateName}": ${existingActs.join(' → ')}`);
+        return existingActs;
+      }
+    }
+    
+    // Fallback: use Object.keys but warn about potential ordering issues
+    const fallbackOrder = Object.keys(structure);
+    console.log(`⚠️  Using fallback Object.keys() order for template "${templateName}": ${fallbackOrder.join(' → ')}`);
+    console.log(`⚠️  This may cause incorrect act ordering. Consider adding template to chronological order map.`);
+    return fallbackOrder;
   }
 
   // Build Level 3: Act Context (builds on structure)
@@ -532,7 +579,7 @@ class HierarchicalContext {
   }
 
   // Build Level 4: Plot Points Context (builds on act) - ENHANCED with previous acts' plot points
-  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null, username = 'guest') {
+  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null, username = null) {
     if (!this.contexts.act) {
       throw new Error('Act context must be built before plot points context');
     }
@@ -563,14 +610,28 @@ class HierarchicalContext {
   }
 
   // Load plot points from all previous acts for inter-act causality (database version)
-  async loadPreviousActsPlotPoints(projectPath, username = 'guest') {
+  async loadPreviousActsPlotPoints(projectPath, username = null) {
     try {
       if (!this.contexts.structure || !this.contexts.act) {
         return [];
       }
 
       const currentActKey = this.contexts.act.data.key;
-      const structureKeys = this.contexts.structure.data.actKeys;
+      let structureKeys = this.contexts.structure.data.actKeys;
+      
+      // CRITICAL FIX: Ensure chronological order even for loaded projects
+      // Get the correct chronological order based on template
+      const templateData = this.contexts.structure.data.template;
+      const structure = this.contexts.structure.data.structure;
+      const correctOrder = this.getChronologicalActOrder(templateData, structure);
+      
+      // Use correct chronological order instead of potentially wrong saved order
+      if (correctOrder && correctOrder.length > 0) {
+        structureKeys = correctOrder;
+        console.log(`🔧 FIXED: Using correct chronological order: ${structureKeys.join(' → ')}`);
+      } else {
+        console.log(`⚠️  WARNING: Using potentially incorrect saved order: ${structureKeys.join(' → ')}`);
+      }
       
       // Find the current act's position in the structure
       const currentActIndex = structureKeys.indexOf(currentActKey);
@@ -899,7 +960,7 @@ class HierarchicalContext {
   }
 
   // Helper function to generate scenes for a plot point (database version)
-  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514", projectContext = null, sceneDistribution = null) {
+  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514", projectContext = null, sceneDistribution = null, username = null) {
     // Use provided project context or load from database as fallback
     if (!projectContext) {
       throw new Error('Project context must be provided to generateScenesForPlotPoint');
@@ -942,7 +1003,7 @@ class HierarchicalContext {
     
     // Build plot points context (scene generation doesn't need previous plot points)
     // plotPointsData is an array of plot point strings in the working format
-    await context.buildPlotPointsContext(plotPointsData, sceneCount);
+    await context.buildPlotPointsContext(plotPointsData, sceneCount, projectPath, username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -1412,7 +1473,7 @@ Project ID: ${customProjectId}
 
     // Also save to database for profile page (use 'guest' as default user)
     try {
-      const username = 'guest'; // TODO: Get from user session/auth
+      const username = req.user.username; // Get from authenticated user
       const projectContext = {
         structure: structureData,
         template: templateData,
@@ -1751,7 +1812,7 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
         
         // Try to load project structure and template from database
         try {
-          const username = 'guest'; // TODO: Get from user session/auth
+          const username = req.user.username; // Get from authenticated user
           const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
           
           if (userResult.rows.length > 0) {
@@ -1785,7 +1846,7 @@ app.post('/api/preview-dialogue-prompt', async (req, res) => {
                 try {
                   if (projectContext.plotPoints && projectContext.plotPoints[structureElementKey]) {
                     const plotPointsData = projectContext.plotPoints[structureElementKey];
-                    await hierarchicalContext.buildPlotPointsContext(plotPointsData.plotPoints || plotPointsData);
+                    await hierarchicalContext.buildPlotPointsContext(plotPointsData.plotPoints || plotPointsData, null, null, username);
                   } else {
                     console.log('No plot points found for this act in database');
                   }
@@ -2056,7 +2117,7 @@ app.get('/api/list-projects', async (req, res) => {
 app.get('/api/project/:id', async (req, res) => {
   try {
     const projectId = req.params.id;
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     
     // Try to load from database first
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
@@ -2235,7 +2296,7 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
         
         // Try to load project structure and template from database
         try {
-          const username = 'guest'; // TODO: Get from user session/auth
+          const username = req.user.username; // Get from authenticated user
           const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
           
           if (userResult.rows.length > 0) {
@@ -2268,7 +2329,7 @@ app.post('/api/preview-scene-prompt', async (req, res) => {
                     if (projectContext.plotPoints && projectContext.plotPoints[structureKey]) {
                       const plotPointsData = projectContext.plotPoints[structureKey];
                       if ((plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) || Array.isArray(plotPointsData)) {
-                        await context.buildPlotPointsContext(plotPointsData.plotPoints || plotPointsData, sceneCount);
+                        await context.buildPlotPointsContext(plotPointsData.plotPoints || plotPointsData, sceneCount, projectPath, req.user.username);
                         
                         // If generating an individual scene, build scene context
                         if (existingScene && sceneIndex !== null) {
@@ -2588,7 +2649,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     context.buildActContext(structureKey, storyAct, actPosition);
     
     // Build plot points context to load previous acts' plot points for preview
-    await context.buildPlotPointsContext([], 0, projectPath, req.user?.username || 'guest');
+    await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     
     // Generate hierarchical prompt for plot points generation (Level 4) with inter-act causality
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
@@ -2661,7 +2722,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -2726,7 +2787,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     context.buildActContext(actKey, structure[actKey], actPosition);
     
     // Build plot points context
-    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct);
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -2838,7 +2899,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     const { sceneCount = null, model = "claude-sonnet-4-20250514" } = req.body;
     
     // Load project data from database instead of file system
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -2927,7 +2988,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       // Try to load plot points from database
       let plotPoints = [];
       try {
-        const username = 'guest'; // TODO: Get from user session/auth
+        const username = req.user.username; // Get from authenticated user
         const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
         
         if (userResult.rows.length > 0) {
@@ -2964,7 +3025,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       }
       
       // Build plot points context
-      await context.buildPlotPointsContext(plotPoints, finalSceneCount);
+      await context.buildPlotPointsContext(plotPoints, finalSceneCount, projectPath, req.user.username);
       
       // Generate hierarchical prompt using context system
       console.log('About to generate hierarchical prompt...');
@@ -3218,7 +3279,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     // First, we need plot points for this element (if they don't exist, we'll need to generate them)
     // For now, let's create a placeholder plot points context
     const existingPlotPoints = ['Placeholder plot point for this scene']; // This should come from actual plot points generation
-    await context.buildPlotPointsContext(existingPlotPoints, elementScenes.length);
+    await context.buildPlotPointsContext(existingPlotPoints, elementScenes.length, projectPath, req.user.username);
     
     // Build scene context with assigned plot point
     const plotPointIndex = sceneIndexNum; // Assuming 1:1 mapping for now
@@ -3475,7 +3536,7 @@ app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', asyn
     const sceneIndexNum = parseInt(sceneIndex);
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -3619,7 +3680,7 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     const projectPath = req.params.projectPath;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -3718,7 +3779,7 @@ app.post('/api/regenerate-scenes/:projectPath', async (req, res) => {
     const projectPath = req.params.projectPath;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -3842,7 +3903,7 @@ app.post('/api/export', async (req, res) => {
           let structureKeys = Object.keys(scenesData.scenes);
           try {
             // Try to load from database first
-            const username = 'guest';
+            const username = req.user.username; // Get from authenticated user
             const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
             
             if (userResult.rows.length > 0) {
@@ -4647,7 +4708,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     
     // Generate hierarchical prompt for plot points generation (Level 4) with enhanced inter-act causality
     // First, temporarily build plot points context to load previous acts' plot points
-    await context.buildPlotPointsContext([], 0, projectPath);
+    await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
 PLOT POINTS GENERATION WITH INTER-ACT CAUSALITY:
 1. Break down this story act into ${desiredPlotPointCount} causally connected plot points (these will be expanded into ${finalSceneCount} total scenes)
@@ -4813,7 +4874,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -4873,7 +4934,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     context.buildActContext(structureKey, storyAct, actPosition);
     
     // Build context with existing plot points
-    context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
+    await context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length, projectPath, req.user.username);
     
     // Generate hierarchical prompt for individual plot point regeneration
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
@@ -4940,7 +5001,7 @@ Return ONLY a JSON object with this exact structure:
     );
     
     // Update hierarchical context with new plot points
-    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length);
+    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length, projectPath, req.user.username);
     await context.saveToProject(projectPath);
 
     console.log(`Regenerated plot point ${plotPointIndexNum + 1} for ${structureKey}: "${responseData.plotPoint}"`);
@@ -4960,12 +5021,12 @@ Return ONLY a JSON object with this exact structure:
 });
 
 // Preview individual plot point regeneration prompt
-app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
+app.post('/api/preview-individual-plot-point-prompt', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, structureKey, plotPointIndex, existingPlotPoints } = req.body;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -5013,7 +5074,7 @@ app.post('/api/preview-individual-plot-point-prompt', async (req, res) => {
     context.buildActContext(structureKey, storyAct, actPosition);
     
     // Build context with existing plot points (individual regeneration doesn't need previous acts)
-    await context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length);
+    await context.buildPlotPointsContext(existingPlotPoints, existingPlotPoints.length, projectPath, req.user.username);
     
     // Generate hierarchical prompt for individual plot point regeneration
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
@@ -5131,7 +5192,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
       try {
         // Generate scenes for this plot point directly
         const context = new HierarchicalContext();
-        const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model, projectContext, sceneDistribution);
+        const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model, projectContext, sceneDistribution, req.user.username);
         allGeneratedScenes.push({
           plotPointIndex: plotPointIndex,
           plotPoint: plotPoint,
@@ -5198,7 +5259,7 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
     }
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -5921,7 +5982,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
     // Load project data from database
-    const username = 'guest'; // TODO: Get from user session/auth
+    const username = req.user.username; // Get from authenticated user
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -5985,7 +6046,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     context.buildActContext(actKey, structure[actKey], actPosition);
     
     // Build plot points context
-    await context.buildPlotPointsContext(plotPointsArray, plotPointsData.totalScenesForAct);
+    await context.buildPlotPointsContext(plotPointsArray, plotPointsData.totalScenesForAct, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);

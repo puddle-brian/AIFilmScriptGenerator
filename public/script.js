@@ -2496,7 +2496,8 @@ async function generateStructureWithCustomPrompt() {
         const response = await fetch('/api/generate-structure-custom', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
                 storyInput: appState.storyInput,
@@ -3965,7 +3966,8 @@ async function generateAllPlotPoints() {
             const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-API-Key': appState.apiKey
                 },
                 body: JSON.stringify({
                     desiredSceneCount: desiredSceneCount,
@@ -4293,7 +4295,8 @@ async function regenerateScenes(method = 'simple') {
         const response = await fetch(`/api/regenerate-scenes-simple/${appState.projectPath}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
             }
         });
         
