@@ -3,97 +3,49 @@
   "description": "Classic three-act storytelling structure with setup, confrontation, and resolution",
   "category": "essential",
   "total_plot_points": 40,
-  "distribution_philosophy": "Based on traditional three-act proportions: Act 1 (25%), Act 2 (50%), Act 3 (25%) with emphasis on major turning points",
+  "distribution_philosophy": "Based on traditional three-act structure with Act 2 receiving the most development",
   "structure": {
-    "act1_setup": {
-      "name": "Act 1: Setup",
-      "description": "Introduce the protagonist, establish the ordinary world, and present the central conflict",
-      "elements": ["Character Introduction", "World Building", "Status Quo", "Inciting Incident Setup"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 6,
-        "narrative_weight": "major"
-      }
+    "setup": {
+      "name": "Setup (Act 1)",
+      "description": "Introduce the protagonist, establish the ordinary world, and present the inciting incident",
+      "elements": ["Character Introduction", "Ordinary World", "Inciting Incident", "Plot Point 1"],
+      "plotPoints": 10
     },
-    "inciting_incident": {
-      "name": "Inciting Incident",
-      "description": "The event that disrupts the protagonist's normal world and sets the story in motion",
-      "elements": ["Catalyst Event", "Call to Adventure", "Life Disruption"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
-    },
-    "plot_point_1": {
-      "name": "Plot Point 1",
-      "description": "The protagonist commits to the journey and enters the second act",
-      "elements": ["Point of No Return", "Commitment Made", "New World Entered"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
-    },
-    "act2a_rising_action": {
-      "name": "Act 2A: Rising Action",
-      "description": "The protagonist faces obstacles and learns the rules of the new world",
-      "elements": ["Learning Phase", "Initial Obstacles", "Character Development", "Relationship Building"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 8,
-        "narrative_weight": "major"
-      }
+    "confrontation_first_half": {
+      "name": "Confrontation - First Half (Act 2A)",
+      "description": "The protagonist enters the new world and faces initial obstacles",
+      "elements": ["New World", "Rising Action", "Obstacles", "Character Development"],
+      "plotPoints": 10
     },
     "midpoint": {
       "name": "Midpoint",
-      "description": "A major revelation or event that changes the direction of the story",
-      "elements": ["Major Revelation", "False Victory/Defeat", "Stakes Raised", "Direction Change"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+      "description": "A major turning point that shifts the story's direction",
+      "elements": ["Major Revelation", "Stakes Raised", "Direction Change", "Point of No Return"],
+      "plotPoints": 2
     },
-    "act2b_obstacles": {
-      "name": "Act 2B: Obstacles",
-      "description": "The protagonist faces increasing opposition and internal conflict",
-      "elements": ["Mounting Opposition", "Internal Conflict", "Relationship Strain", "Preparation for Climax"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 8,
-        "narrative_weight": "major"
-      }
+    "confrontation_second_half": {
+      "name": "Confrontation - Second Half (Act 2B)",
+      "description": "Complications intensify leading to the crisis",
+      "elements": ["Complications", "Internal Conflict", "Approaching Crisis", "Plot Point 2"],
+      "plotPoints": 8
     },
-    "plot_point_2": {
-      "name": "Plot Point 2",
-      "description": "The final catalyst that propels the protagonist into the climax",
-      "elements": ["Final Catalyst", "All is Lost Moment", "Decision Point"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+    "crisis": {
+      "name": "Crisis",
+      "description": "The protagonist faces their greatest challenge",
+      "elements": ["Darkest Hour", "All Seems Lost", "Ultimate Test", "Character's Lowest Point"],
+      "plotPoints": 2
     },
-    "act3_climax": {
-      "name": "Act 3: Climax",
-      "description": "The final confrontation where the protagonist faces the main conflict",
-      "elements": ["Final Battle", "Confrontation", "Character Transformation", "Conflict Resolution"],
-      "distribution": {
-        "percentage": 17.5,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+    "climax": {
+      "name": "Climax (Act 3)",
+      "description": "The final confrontation and resolution of the main conflict",
+      "elements": ["Final Battle", "Conflict Resolution", "Character Transformation", "Story Conclusion"],
+      "plotPoints": 6
     },
     "resolution": {
       "name": "Resolution",
-      "description": "The aftermath of the climax, showing the new normal and character growth",
-      "elements": ["New Normal", "Character Growth Shown", "Loose Ends Tied", "Final Image"],
-      "distribution": {
-        "percentage": 7.5,
-        "plotPoints": 3,
-        "narrative_weight": "major"
-      }
+      "description": "The aftermath and new equilibrium after the climax",
+      "elements": ["New Normal", "Character Growth", "Loose Ends Tied", "Final Image"],
+      "plotPoints": 2
     }
   }
 } 

@@ -10,51 +10,31 @@
       "name": "Anticipation Stage",
       "description": "The hero becomes aware of the monster and the threat it poses",
       "elements": ["Threat Revealed", "Call to Action", "Initial Fear", "Community in Danger"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 7
     },
     "dream_stage": {
       "name": "Dream Stage",
       "description": "The hero sets out with confidence, initial success against lesser challenges",
       "elements": ["Journey Begins", "Early Success", "Confidence Building", "Gathering Allies"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 7
     },
     "frustration_stage": {
       "name": "Frustration Stage",
       "description": "The hero encounters the monster's true power and faces setbacks",
       "elements": ["First Real Encounter", "True Power Revealed", "Setbacks", "Doubt Creeps In"],
-      "distribution": {
-        "percentage": 25.0,
-        "plotPoints": 9,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 9
     },
     "nightmare_stage": {
       "name": "Nightmare Stage",
       "description": "The hero faces their darkest hour and seems doomed to fail",
       "elements": ["Darkest Hour", "All Seems Lost", "Monster Triumphant", "Hero's Lowest Point"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "final_triumph": {
       "name": "Final Triumph",
       "description": "The hero overcomes the monster through courage, wisdom, or sacrifice",
       "elements": ["Final Confrontation", "Monster Defeated", "Victory Achieved", "World Saved"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 7
     }
   }
 } 

@@ -10,71 +10,43 @@
       "name": "Call to Quest",
       "description": "The hero learns of a precious object or goal that must be obtained",
       "elements": ["Quest Revealed", "Motivation Established", "Stakes Defined", "Goal Identified"],
-      "distribution": {
-        "percentage": 12.5,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "preparation": {
       "name": "Preparation and Departure",
       "description": "The hero prepares for the journey and gathers companions",
       "elements": ["Gathering Allies", "Preparation", "Equipment", "Departure"],
-      "distribution": {
-        "percentage": 10.0,
-        "plotPoints": 4,
-        "narrative_weight": "minor"
-      }
+      "plotPoints": 4
     },
     "journey_begins": {
       "name": "Journey Begins",
       "description": "The hero sets out and faces initial challenges",
       "elements": ["First Steps", "Early Obstacles", "Learning Rules", "Team Building"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 6,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 6
     },
     "trials_and_tests": {
       "name": "Trials and Tests",
       "description": "The hero faces a series of increasingly difficult challenges",
       "elements": ["Multiple Challenges", "Character Testing", "Skills Developed", "Bonds Forged"],
-      "distribution": {
-        "percentage": 25.0,
-        "plotPoints": 10,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 10
     },
     "approach_goal": {
       "name": "Approach to Goal",
       "description": "The hero nears the object of the quest and faces the greatest danger",
       "elements": ["Final Approach", "Greatest Danger", "Ultimate Test", "Preparation for End"],
-      "distribution": {
-        "percentage": 12.5,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "final_ordeal": {
       "name": "Final Ordeal",
       "description": "The hero faces the ultimate challenge to obtain the goal",
       "elements": ["Ultimate Challenge", "Final Battle", "Supreme Test", "All or Nothing"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 6,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 6
     },
     "goal_achieved": {
       "name": "Goal Achieved",
       "description": "The hero obtains the object and returns transformed",
       "elements": ["Quest Complete", "Object Obtained", "Return Journey", "Transformation"],
-      "distribution": {
-        "percentage": 10.0,
-        "plotPoints": 4,
-        "narrative_weight": "minor"
-      }
+      "plotPoints": 4
     }
   }
 } 

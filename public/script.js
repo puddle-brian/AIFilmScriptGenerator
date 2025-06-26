@@ -2984,18 +2984,27 @@ async function displayPlotPointsGeneration() {
     
     // Display each story act with plot points generation
     Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
-        // Get recommended plot points from template distribution
-        const templateDistribution = appState.templateData?.structure?.[structureKey]?.distribution;
-        const totalPlotPoints = appState.totalPlotPoints || appState.templateData?.total_plot_points || 40;
-        
+        // 🔧 CRITICAL FIX: Get plot points from generated structure first (preserves template values)
         let recommendedPlotPoints = 4; // Default fallback
-        if (templateDistribution && templateDistribution.percentage) {
-            // Calculate based on percentage of total
-            recommendedPlotPoints = Math.round((templateDistribution.percentage / 100) * totalPlotPoints);
-            recommendedPlotPoints = Math.max(1, recommendedPlotPoints); // Minimum 1 plot point
-        } else if (templateDistribution && templateDistribution.plotPoints) {
-            // Use fixed value from template (legacy)
-            recommendedPlotPoints = templateDistribution.plotPoints;
+        
+        // 1. First try to get plot points directly from the generated structure (preserved from template)
+        if (storyAct.plotPoints) {
+            recommendedPlotPoints = storyAct.plotPoints;
+            console.log(`📊 Using preserved plot points from generated structure: ${recommendedPlotPoints} for ${structureKey}`);
+        }
+        // 2. Fallback to template distribution data
+        else {
+            const templateDistribution = appState.templateData?.structure?.[structureKey]?.distribution;
+            const totalPlotPoints = appState.totalPlotPoints || appState.templateData?.total_plot_points || 40;
+            
+            if (templateDistribution && templateDistribution.percentage) {
+                // Calculate based on percentage of total
+                recommendedPlotPoints = Math.round((templateDistribution.percentage / 100) * totalPlotPoints);
+                recommendedPlotPoints = Math.max(1, recommendedPlotPoints); // Minimum 1 plot point
+            } else if (templateDistribution && templateDistribution.plotPoints) {
+                // Use fixed value from template (legacy)
+                recommendedPlotPoints = templateDistribution.plotPoints;
+            }
         }
         
         // Optional debug logging (remove in production)
@@ -8049,7 +8058,8 @@ async function createActCards(templateStructure) {
                             number: index + 1,
                             name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                             description: act.description || 'No description available',
-                            elements: act.elements || []
+                            elements: act.elements || [],
+                            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
                         };
                     }
                 }).filter(Boolean);
@@ -8064,7 +8074,8 @@ async function createActCards(templateStructure) {
                 number: index + 1,
                 name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                 description: act.description || 'No description available',
-                elements: act.elements || []
+                elements: act.elements || [],
+                plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
             }));
         }
     } else {
@@ -8074,7 +8085,8 @@ async function createActCards(templateStructure) {
             number: index + 1,
             name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             description: act.description || 'No description available',
-            elements: act.elements || []
+            elements: act.elements || [],
+            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
         }));
     }
     
@@ -8100,11 +8112,20 @@ function createActCard(act, totalActs) {
     // Use consistent act numbering format like the rest of the site
     const actNumber = `${act.number}/${totalActs}`;
     
+    // Get plot points from act data (handle both old and new formats)
+    let plotPoints = 4; // default
+    if (act.plotPoints) {
+        plotPoints = act.plotPoints;
+    } else if (act.distribution && act.distribution.plotPoints) {
+        plotPoints = act.distribution.plotPoints;
+    }
+    
     card.innerHTML = `
         <div class="act-card-number">${actNumber}</div>
         <div class="act-card-title" data-original="${act.name}">${truncatedTitle}</div>
         <div class="act-card-description" data-original="${act.description}">${truncatedDescription}</div>
         <div class="act-card-edit-icon">✏️</div>
+        <div class="act-card-plot-points" data-original="${plotPoints}">${plotPoints} pts</div>
         <div class="act-card-edit-controls">
             <div class="act-card-edit-primary">
                 <button class="act-card-edit-btn save">Save</button>
@@ -8118,6 +8139,7 @@ function createActCard(act, totalActs) {
             <strong>${act.name}</strong><br>
             ${act.description}
             ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
+            <br><br><strong>Plot Points:</strong> ${plotPoints}
         </div>
     `;
     
@@ -8163,9 +8185,10 @@ function startEditingActCard(card, act) {
     // Add editing class
     card.classList.add('editing');
     
-    // Get title and description elements
+    // Get title, description, and plot points elements
     const titleElement = card.querySelector('.act-card-title');
     const descriptionElement = card.querySelector('.act-card-description');
+    const plotPointsElement = card.querySelector('.act-card-plot-points');
     
     // Convert to editable text areas
     const titleTextarea = document.createElement('textarea');
@@ -8178,9 +8201,18 @@ function startEditingActCard(card, act) {
     descriptionTextarea.value = descriptionElement.getAttribute('data-original');
     descriptionTextarea.rows = 3;
     
+    // Convert plot points to editable input
+    const plotPointsInput = document.createElement('input');
+    plotPointsInput.type = 'number';
+    plotPointsInput.min = '1';
+    plotPointsInput.max = '20';
+    plotPointsInput.className = 'act-card-plot-points editable';
+    plotPointsInput.value = plotPointsElement.getAttribute('data-original');
+    
     // Replace elements
     titleElement.replaceWith(titleTextarea);
     descriptionElement.replaceWith(descriptionTextarea);
+    plotPointsElement.replaceWith(plotPointsInput);
     
     // Auto-resize textareas
     autoResizeTextarea(titleTextarea);
@@ -8204,17 +8236,19 @@ function startEditingActCard(card, act) {
 function saveActCardChanges(card, act) {
     console.log('🎭 Saving changes for act:', act.name);
     
-    // Get current values from textareas
+    // Get current values from textareas and input
     const titleTextarea = card.querySelector('.act-card-title.editable');
     const descriptionTextarea = card.querySelector('.act-card-description.editable');
+    const plotPointsInput = card.querySelector('.act-card-plot-points.editable');
     
-    if (!titleTextarea || !descriptionTextarea) {
+    if (!titleTextarea || !descriptionTextarea || !plotPointsInput) {
         console.error('Could not find editable elements');
         return;
     }
     
     const newTitle = titleTextarea.value.trim();
     const newDescription = descriptionTextarea.value.trim();
+    const newPlotPoints = parseInt(plotPointsInput.value) || 1;
     
     // Validate inputs
     if (!newTitle) {
@@ -8229,12 +8263,19 @@ function saveActCardChanges(card, act) {
         return;
     }
     
+    if (newPlotPoints < 1 || newPlotPoints > 20) {
+        alert('Plot points must be between 1 and 20');
+        plotPointsInput.focus();
+        return;
+    }
+    
     // Update the act object
     act.name = newTitle;
     act.description = newDescription;
+    act.plotPoints = newPlotPoints;
     
     // Update template data in app state
-    updateTemplateStructureInAppState(act.key, newTitle, newDescription);
+    updateTemplateStructureInAppState(act.key, newTitle, newDescription, newPlotPoints);
     
     // Exit editing mode
     exitEditingMode(card, act);
@@ -8263,11 +8304,12 @@ function exitEditingMode(card, act, silent = false) {
     // Remove editing class
     card.classList.remove('editing');
     
-    // Get textareas
+    // Get textareas and input
     const titleTextarea = card.querySelector('.act-card-title.editable');
     const descriptionTextarea = card.querySelector('.act-card-description.editable');
+    const plotPointsInput = card.querySelector('.act-card-plot-points.editable');
     
-    if (!titleTextarea || !descriptionTextarea) return;
+    if (!titleTextarea || !descriptionTextarea || !plotPointsInput) return;
     
     // Create display elements with updated content
     const titleDiv = document.createElement('div');
@@ -8282,9 +8324,15 @@ function exitEditingMode(card, act, silent = false) {
     const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
     descriptionDiv.textContent = truncatedDescription;
     
+    const plotPointsDiv = document.createElement('div');
+    plotPointsDiv.className = 'act-card-plot-points';
+    plotPointsDiv.setAttribute('data-original', act.plotPoints || 4);
+    plotPointsDiv.textContent = `${act.plotPoints || 4} pts`;
+    
     // Replace textareas with display elements
     titleTextarea.replaceWith(titleDiv);
     descriptionTextarea.replaceWith(descriptionDiv);
+    plotPointsInput.replaceWith(plotPointsDiv);
     
     // Update tooltip
     const tooltip = card.querySelector('.act-card-tooltip');
@@ -8293,13 +8341,14 @@ function exitEditingMode(card, act, silent = false) {
             <strong>${act.name}</strong><br>
             ${act.description}
             ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
+            <br><br><strong>Plot Points:</strong> ${act.plotPoints || 4}
         `;
         tooltip.style.display = '';
     }
 }
 
-function updateTemplateStructureInAppState(actKey, newTitle, newDescription) {
-    console.log('🔍 DEBUG: updateTemplateStructureInAppState called:', { actKey, newTitle, newDescription });
+function updateTemplateStructureInAppState(actKey, newTitle, newDescription, newPlotPoints) {
+    console.log('🔍 DEBUG: updateTemplateStructureInAppState called:', { actKey, newTitle, newDescription, newPlotPoints });
     console.log('🔍 DEBUG: Current appState.templateData exists:', !!appState.templateData);
     console.log('🔍 DEBUG: Current structure exists:', !!(appState.templateData && appState.templateData.structure));
     console.log('🔍 DEBUG: Available structure keys:', appState.templateData && appState.templateData.structure ? Object.keys(appState.templateData.structure) : 'none');
@@ -8314,6 +8363,7 @@ function updateTemplateStructureInAppState(actKey, newTitle, newDescription) {
         
         appState.templateData.structure[actKey].name = newTitle;
         appState.templateData.structure[actKey].description = newDescription;
+        appState.templateData.structure[actKey].plotPoints = newPlotPoints;
         
         console.log('🔍 DEBUG: After update:', {
             name: appState.templateData.structure[actKey].name,
@@ -8413,7 +8463,8 @@ function closeAllEditingCards() {
             const act = {
                 key: actKey,
                 name: appState.templateData.structure[actKey].name,
-                description: appState.templateData.structure[actKey].description
+                description: appState.templateData.structure[actKey].description,
+                plotPoints: appState.templateData.structure[actKey].plotPoints || 4
             };
             
             console.log('🔧 Closing card for act:', act.name, 'using data from appState');
@@ -8428,10 +8479,12 @@ function closeAllEditingCards() {
             const descriptionElement = card.querySelector('.act-card-description.editable') || card.querySelector('.act-card-description');
             
             if (titleElement && descriptionElement) {
+                const plotPointsElement = card.querySelector('.act-card-plot-points.editable') || card.querySelector('.act-card-plot-points');
                 const act = {
                     key: actKey,
                     name: titleElement.getAttribute('data-original') || titleElement.textContent || 'Untitled Act',
-                    description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent || 'No description'
+                    description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent || 'No description',
+                    plotPoints: plotPointsElement ? (parseInt(plotPointsElement.getAttribute('data-original')) || 4) : 4
                 };
                 
                 console.log('🔧 Using fallback DOM reconstruction for act:', act.name);

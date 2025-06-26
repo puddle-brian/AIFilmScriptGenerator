@@ -3,157 +3,97 @@
   "description": "Blake Snyder's 15-beat structure for commercial storytelling",
   "category": "essential",
   "total_plot_points": 40,
-  "distribution_philosophy": "Based on Blake Snyder's page timing for a 110-page screenplay, with major development in Fun & Games and Finale",
+  "distribution_philosophy": "Based on Blake Snyder's beat sheet with emphasis on Fun & Games and Finale sequences",
   "structure": {
     "opening_image": {
       "name": "Opening Image",
-      "description": "A visual that represents the struggle and tone of the story",
-      "elements": ["Visual Metaphor", "Tone Established", "Character's Problem Hinted"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "A visual that represents the struggle & tone of the story. A snapshot of the main character's problem, before the adventure begins",
+      "elements": ["Visual Metaphor", "Tone Setting", "Character Introduction", "World Establishment"],
+      "plotPoints": 1
     },
     "theme_stated": {
       "name": "Theme Stated",
-      "description": "During the setup, someone asks a question or makes a statement that is the theme",
-      "elements": ["Central Question", "Life Lesson", "Story's Heart"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "During the setup, hint at what your story is about; the message, the truth. Usually, this is spoken to the main character or in their presence, but they don't understand the truth...not until they have some personal experience and context to support it",
+      "elements": ["Thematic Question", "Moral Lesson", "Central Truth", "Character Arc Setup"],
+      "plotPoints": 1
     },
     "setup": {
-      "name": "Set-Up",
-      "description": "Introduce the hero, the stakes, and the goal of the story",
-      "elements": ["Hero Introduction", "Status Quo", "What's at Stake"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 6,
-        "narrative_weight": "major"
-      }
+      "name": "Setup",
+      "description": "Expand on the opening image and show us the main character's life as it is, and what is missing in their life",
+      "elements": ["Character World", "Status Quo", "Missing Element", "Supporting Characters"],
+      "plotPoints": 6
     },
     "catalyst": {
       "name": "Catalyst",
-      "description": "The inciting incident that sets the story in motion",
-      "elements": ["Life-Changing Event", "No Going Back", "New Direction"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+      "description": "The moment where life as it is changes. It is the telegram, the act of catching your loved-one cheating, allowing a monster on board the ship, meeting the true love of your life, etc. The inciting incident",
+      "elements": ["Inciting Incident", "Life Change", "Story Trigger", "Point of No Return"],
+      "plotPoints": 1
     },
     "debate": {
       "name": "Debate",
-      "description": "The hero weighs whether to take on the challenge",
-      "elements": ["Should I Go?", "Fear vs. Need", "Internal Conflict"],
-      "distribution": {
-        "percentage": 12.5,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "description": "But change is scary and for a moment, or a brief number of moments, the main character doubts the journey they must take. Can I face this challenge? Do I have what it takes? Should I go at all? It is the last chance for the hero to chicken out",
+      "elements": ["Internal Conflict", "Hesitation", "Fear", "Decision Point"],
+      "plotPoints": 3
     },
     "break_into_two": {
       "name": "Break Into Two",
-      "description": "The hero decides to take on the challenge and enters Act 2",
-      "elements": ["Choice Made", "New World Entered", "Adventure Begins"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "The main character makes a choice and the journey begins. We leave the familiar world and enter a new one. This is the end of Act 1",
+      "elements": ["Choice Made", "Journey Begins", "New World", "Act 1 Conclusion"],
+      "plotPoints": 1
     },
     "b_story": {
       "name": "B Story",
-      "description": "A subplot that carries the theme of the movie",
-      "elements": ["Secondary Character", "Theme Explored", "Emotional Journey"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+      "description": "This is when there's a discussion about the Theme – the nugget of truth. Usually, this discussion is between the main character and the love interest. So, the B Story is usually called the 'love story'",
+      "elements": ["Love Interest", "Thematic Discussion", "Relationship Development", "Emotional Stakes"],
+      "plotPoints": 2
     },
     "fun_and_games": {
       "name": "Fun and Games",
-      "description": "The premise of the movie is explored - the trailer moments",
-      "elements": ["Promise of Premise", "Trailer Moments", "Audience Expectations Met"],
-      "distribution": {
-        "percentage": 22.5,
-        "plotPoints": 9,
-        "narrative_weight": "major"
-      }
+      "description": "This is really why the audience paid their money to see the movie. The promise of the premise is explored here. This is the fun part of the story, the part most often used in promo ads",
+      "elements": ["Premise Delivered", "Audience Expectation", "Core Concept", "Entertainment Value"],
+      "plotPoints": 9
     },
     "midpoint": {
       "name": "Midpoint",
-      "description": "An up or down moment that changes the direction of the story",
-      "elements": ["False Victory/Defeat", "Stakes Raised", "New Information"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+      "description": "Dependent upon the story, this moment is when everything is 'great' or everything is 'awful'. The main character either gets everything they think they want ('great') or doesn't get what they think they want at all ('awful'). But not everything we think we want is what we actually need in the end",
+      "elements": ["False Victory", "False Defeat", "Perspective Shift", "Stakes Raised"],
+      "plotPoints": 1
     },
     "bad_guys_close_in": {
       "name": "Bad Guys Close In",
-      "description": "Forces of antagonism gather momentum against the hero",
-      "elements": ["External Pressure", "Internal Doubts", "Team Falls Apart"],
-      "distribution": {
-        "percentage": 17.5,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+      "description": "Doubt, jealousy, fear, foes both physical and emotional regroup to defeat the main character's goal, and the main character's goal shifts to basic survival",
+      "elements": ["Opposition Regroups", "Pressure Mounts", "Survival Mode", "Internal Enemies"],
+      "plotPoints": 7
     },
     "all_is_lost": {
       "name": "All Is Lost",
-      "description": "The hero's lowest point - the moment of greatest despair",
-      "elements": ["Lowest Point", "Hope Lost", "Death Moment"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "The opposite moment from the Midpoint: this is when the main character realizes they've lost everything they gained, or everything they now have has no meaning. The initial goal now looks even more impossible than before. And here, something or someone that the main character loved or cherished is sacrificed",
+      "elements": ["Lowest Point", "Everything Lost", "Sacrifice Made", "Hopelessness"],
+      "plotPoints": 1
     },
     "dark_night_of_soul": {
       "name": "Dark Night of the Soul",
-      "description": "The hero mourns the loss and processes the journey so far",
-      "elements": ["Reflection", "Processing Loss", "Finding Inner Strength"],
-      "distribution": {
-        "percentage": 5.0,
-        "plotPoints": 2,
-        "narrative_weight": "minor"
-      }
+      "description": "The main character hits bottom, and wallows in hopelessness. The Why hast thou forsaken me, Lord? moment. Mourning the loss of what has 'died' – the dream, the goal, the mentor character, the love of your life, etc. But, you must fall completely before you can pick yourself back up and try again",
+      "elements": ["Rock Bottom", "Despair", "Mourning", "Preparation for Change"],
+      "plotPoints": 1
     },
     "break_into_three": {
       "name": "Break Into Three",
-      "description": "The hero finds the solution to the problem",
-      "elements": ["A-ha Moment", "Solution Found", "New Approach"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "Thanks to a fresh idea, new inspiration, or last-minute Thematic advice from the B Story (usually the love interest), the main character chooses to try again",
+      "elements": ["New Inspiration", "Fresh Approach", "Final Attempt", "Act 3 Begins"],
+      "plotPoints": 1
     },
     "finale": {
       "name": "Finale",
-      "description": "The hero applies the new lesson and defeats the antagonist",
-      "elements": ["Final Battle", "Lessons Applied", "Old vs. New Self"],
-      "distribution": {
-        "percentage": 22.5,
-        "plotPoints": 9,
-        "narrative_weight": "major"
-      }
+      "description": "This time around, the main character incorporates the Theme – the nugget of truth that now makes sense to them – into their fight for the goal because they have experience from the A Story and context from the B Story. Act 3 is about Synthesis!",
+      "elements": ["Final Battle", "Theme Integration", "Synthesis", "Ultimate Test"],
+      "plotPoints": 9
     },
     "final_image": {
       "name": "Final Image",
-      "description": "A visual that represents the change that has occurred",
-      "elements": ["Transformation Complete", "New Normal", "Growth Shown"],
-      "distribution": {
-        "percentage": 2.5,
-        "plotPoints": 1,
-        "narrative_weight": "transition"
-      }
+      "description": "opposite of Opening Image, proving, visually, that a change has occurred within the character",
+      "elements": ["Visual Proof", "Character Change", "Story Completion", "Transformation"],
+      "plotPoints": 1
     }
   }
 } 

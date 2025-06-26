@@ -1498,6 +1498,24 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
       };
     }
 
+    // 🔧 CRITICAL FIX: Preserve plot points from template in generated structure
+    if (structureData && typeof structureData === 'object' && !structureData.error && templateData.structure) {
+      console.log('🎯 Preserving plot points from template in generated structure...');
+      Object.keys(structureData).forEach(actKey => {
+        if (templateData.structure[actKey]) {
+          // Preserve plot points from original template (support both formats)
+          if (templateData.structure[actKey].plotPoints) {
+            structureData[actKey].plotPoints = templateData.structure[actKey].plotPoints;
+            console.log(`📊 Preserved ${templateData.structure[actKey].plotPoints} plot points for ${actKey}`);
+          } else if (templateData.structure[actKey].distribution?.plotPoints) {
+            structureData[actKey].plotPoints = templateData.structure[actKey].distribution.plotPoints;
+            console.log(`📊 Preserved ${templateData.structure[actKey].distribution.plotPoints} plot points for ${actKey} (legacy format)`);
+          }
+        }
+      });
+      console.log('✅ Plot points preservation completed');
+    }
+
     console.log(`✅ Structure generated for project: ${projectFolderName}`);
     console.log(`Project ID: ${projectId}`);
 

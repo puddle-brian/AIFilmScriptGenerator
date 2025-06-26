@@ -10,71 +10,43 @@
       "name": "Humble Origins",
       "description": "The hero begins in lowly circumstances, often unaware of their potential",
       "elements": ["Modest Beginnings", "Hidden Potential", "Ordinary Life", "Dissatisfaction"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "call_to_adventure": {
       "name": "Call to Adventure",
       "description": "An opportunity arises that could change the hero's circumstances",
       "elements": ["Opportunity Appears", "Chance Encounter", "Door Opens", "Decision Point"],
-      "distribution": {
-        "percentage": 10.0,
-        "plotPoints": 4,
-        "narrative_weight": "minor"
-      }
+      "plotPoints": 4
     },
     "getting_out": {
       "name": "Getting Out",
       "description": "The hero leaves their humble circumstances and enters a larger world",
       "elements": ["Leaving Home", "New Environment", "First Steps", "Crossing Threshold"],
-      "distribution": {
-        "percentage": 10.0,
-        "plotPoints": 4,
-        "narrative_weight": "minor"
-      }
+      "plotPoints": 4
     },
     "initial_success": {
       "name": "Initial Success",
       "description": "The hero experiences early victories and rising fortune",
       "elements": ["Early Wins", "Recognition", "Growing Confidence", "Taste of Success"],
-      "distribution": {
-        "percentage": 20.0,
-        "plotPoints": 7,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 7
     },
     "first_crisis": {
       "name": "First Crisis",
       "description": "The hero faces a major setback that tests their resolve",
       "elements": ["Major Setback", "Test of Character", "Doubt and Fear", "Near Failure"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "final_crisis": {
       "name": "Final Crisis",
       "description": "The ultimate test that determines if the hero achieves their destiny",
       "elements": ["Ultimate Challenge", "All or Nothing", "Character Revealed", "Final Test"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     },
     "final_triumph": {
       "name": "Final Triumph",
       "description": "The hero achieves their goal and is transformed by the journey",
       "elements": ["Goal Achieved", "Transformation Complete", "New Status", "Wisdom Gained"],
-      "distribution": {
-        "percentage": 15.0,
-        "plotPoints": 5,
-        "narrative_weight": "major"
-      }
+      "plotPoints": 5
     }
   }
 } 
