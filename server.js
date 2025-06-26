@@ -4707,6 +4707,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     
     
     // Generate hierarchical prompt for plot points generation (Level 4) with enhanced inter-act causality
+    
     // First, temporarily build plot points context to load previous acts' plot points
     await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
