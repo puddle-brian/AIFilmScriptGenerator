@@ -5970,6 +5970,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     
     // Build plot points context with dynamic total scenes (use provided totalScenes or fallback)
     const currentTotalScenes = totalScenes || projectContext?.storyInput?.totalScenes || 70;
+    console.log(`🔍 Backend Preview Debug: Using totalScenes: ${currentTotalScenes} (from frontend: ${totalScenes}, from DB: ${projectContext?.storyInput?.totalScenes})`);
     await context.buildPlotPointsContext(plotPointsArray, currentTotalScenes, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
