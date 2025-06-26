@@ -7936,11 +7936,10 @@ const autoSaveManager = {
         // Save on window unload
         window.addEventListener('beforeunload', (e) => {
             if (appState.pendingChanges && this.hasProjectData()) {
+                // Try to save immediately without showing warning
                 this.saveImmediately();
-                // Modern browsers ignore custom messages, but we try anyway
-                e.preventDefault();
-                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
-                return e.returnValue;
+                // Don't show the "leave site" warning since we have auto-save
+                // The system will save automatically
             }
         });
         
