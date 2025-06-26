@@ -4815,14 +4815,80 @@ function calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene) {
 }
 
 // Display dialogue generation interface
-function displayDialogueGeneration() {
-    const container = document.getElementById('dialogueContent');
+// Display hierarchical dialogue content: Act -> Plot Points -> Scenes (with dialogue)
+// This mirrors the scenes hierarchy but with compact act/plot point levels to focus on dialogue
+function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, actNumber) {
+    const container = document.getElementById(`hierarchical-dialogue-content-${structureKey}`);
+    if (!container) return;
+    
+    // Clear any existing content
     container.innerHTML = '';
     
-    Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
-        if (Array.isArray(sceneGroup)) {
-            sceneGroup.forEach((scene, index) => {
-                const sceneId = `${structureKey}-${index}`;
+    const hasPlotPoints = plotPoints && Array.isArray(plotPoints) && plotPoints.length > 0;
+    const hasScenes = sceneGroup && Array.isArray(sceneGroup) && sceneGroup.length > 0;
+    
+    if (!hasPlotPoints && !hasScenes) {
+        container.innerHTML = '<p class="no-content">No plot points or scenes available for dialogue generation.</p>';
+        return;
+    }
+    
+    if (!hasPlotPoints && hasScenes) {
+        // Fallback: show scenes without plot point structure
+        container.innerHTML = `
+            <div class="dialogue-scenes-fallback">
+                <h4>⚠️ Scene Dialogues (Generated without plot points)</h4>
+                <p class="warning-text">These scenes were generated without the hierarchical plot point structure.</p>
+                <div class="flat-dialogue-scenes-container"></div>
+            </div>
+        `;
+        const flatContainer = container.querySelector('.flat-dialogue-scenes-container');
+        displayDialogueScenesFlat(structureKey, sceneGroup, flatContainer);
+        return;
+    }
+    
+    // Create compact hierarchical structure: Plot Points -> Dialogue Scenes
+    plotPoints.forEach((plotPoint, plotPointIndex) => {
+        const plotPointNumber = `${actNumber}.${plotPointIndex + 1}`;
+        
+        // Find scenes that belong to this plot point
+        const plotPointScenes = hasScenes ? sceneGroup.filter(scene => 
+            scene.plotPointIndex === plotPointIndex
+        ) : [];
+        
+        const plotPointElement = document.createElement('div');
+        plotPointElement.className = 'hierarchical-dialogue-plot-point';
+        plotPointElement.id = `dialogue-plot-point-${structureKey}-${plotPointIndex}`;
+        
+        // Compact plot point header
+        const plotPointHeader = document.createElement('div');
+        plotPointHeader.className = 'dialogue-plot-point-header compact';
+        plotPointHeader.innerHTML = `
+            <h5 class="dialogue-plot-point-title">
+                <span class="plot-point-number">${plotPointNumber}</span>
+                <span class="plot-point-text">${plotPoint}</span>
+            </h5>
+            <div class="dialogue-plot-point-meta">
+                <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
+            </div>
+        `;
+        
+        plotPointElement.appendChild(plotPointHeader);
+        
+        // Dialogue scenes container for this plot point
+        const scenesContainer = document.createElement('div');
+        scenesContainer.className = 'dialogue-plot-point-scenes';
+        scenesContainer.id = `dialogue-scenes-${structureKey}-${plotPointIndex}`;
+        
+        if (plotPointScenes.length > 0) {
+            // Display dialogue scenes for this plot point
+            plotPointScenes.forEach((scene, sceneIndex) => {
+                const sceneNumber = `${plotPointNumber}.${sceneIndex + 1}`;
+                const globalSceneIndex = hasScenes ? sceneGroup.indexOf(scene) : -1;
+                const sceneId = `${structureKey}-${globalSceneIndex}`;
+                
+                const sceneElement = document.createElement('div');
+                sceneElement.className = 'hierarchical-dialogue-scene';
+                sceneElement.id = `dialogue-scene-${structureKey}-${plotPointIndex}-${sceneIndex}`;
                 
                 // Check if dialogue already exists for this scene
                 let dialogueContent = '';
@@ -4843,7 +4909,7 @@ function displayDialogueGeneration() {
                 // Set default content with scene description
                 dialogueContent = sceneDescription + 'Click "Generate Dialogue" to create the screenplay for this scene.';
                 
-                // First check the direct scene ID format
+                // Check for existing dialogue
                 if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
                     dialogueContent = appState.generatedDialogues[sceneId];
                     hasExistingDialogue = true;
@@ -4861,20 +4927,43 @@ function displayDialogueGeneration() {
                     });
                 }
                 
-                // Calculate hierarchical scene number
-                const sceneNumber = calculateHierarchicalSceneNumber(structureKey, index, scene);
-                const sceneTitle = `<span class="scene-number">${sceneNumber}</span> <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'} - Dialogue</span>`;
+                // Scene header with actions
+                const sceneHeader = document.createElement('div');
+                sceneHeader.className = 'dialogue-scene-header';
+                sceneHeader.innerHTML = `
+                    <h6 class="dialogue-scene-title">
+                        <span class="scene-number">${sceneNumber}</span>
+                        <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
+                    </h6>
+                    <div class="dialogue-scene-actions">
+                        <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
+                            ${hasExistingDialogue ? '🔄 Regenerate' : '💬 Generate'}
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
+                            🔍 Preview
+                        </button>
+                    </div>
+                `;
                 
+                sceneElement.appendChild(sceneHeader);
+                
+                // Dialogue content (editable)
+                const dialogueContentContainer = document.createElement('div');
+                dialogueContentContainer.className = 'dialogue-content-container';
+                sceneElement.appendChild(dialogueContentContainer);
+                
+                // Create editable content block for the dialogue
                 createEditableContentBlock({
-                    id: `dialogue-${structureKey}-${index}`,
+                    id: `hierarchical-dialogue-${structureKey}-${plotPointIndex}-${sceneIndex}`,
                     type: 'dialogue',
-                    title: sceneTitle,
+                    title: '', // Title already shown in header
                     content: dialogueContent,
-                    container: container,
-                    metadata: { structureKey: structureKey, sceneIndex: index, sceneId: sceneId },
+                    container: dialogueContentContainer,
+                    hideTitle: true, // Don't show duplicate title
+                    metadata: { structureKey: structureKey, sceneIndex: globalSceneIndex, plotPointIndex: plotPointIndex, sceneId: sceneId },
                     onSave: async (newContent, block) => {
                         // Save the edited dialogue content
-                        await saveDialogueContent(structureKey, index, newContent);
+                        await saveDialogueContent(structureKey, globalSceneIndex, newContent);
                         
                         // Update the app state
                         if (!appState.generatedDialogues) {
@@ -4887,24 +4976,177 @@ function displayDialogueGeneration() {
                     }
                 });
                 
-                // Add generation actions for this dialogue
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'dialogue-actions';
-                actionsDiv.style.marginTop = '10px';
-                actionsDiv.style.marginBottom = '20px';
-                actionsDiv.innerHTML = `
-                    <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
-                        ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
-                    </button>
-                    <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
-                        🔍 Dialogue Prompt
-                    </button>
-                `;
-                container.appendChild(actionsDiv);
+                scenesContainer.appendChild(sceneElement);
             });
+        } else {
+            // No scenes for this plot point yet
+            scenesContainer.innerHTML = `
+                <div class="no-dialogue-scenes-for-plot-point">
+                    <p class="placeholder-text">No scenes available for dialogue generation in this plot point.</p>
+                    <p class="info-text">Generate scenes in Step 5 first to enable dialogue generation.</p>
+                </div>
+            `;
         }
+        
+        plotPointElement.appendChild(scenesContainer);
+        container.appendChild(plotPointElement);
     });
+}
+
+// Fallback function for displaying dialogue scenes without hierarchical structure
+function displayDialogueScenesFlat(structureKey, sceneGroup, container) {
+    if (!container || !sceneGroup || !Array.isArray(sceneGroup)) return;
     
+    sceneGroup.forEach((scene, index) => {
+        const sceneId = `${structureKey}-${index}`;
+        const sceneNumber = calculateHierarchicalSceneNumber(structureKey, index, scene);
+        
+        // Check if dialogue already exists for this scene
+        let dialogueContent = '';
+        let hasExistingDialogue = false;
+        
+        // Format scene description for display
+        let sceneDescription = '';
+        if (scene.location && scene.time_of_day) {
+            sceneDescription = `${scene.location} • ${scene.time_of_day}\n\n`;
+        } else if (scene.location) {
+            sceneDescription = `${scene.location}\n\n`;
+        }
+        
+        if (scene.description) {
+            sceneDescription += `${scene.description}\n\n`;
+        }
+        
+        // Set default content with scene description
+        dialogueContent = sceneDescription + 'Click "Generate Dialogue" to create the screenplay for this scene.';
+        
+        // Check for existing dialogue
+        if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
+            dialogueContent = appState.generatedDialogues[sceneId];
+            hasExistingDialogue = true;
+        }
+        
+        const sceneTitle = `<span class="scene-number">${sceneNumber}</span> <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'} - Dialogue</span>`;
+        
+        createEditableContentBlock({
+            id: `flat-dialogue-${structureKey}-${index}`,
+            type: 'dialogue',
+            title: sceneTitle,
+            content: dialogueContent,
+            container: container,
+            metadata: { structureKey: structureKey, sceneIndex: index, sceneId: sceneId },
+            onSave: async (newContent, block) => {
+                await saveDialogueContent(structureKey, index, newContent);
+                if (!appState.generatedDialogues) {
+                    appState.generatedDialogues = {};
+                }
+                appState.generatedDialogues[sceneId] = newContent;
+                saveToLocalStorage();
+            }
+        });
+        
+        // Add generation actions
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'dialogue-actions';
+        actionsDiv.style.marginTop = '10px';
+        actionsDiv.style.marginBottom = '20px';
+        actionsDiv.innerHTML = `
+            <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${index})">
+                ${hasExistingDialogue ? 'Regenerate Dialogue' : 'Generate Dialogue'}
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
+                🔍 Dialogue Prompt
+            </button>
+        `;
+        container.appendChild(actionsDiv);
+    });
+}
+
+function displayDialogueGeneration() {
+    const container = document.getElementById('dialogueContent');
+    container.innerHTML = '';
+
+    if (appState.generatedStructure && appState.generatedScenes) {
+        console.log('Displaying dialogue with hierarchical structure:', appState.generatedStructure);
+        
+        // Display dialogue in chronological order with hierarchical structure
+        const structureKeys = Object.keys(appState.generatedStructure);
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        
+        chronologicalKeys.forEach((structureKey) => {
+            const storyAct = appState.generatedStructure[structureKey];
+            const sceneGroup = appState.generatedScenes[structureKey];
+            const plotPoints = appState.plotPoints ? appState.plotPoints[structureKey] : null;
+            const hasScenes = sceneGroup && Array.isArray(sceneGroup) && sceneGroup.length > 0;
+            const hasPlotPoints = plotPoints && Array.isArray(plotPoints) && plotPoints.length > 0;
+            const sceneCount = hasScenes ? sceneGroup.length : 0;
+            
+            console.log(`Processing dialogue for ${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}, hasPlotPoints=${hasPlotPoints}`);
+            
+            // Only show acts that have scenes
+            if (!hasScenes) {
+                console.log(`Skipping ${structureKey} - no scenes available for dialogue`);
+                return;
+            }
+            
+            const groupElement = document.createElement('div');
+            groupElement.className = 'dialogue-group';
+            groupElement.id = `dialogue-group-${structureKey}`;
+            
+            // Get act progress notation (X/Y format) - same as other steps but more compact
+            const totalActs = chronologicalKeys.filter(key => {
+                const scenes = appState.generatedScenes[key];
+                return scenes && Array.isArray(scenes) && scenes.length > 0;
+            }).length;
+            const actsWithScenes = chronologicalKeys.filter(key => {
+                const scenes = appState.generatedScenes[key];
+                return scenes && Array.isArray(scenes) && scenes.length > 0;
+            });
+            const currentActIndex = actsWithScenes.indexOf(structureKey);
+            const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
+            const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
+            const titleWithProgress = actProgress ? `${actProgress} ${actName}` : actName;
+            
+            groupElement.innerHTML = `
+                <div class="dialogue-group-header compact">
+                    <h4 class="dialogue-act-title">${titleWithProgress}</h4>
+                    <div class="dialogue-group-actions">
+                        <button class="btn btn-primary btn-sm" onclick="generateAllDialogueForAct('${structureKey}')" title="Generate dialogue for all scenes in this act">
+                            💬 Generate All
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act">
+                            🔍 Preview All
+                        </button>
+                    </div>
+                </div>
+                <div class="dialogue-act-description compact">
+                    <p class="act-description-text">${storyAct.description}</p>
+                </div>
+                <div id="hierarchical-dialogue-content-${structureKey}" class="hierarchical-dialogue-content">
+                    ${hasPlotPoints ? '' : `
+                        <div class="dialogue-plot-points-warning">
+                            <p><strong>⚠️ Limited structure:</strong> These scenes were generated without plot points.</p>
+                        </div>
+                    `}
+                </div>
+            `;
+            
+            console.log(`Appending dialogue group element for ${structureKey} to container`);
+            container.appendChild(groupElement);
+            
+            // Display hierarchical dialogue content
+            if (hasPlotPoints || hasScenes) {
+                console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
+                displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
+            }
+        });
+        
+        console.log('Finished creating all dialogue groups');
+    } else {
+        console.log('No structure/scenes available - showing fallback message');
+        container.innerHTML = '<p>No scenes available for dialogue generation. Please complete Steps 1-5 first.</p>';
+    }
+
     // Handle any pending dialogue restoration from page reload
     if (appState.pendingDialogueRestore) {
         console.log('Processing pending dialogue restoration:', appState.pendingDialogueRestore);
@@ -4926,7 +5168,58 @@ function displayDialogueGeneration() {
         }, 100);
     }
     
-    console.log('Dialogue interface displayed with existing content restored');
+    console.log('Hierarchical dialogue interface displayed with existing content restored');
+}
+
+// Helper function to generate dialogue for all scenes in a specific act
+async function generateAllDialogueForAct(structureKey) {
+    const sceneGroup = appState.generatedScenes[structureKey];
+    if (!sceneGroup || !Array.isArray(sceneGroup) || sceneGroup.length === 0) {
+        showToast(`No scenes available in ${structureKey} for dialogue generation.`, 'error');
+        return;
+    }
+    
+    try {
+        showLoading(`Generating dialogue for all ${sceneGroup.length} scenes in ${structureKey}...`);
+        
+        // Calculate global scene indices for this act
+        let globalSceneIndex = 0;
+        const structureKeys = Object.keys(appState.generatedScenes);
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        
+        // Count scenes in acts that come before this one
+        for (const key of chronologicalKeys) {
+            if (key === structureKey) break;
+            const scenes = appState.generatedScenes[key];
+            if (scenes && Array.isArray(scenes)) {
+                globalSceneIndex += scenes.length;
+            }
+        }
+        
+        // Generate dialogue for each scene using the correct global index
+        for (let i = 0; i < sceneGroup.length; i++) {
+            await generateDialogue(structureKey, globalSceneIndex + i);
+        }
+        
+        hideLoading();
+        showToast(`Successfully generated dialogue for all scenes in ${structureKey}!`, 'success');
+    } catch (error) {
+        console.error(`Error generating dialogue for ${structureKey}:`, error);
+        showToast(`Error generating dialogue for ${structureKey}. Please try again.`, 'error');
+        hideLoading();
+    }
+}
+
+// Helper function to preview dialogue prompts for all scenes in a specific act
+async function previewAllDialoguePromptsForAct(structureKey) {
+    const sceneGroup = appState.generatedScenes[structureKey];
+    if (!sceneGroup || !Array.isArray(sceneGroup) || sceneGroup.length === 0) {
+        showToast(`No scenes available in ${structureKey} for dialogue preview.`, 'error');
+        return;
+    }
+    
+    // For now, just preview the first scene's prompt with a note about the act
+    showToast(`Dialogue prompt preview for individual scenes coming soon! Use the scene-level preview buttons for now.`, 'info');
 }
 
 // Save dialogue content function
@@ -4980,10 +5273,17 @@ async function generateDialogue(structureKey, sceneIndex) {
         if (response.ok) {
             appState.generatedDialogues[sceneId] = data.dialogue;
             
-            // Update the editable block if it exists
-            const blockId = `dialogue-${structureKey}-${sceneIndex}`;
-            if (window.editableBlocks && window.editableBlocks[blockId]) {
-                window.editableBlocks[blockId].updateContent(data.dialogue);
+            // Update the editable block if it exists - search for the correct block using metadata
+            if (window.editableBlocks) {
+                // Find the editable block that matches this scene
+                Object.values(window.editableBlocks).forEach(block => {
+                    if (block.metadata && 
+                        block.metadata.structureKey === structureKey && 
+                        block.metadata.sceneIndex === sceneIndex &&
+                        block.type === 'dialogue') {
+                        block.updateContent(data.dialogue);
+                    }
+                });
             }
             
             // 🔥 FIX: Update navigation system when individual dialogue is generated
@@ -5085,6 +5385,26 @@ async function generateAllDialogue() {
             } else {
                 throw new Error(`Failed to generate dialogue for scene "${scene.title || 'Untitled'}": ${data.error}`);
             }
+        }
+        
+        // Update all editable blocks with new dialogue content
+        if (window.editableBlocks) {
+            allScenes.forEach(sceneData => {
+                const { structureKey, sceneIndex, sceneId } = sceneData;
+                const dialogueContent = appState.generatedDialogues[sceneId];
+                
+                if (dialogueContent) {
+                    // Find and update the editable block that matches this scene
+                    Object.values(window.editableBlocks).forEach(block => {
+                        if (block.metadata && 
+                            block.metadata.structureKey === structureKey && 
+                            block.metadata.sceneIndex === sceneIndex &&
+                            block.type === 'dialogue') {
+                            block.updateContent(dialogueContent);
+                        }
+                    });
+                }
+            });
         }
         
         // Refresh the dialogue display after all dialogues are generated
@@ -8535,9 +8855,9 @@ async function createActCards(templateStructure) {
     const actCardsScroll = document.getElementById('actCardsScroll');
     if (!actCardsScroll || !templateStructure) {
         console.warn('Act cards container not found or no template structure');
-        return;
-    }
-    
+                return;
+            }
+            
     // Clear existing cards
     actCardsScroll.innerHTML = '';
     
@@ -8635,19 +8955,19 @@ function createActCard(act, totalActs) {
             <div class="act-card-edit-primary">
                 <button class="act-card-edit-btn save">Save</button>
                 <button class="act-card-edit-btn cancel">Cancel</button>
-            </div>
+                    </div>
             <div class="act-card-edit-secondary">
                 <!-- Future delete button will go here -->
-            </div>
-        </div>
+                </div>
+                </div>
         <div class="act-card-tooltip">
             <strong>${act.name}</strong><br>
             ${act.description}
             ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
             <br><br><strong>Plot Points:</strong> ${plotPoints}
-        </div>
-    `;
-    
+                </div>
+            `;
+            
     // Add click handler for the edit icon only
     const editIcon = card.querySelector('.act-card-edit-icon');
     editIcon.addEventListener('click', (e) => {
