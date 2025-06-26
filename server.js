@@ -804,16 +804,13 @@ class HierarchicalContext {
 
   // Generate a hierarchical prompt from the context chain
   async generateHierarchicalPrompt(targetLevel = 5, customInstructions = '') {
-    console.log(`🔍 HIERARCHICAL DEBUG: generateHierarchicalPrompt called with targetLevel=${targetLevel}`);
-    console.log(`🔍 HIERARCHICAL DEBUG: Available contexts:`, Object.keys(this.contexts));
+
     
     let prompt = '';
     
     // Level 1: Story Foundation with Full Creative Context
     if (this.contexts.story) {
-      console.log(`🔍 HIERARCHICAL DEBUG: Adding story context`);
-    } else {
-      console.log(`⚠️  HIERARCHICAL DEBUG: No story context available!`);
+      prompt += this.contexts.story + '\n\n';
     }
     if (this.contexts.story) {
       const story = this.contexts.story.data;
@@ -836,10 +833,10 @@ class HierarchicalContext {
           return char;
         }).join(', ');
         prompt += `- Main Characters: ${characterDetails}\n`;
-        console.log(`🔧 DEBUG: Enhanced character display with descriptions: ${characterDetails}`);
+
       } else {
         prompt += `- Main Characters: ${story.characters}\n`;
-        console.log(`🔧 DEBUG: Story context built WITHOUT enhanced character descriptions`);
+
       }
       
       // Add tone and genre
@@ -855,7 +852,7 @@ class HierarchicalContext {
         prompt += `- Target Length: ${story.totalScenes} scenes\n`;
       }
       
-      console.log(`🔧 DEBUG: Story context built with enhanced details`);
+      
       
       // Add detailed influences section if available
       if (story.influences && Object.keys(story.influences).length > 0) {
@@ -937,8 +934,7 @@ class HierarchicalContext {
       prompt += `SPECIFIC INSTRUCTIONS:\n${customInstructions}\n\n`;
     }
 
-    console.log(`🔍 HIERARCHICAL DEBUG: Generated prompt length: ${prompt.length} characters`);
-    console.log(`🔍 HIERARCHICAL DEBUG: Prompt preview (first 200 chars):`, prompt.substring(0, 200));
+    
     
     return prompt;
   }
@@ -1105,20 +1101,12 @@ Return ONLY valid JSON in this exact format:
     // CRITICAL: If totalMovieScenes is provided (from frontend), ALWAYS use it, never fall back
     const calculatedTotalScenes = totalMovieScenes !== null ? totalMovieScenes : storyTotalScenes;
     
-    console.log(`🔥 DEBUG SCENE CALCULATION:
-  📊 totalMovieScenes (from frontend): ${totalMovieScenes}
-  📊 projectContext.storyInput.totalScenes (cached): ${projectContext?.storyInput?.totalScenes}
-  📊 calculatedTotalScenes (final): ${calculatedTotalScenes}
-  📊 totalPlotPoints: ${totalPlotPoints}`);
+
     
     const scenesPerPlotPointFloat = calculatedTotalScenes / totalPlotPoints;
     const scenesPerPlotPoint = Math.round(scenesPerPlotPointFloat); // Use normal rounding instead of always rounding up
     
-    console.log(`🔧 DYNAMIC SCENE DISTRIBUTION CALCULATION:
-  📊 Total movie scenes: ${calculatedTotalScenes} (from ${totalMovieScenes ? 'parameter' : 'story input'})
-  📊 Total plot points: ${totalPlotPoints} (across all acts)
-  📊 Scenes per plot point: ${scenesPerPlotPointFloat.toFixed(1)} → ${scenesPerPlotPoint}
-  🎯 Each plot point gets: ${scenesPerPlotPoint} scenes`);
+
     
     const sceneDistribution = plotPoints.map((plotPoint, index) => {
       return {
@@ -4626,10 +4614,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const desiredPlotPointCount = desiredSceneCount || 4; // User's selected plot point count
     
     // Debug: Check if req.user exists
-    console.log('🔍 DEBUG: req.user in plot points endpoint:', req.user ? 'EXISTS' : 'UNDEFINED');
-    if (req.user) {
-      console.log('🔍 DEBUG: req.user.username:', req.user.username);
-    }
+
     
     // Load existing project data from database (unified v2.0 format)
     const plotUsername = req.user.username; // Get from authenticated user
@@ -4664,14 +4649,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
       console.log('📁 Using database template data for plot points generation');
     }
     
-    // 🔍 Debug: Show what structure data we're using
-    console.log(`🔍 DEBUG: Structure data for ${actKey}:`);
-    if (structure && structure[actKey]) {
-      console.log(`  📝 Act name: "${structure[actKey].name}"`);
-      console.log(`  📝 Act description: "${structure[actKey].description?.substring(0, 100)}..."`);
-    } else {
-      console.log(`  ⚠️  No structure data found for ${actKey}`);
-    }
+
     
     if (!structure[actKey]) {
       return res.status(400).json({ error: 'Invalid act key' });
@@ -6012,17 +5990,13 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     const plotPoint = plotPointsArray[plotPointIndexNum];
     
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
-    console.log(`🔥 PREVIEW ENDPOINT DEBUG:
-  📊 totalScenes from frontend: ${totalScenes}
-  📊 projectContext.storyInput.totalScenes: ${projectContext?.storyInput?.totalScenes}
-  📊 plotPoint: ${plotPoint}`);
+
     
     const tempContext = new HierarchicalContext();
     const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey, totalScenes, projectContext);
     const sceneCount = sceneDistribution[0].sceneCount;
     
-    console.log(`🔥 PREVIEW CALCULATION RESULT:
-  📊 sceneCount for this plot point: ${sceneCount}`);
+
     
     // Initialize and load hierarchical context
     const context = new HierarchicalContext();
@@ -6385,66 +6359,4 @@ if (process.env.VERCEL) {
   startServer().catch(console.error);
 }
 
-// Debug endpoint to check scene calculations
-app.post('/api/debug/scene-calculation', authenticateApiKey, async (req, res) => {
-  try {
-    const { totalScenes = null, projectPath } = req.body;
-    
-    // Load project data from database
-    const username = req.user.username;
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
-    
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found in database' });
-    }
-    
-    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-    
-    // Count plot points
-    let totalPlotPoints = 0;
-    const plotPointBreakdown = {};
-    if (projectContext.plotPoints) {
-      Object.entries(projectContext.plotPoints).forEach(([actKey, actPlotPoints]) => {
-        if (actPlotPoints.plotPoints) {
-          plotPointBreakdown[actKey] = actPlotPoints.plotPoints.length;
-          totalPlotPoints += actPlotPoints.plotPoints.length;
-        } else if (Array.isArray(actPlotPoints)) {
-          plotPointBreakdown[actKey] = actPlotPoints.length;
-          totalPlotPoints += actPlotPoints.length;
-        }
-      });
-    }
-    
-    // Test scene calculation
-    const context = new HierarchicalContext();
-    const testPlotPoint = ["Test plot point"];
-    const sceneDistribution = context.calculateSceneDistribution(testPlotPoint, null, "setup", totalScenes, projectContext);
-    
-    res.json({
-      debug: {
-        totalScenesFromFrontend: totalScenes,
-        projectContextTotalScenes: projectContext?.storyInput?.totalScenes,
-        totalPlotPoints: totalPlotPoints,
-        plotPointBreakdown: plotPointBreakdown,
-        calculationResult: {
-          scenesPerPlotPoint: sceneDistribution[0].sceneCount,
-          calculation: `${totalScenes || projectContext?.storyInput?.totalScenes || 70} ÷ ${totalPlotPoints} = ${((totalScenes || projectContext?.storyInput?.totalScenes || 70) / totalPlotPoints).toFixed(2)}`
-        }
-      }
-    });
-    
-  } catch (error) {
-    console.error('Debug endpoint error:', error);
-    res.status(500).json({ error: 'Debug failed', details: error.message });
-  }
-});
+

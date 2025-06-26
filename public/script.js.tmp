@@ -613,7 +613,7 @@ function addInfluence(type) {
     
     if (value && !appState.influences[type + 's'].includes(value)) {
         appState.influences[type + 's'].push(value);
-    
+        console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${value}" to appState.influences`);
         console.log('  - Current influences:', appState.influences);
         
         // 🔧 SYNC FIX: Keep storyInput.influences synchronized
@@ -913,7 +913,8 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                             fromLibrary: true
                         };
                         appState.projectCharacters.push(character);
-                        
+                        console.log(`🔍 CHARACTER DEBUG: Added new character:`, character);
+                        console.log(`🔍 CHARACTER DEBUG: Current projectCharacters:`, appState.projectCharacters);
                         
                         // Update character tags display (similar to influences)
                         updateCharacterTags();
@@ -925,7 +926,7 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                         if (autoSaveManager) {
                             autoSaveManager.markDirty();
                         }
-                
+                        console.log(`🔍 CHARACTER DEBUG: Marked as dirty for auto-save`);
                     }
                 } else if (type === 'storyconcept') {
                     // For story concepts, create concept display AND initialize new project
@@ -5938,8 +5939,8 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         // Initialize compact screenplay calculator
         setTimeout(() => {
             initializeCompactCalculator();
-        
-            
+            // 🔥 DEBUG: Force immediate calculation to see current state
+            console.log('🔥 FORCING CALCULATOR UPDATE');
             updateCompactEstimates();
         }, 100);
     } else if (stepNumber === 6 && appState.generatedScenes) {
