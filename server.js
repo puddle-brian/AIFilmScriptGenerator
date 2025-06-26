@@ -870,56 +870,45 @@ class HierarchicalContext {
       prompt += '\n';
     }
 
-    // Level 2: Streamlined Structure Context - Focus on Current Act Only
+    // Level 2: Streamlined Structure Context - Just show template name
     if (this.contexts.structure && targetLevel >= 2) {
       const structure = this.contexts.structure.data;
       prompt += `STRUCTURE: ${structure.template.name}\n\n`;
-      
-      // Always show current act if available - this is what we're working on
-      if (this.contexts.act) {
-        const currentAct = this.contexts.act.data;
-        prompt += `CURRENT STORY ACT:\n`;
-        prompt += `${currentAct.name}\n`;
-        prompt += `Purpose: ${currentAct.description}\n\n`;
-      }
     }
 
-    // Level 3: Current Act Context (only show if not already shown in Level 2)
-    if (this.contexts.act && targetLevel >= 3 && !this.contexts.structure) {
-      const act = this.contexts.act.data;
-      prompt += `CURRENT STORY ACT:\n`;
-      prompt += `- Act: ${act.name} (${act.position}/${act.totalActs})\n`;
-      prompt += `- Purpose: ${act.description}\n`;
-      prompt += `- Character Development: ${act.characterDevelopment || 'Not specified'}\n\n`;
-    }
+
 
     // Level 4: Streamlined Plot Points Context
     if (this.contexts.plotPoints && targetLevel >= 4) {
       const plotPoints = this.contexts.plotPoints.data;
       
-              // Show ALL previous plot points for story coherence (essential for causality)
-        if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
-          prompt += `STORY PROGRESSION (Previous Plot Points):\n`;
-          
-          let currentActKey = '';
-          plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
-            // Group by act for better readability
-            if (prevPlotPoint.actKey !== currentActKey) {
-              currentActKey = prevPlotPoint.actKey;
-              prompt += `\n${prevPlotPoint.actName}:\n`;
-            }
-            
-            const marker = prevPlotPoint.isLastInAct ? ' 🔗' : '';
-            prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
-          });
-          
-          // Current act focus (only show if not already shown in structure context)
-          if (this.contexts.act && !this.contexts.structure) {
-            const currentAct = this.contexts.act.data;
-            prompt += `\n**FOCUS FOR THIS ACT (${currentAct.name}):**\n`;
-            prompt += `${currentAct.description}\n\n`;
+      // Show ALL previous plot points for story coherence (essential for causality)
+      if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
+        prompt += `STORY PROGRESSION (Previous Plot Points):\n`;
+        
+        let currentActKey = '';
+        plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
+          // Group by act for better readability
+          if (prevPlotPoint.actKey !== currentActKey) {
+            currentActKey = prevPlotPoint.actKey;
+            prompt += `\n${prevPlotPoint.actName}:\n`;
           }
-        }
+          
+          // 🔗 ONLY appears on the very last plot point in the entire sequence (for causal connection)
+          const isVeryLastPlotPoint = index === plotPoints.previousPlotPoints.length - 1;
+          const marker = isVeryLastPlotPoint ? ' 🔗' : '';
+          prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
+        });
+        prompt += '\n';
+      }
+    }
+    
+    // Current act focus - ALWAYS show this right before the task (optimal position)
+    if (this.contexts.act && targetLevel >= 3) {
+      const currentAct = this.contexts.act.data;
+      prompt += `CURRENT STORY ACT:\n`;
+      prompt += `${currentAct.name}\n`;
+      prompt += `Purpose: ${currentAct.description}\n\n`;
     }
 
     // Level 5: Scene Context
@@ -2667,17 +2656,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
     
     // Generate hierarchical prompt for plot points generation (Level 4) with streamlined instructions
-    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
-TASK: Generate ${desiredPlotPointCount} plot points for this story act.
-
-KEY REQUIREMENTS:
-• Each plot point = a concrete ACTION or EVENT (not feelings)
-• Connect causally: if there's a 🔗 connection above, start from that
-• Show character through choices under pressure
-• Create visual, filmable moments with specific locations
-• Use "BUT/THEREFORE" logic for dramatic flow
-
-AVOID: Internal thoughts, generic locations, passive descriptions`);
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4);
     
     // Build the actual final prompt that gets sent to the AI
     const finalPrompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, desiredPlotPointCount);
@@ -4696,17 +4675,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     
     // First, temporarily build plot points context to load previous acts' plot points
     await context.buildPlotPointsContext([], 0, projectPath, req.user.username);
-    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4, `
-TASK: Generate ${desiredPlotPointCount} plot points for this story act.
-
-KEY REQUIREMENTS:
-• Each plot point = a concrete ACTION or EVENT (not feelings)
-• Connect causally: if there's a 🔗 connection above, start from that
-• Show character through choices under pressure
-• Create visual, filmable moments with specific locations
-• Use "BUT/THEREFORE" logic for dramatic flow
-
-AVOID: Internal thoughts, generic locations, passive descriptions`);
+    const hierarchicalPrompt = await context.generateHierarchicalPrompt(4);
     
     // Use our new prompt builder system
     const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, finalSceneCount);
