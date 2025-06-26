@@ -4093,6 +4093,64 @@ function hasPlotPointsForElement(structureKey) {
 
 // This function has been replaced with proper hierarchical implementation
 
+// Debug scene calculation
+async function debugSceneCalculation() {
+    if (!appState.projectPath) {
+        showToast('No project loaded for debugging.', 'error');
+        return;
+    }
+    
+    // Get current totalScenes value from calculator widget
+    const totalScenesInput = document.getElementById('totalScenes');
+    const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
+    
+    try {
+        showLoading('Debugging scene calculation...');
+        
+        const response = await fetch('/api/debug/scene-calculation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
+            body: JSON.stringify({
+                totalScenes: currentTotalScenes,
+                projectPath: appState.projectPath
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Show debug info in a popup
+            alert(`🐛 DEBUG SCENE CALCULATION:
+
+📊 Frontend Input: ${data.debug.totalScenesFromFrontend} scenes
+📊 Cached Project: ${data.debug.projectContextTotalScenes} scenes  
+📊 Total Plot Points: ${data.debug.totalPlotPoints}
+
+📋 Plot Point Breakdown:
+${Object.entries(data.debug.plotPointBreakdown).map(([act, count]) => `  • ${act}: ${count} plot points`).join('\n')}
+
+🎯 Calculation Result:
+${data.debug.calculationResult.calculation}
+= ${data.debug.calculationResult.scenesPerPlotPoint} scenes per plot point
+
+${data.debug.totalScenesFromFrontend !== data.debug.projectContextTotalScenes ? 
+  '⚠️ MISMATCH: Frontend input differs from cached project value!' : 
+  '✅ Values are in sync'}`);
+        } else {
+            throw new Error(data.error || 'Debug failed');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Debug error:', error);
+        showToast('Debug failed: ' + error.message, 'error');
+        hideLoading();
+    }
+}
+
 // Generate scenes for all acts that have plot points
 async function generateAllScenes() {
     console.log('generateAllScenes() called!');

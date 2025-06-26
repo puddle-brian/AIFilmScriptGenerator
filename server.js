@@ -6383,3 +6383,67 @@ if (process.env.VERCEL) {
   // Start traditional server for local development
   startServer().catch(console.error);
 }
+
+// Debug endpoint to check scene calculations
+app.post('/api/debug/scene-calculation', authenticateApiKey, async (req, res) => {
+  try {
+    const { totalScenes = null, projectPath } = req.body;
+    
+    // Load project data from database
+    const username = req.user.username;
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Count plot points
+    let totalPlotPoints = 0;
+    const plotPointBreakdown = {};
+    if (projectContext.plotPoints) {
+      Object.entries(projectContext.plotPoints).forEach(([actKey, actPlotPoints]) => {
+        if (actPlotPoints.plotPoints) {
+          plotPointBreakdown[actKey] = actPlotPoints.plotPoints.length;
+          totalPlotPoints += actPlotPoints.plotPoints.length;
+        } else if (Array.isArray(actPlotPoints)) {
+          plotPointBreakdown[actKey] = actPlotPoints.length;
+          totalPlotPoints += actPlotPoints.length;
+        }
+      });
+    }
+    
+    // Test scene calculation
+    const context = new HierarchicalContext();
+    const testPlotPoint = ["Test plot point"];
+    const sceneDistribution = context.calculateSceneDistribution(testPlotPoint, null, "setup", totalScenes, projectContext);
+    
+    res.json({
+      debug: {
+        totalScenesFromFrontend: totalScenes,
+        projectContextTotalScenes: projectContext?.storyInput?.totalScenes,
+        totalPlotPoints: totalPlotPoints,
+        plotPointBreakdown: plotPointBreakdown,
+        calculationResult: {
+          scenesPerPlotPoint: sceneDistribution[0].sceneCount,
+          calculation: `${totalScenes || projectContext?.storyInput?.totalScenes || 70} ÷ ${totalPlotPoints} = ${((totalScenes || projectContext?.storyInput?.totalScenes || 70) / totalPlotPoints).toFixed(2)}`
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('Debug endpoint error:', error);
+    res.status(500).json({ error: 'Debug failed', details: error.message });
+  }
+});
