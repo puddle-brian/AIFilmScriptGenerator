@@ -2644,6 +2644,48 @@ async function generateStructure() {
     }
 }
 
+// Get acts in correct chronological order based on template (matches server-side logic)
+function getChronologicalActOrder(templateData, structureKeys) {
+    // Define the correct chronological order for common templates (same as server)
+    const templateOrders = {
+        'three-act': ['setup', 'confrontation_first_half', 'midpoint', 'confrontation_second_half', 'crisis', 'climax', 'resolution'],
+        'save-the-cat': ['opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'],
+        'hero-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
+        'booker-quest': ['preparation', 'call_to_quest', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
+        'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_nightmare'],
+        'booker-rags-to-riches': ['initial_wretchedness', 'call_to_adventure', 'getting_out', 'initial_success', 'getting_closer', 'final_crisis', 'final_triumph'],
+        'booker-voyage-return': ['anticipation_stage', 'journey_begins', 'first_challenges', 'adaptation', 'new_world_experience', 'longing_for_home', 'return_journey', 'readjustment'],
+        'booker-comedy': ['confusion_stage', 'dressing_up_stage', 'complications_stage', 'final_nightmare', 'resolution'],
+        'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction_stage'],
+        'booker-rebirth': ['initial_imprisonment', 'call_to_change', 'resistance', 'crisis', 'transformation']
+    };
+    
+    // Get template name from templateData
+    const templateName = templateData?.name?.toLowerCase().replace(/[^a-z-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown';
+    
+    // Try to match template name to known orders
+    let chronologicalOrder = null;
+    for (const [key, order] of Object.entries(templateOrders)) {
+        if (templateName.includes(key) || key.includes(templateName)) {
+            chronologicalOrder = order;
+            break;
+        }
+    }
+    
+    // If we have a known order, filter it to only include acts that exist in the structure
+    if (chronologicalOrder) {
+        const existingActs = chronologicalOrder.filter(actKey => structureKeys.includes(actKey));
+        if (existingActs.length > 0) {
+            console.log(`🔧 Frontend: Using chronological order for template "${templateName}": ${existingActs.join(' → ')}`);
+            return existingActs;
+        }
+    }
+    
+    // Fallback: use provided order but warn about potential ordering issues
+    console.log(`⚠️  Frontend: Using fallback order for template "${templateName}": ${structureKeys.join(' → ')}`);
+    return structureKeys;
+}
+
 // Display generated structure
 function displayStructure(structure, prompt = null, systemMessage = null) {
     const container = document.getElementById('structureContent');
@@ -2716,9 +2758,13 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             container.appendChild(promptSection);
         }
         
-        // Create editable content blocks for each act
-        const totalActs = Object.keys(structure).length;
-        Object.entries(structure).forEach(([key, element], index) => {
+        // Create editable content blocks for each act in chronological order
+        const structureKeys = Object.keys(structure);
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        const totalActs = chronologicalKeys.length;
+        
+        chronologicalKeys.forEach((key, index) => {
+            const element = structure[key];
             if (typeof element === 'object' && element.name) {
                 const actContent = JSON.stringify(element);
                 const actProgress = `${index + 1}/${totalActs}`;
@@ -2983,8 +3029,12 @@ async function displayPlotPointsGeneration() {
     // First, try to load existing plot points from the project
     await loadExistingPlotPoints();
     
-    // Display each story act with plot points generation
-    Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
+    // Display each story act with plot points generation in chronological order
+    const structureKeys = Object.keys(appState.generatedStructure);
+    const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+    
+    chronologicalKeys.forEach((structureKey) => {
+        const storyAct = appState.generatedStructure[structureKey];
         // 🔧 CRITICAL FIX: Get plot points from generated structure first (preserves template values)
         let recommendedPlotPoints = 4; // Default fallback
         
@@ -3249,8 +3299,9 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     
     // Get act progress notation (X/Y format)
     const structureKeys = Object.keys(appState.generatedStructure || {});
-    const totalActs = structureKeys.length;
-    const currentActIndex = structureKeys.indexOf(structureKey);
+    const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+    const totalActs = chronologicalKeys.length;
+    const currentActIndex = chronologicalKeys.indexOf(structureKey);
     const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
     const titleWithProgress = actProgress ? `${actProgress} ${actName} - Plot Points` : `Plot Points - ${actName}`;
     
@@ -3901,7 +3952,12 @@ function displayScenes(scenes) {
     if (appState.generatedStructure) {
         console.log('Displaying scenes with structure:', appState.generatedStructure);
         
-        Object.entries(appState.generatedStructure).forEach(([structureKey, storyAct]) => {
+        // Display scenes in chronological order
+        const structureKeys = Object.keys(appState.generatedStructure);
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        
+        chronologicalKeys.forEach((structureKey) => {
+            const storyAct = appState.generatedStructure[structureKey];
             const sceneGroup = scenes ? scenes[structureKey] : null;
             const plotPoints = appState.plotPoints ? appState.plotPoints[structureKey] : null;
             const hasScenes = sceneGroup && Array.isArray(sceneGroup) && sceneGroup.length > 0;
@@ -3915,9 +3971,8 @@ function displayScenes(scenes) {
             groupElement.id = `scene-group-${structureKey}`;
             
             // Get act progress notation (X/Y format) - same as plot points and acts
-            const structureKeys = Object.keys(appState.generatedStructure || {});
-            const totalActs = structureKeys.length;
-            const currentActIndex = structureKeys.indexOf(structureKey);
+            const totalActs = chronologicalKeys.length;
+            const currentActIndex = chronologicalKeys.indexOf(structureKey);
             const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
             const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
             const titleWithProgress = actProgress ? `${actProgress} ${actName}` : actName;
