@@ -1844,6 +1844,17 @@ async function initializeApp() {
             
             Object.assign(appState, parsed);
             
+            // 🔧 DEBUG: Show what was loaded from localStorage
+            console.log('💾 Loaded from localStorage:', {
+                totalPlotPoints: appState.totalPlotPoints,
+                currentActPlotPoints: appState.currentActPlotPoints,
+                manuallySetPlotPoints: appState.manuallySetPlotPoints
+            });
+            
+            // Initialize plot points state tracking if not present
+            if (!appState.manuallySetPlotPoints) appState.manuallySetPlotPoints = {};
+            if (!appState.currentActPlotPoints) appState.currentActPlotPoints = {};
+            
             // Update character, influence, and story concept displays after restoring state
             updateCharacterTags();
             updateInfluenceTags('director');
@@ -1939,6 +1950,10 @@ async function initializeApp() {
         } catch (e) {
             console.error('Error loading saved state:', e);
         }
+    } else {
+        // Initialize plot points state tracking for new sessions
+        appState.manuallySetPlotPoints = {};
+        appState.currentActPlotPoints = {};
     }
     
     // Final progress meter update after everything is initialized
@@ -2278,6 +2293,11 @@ function selectTemplate(templateId) {
     document.querySelector(`[data-template-id="${templateId}"]`).classList.add('selected');
     
     appState.selectedTemplate = templateId;
+    
+    // Reset plot points to use template default
+    appState.totalPlotPoints = null;
+    appState.manuallySetPlotPoints = {};
+    appState.currentActPlotPoints = {};
     
     // Find and display the selected template immediately
     let selectedTemplateData = null;
@@ -3010,12 +3030,281 @@ function updateTotalPlotPoints(newTotal) {
         appState.totalPlotPoints = totalValue;
         console.log(`📊 Updated total plot points to: ${totalValue}`);
         
-        // Regenerate the plot points interface with new distributions
-        displayPlotPointsGeneration();
+        // Smart redistribution: preserve manual values, scale others proportionally
+        redistributePlotPointsIntelligently(totalValue);
         
         // Save to localStorage
         saveToLocalStorage();
     }
+}
+
+// Smart redistribution that preserves user's manual choices
+function redistributePlotPointsIntelligently(newTotal) {
+    console.log(`📊 === REDISTRIBUTION START === Total: ${newTotal}`);
+    
+    if (!appState.generatedStructure) {
+        console.log('📊 No structure available for redistribution');
+        return;
+    }
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    const manualPlotPoints = appState.manuallySetPlotPoints || {};
+    
+    console.log(`📊 Structure keys:`, structureKeys);
+    console.log(`📊 Manual plot points:`, manualPlotPoints);
+    
+    // Get all dropdowns first
+    const allDropdowns = document.querySelectorAll('.plot-points-count-select');
+    console.log(`📊 Found ${allDropdowns.length} dropdowns for ${structureKeys.length} structure keys`);
+    
+    if (allDropdowns.length === 0) {
+        console.log('📊 No dropdowns found, interface may not be ready');
+        return;
+    }
+    
+    // Debug: Log current dropdown values before changes
+    allDropdowns.forEach(dropdown => {
+        console.log(`📊 Dropdown ${dropdown.id}: current value = ${dropdown.value}`);
+    });
+    
+    // Calculate current manual total
+    let manualTotal = 0;
+    let manualKeys = [];
+    let automaticKeys = [];
+    
+    structureKeys.forEach(key => {
+        if (manualPlotPoints[key]) {
+            const dropdown = document.getElementById(`plotPointsCount-${key}`);
+            if (dropdown) {
+                manualTotal += parseInt(dropdown.value);
+                manualKeys.push(key);
+            }
+        } else {
+            automaticKeys.push(key);
+        }
+    });
+    
+    console.log(`📊 Redistributing: Total=${newTotal}, Manual=${manualTotal} (${manualKeys.length} acts), Automatic=${automaticKeys.length} acts`);
+    
+    // Handle edge cases without regenerating interface
+    if (automaticKeys.length === 0) {
+        console.log('📊 All acts are manually set, no redistribution possible');
+        return;
+    }
+    
+    // Calculate remaining points for automatic distribution
+    let remainingPoints = newTotal - manualTotal;
+    
+    // If manual values exceed new total, proportionally reduce automatic acts
+    if (remainingPoints <= 0) {
+        console.log('⚠️ Manual values exceed/equal new total, setting automatic acts to minimum');
+        automaticKeys.forEach(key => {
+            const dropdown = document.getElementById(`plotPointsCount-${key}`);
+            if (dropdown) {
+                dropdown.value = 1; // Minimum value
+                console.log(`📊 Set ${key} to minimum: 1 plot point`);
+            }
+        });
+        return;
+    }
+    
+    // Calculate proportional weights based on CURRENT dropdown values
+    let totalAutomaticWeight = 0;
+    const automaticWeights = {};
+    
+    // First pass: get current values for all automatic acts
+    automaticKeys.forEach(key => {
+        const dropdown = document.getElementById(`plotPointsCount-${key}`);
+        const currentValue = dropdown ? parseInt(dropdown.value) : 1;
+        automaticWeights[key] = currentValue;
+        totalAutomaticWeight += currentValue;
+    });
+    
+    console.log(`📊 Current automatic weights:`, automaticWeights, `Total: ${totalAutomaticWeight}`);
+    
+    // Redistribute remaining points proportionally among automatic acts
+    automaticKeys.forEach(key => {
+        const weight = automaticWeights[key];
+        const proportionalShare = totalAutomaticWeight > 0 ? (weight / totalAutomaticWeight) : (1 / automaticKeys.length);
+        let newValue = Math.round(remainingPoints * proportionalShare);
+        newValue = Math.max(1, newValue); // Minimum 1 plot point
+        
+        const dropdown = document.getElementById(`plotPointsCount-${key}`);
+        if (dropdown) {
+            // Ensure dropdown can handle the new value by adding options if needed
+            ensureDropdownHasOption(dropdown, newValue);
+            dropdown.value = newValue;
+            console.log(`📊 Auto-redistributed ${key}: ${newValue} plot points (weight: ${weight.toFixed(1)}%)`);
+        }
+    });
+    
+    // Handle rounding errors by adjusting the last automatic act
+    if (automaticKeys.length > 0) {
+        const actualTotal = structureKeys.reduce((sum, key) => {
+            const dropdown = document.getElementById(`plotPointsCount-${key}`);
+            const value = dropdown ? parseInt(dropdown.value) : 0;
+            return sum + (isNaN(value) ? 0 : value);
+        }, 0);
+        
+        const difference = newTotal - actualTotal;
+        if (difference !== 0 && !isNaN(difference)) {
+            const lastAutomaticKey = automaticKeys[automaticKeys.length - 1];
+            const lastDropdown = document.getElementById(`plotPointsCount-${lastAutomaticKey}`);
+            if (lastDropdown) {
+                const currentValue = parseInt(lastDropdown.value) || 0;
+                const newValue = Math.max(1, currentValue + difference);
+                
+                // Ensure dropdown can handle the new value by adding options if needed
+                ensureDropdownHasOption(lastDropdown, newValue);
+                lastDropdown.value = newValue;
+                console.log(`📊 Rounding adjustment for ${lastAutomaticKey}: ${newValue} plot points (difference: ${difference})`);
+            }
+        }
+    }
+    
+    // 🔧 CRITICAL FIX: Save updated values to appState for persistence
+    console.log('📊 === SAVING REDISTRIBUTED VALUES ===');
+    if (!appState.currentActPlotPoints) appState.currentActPlotPoints = {};
+    
+    allDropdowns.forEach(dropdown => {
+        const structureKey = dropdown.id.replace('plotPointsCount-', '');
+        const newValue = parseInt(dropdown.value);
+        if (!isNaN(newValue)) {
+            appState.currentActPlotPoints[structureKey] = newValue;
+            console.log(`📊 Saved redistributed value: ${structureKey} = ${newValue}`);
+        }
+    });
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Debug: Log dropdown values after changes
+    console.log('📊 === FINAL DROPDOWN VALUES ===');
+    allDropdowns.forEach(dropdown => {
+        console.log(`📊 After: ${dropdown.id} = ${dropdown.value}`);
+    });
+    
+    console.log('📊 Redistribution complete');
+}
+
+// Reset plot points to template defaults
+function resetPlotPointsToDefault() {
+    console.log('🔄 Resetting plot points to template defaults...');
+    
+    if (!appState.generatedStructure || !appState.templateData) {
+        console.log('⚠️ No structure or template data available for reset');
+        return;
+    }
+    
+    // Clear manual tracking state
+    appState.manuallySetPlotPoints = {};
+    appState.currentActPlotPoints = {};
+    
+    // Reset total to template default
+    const defaultTotal = appState.templateData.total_plot_points || 40;
+    appState.totalPlotPoints = defaultTotal;
+    
+    // Update total input field
+    const totalInput = document.getElementById('totalPlotPoints');
+    if (totalInput) {
+        totalInput.value = defaultTotal;
+    }
+    
+    // Reset each dropdown to its original template value
+    const structureKeys = Object.keys(appState.generatedStructure);
+    structureKeys.forEach(key => {
+        const storyAct = appState.generatedStructure[key];
+        const dropdown = document.getElementById(`plotPointsCount-${key}`);
+        
+        if (dropdown && storyAct.plotPoints) {
+            // Get original template value (preserved in generated structure)
+            const originalValue = storyAct.plotPoints;
+            
+            // Ensure dropdown has the option
+            ensureDropdownHasOption(dropdown, originalValue);
+            dropdown.value = originalValue;
+            
+            console.log(`🔄 Reset ${key} to original: ${originalValue} plot points`);
+        }
+    });
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    console.log(`🔄 Reset complete: Total=${defaultTotal}, Manual tracking cleared`);
+}
+
+// Helper function to ensure dropdown has an option for a specific value
+function ensureDropdownHasOption(dropdown, targetValue) {
+    // Check if option already exists
+    const existingOption = dropdown.querySelector(`option[value="${targetValue}"]`);
+    if (existingOption) {
+        return; // Option already exists
+    }
+    
+    // Find the highest existing option value
+    const options = Array.from(dropdown.options);
+    const maxExistingValue = Math.max(...options.map(opt => parseInt(opt.value) || 0));
+    
+    // Add missing options up to the target value
+    for (let i = maxExistingValue + 1; i <= targetValue; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.textContent = `${i} Plot Point${i > 1 ? 's' : ''}`;
+        dropdown.appendChild(option);
+    }
+}
+
+// Sync current dropdown values to appState for persistence
+function syncDropdownValuesToState() {
+    // Initialize if needed
+    if (!appState.currentActPlotPoints) appState.currentActPlotPoints = {};
+    
+    // Find all plot point dropdowns and sync their values
+    const allDropdowns = document.querySelectorAll('.plot-points-count-select');
+    allDropdowns.forEach(dropdown => {
+        const structureKey = dropdown.id.replace('plotPointsCount-', '');
+        const currentValue = parseInt(dropdown.value);
+        if (!isNaN(currentValue)) {
+            appState.currentActPlotPoints[structureKey] = currentValue;
+            console.log(`📊 Synced dropdown value for ${structureKey}: ${currentValue}`);
+        }
+    });
+    
+    // Save to localStorage
+    saveToLocalStorage();
+}
+
+// Update individual act plot points and recalculate total (bidirectional sync)
+function updateIndividualActPlotPoints(structureKey, newValue) {
+    const value = parseInt(newValue);
+    
+    // Initialize state tracking if needed
+    if (!appState.manuallySetPlotPoints) appState.manuallySetPlotPoints = {};
+    if (!appState.currentActPlotPoints) appState.currentActPlotPoints = {};
+    
+    // Track this as manually set
+    appState.manuallySetPlotPoints[structureKey] = true;
+    appState.currentActPlotPoints[structureKey] = value;
+    
+    // Calculate new total by summing all current dropdown values
+    const allDropdowns = document.querySelectorAll('.plot-points-count-select');
+    let newTotal = 0;
+    allDropdowns.forEach(dropdown => {
+        newTotal += parseInt(dropdown.value);
+    });
+    
+    // Update total input and appState
+    const totalInput = document.getElementById('totalPlotPoints');
+    if (totalInput) {
+        totalInput.value = newTotal;
+    }
+    appState.totalPlotPoints = newTotal;
+    
+    console.log(`📊 Individual act ${structureKey} changed to ${value}, new total: ${newTotal}`);
+    
+    // Save to localStorage
+    saveToLocalStorage();
 }
 
 // Display plot points generation interface
@@ -3044,6 +3333,13 @@ async function displayPlotPointsGeneration() {
                        style="width: 80px; padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 4px;"
                        onchange="updateTotalPlotPoints(this.value)">
                 <span style="color: #6b7280; font-size: 0.9em;">Default: ${defaultTotal}</span>
+                <button onclick="resetPlotPointsToDefault()" 
+                        style="padding: 6px 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; color: #374151; font-size: 0.85em; cursor: pointer; transition: background 0.2s;"
+                        onmouseover="this.style.background='#e5e7eb'" 
+                        onmouseout="this.style.background='#f3f4f6'"
+                        title="Reset all plot points to template defaults">
+                    🔄 Reset to Default
+                </button>
             </div>
             <p style="margin: 0; color: #6b7280; font-size: 0.85em;">
                 This total will be distributed across all acts based on their narrative importance. You can override individual act values after generation.
@@ -3058,17 +3354,25 @@ async function displayPlotPointsGeneration() {
     const structureKeys = Object.keys(appState.generatedStructure);
     const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
     
+    // 🔧 DEBUG: Show current state before processing
+    console.log(`📊 DEBUG: appState.currentActPlotPoints:`, appState.currentActPlotPoints);
+    
     chronologicalKeys.forEach((structureKey) => {
         const storyAct = appState.generatedStructure[structureKey];
-        // 🔧 CRITICAL FIX: Get plot points from generated structure first (preserves template values)
+        // 🔧 CRITICAL FIX: Priority order for plot point values
         let recommendedPlotPoints = 4; // Default fallback
         
-        // 1. First try to get plot points directly from the generated structure (preserved from template)
-        if (storyAct.plotPoints) {
-            recommendedPlotPoints = storyAct.plotPoints;
-            console.log(`📊 Using preserved plot points from generated structure: ${recommendedPlotPoints} for ${structureKey}`);
+        // 1. FIRST: Check if we have a current saved value in appState.currentActPlotPoints
+        if (appState.currentActPlotPoints && appState.currentActPlotPoints[structureKey]) {
+            recommendedPlotPoints = appState.currentActPlotPoints[structureKey];
+            console.log(`📊 ✅ Using saved current value: ${recommendedPlotPoints} for ${structureKey}`);
         }
-        // 2. Fallback to template distribution data
+        // 2. SECOND: Try to get plot points directly from the generated structure (preserved from template)
+        else if (storyAct.plotPoints) {
+            recommendedPlotPoints = storyAct.plotPoints;
+            console.log(`📊 ⚠️  Using preserved plot points from generated structure: ${recommendedPlotPoints} for ${structureKey}`);
+        }
+        // 3. THIRD: Fallback to template distribution data
         else {
             const templateDistribution = appState.templateData?.structure?.[structureKey]?.distribution;
             const totalPlotPoints = appState.totalPlotPoints || appState.templateData?.total_plot_points || 40;
@@ -3098,17 +3402,11 @@ async function displayPlotPointsGeneration() {
                     <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
                     <div class="element-actions">
                         <div class="plot-points-controls">
-                            <select class="plot-points-count-select" id="plotPointsCount-${structureKey}">
-                                ${createOption(1, '1 Plot Point')}
-                                ${createOption(2, '2 Plot Points')}
-                                ${createOption(3, '3 Plot Points')}
-                                ${createOption(4, '4 Plot Points')}
-                                ${createOption(5, '5 Plot Points')}
-                                ${createOption(6, '6 Plot Points')}
-                                ${createOption(7, '7 Plot Points')}
-                                ${createOption(8, '8 Plot Points')}
-                                ${createOption(9, '9 Plot Points')}
-                                ${createOption(10, '10 Plot Points')}
+                            <select class="plot-points-count-select" id="plotPointsCount-${structureKey}" 
+                                    onchange="updateIndividualActPlotPoints('${structureKey}', this.value)">
+                                ${Array.from({length: 25}, (_, i) => i + 1).map(value => 
+                                    createOption(value, `${value} Plot Point${value > 1 ? 's' : ''}`)
+                                ).join('')}
                             </select>
                             <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
                                 📋 Generate Plot Points
@@ -3132,6 +3430,9 @@ async function displayPlotPointsGeneration() {
     
     html += '</div>';
     container.innerHTML = html;
+    
+    // 🔧 CRITICAL FIX: Sync dropdown values to appState.currentActPlotPoints for persistence
+    syncDropdownValuesToState();
     
     // Display any existing plot points that were loaded
     if (appState.plotPoints) {
@@ -5794,7 +6095,10 @@ function startFreshProject() {
         customPrompt: null,
         originalPrompt: null,
         isEditMode: false,
-        plotPoints: {}
+        plotPoints: {},
+        totalPlotPoints: null,  // Reset to null so template default will be used
+        manuallySetPlotPoints: {},  // Reset manual tracking
+        currentActPlotPoints: {}    // Reset current values tracking
     });
     
     // Clear template UI selection state
@@ -5873,6 +6177,13 @@ function hideToast() {
 // Save to localStorage
 function saveToLocalStorage() {
     try {
+        // 🔧 DEBUG: Show what's being saved
+        console.log('💾 Saving to localStorage:', {
+            totalPlotPoints: appState.totalPlotPoints,
+            currentActPlotPoints: appState.currentActPlotPoints,
+            manuallySetPlotPoints: appState.manuallySetPlotPoints
+        });
+        
         localStorage.setItem('filmScriptGenerator', JSON.stringify(appState));
         
         // Update progress meters when state changes
