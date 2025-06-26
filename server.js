@@ -1100,9 +1100,15 @@ Return ONLY valid JSON in this exact format:
       });
     }
     
-    // Use provided totalMovieScenes or fall back to story input or default
+    // 🔥 FIX: Always prioritize the user's current input (totalMovieScenes) over cached values
     const storyTotalScenes = projectContext?.storyInput?.totalScenes || 70;
     const calculatedTotalScenes = totalMovieScenes || storyTotalScenes;
+    
+    console.log(`🔥 DEBUG SCENE CALCULATION:
+  📊 totalMovieScenes (from frontend): ${totalMovieScenes}
+  📊 projectContext.storyInput.totalScenes (cached): ${projectContext?.storyInput?.totalScenes}
+  📊 calculatedTotalScenes (final): ${calculatedTotalScenes}
+  📊 totalPlotPoints: ${totalPlotPoints}`);
     
     const scenesPerPlotPointFloat = calculatedTotalScenes / totalPlotPoints;
     const scenesPerPlotPoint = Math.ceil(scenesPerPlotPointFloat); // Round up to ensure adequate scenes
@@ -5150,6 +5156,12 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
     const context = new HierarchicalContext();
     const sceneDistribution = context.calculateSceneDistribution(plotPoints, null, actKey, totalScenes, projectContext);
+    
+    // 🔥 FIX: Update project context with the user's current totalScenes input to prevent drift
+    if (totalScenes && projectContext.storyInput) {
+      projectContext.storyInput.totalScenes = totalScenes;
+      console.log(`📝 Updated project context totalScenes from ${projectContext.storyInput.totalScenes} to ${totalScenes}`);
+    }
     
     console.log(`Generating all scenes for act: ${actKey}`);
     console.log(`Scene distribution:`, sceneDistribution.map((dist, i) => 
