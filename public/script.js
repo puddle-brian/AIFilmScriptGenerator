@@ -5937,6 +5937,9 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         // Initialize compact screenplay calculator
         setTimeout(() => {
             initializeCompactCalculator();
+            // 🔥 DEBUG: Force immediate calculation to see current state
+            console.log('🔥 FORCING CALCULATOR UPDATE');
+            updateCompactEstimates();
         }, 100);
     } else if (stepNumber === 6 && appState.generatedScenes) {
         // Step 6: Dialogue Generation
@@ -8481,10 +8484,20 @@ function initializeCompactCalculator() {
     const totalScenesInput = document.getElementById('totalScenes');
     const estimatesContainer = document.getElementById('screenplayEstimates');
     
-    if (!totalScenesInput || !estimatesContainer) return;
+    console.log('🔥 CALCULATOR INIT:', { 
+        totalScenesInput: !!totalScenesInput, 
+        estimatesContainer: !!estimatesContainer,
+        currentValue: totalScenesInput?.value 
+    });
+    
+    if (!totalScenesInput || !estimatesContainer) {
+        console.log('❌ Calculator elements not found');
+        return;
+    }
     
     // Set up input listener
     totalScenesInput.addEventListener('input', updateCompactEstimates);
+    console.log('✅ Calculator event listener added');
     
     // Update estimates when model changes
     const modelSelectors = ['modelSelect', 'modelSelectMain'];
@@ -8500,10 +8513,14 @@ function initializeCompactCalculator() {
 }
 
 function updateCompactEstimates() {
+    console.log('🔥 UPDATE ESTIMATES CALLED');
     const totalScenesInput = document.getElementById('totalScenes');
     const estimatesContainer = document.getElementById('screenplayEstimates');
     
-    if (!totalScenesInput || !estimatesContainer) return;
+    if (!totalScenesInput || !estimatesContainer) {
+        console.log('❌ Calculator elements not found in update');
+        return;
+    }
     
     const sceneCount = parseInt(totalScenesInput.value) || 70;
     
