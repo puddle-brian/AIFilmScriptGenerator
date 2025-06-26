@@ -3982,32 +3982,59 @@ app.post('/api/export', async (req, res) => {
     
     function generateContentFromV2Format(data) {
       let content = '';
+      let sceneNumber = 1;
       
-      // Process structure in order
-      if (data.generatedStructure && data.generatedScenes && data.generatedDialogues) {
-        const structureKeys = Object.keys(data.generatedStructure);
-        let sceneNumber = 1;
+      console.log('🎬 Processing v2.0 format:', {
+        hasStructure: !!data.generatedStructure,
+        hasScenes: !!data.generatedScenes,
+        hasDialogues: !!data.generatedDialogues,
+        dialogueKeys: Object.keys(data.generatedDialogues || {})
+      });
+      
+      // Use the same logic as frontend assembleScript() function
+      if (data.generatedScenes) {
+        let structureKeys = Object.keys(data.generatedScenes);
+        
+        // If we have template data, use its order (same as frontend)
+        if (data.templateData && data.templateData.structure) {
+          const templateKeys = Object.keys(data.templateData.structure);
+          structureKeys = templateKeys.filter(key => data.generatedScenes[key]);
+          console.log('📋 Using template structure order:', structureKeys);
+        }
         
         structureKeys.forEach(structureKey => {
-          const scenes = data.generatedScenes[structureKey];
-          const act = data.generatedStructure[structureKey];
+          const sceneGroup = data.generatedScenes[structureKey];
+          const act = data.generatedStructure ? data.generatedStructure[structureKey] : null;
           
           if (act) {
             content += `\n\n=== ${act.name.toUpperCase()} ===\n\n`;
           }
           
-          if (scenes && Array.isArray(scenes)) {
-            scenes.forEach((scene, index) => {
-              content += `\n${sceneNumber}. ${scene.location.toUpperCase()} - ${scene.time_of_day.toUpperCase()}\n\n`;
-              content += `${scene.description}\n\n`;
+          if (sceneGroup && Array.isArray(sceneGroup)) {
+            sceneGroup.forEach((scene, index) => {
+              // Use exact same sceneId format as frontend: structureKey-index
+              const sceneId = `${structureKey}-${index}`;
               
-              // Add dialogue if available
-              const dialogueKey = `${structureKey}_${index}`;
-              if (data.generatedDialogues[dialogueKey]) {
-                content += formatDialogueForScreenplay(data.generatedDialogues[dialogueKey]);
+              console.log(`🔍 Checking scene ${sceneId} for dialogue`);
+              
+              // Check if dialogue exists (same logic as frontend)
+              let dialogueFound = false;
+              let dialogueContent = null;
+              
+              if (data.generatedDialogues && data.generatedDialogues[sceneId]) {
+                dialogueContent = data.generatedDialogues[sceneId];
+                dialogueFound = true;
+                console.log(`✅ Found dialogue for ${sceneId}`);
               }
               
-              content += '\n\n';
+              if (dialogueFound) {
+                // Format the same way as frontend formatSceneForScreenplay
+                content += formatSceneForScreenplay(dialogueContent, sceneNumber);
+              } else {
+                // No dialogue - show placeholder (same as frontend)
+                content += formatPlaceholderScene(scene, sceneNumber);
+              }
+              
               sceneNumber++;
             });
           }
@@ -4015,6 +4042,32 @@ app.post('/api/export', async (req, res) => {
       }
       
       return content;
+    }
+    
+    function formatSceneForScreenplay(dialogueContent, sceneNumber) {
+      // Format dialogue professionally (similar to frontend)
+      return `\n\n${formatDialogueForScreenplay(dialogueContent)}\n\n`;
+    }
+    
+    function formatPlaceholderScene(scene, sceneNumber) {
+      // Create placeholder for scenes without dialogue (same as frontend)
+      let placeholder = `\n\n${sceneNumber}. `;
+      
+      if (scene.location && scene.time_of_day) {
+        placeholder += `${scene.location.toUpperCase()} - ${scene.time_of_day.toUpperCase()}\n\n`;
+      } else if (scene.location) {
+        placeholder += `${scene.location.toUpperCase()}\n\n`;
+      } else {
+        placeholder += `SCENE ${sceneNumber}\n\n`;
+      }
+      
+      if (scene.description) {
+        placeholder += `${scene.description}\n\n`;
+      }
+      
+      placeholder += `[DIALOGUE TO BE WRITTEN FOR: ${scene.title || 'Untitled Scene'}]\n\n`;
+      
+      return placeholder;
     }
     
     function generateTitlePage(data) {
