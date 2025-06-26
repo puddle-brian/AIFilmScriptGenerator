@@ -13,4 +13,6 @@ Write the scene in proper screenplay format with:
 - Dialogue
 - Parentheticals when necessary
 
-Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue. 
+Make the dialogue authentic, character-specific, and genre-appropriate. Include necessary action lines between dialogue.
+
+START IMMEDIATELY WITH THE SCENE HEADING. Do not include any introductory text, explanations, or commentary. Begin directly with "INT." or "EXT." followed by the scene content. 
