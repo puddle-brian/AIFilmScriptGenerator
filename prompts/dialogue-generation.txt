@@ -1,18 +1,3 @@
-// DIALOGUE GENERATION TEMPLATE
-// This template writes screenplay dialogue for scenes
-// When you generate dialogue for completed scenes, this exact text gets sent to the AI
-//
-// PLACEHOLDERS EXPLAINED:
-// {{HIERARCHICAL_CONTEXT}} = Story context (hierarchical or simple)
-// {{SCENE_CONTENT}} = The scene description/content that needs dialogue
-// {{ADDITIONAL_CONTEXT}} = Extra context provided by user
-//
-// HOW TO EDIT THIS TEMPLATE:
-// ✅ Change the dialogue style (more natural, more formal, etc.)
-// ✅ Add character voice requirements ("Character A speaks in short sentences")
-// ✅ Modify formatting preferences
-// ❌ Don't change anything in double curly braces
-
 {{HIERARCHICAL_CONTEXT}}
 
 Scene Details:
