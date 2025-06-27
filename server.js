@@ -186,6 +186,175 @@ async function connectToDatabase() {
 
 // Middleware
 app.use(cors());
+
+// ==================== STRIPE WEBHOOK ENDPOINTS (MUST BE BEFORE JSON MIDDLEWARE) ====================
+// These endpoints need raw body access, so they must be defined before express.json() middleware
+
+// Enhanced debug webhook endpoint to diagnose signature issues
+app.post('/api/stripe-webhook-debug', express.raw({type: '*/*'}), (req, res) => {
+  console.log('🐛 DEBUG WEBHOOK RECEIVED:');
+  console.log('   - Timestamp:', new Date().toISOString());
+  console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  console.log('   - Body type:', typeof req.body);
+  console.log('   - Raw body preview:', req.body ? req.body.toString().substring(0, 200) + '...' : 'no body');
+  
+  const sig = req.headers['stripe-signature'];
+  if (sig) {
+    console.log('   - Signature header:', sig);
+    
+    // Try to parse the signature header
+    const sigElements = sig.split(',');
+    console.log('   - Signature elements:', sigElements);
+    
+    // Try manual verification with detailed logging
+    try {
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
+      
+      const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      console.log('✅ DEBUG: Manual signature verification succeeded!');
+      console.log('   - Event type:', event.type);
+      console.log('   - Event ID:', event.id);
+      
+      res.json({ 
+        success: true, 
+        message: 'Debug webhook processed successfully',
+        eventType: event.type,
+        eventId: event.id
+      });
+    } catch (error) {
+      console.error('❌ DEBUG: Manual signature verification failed:');
+      console.error('   - Error:', error.message);
+      console.error('   - Error type:', error.constructor.name);
+      
+      res.status(400).json({ 
+        success: false, 
+        error: error.message,
+        errorType: error.constructor.name
+      });
+    }
+  } else {
+    console.error('❌ DEBUG: No signature header found');
+    res.status(400).json({ 
+      success: false, 
+      error: 'No stripe-signature header' 
+    });
+  }
+});
+
+// Stripe webhook handler for payment completion
+app.post('/api/stripe-webhook', express.raw({type: '*/*'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  
+  console.log('🎯 Webhook received!');
+  console.log('   - Signature header present:', !!sig);
+  console.log('   - Signature preview:', sig ? sig.substring(0, 50) + '...' : 'none');
+  console.log('   - Body exists:', !!req.body);
+  console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  console.log('   - Body type:', typeof req.body);
+  console.log('   - Body is Buffer:', Buffer.isBuffer(req.body));
+  console.log('   - Content-Type:', req.headers['content-type']);
+  console.log('   - User-Agent:', req.headers['user-agent']);
+  console.log('   - Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
+  console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
+  
+  try {
+    if (!paymentHandler) {
+      try {
+        // Lazy initialization fallback for serverless
+        paymentHandler = new PaymentHandler(dbClient);
+        console.log('✅ Payment system lazy-initialized for webhook');
+      } catch (error) {
+        console.error('❌ Failed to initialize payment system for webhook:', error);
+        return res.status(500).send('Payment system error');
+      }
+    }
+
+    if (!sig) {
+      console.error('❌ No stripe-signature header found');
+      return res.status(400).send('Missing stripe-signature header');
+    }
+
+    if (!req.body) {
+      console.error('❌ No body received');
+      return res.status(400).send('Missing request body');
+    }
+
+    // Enhanced signature verification with better error handling
+    let event;
+    try {
+      console.log('🔐 Attempting webhook signature verification...');
+      console.log('   - Payload type before verification:', typeof req.body);
+      console.log('   - Payload is Buffer before verification:', Buffer.isBuffer(req.body));
+      
+      // Ensure we have the right format for Stripe verification
+      const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
+      console.log('   - Using payload type:', typeof payload);
+      console.log('   - Using payload is Buffer:', Buffer.isBuffer(payload));
+      
+      event = paymentHandler.verifyWebhookSignature(payload, sig);
+      console.log('✅ Webhook signature verified successfully');
+    } catch (sigError) {
+      console.error('❌ Webhook signature verification failed:');
+      console.error('   - Error type:', sigError.constructor.name);
+      console.error('   - Error message:', sigError.message);
+      console.error('   - Signature header:', sig);
+      console.error('   - Body length:', req.body ? req.body.length : 'no body');
+      console.error('   - Body preview:', req.body ? req.body.toString().substring(0, 100) + '...' : 'no body');
+      
+      // Try manual verification for debugging
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        console.log('🔍 Attempting manual verification...');
+        
+        // Ensure we have the right format for manual verification too
+        const manualPayload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
+        console.log('   - Manual payload type:', typeof manualPayload);
+        console.log('   - Manual payload is Buffer:', Buffer.isBuffer(manualPayload));
+        
+        const manualEvent = stripe.webhooks.constructEvent(manualPayload, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('✅ Manual verification succeeded - there might be an issue with paymentHandler');
+        event = manualEvent;
+      } catch (manualError) {
+        console.error('❌ Manual verification also failed:', manualError.message);
+        return res.status(400).send(`Webhook signature verification failed: ${sigError.message}`);
+      }
+    }
+    
+    console.log('🎉 Received Stripe webhook event:', event.type);
+    console.log('   - Event ID:', event.id);
+    console.log('   - Created:', new Date(event.created * 1000).toISOString());
+
+    if (event.type === 'checkout.session.completed') {
+      console.log('💳 Processing checkout.session.completed...');
+      const session = event.data.object;
+      console.log('   - Session ID:', session.id);
+      console.log('   - Payment status:', session.payment_status);
+      console.log('   - Metadata:', session.metadata);
+      
+      if (session.payment_status === 'paid') {
+        await paymentHandler.handlePaymentSuccess(event);
+        console.log('✅ Payment processed successfully');
+      } else {
+        console.log('⚠️ Payment not completed, status:', session.payment_status);
+      }
+    } else {
+      console.log('ℹ️ Ignoring webhook event type:', event.type);
+    }
+
+    res.json({received: true});
+  } catch (error) {
+    console.error('❌ Webhook processing error:', error);
+    console.error('   - Error type:', error.constructor.name);
+    console.error('   - Error message:', error.message);
+    console.error('   - Stack trace:', error.stack);
+    res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+});
+
+// ==================== END STRIPE WEBHOOK ENDPOINTS ====================
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
@@ -5796,168 +5965,8 @@ app.get('/api/debug-env', authenticateApiKey, (req, res) => {
   res.json(envDebug);
 });
 
-// Enhanced debug webhook endpoint to diagnose signature issues
-app.post('/api/stripe-webhook-debug', express.raw({type: '*/*'}), (req, res) => {
-  console.log('🐛 DEBUG WEBHOOK RECEIVED:');
-  console.log('   - Timestamp:', new Date().toISOString());
-  console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('   - Body length:', req.body ? req.body.length : 'no body');
-  console.log('   - Body type:', typeof req.body);
-  console.log('   - Raw body preview:', req.body ? req.body.toString().substring(0, 200) + '...' : 'no body');
-  
-  const sig = req.headers['stripe-signature'];
-  if (sig) {
-    console.log('   - Signature header:', sig);
-    
-    // Try to parse the signature header
-    const sigElements = sig.split(',');
-    console.log('   - Signature elements:', sigElements);
-    
-    // Try manual verification with detailed logging
-    try {
-      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-      console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
-      
-      const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-      console.log('✅ DEBUG: Manual signature verification succeeded!');
-      console.log('   - Event type:', event.type);
-      console.log('   - Event ID:', event.id);
-      
-      res.json({ 
-        success: true, 
-        message: 'Debug webhook processed successfully',
-        eventType: event.type,
-        eventId: event.id
-      });
-    } catch (error) {
-      console.error('❌ DEBUG: Manual signature verification failed:');
-      console.error('   - Error:', error.message);
-      console.error('   - Error type:', error.constructor.name);
-      
-      res.status(400).json({ 
-        success: false, 
-        error: error.message,
-        errorType: error.constructor.name
-      });
-    }
-  } else {
-    console.error('❌ DEBUG: No signature header found');
-    res.status(400).json({ 
-      success: false, 
-      error: 'No stripe-signature header' 
-    });
-  }
-});
-
-// Stripe webhook handler for payment completion
-app.post('/api/stripe-webhook', express.raw({type: '*/*'}), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  
-  console.log('🎯 Webhook received!');
-  console.log('   - Signature header present:', !!sig);
-  console.log('   - Signature preview:', sig ? sig.substring(0, 50) + '...' : 'none');
-  console.log('   - Body exists:', !!req.body);
-  console.log('   - Body length:', req.body ? req.body.length : 'no body');
-  console.log('   - Body type:', typeof req.body);
-  console.log('   - Body is Buffer:', Buffer.isBuffer(req.body));
-  console.log('   - Content-Type:', req.headers['content-type']);
-  console.log('   - User-Agent:', req.headers['user-agent']);
-  console.log('   - Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
-  console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
-  
-  try {
-    if (!paymentHandler) {
-      try {
-        // Lazy initialization fallback for serverless
-        paymentHandler = new PaymentHandler(dbClient);
-        console.log('✅ Payment system lazy-initialized for webhook');
-      } catch (error) {
-        console.error('❌ Failed to initialize payment system for webhook:', error);
-        return res.status(500).send('Payment system error');
-      }
-    }
-
-    if (!sig) {
-      console.error('❌ No stripe-signature header found');
-      return res.status(400).send('Missing stripe-signature header');
-    }
-
-    if (!req.body) {
-      console.error('❌ No body received');
-      return res.status(400).send('Missing request body');
-    }
-
-    // Enhanced signature verification with better error handling
-    let event;
-    try {
-      console.log('🔐 Attempting webhook signature verification...');
-      console.log('   - Payload type before verification:', typeof req.body);
-      console.log('   - Payload is Buffer before verification:', Buffer.isBuffer(req.body));
-      
-      // Ensure we have the right format for Stripe verification
-      const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
-      console.log('   - Using payload type:', typeof payload);
-      console.log('   - Using payload is Buffer:', Buffer.isBuffer(payload));
-      
-      event = paymentHandler.verifyWebhookSignature(payload, sig);
-      console.log('✅ Webhook signature verified successfully');
-    } catch (sigError) {
-      console.error('❌ Webhook signature verification failed:');
-      console.error('   - Error type:', sigError.constructor.name);
-      console.error('   - Error message:', sigError.message);
-      console.error('   - Signature header:', sig);
-      console.error('   - Body length:', req.body ? req.body.length : 'no body');
-      console.error('   - Body preview:', req.body ? req.body.toString().substring(0, 100) + '...' : 'no body');
-      
-      // Try manual verification for debugging
-      try {
-        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-        console.log('🔍 Attempting manual verification...');
-        
-        // Ensure we have the right format for manual verification too
-        const manualPayload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
-        console.log('   - Manual payload type:', typeof manualPayload);
-        console.log('   - Manual payload is Buffer:', Buffer.isBuffer(manualPayload));
-        
-        const manualEvent = stripe.webhooks.constructEvent(manualPayload, sig, process.env.STRIPE_WEBHOOK_SECRET);
-        console.log('✅ Manual verification succeeded - there might be an issue with paymentHandler');
-        event = manualEvent;
-      } catch (manualError) {
-        console.error('❌ Manual verification also failed:', manualError.message);
-        return res.status(400).send(`Webhook signature verification failed: ${sigError.message}`);
-      }
-    }
-    
-    console.log('🎉 Received Stripe webhook event:', event.type);
-    console.log('   - Event ID:', event.id);
-    console.log('   - Created:', new Date(event.created * 1000).toISOString());
-
-    if (event.type === 'checkout.session.completed') {
-      console.log('💳 Processing checkout.session.completed...');
-      const session = event.data.object;
-      console.log('   - Session ID:', session.id);
-      console.log('   - Payment status:', session.payment_status);
-      console.log('   - Metadata:', session.metadata);
-      
-      if (session.payment_status === 'paid') {
-        await paymentHandler.handlePaymentSuccess(event);
-        console.log('✅ Payment processed successfully');
-      } else {
-        console.log('⚠️ Payment not completed, status:', session.payment_status);
-      }
-    } else {
-      console.log('ℹ️ Ignoring webhook event type:', event.type);
-    }
-
-    res.json({received: true});
-  } catch (error) {
-    console.error('❌ Webhook processing error:', error);
-    console.error('   - Error type:', error.constructor.name);
-    console.error('   - Error message:', error.message);
-    console.error('   - Stack trace:', error.stack);
-    res.status(400).send(`Webhook Error: ${error.message}`);
-  }
-});
+// Webhook endpoints moved to before JSON middleware (see lines ~190-350)
+// Duplicate webhook endpoints removed - now properly handled before JSON parsing
 
 // Get payment history for current user
 app.get('/api/my-payment-history', authenticateApiKey, async (req, res) => {
