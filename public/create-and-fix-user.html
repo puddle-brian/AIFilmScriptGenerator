@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Create & Fix User</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .debug-info {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>Create & Fix User Account</h1>
+    <p>This will create the user if they don't exist, then populate their starter pack and grant credits.</p>
+    
+    <button class="button" onclick="createAndFixUser('testuser54321')">Fix testuser54321</button>
+    <button class="button" onclick="createAndFixUser('CCKRAD')">Fix CCKRAD</button>
+    
+    <div id="results"></div>
+
+    <script>
+    async function createAndFixUser(username) {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = `<div class="debug-info">Starting fix for ${username}...</div>`;
+        
+        try {
+            // Step 1: Register the user (this will create them if they don't exist)
+            console.log(`Step 1: Creating user ${username}...`);
+            const registerResponse = await fetch('/api/v2/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username: username })
+            });
+            
+            const registerResult = await registerResponse.text();
+            console.log('Register response:', registerResponse.status, registerResult);
+            
+            resultsDiv.innerHTML += `
+                <div class="debug-info">
+                    <strong>Step 1 - User Creation:</strong>
+                    Status: ${registerResponse.status}
+                    Response: ${registerResult}
+                </div>
+            `;
+            
+            // Step 2: Populate starter pack
+            console.log(`Step 2: Populating starter pack for ${username}...`);
+            const starterResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const starterResult = await starterResponse.text();
+            console.log('Starter pack response:', starterResponse.status, starterResult);
+            
+            resultsDiv.innerHTML += `
+                <div class="debug-info">
+                    <strong>Step 2 - Starter Pack:</strong>
+                    Status: ${starterResponse.status}
+                    Response: ${starterResult}
+                </div>
+            `;
+            
+            // Step 3: Grant credits
+            console.log(`Step 3: Granting credits to ${username}...`);
+            const creditsResponse = await fetch('/api/admin/grant-credits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    username: username, 
+                    credits: 500 
+                })
+            });
+            
+            const creditsResult = await creditsResponse.text();
+            console.log('Credits response:', creditsResponse.status, creditsResult);
+            
+            resultsDiv.innerHTML += `
+                <div class="debug-info">
+                    <strong>Step 3 - Grant Credits:</strong>
+                    Status: ${creditsResponse.status}
+                    Response: ${creditsResult}
+                </div>
+            `;
+            
+            // Final summary
+            const allSuccessful = registerResponse.status < 400 && 
+                                starterResponse.status < 400 && 
+                                creditsResponse.status < 400;
+            
+            resultsDiv.innerHTML += `
+                <div class="debug-info ${allSuccessful ? 'success' : 'error'}">
+                    <strong>FINAL RESULT:</strong>
+                    ${allSuccessful ? '✅ SUCCESS! User ' + username + ' is now ready to use the system.' : '❌ Some steps failed. Check the details above.'}
+                </div>
+            `;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultsDiv.innerHTML += `
+                <div class="debug-info error">
+                    <strong>JavaScript Error:</strong>
+                    ${error.message}
+                    ${error.stack}
+                </div>
+            `;
+        }
+    }
+    </script>
+</body>
+</html> 
