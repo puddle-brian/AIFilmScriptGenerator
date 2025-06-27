@@ -58,8 +58,9 @@ class PaymentHandler {
                     quantity: 1,
                 }],
                 mode: 'payment',
-                success_url: `${process.env.BASE_URL || 'http://localhost:3000'}/buy-credits.html?success=true`,
-                cancel_url: `${process.env.BASE_URL || 'http://localhost:3000'}/buy-credits.html?canceled=true`,
+                locale: 'en',  // Specify English locale to reduce errors
+                success_url: `${process.env.BASE_URL || 'https://screenplaygenie.com'}/buy-credits.html?success=true`,
+                cancel_url: `${process.env.BASE_URL || 'https://screenplaygenie.com'}/buy-credits.html?canceled=true`,
                 metadata: {
                     userId: user.id.toString(),
                     username: user.username,

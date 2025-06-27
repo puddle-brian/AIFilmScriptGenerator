@@ -422,12 +422,26 @@
         // Get Stripe publishable key from server
         async function initializeStripe() {
             try {
-                const response = await fetch('/api/stripe-config');
+                // Determine the correct base URL
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                const response = await fetch(`${baseUrl}/api/stripe-config`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
                 const config = await response.json();
                 stripe = Stripe(config.publishableKey);
+                console.log('✅ Stripe initialized successfully');
             } catch (error) {
                 console.error('Failed to initialize Stripe:', error);
-                alert('Payment system unavailable. Please try again later.');
+                
+                // Fallback to hardcoded publishable key for emergencies
+                const fallbackKey = 'pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG';
+                stripe = Stripe(fallbackKey);
+                console.log('⚠️ Using fallback Stripe key');
             }
         }
         
@@ -455,7 +469,10 @@
         async function loadCurrentBalance() {
             try {
                 const apiKey = localStorage.getItem('apiKey');
-                const response = await fetch('/api/my-stats', {
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                const response = await fetch(`${baseUrl}/api/my-stats`, {
                     headers: { 'X-API-Key': apiKey }
                 });
                 
@@ -473,6 +490,18 @@
         function checkPaymentStatus() {
             const urlParams = new URLSearchParams(window.location.search);
             const statusElement = document.getElementById('paymentStatus');
+            
+            // Check if user was redirected to localhost from live site
+            if (window.location.hostname === 'localhost' && (urlParams.get('success') === 'true' || urlParams.get('canceled') === 'true')) {
+                statusElement.className = 'payment-status success';
+                statusElement.innerHTML = `
+                    <h3>🔄 Redirected from Live Site</h3>
+                    <p>You've been redirected here from the live site. Please return to <a href="https://screenplaygenie.com/buy-credits.html${window.location.search}" style="color: #10b981; text-decoration: underline;">ScreenplayGenie.com</a> to see your payment status and access your credits.</p>
+                    <button onclick="window.location.href='https://screenplaygenie.com/buy-credits.html${window.location.search}'" style="margin-top: 16px; padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">Go to Live Site →</button>
+                `;
+                statusElement.style.display = 'block';
+                return;
+            }
             
             if (urlParams.get('success') === 'true') {
                 statusElement.className = 'payment-status success';
@@ -515,7 +544,10 @@
             });
 
             try {
-                const response = await fetch('/api/create-checkout-session', {
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                const response = await fetch(`${baseUrl}/api/create-checkout-session`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

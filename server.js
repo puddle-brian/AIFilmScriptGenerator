@@ -5688,8 +5688,14 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (re
 
 // Serve Stripe configuration (publishable key)
 app.get('/api/stripe-config', (req, res) => {
+  console.log('🔧 Stripe config requested');
+  console.log('🔧 STRIPE_PUBLISHABLE_KEY exists:', !!process.env.STRIPE_PUBLISHABLE_KEY);
+  console.log('🔧 STRIPE_PUBLISHABLE_KEY length:', process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.length : 'undefined');
+  
+  const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG';
+  
   res.json({
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG'
+    publishableKey: publishableKey
   });
 });
 
