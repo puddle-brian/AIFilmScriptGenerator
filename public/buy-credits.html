@@ -730,8 +730,8 @@
             // Update dashboard balance
             document.getElementById('dashboardBalance').textContent = user.credits_remaining || 0;
             
-            // Calculate total used from actual usage data (more accurate)
-            const totalUsed = usage.total_credits_used || 0;
+            // Calculate total used from actual usage data (total_cost is in credits)
+            const totalUsed = Math.round(usage.total_cost || 0);
             document.getElementById('totalUsed').textContent = totalUsed >= 0 ? totalUsed : 0;
             
             // Scripts created (from usage data)
@@ -743,21 +743,23 @@
             document.getElementById('avgPerScript').textContent = avgPerScript;
         }
 
-        async function loadRecentActivity() {
+                async function loadRecentActivity() {
             const apiKey = localStorage.getItem('apiKey');
             if (!apiKey) return;
-
+            
             try {
                 const baseUrl = window.location.hostname === 'localhost' ? 
                     'https://screenplaygenie.com' : '';
                 
-                const response = await fetch(`${baseUrl}/api/usage-history?limit=10`, {
+                const response = await fetch(`${baseUrl}/api/my-stats`, {
                     headers: { 'X-API-Key': apiKey }
                 });
                 
                 if (response.ok) {
-                    const history = await response.json();
-                    displayRecentActivity(history);
+                    const data = await response.json();
+                    // Convert recent usage data to activity format
+                    const recentActivity = data.recentUsage || [];
+                    displayRecentActivity(recentActivity);
                 } else {
                     // If no history endpoint, show placeholder
                     displayPlaceholderActivity();
@@ -785,14 +787,15 @@
                 return;
             }
             
+            // Convert endpoint data to activity format
             activityList.innerHTML = history.map(item => `
                 <div class="activity-item">
-                    <div class="activity-icon">${getActivityIcon(item.operation)}</div>
+                    <div class="activity-icon">${getActivityIcon(item.endpoint)}</div>
                     <div class="activity-content">
                         <div class="activity-text">${getActivityText(item)}</div>
-                        <div class="activity-time">${formatDate(item.timestamp)}</div>
+                        <div class="activity-time">${item.count} times this week</div>
                     </div>
-                    <div class="activity-cost">-${item.credits_used || 0}</div>
+                    <div class="activity-cost">-${Math.round(item.total_cost || 0)}</div>
                 </div>
             `).join('');
         }
@@ -827,26 +830,38 @@
             `;
         }
 
-        function getActivityIcon(operation) {
+        function getActivityIcon(endpoint) {
             const icons = {
                 'structure': '🎬',
                 'plot-points': '📋',
                 'scenes': '📝',
                 'dialogue': '💬',
-                'individual-scene': '🎭'
+                'individual-scene': '🎭',
+                '/api/generate-structure': '🎬',
+                '/api/generate-plot-points': '📋',
+                '/api/generate-scenes': '📝',
+                '/api/generate-dialogue': '💬',
+                '/api/generate-individual-scene': '🎭'
             };
-            return icons[operation] || '⚡';
+            return icons[endpoint] || '⚡';
         }
 
         function getActivityText(item) {
+            // Handle both old format (item.operation) and new format (item.endpoint)
+            const endpoint = item.endpoint || item.operation;
             const operations = {
                 'structure': 'Generated story structure',
-                'plot-points': 'Created plot points',
+                'plot-points': 'Created plot points', 
                 'scenes': 'Generated scenes',
                 'dialogue': 'Added dialogue',
-                'individual-scene': 'Created individual scene'
+                'individual-scene': 'Created individual scene',
+                '/api/generate-structure': 'Generated story structure',
+                '/api/generate-plot-points': 'Created plot points',
+                '/api/generate-scenes': 'Generated scenes',
+                '/api/generate-dialogue': 'Added dialogue',
+                '/api/generate-individual-scene': 'Created individual scene'
             };
-            return operations[item.operation] || `${item.operation} operation`;
+            return operations[endpoint] || `${endpoint.replace('/api/', '').replace('-', ' ')} operation`;
         }
 
         function formatDate(timestamp) {
@@ -889,10 +904,25 @@
                 `;
                 statusElement.style.display = 'block';
                 
-                // Refresh credit balance using unified system
+                // Refresh credit balance using unified system with retry logic
                 if (window.unifiedCredits) {
+                    // Immediate refresh
                     window.unifiedCredits.refreshAfterOperation();
+                    
+                    // Additional refreshes to ensure webhook has processed
+                    setTimeout(() => window.unifiedCredits.refreshAfterOperation(), 2000);
+                    setTimeout(() => window.unifiedCredits.refreshAfterOperation(), 5000);
                 }
+                
+                // Reload all credit management data after successful payment
+                setTimeout(() => {
+                    loadCreditManagementData();
+                }, 1000); // Give time for the webhook to process
+                
+                // Additional reload to ensure data is current
+                setTimeout(() => {
+                    loadCreditManagementData();
+                }, 3000);
                 
             } else if (urlParams.get('canceled') === 'true') {
                 statusElement.className = 'payment-status error';
