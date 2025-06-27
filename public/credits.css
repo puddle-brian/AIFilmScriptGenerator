@@ -84,6 +84,21 @@
     box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
 
+.credits-badge.clickable {
+    cursor: pointer;
+    user-select: none;
+}
+
+.credits-badge.clickable:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+
+.credits-badge.clickable:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+}
+
 .credits-badge.low {
     background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
     animation: subtle-pulse 2s infinite;
@@ -220,6 +235,14 @@
 
 .tooltip-action a:hover {
     color: #5a6acf;
+}
+
+.tooltip-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #94a3b8;
+    font-style: italic;
+    text-align: center;
 }
 
 /* Credits Dashboard */
