@@ -104,15 +104,6 @@ function buildStructurePrompt(storyInput, templateData) {
     // Load the structure generation template
     const template = loadTemplate('structure-generation');
     
-    // Build influences section if provided
-    const influencesSection = storyInput.influences ? `
-${storyInput.influences.directors && storyInput.influences.directors.length > 0 ? 
-  `- Directorial Influences: ${storyInput.influences.directors.join(', ')}` : ''}
-${storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0 ? 
-  `- Screenwriting Influences: ${storyInput.influences.screenwriters.join(', ')}` : ''}
-${storyInput.influences.films && storyInput.influences.films.length > 0 ? 
-  `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
-    
     // Generate detailed description of the template structure
     const structureDescription = generateStructureDescription(templateData);
     
@@ -121,13 +112,10 @@ ${storyInput.influences.films && storyInput.influences.films.length > 0 ?
         PROJECT_TITLE: storyInput.title,
         PROJECT_LOGLINE: storyInput.logline,
         PROJECT_CHARACTERS: storyInput.characters,
-        PROJECT_TONE: storyInput.tone,
-        TOTAL_SCENES: storyInput.totalScenes || 70,
         TEMPLATE_NAME: templateData.name,
         INFLUENCE_PROMPT: storyInput.influencePrompt || '',
         STRUCTURE_DESCRIPTION: structureDescription,
-        TEMPLATE_STRUCTURE: JSON.stringify(templateData.structure, null, 2),
-        INFLUENCES_SECTION: influencesSection
+        TEMPLATE_STRUCTURE: JSON.stringify(templateData.structure, null, 2)
     };
     
     // Replace placeholders and return the complete prompt
@@ -237,7 +225,6 @@ function buildSimpleDialoguePrompt(storyInput, sceneContent, additionalContext =
 
 Story Context:
 - Title: ${storyInput?.title || 'Untitled'}
-- Tone: ${storyInput?.tone || 'Not specified'}
 - Characters: ${storyInput?.characters || 'Not specified'}`;
     
     return buildDialoguePrompt(simpleContext, sceneContent, additionalContext);

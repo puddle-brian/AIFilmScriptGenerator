@@ -6,14 +6,10 @@
 // {{PROJECT_TITLE}} = Your story title (e.g., "Lost Mirror")
 // {{PROJECT_LOGLINE}} = Your one-sentence story summary
 // {{PROJECT_CHARACTERS}} = Your main character descriptions  
-// {{PROJECT_TONE}} = The mood/genre of your story (e.g., "Horror", "Comedy")
-// {{TOTAL_SCENES}} = How many scenes you want (e.g., 70)
 // {{TEMPLATE_NAME}} = Structure template name (e.g., "Three Act Structure")
-// {{INFLUENCE_PROMPT}} = Any directorial/film influences you specified
-// {{DIRECTORIAL_INFLUENCES}} = Directors that inspire your style
-// {{SCREENWRITING_INFLUENCES}} = Screenwriters that inspire your style  
-// {{FILM_INFLUENCES}} = Specific films that inspire your story
-// {{TEMPLATE_DESCRIPTION}} = Description of the structure template you chose
+// {{INFLUENCE_PROMPT}} = Any directorial/film influences you specified (appears at the top as prose)
+// {{STRUCTURE_DESCRIPTION}} = Description of the structure template you chose
+// {{TEMPLATE_STRUCTURE}} = The JSON structure of the template
 //
 // HOW TO EDIT THIS TEMPLATE:
 // ✅ Change any instructions to the AI (like "focus on visual storytelling")
@@ -27,8 +23,6 @@ Story Details:
 - Title: {{PROJECT_TITLE}}
 - Logline: {{PROJECT_LOGLINE}}
 - Main Characters: {{PROJECT_CHARACTERS}}
-- Tone: {{PROJECT_TONE}}
-- Target Scene Count: {{TOTAL_SCENES}} scenes{{INFLUENCES_SECTION}}
 
 STRUCTURE OVERVIEW:
 {{STRUCTURE_DESCRIPTION}}

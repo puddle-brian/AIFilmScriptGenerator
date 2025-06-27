@@ -336,12 +336,20 @@ window.UnifiedCreditSystem = UnifiedCreditSystem;
 // Auto-initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
   const apiKey = localStorage.getItem('apiKey');
-  UnifiedCreditSystem.init(apiKey);
+  const instance = UnifiedCreditSystem.init(apiKey);
+  
+  // Create global creditWidget instance that script.js expects
+  window.creditWidget = instance;
 });
 
 // Backward compatibility - expose methods that other code might expect
 window.CreditWidget = {
-  init: (apiKey) => UnifiedCreditSystem.init(apiKey),
+  init: (apiKey) => {
+    const instance = UnifiedCreditSystem.init(apiKey);
+    // Also set the global creditWidget instance
+    window.creditWidget = instance;
+    return instance;
+  },
   // Add other methods as needed for backward compatibility
 };
 

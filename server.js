@@ -1011,9 +1011,7 @@ class HierarchicalContext {
     let prompt = '';
     
     // Level 1: Story Foundation with Full Creative Context
-    if (this.contexts.story) {
-      prompt += this.contexts.story + '\n\n';
-    }
+    // Story context is built properly below - no need to dump raw object
     if (this.contexts.story) {
       const story = this.contexts.story.data;
       
@@ -1041,33 +1039,8 @@ class HierarchicalContext {
 
       }
       
-      // Add tone and genre
-      if (story.tone && story.genre && story.tone !== story.genre) {
-        prompt += `- Tone: ${story.tone}\n`;
-        prompt += `- Genre: ${story.genre}\n`;
-      } else {
-        prompt += `- Tone: ${story.tone || story.genre}\n`;
-      }
+      // Tone is now handled via the influence prompt at the top - no structured list needed
       
-      // Add total scenes for scope context
-      if (story.totalScenes) {
-        prompt += `- Target Length: ${story.totalScenes} scenes\n`;
-      }
-      
-      
-      
-      // Add detailed influences section if available
-      if (story.influences && Object.keys(story.influences).length > 0) {
-        if (story.influences.directors && story.influences.directors.length > 0) {
-          prompt += `- Directorial Influences: ${story.influences.directors.join(', ')}\n`;
-        }
-        if (story.influences.screenwriters && story.influences.screenwriters.length > 0) {
-          prompt += `- Screenwriting Influences: ${story.influences.screenwriters.join(', ')}\n`;
-        }
-        if (story.influences.films && story.influences.films.length > 0) {
-          prompt += `- Film Influences: ${story.influences.films.join(', ')}\n`;
-        }
-      }
       prompt += '\n';
     }
 
@@ -1204,7 +1177,7 @@ class HierarchicalContext {
     const storyInput = projectContext.storyInput;
     
     // Build context from database data
-    context.buildStoryContext(storyInput, null, null, projectContext);
+    context.buildStoryContext(storyInput, storyInput.influencePrompt, null, projectContext);
     context.buildStructureContext(structure, projectContext.templateData);
     
     // Build act context
@@ -1450,13 +1423,6 @@ app.post('/api/preview-prompt', authenticateApiKey, async (req, res) => {
     }
     
     const influencePrompt = storyInput.influencePrompt || '';
-    const influencesSection = storyInput.influences ? `
-${storyInput.influences.directors && storyInput.influences.directors.length > 0 ? 
-  `- Directorial Influences: ${storyInput.influences.directors.join(', ')}` : ''}
-${storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0 ? 
-  `- Screenwriting Influences: ${storyInput.influences.screenwriters.join(', ')}` : ''}
-${storyInput.influences.films && storyInput.influences.films.length > 0 ? 
-  `- Film Influences: ${storyInput.influences.films.join(', ')}` : ''}` : '';
 
     // Generate a detailed description of the template structure
     const structureDescription = await generateStructureDescription(templateData);
@@ -1467,8 +1433,6 @@ Story Details:
 - Title: ${storyInput.title}
 - Logline: ${storyInput.logline}
 - Main Characters: ${storyInput.characters}
-- Tone: ${storyInput.tone}
-- Target Scene Count: ${storyInput.totalScenes || 70} scenes${influencesSection}
 
 STRUCTURE OVERVIEW:
 ${structureDescription}
@@ -1601,23 +1565,9 @@ app.post('/api/generate-structure-custom', async (req, res) => {
     
     // Create a readable markdown overview
     let overview = `# ${storyInput.title}\n\n`;
-    overview += `**Tone:** ${storyInput.tone}\n`;
     overview += `**Logline:** ${storyInput.logline}\n`;
     overview += `**Characters:** ${storyInput.characters}\n`;
     overview += `**Target Scenes:** ${storyInput.totalScenes || 70}\n\n`;
-    
-    if (storyInput.influences) {
-      if (storyInput.influences.directors && storyInput.influences.directors.length > 0) {
-        overview += `**Directorial Influences:** ${storyInput.influences.directors.join(', ')}\n`;
-      }
-      if (storyInput.influences.screenwriters && storyInput.influences.screenwriters.length > 0) {
-        overview += `**Screenwriting Influences:** ${storyInput.influences.screenwriters.join(', ')}\n`;
-      }
-      if (storyInput.influences.films && storyInput.influences.films.length > 0) {
-        overview += `**Film Influences:** ${storyInput.influences.films.join(', ')}\n`;
-      }
-      overview += `\n`;
-    }
     
     overview += `**Template Used:** ${templateData.name} (Custom Prompt)\n\n`;
     overview += `---\n\n## Custom Prompt Used\n\n`;
@@ -2009,7 +1959,7 @@ app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) =>
         const hierarchicalContext = new HierarchicalContext();
         
         // Build story context
-        hierarchicalContext.buildStoryContext(storyInput);
+        hierarchicalContext.buildStoryContext(storyInput, storyInput.influencePrompt);
         
         // Try to load project structure and template from database
         try {
@@ -2548,7 +2498,7 @@ app.post('/api/preview-scene-prompt', authenticateApiKey, async (req, res) => {
         const context = new HierarchicalContext();
         
         // Build story context
-        context.buildStoryContext(storyInput);
+        context.buildStoryContext(storyInput, storyInput.influencePrompt);
         
         // Try to load project structure and template from database
         try {
@@ -2896,7 +2846,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
+      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
@@ -2995,7 +2945,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
+      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
@@ -3194,7 +3144,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       // If context doesn't exist, rebuild it from project data
       if (!context.contexts.story) {
         console.log('Rebuilding context from project data...');
-        context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
+        context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
         context.buildStructureContext(structure, projectContext.template);
       }
       
@@ -3485,7 +3435,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     // If context doesn't exist, rebuild it from project data
     if (!context.contexts.story) {
       console.log('Rebuilding context from project data...');
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
+      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.template);
     }
     
@@ -7339,7 +7289,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     
     // Rebuild context if needed
     if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, projectContext.lastUsedPrompt, projectContext.lastUsedSystemMessage, projectContext);
+      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
       context.buildStructureContext(structure, projectContext.templateData);
     }
     
