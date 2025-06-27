@@ -53,15 +53,15 @@
         resultsDiv.innerHTML = `<div class="debug-info">Starting fix for ${username}...</div>`;
         
         try {
-            // Step 1: Register the user (this will create them if they don't exist)
-            console.log(`Step 1: Creating user ${username}...`);
-            const registerResponse = await fetch('/api/v2/register', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username: username })
-            });
+                         // Step 1: Register the user (this will create them if they don't exist)
+             console.log(`Step 1: Creating user ${username}...`);
+             const registerResponse = await fetch('/api/v2/auth/register', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify({ username: username })
+             });
             
             const registerResult = await registerResponse.text();
             console.log('Register response:', registerResponse.status, registerResult);
@@ -94,41 +94,16 @@
                 </div>
             `;
             
-            // Step 3: Grant credits
-            console.log(`Step 3: Granting credits to ${username}...`);
-            const creditsResponse = await fetch('/api/admin/grant-credits', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    username: username, 
-                    credits: 500 
-                })
-            });
+                         // Final summary
+             const allSuccessful = registerResponse.status < 400 && 
+                                 starterResponse.status < 400;
             
-            const creditsResult = await creditsResponse.text();
-            console.log('Credits response:', creditsResponse.status, creditsResult);
-            
-            resultsDiv.innerHTML += `
-                <div class="debug-info">
-                    <strong>Step 3 - Grant Credits:</strong>
-                    Status: ${creditsResponse.status}
-                    Response: ${creditsResult}
-                </div>
-            `;
-            
-            // Final summary
-            const allSuccessful = registerResponse.status < 400 && 
-                                starterResponse.status < 400 && 
-                                creditsResponse.status < 400;
-            
-            resultsDiv.innerHTML += `
-                <div class="debug-info ${allSuccessful ? 'success' : 'error'}">
-                    <strong>FINAL RESULT:</strong>
-                    ${allSuccessful ? '✅ SUCCESS! User ' + username + ' is now ready to use the system.' : '❌ Some steps failed. Check the details above.'}
-                </div>
-            `;
+                         resultsDiv.innerHTML += `
+                 <div class="debug-info ${allSuccessful ? 'success' : 'error'}">
+                     <strong>FINAL RESULT:</strong>
+                     ${allSuccessful ? '✅ SUCCESS! User ' + username + ' has been created and starter pack populated. Note: Credits need to be granted separately by an admin.' : '❌ Some steps failed. Check the details above.'}
+                 </div>
+             `;
             
         } catch (error) {
             console.error('Error:', error);
