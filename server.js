@@ -6328,11 +6328,55 @@ app.post('/api/v2/auth/register', async (req, res) => {
     
   } catch (error) {
     console.error('Registration error:', error);
+    console.error('Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
+    
     if (error.code === '23505') { // Unique constraint violation
       res.status(400).json({ error: 'Username or email already exists' });
     } else {
-      res.status(500).json({ error: 'Registration failed. Please try again.' });
+      res.status(500).json({ 
+        error: 'Registration failed. Please try again.',
+        debug: process.env.NODE_ENV === 'development' ? {
+          message: error.message,
+          code: error.code
+        } : undefined
+      });
     }
+  }
+});
+
+// Debug endpoint to test database connection
+app.get('/api/debug/db-test', async (req, res) => {
+  try {
+    // Test basic connection
+    const testQuery = await dbClient.query('SELECT NOW() as current_time');
+    
+    // Test users table structure
+    const tableInfo = await dbClient.query(`
+      SELECT column_name, data_type, is_nullable 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      ORDER BY ordinal_position
+    `);
+    
+    res.json({
+      status: 'ok',
+      database_time: testQuery.rows[0].current_time,
+      users_table_columns: tableInfo.rows,
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      code: error.code,
+      detail: error.detail
+    });
   }
 });
 
