@@ -105,7 +105,7 @@ class ServerlessDB {
 
   // Robust user registration with fallback
   async registerUser(userData) {
-    const { username, email, password_hash, api_key, credits = 500, email_updates = false } = userData;
+    const { username, email, password_hash, api_key, credits = 100, email_updates = false } = userData;
     
     // Try full registration first
     try {
