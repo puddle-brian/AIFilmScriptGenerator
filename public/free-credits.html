@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Free Credits</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin: 20px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #333;
+            color: white;
+            font-size: 16px;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .result {
+            background: #333;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success {
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        .code-box {
+            background: #444;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 18px;
+            text-align: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎁 Free Credits</h1>
+    <p>Get 500 free credits to use the Film Script Generator!</p>
+    
+    <div class="form-group">
+        <label for="username">Username:</label>
+        <input type="text" id="username" placeholder="Enter your username (e.g., CCKRAD, testuser54321)" />
+    </div>
+    
+    <div class="form-group">
+        <label for="code">Free Credits Code:</label>
+        <div class="code-box">FREECREDITS2024</div>
+        <input type="text" id="code" value="FREECREDITS2024" readonly />
+    </div>
+    
+    <button class="button" onclick="grantFreeCredits()">Grant 500 Free Credits</button>
+    
+    <div id="result"></div>
+
+    <script>
+    async function grantFreeCredits() {
+        const username = document.getElementById('username').value.trim();
+        const code = document.getElementById('code').value.trim();
+        const resultDiv = document.getElementById('result');
+        
+        if (!username) {
+            resultDiv.innerHTML = '<div class="result error">Please enter a username</div>';
+            return;
+        }
+        
+        try {
+            resultDiv.innerHTML = '<div class="result">Granting free credits...</div>';
+            
+            const response = await fetch('/api/free-credits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    username: username,
+                    code: code
+                })
+            });
+            
+            const result = await response.text();
+            console.log('Free credits response:', response.status, result);
+            
+            resultDiv.innerHTML = `
+                <div class="result ${response.status < 400 ? 'success' : 'error'}">
+                    <strong>Result:</strong>
+                    Status: ${response.status}
+                    
+                    ${result}
+                </div>
+            `;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = `
+                <div class="result error">
+                    <strong>Error:</strong>
+                    ${error.message}
+                </div>
+            `;
+        }
+    }
+    
+    // Auto-fill username from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const usernameParam = urlParams.get('username');
+    if (usernameParam) {
+        document.getElementById('username').value = usernameParam;
+    }
+    </script>
+</body>
+</html> 
