@@ -8,15 +8,35 @@ class PaymentHandler {
         this.dbClient = dbClient;
         this.webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
         
+        // Enhanced debugging for environment variables
+        console.log('🔧 PaymentHandler constructor called');
+        console.log('🔧 Environment check:');
+        console.log('   - NODE_ENV:', process.env.NODE_ENV);
+        console.log('   - VERCEL:', process.env.VERCEL);
+        console.log('   - STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
+        console.log('   - STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 'undefined');
+        
         // Check for required environment variables first
         if (!process.env.STRIPE_SECRET_KEY) {
+            console.error('❌ STRIPE_SECRET_KEY environment variable is missing!');
+            console.error('   Available env vars starting with STRIPE_:', Object.keys(process.env).filter(key => key.startsWith('STRIPE_')));
             throw new Error('STRIPE_SECRET_KEY environment variable is required');
         }
         
-        // Initialize Stripe with the secret key from environment
-        this.stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        // Validate the key format
+        if (!process.env.STRIPE_SECRET_KEY.startsWith('sk_')) {
+            console.error('❌ STRIPE_SECRET_KEY appears to be invalid (should start with sk_)');
+            throw new Error('STRIPE_SECRET_KEY appears to be invalid');
+        }
         
-        console.log('✅ Stripe initialized with key:', process.env.STRIPE_SECRET_KEY.substring(0, 15) + '...');
+        try {
+            // Initialize Stripe with the secret key from environment
+            this.stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+            console.log('✅ Stripe initialized with key:', process.env.STRIPE_SECRET_KEY.substring(0, 15) + '...');
+        } catch (error) {
+            console.error('❌ Failed to initialize Stripe:', error);
+            throw new Error(`Failed to initialize Stripe: ${error.message}`);
+        }
     }
 
     /**

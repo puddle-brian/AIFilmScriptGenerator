@@ -161,10 +161,13 @@ async function connectToDatabase() {
       
       // Initialize payment handler even in serverless mode
       try {
+        console.log('🔧 Attempting to initialize PaymentHandler in serverless mode...');
         paymentHandler = new PaymentHandler(dbClient);
         console.log('✅ Payment system initialized (serverless mode)');
       } catch (error) {
-        console.error('❌ Failed to initialize payment system:', error);
+        console.error('❌ Failed to initialize payment system in serverless mode:', error);
+        console.error('❌ Error details:', error.message);
+        console.error('❌ Stack trace:', error.stack);
       }
     } else {
       // Traditional persistent connection for local development
