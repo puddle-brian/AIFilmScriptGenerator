@@ -2724,7 +2724,7 @@ function getChronologicalActOrder(templateData, structureKeys) {
         'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_nightmare'],
         'booker-rags-to-riches': ['initial_wretchedness', 'call_to_adventure', 'getting_out', 'initial_success', 'getting_closer', 'final_crisis', 'final_triumph'],
         'booker-voyage-return': ['anticipation_stage', 'journey_begins', 'first_challenges', 'adaptation', 'new_world_experience', 'longing_for_home', 'return_journey', 'readjustment'],
-        'booker-comedy': ['confusion_stage', 'dressing_up_stage', 'complications_stage', 'final_nightmare', 'resolution'],
+        'booker-comedy': ['initial_situation', 'complication', 'development', 'crisis', 'resolution'],
         'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction_stage'],
         'booker-rebirth': ['initial_imprisonment', 'call_to_change', 'resistance', 'crisis', 'transformation']
     };
