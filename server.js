@@ -5686,6 +5686,13 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (re
 
 // ==================== PAYMENT SYSTEM ENDPOINTS ====================
 
+// Serve Stripe configuration (publishable key)
+app.get('/api/stripe-config', (req, res) => {
+  res.json({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG'
+  });
+});
+
 // Create Stripe checkout session for credit purchase
 app.post('/api/create-checkout-session', authenticateApiKey, async (req, res) => {
   try {

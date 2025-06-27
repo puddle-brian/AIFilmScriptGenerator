@@ -416,14 +416,29 @@
     <script src="credits-widget.js"></script>
     <script src="auth.js"></script>
     <script>
-        // Initialize Stripe
-        const stripe = Stripe('pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG');
+        // Initialize Stripe with publishable key from server
+        let stripe;
+        
+        // Get Stripe publishable key from server
+        async function initializeStripe() {
+            try {
+                const response = await fetch('/api/stripe-config');
+                const config = await response.json();
+                stripe = Stripe(config.publishableKey);
+            } catch (error) {
+                console.error('Failed to initialize Stripe:', error);
+                alert('Payment system unavailable. Please try again later.');
+            }
+        }
         
         // Initialize credit widget
         let creditWidget;
         
         // Check authentication and load user data
         document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize Stripe first
+            await initializeStripe();
+            
             const apiKey = localStorage.getItem('apiKey');
             if (apiKey) {
                 creditWidget = CreditWidget.init(apiKey);
