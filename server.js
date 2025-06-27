@@ -5796,31 +5796,6 @@ app.get('/api/debug-env', authenticateApiKey, (req, res) => {
   res.json(envDebug);
 });
 
-// Debug endpoint to see raw webhook data (TEMPORARY - remove after debugging)
-app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), async (req, res) => {
-  console.log('🔍 DEBUG: Webhook received (no signature verification)');
-  console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
-  console.log('   - Body preview:', req.body ? req.body.toString().substring(0, 200) + '...' : 'no body');
-  console.log('   - Body length:', req.body ? req.body.length : 'no body');
-  
-  try {
-    const bodyStr = req.body.toString();
-    const parsed = JSON.parse(bodyStr);
-    console.log('   - Event type:', parsed.type);
-    console.log('   - Event ID:', parsed.id);
-    if (parsed.data && parsed.data.object) {
-      console.log('   - Object type:', parsed.data.object.object);
-      if (parsed.data.object.metadata) {
-        console.log('   - Metadata:', parsed.data.object.metadata);
-      }
-    }
-  } catch (e) {
-    console.log('   - Could not parse body as JSON:', e.message);
-  }
-  
-  res.json({ received: true, debug: true });
-});
-
 // Enhanced debug webhook endpoint to diagnose signature issues
 app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), (req, res) => {
   console.log('🐛 DEBUG WEBHOOK RECEIVED:');
@@ -5881,8 +5856,10 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
   console.log('🎯 Webhook received!');
   console.log('   - Signature header present:', !!sig);
   console.log('   - Signature preview:', sig ? sig.substring(0, 50) + '...' : 'none');
+  console.log('   - Body exists:', !!req.body);
   console.log('   - Body length:', req.body ? req.body.length : 'no body');
   console.log('   - Body type:', typeof req.body);
+  console.log('   - Body is Buffer:', Buffer.isBuffer(req.body));
   console.log('   - Content-Type:', req.headers['content-type']);
   console.log('   - User-Agent:', req.headers['user-agent']);
   console.log('   - Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
@@ -5905,11 +5882,24 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
       return res.status(400).send('Missing stripe-signature header');
     }
 
+    if (!req.body) {
+      console.error('❌ No body received');
+      return res.status(400).send('Missing request body');
+    }
+
     // Enhanced signature verification with better error handling
     let event;
     try {
       console.log('🔐 Attempting webhook signature verification...');
-      event = paymentHandler.verifyWebhookSignature(req.body, sig);
+      console.log('   - Payload type before verification:', typeof req.body);
+      console.log('   - Payload is Buffer before verification:', Buffer.isBuffer(req.body));
+      
+      // Ensure we have the right format for Stripe verification
+      const payload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
+      console.log('   - Using payload type:', typeof payload);
+      console.log('   - Using payload is Buffer:', Buffer.isBuffer(payload));
+      
+      event = paymentHandler.verifyWebhookSignature(payload, sig);
       console.log('✅ Webhook signature verified successfully');
     } catch (sigError) {
       console.error('❌ Webhook signature verification failed:');
@@ -5923,7 +5913,13 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         console.log('🔍 Attempting manual verification...');
-        const manualEvent = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        
+        // Ensure we have the right format for manual verification too
+        const manualPayload = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body, 'utf8');
+        console.log('   - Manual payload type:', typeof manualPayload);
+        console.log('   - Manual payload is Buffer:', Buffer.isBuffer(manualPayload));
+        
+        const manualEvent = stripe.webhooks.constructEvent(manualPayload, sig, process.env.STRIPE_WEBHOOK_SECRET);
         console.log('✅ Manual verification succeeded - there might be an issue with paymentHandler');
         event = manualEvent;
       } catch (manualError) {
