@@ -160,6 +160,7 @@ class CreditWidget {
         <div class="credit-balance-large">${this.balance}</div>
         <p>Credits remaining</p>
         <div class="credit-actions">
+          <button onclick="window.location.href='/buy-credits'">Buy More Credits</button>
           <button onclick="this.parentElement.parentElement.parentElement.remove()">Close</button>
         </div>
       </div>
@@ -176,6 +177,7 @@ class CreditWidget {
         <p>This operation requires <strong>${estimate.creditsRequired}</strong> credits</p>
         <p>You have <strong>${estimate.userCreditsRemaining}</strong> credits remaining</p>
         <div class="credit-actions">
+          <button onclick="window.location.href='/buy-credits'" style="background: #667eea; color: white;">Buy Credits</button>
           <button onclick="this.parentElement.parentElement.parentElement.remove()">Cancel</button>
         </div>
       </div>

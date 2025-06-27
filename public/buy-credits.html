@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Credits - Film Script Generator</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="credits.css">
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        .credit-packages {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin: 32px 0;
+        }
+        
+        .credit-package {
+            background: white;
+            border: 2px solid #e0e7ff;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .credit-package:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+        }
+        
+        .credit-package.popular {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+        
+        .credit-package.popular::before {
+            content: "Most Popular";
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #667eea;
+            color: white;
+            padding: 4px 16px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .package-credits {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 8px;
+        }
+        
+        .package-price {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 4px;
+        }
+        
+        .package-value {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 20px;
+        }
+        
+        .package-features {
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+        
+        .package-features li {
+            margin: 8px 0;
+            color: #4a5568;
+        }
+        
+        .package-features li::before {
+            content: "✓";
+            color: #48bb78;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .buy-button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+        
+        .buy-button:hover {
+            background: #5a67d8;
+        }
+        
+        .buy-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .payment-status {
+            margin: 20px 0;
+            padding: 16px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .payment-status.success {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #48bb78;
+        }
+        
+        .payment-status.error {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #e53e3e;
+        }
+        
+        .payment-status.processing {
+            background: #bee3f8;
+            color: #2a4365;
+            border: 1px solid #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <h1>🎬 Film Script Generator</h1>
+            </div>
+            <div class="user-info">
+                <div class="credits-badge" id="creditsBadge">
+                    <span class="credits-amount" id="creditsAmount">--</span>
+                    <span class="credits-label">credits</span>
+                </div>
+                <a href="/" class="back-button">← Back to Generator</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="page-header">
+            <h2>Buy Credits</h2>
+            <p>Choose a credit package to continue generating amazing scripts</p>
+        </div>
+
+        <div id="paymentStatus" class="payment-status"></div>
+
+        <div class="credit-packages">
+            <!-- Starter Package -->
+            <div class="credit-package">
+                <div class="package-credits">500</div>
+                <div class="package-price">$5.00</div>
+                <div class="package-value">$0.01 per credit</div>
+                <ul class="package-features">
+                    <li>~16 story generations</li>
+                    <li>Perfect for trying out</li>
+                    <li>No expiration</li>
+                </ul>
+                <button class="buy-button" onclick="purchaseCredits(500, 500, 'Starter Package')">
+                    Buy 500 Credits
+                </button>
+            </div>
+
+            <!-- Popular Package -->
+            <div class="credit-package popular">
+                <div class="package-credits">2,000</div>
+                <div class="package-price">$15.00</div>
+                <div class="package-value">$0.0075 per credit</div>
+                <ul class="package-features">
+                    <li>~66 story generations</li>
+                    <li>25% savings</li>
+                    <li>Most popular choice</li>
+                    <li>No expiration</li>
+                </ul>
+                <button class="buy-button" onclick="purchaseCredits(2000, 1500, 'Popular Package')">
+                    Buy 2,000 Credits
+                </button>
+            </div>
+
+            <!-- Pro Package -->
+            <div class="credit-package">
+                <div class="package-credits">5,000</div>
+                <div class="package-price">$30.00</div>
+                <div class="package-value">$0.006 per credit</div>
+                <ul class="package-features">
+                    <li>~166 story generations</li>
+                    <li>40% savings</li>
+                    <li>Great for heavy users</li>
+                    <li>No expiration</li>
+                </ul>
+                <button class="buy-button" onclick="purchaseCredits(5000, 3000, 'Pro Package')">
+                    Buy 5,000 Credits
+                </button>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <h3>How Credits Work</h3>
+            <p>Credits are used for AI-powered story generation. Different operations cost different amounts:</p>
+            <ul>
+                <li><strong>Story Structure:</strong> ~25 credits</li>
+                <li><strong>Plot Points:</strong> ~15 credits per act</li>
+                <li><strong>Scene Generation:</strong> ~30 credits per scene</li>
+                <li><strong>Dialogue Generation:</strong> ~20 credits per scene</li>
+            </ul>
+            <p>Credits never expire and can be used across all your projects.</p>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Stripe (you'll need to add your publishable key)
+        const stripe = Stripe('pk_live_51RebwVIuuvn3nTg8ePfBMz8K8lIwfYDGwsTIZ99dyYQPy33ulzqfZq13hmeCdv3YGsvgmCKjMnsfkdh0qBWXrWvo00dFx3u95j'); // Replace with your ACTUAL publishable key from Stripe
+        
+        // Load existing credit widget
+        let creditWidget;
+        
+        async function initializePage() {
+            // Load credit widget if available
+            if (window.CreditWidget) {
+                creditWidget = CreditWidget.init();
+            }
+            
+            // Check if user is logged in
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) {
+                showStatus('Please log in to purchase credits', 'error');
+                setTimeout(() => {
+                    window.location.href = '/login.html';
+                }, 2000);
+                return;
+            }
+        }
+
+        async function purchaseCredits(credits, priceInCents, packageName) {
+            showStatus('Initializing payment...', 'processing');
+            
+            try {
+                const apiKey = localStorage.getItem('apiKey');
+                if (!apiKey) {
+                    showStatus('Please log in to purchase credits', 'error');
+                    return;
+                }
+
+                // Create checkout session
+                const response = await fetch('/api/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    },
+                    body: JSON.stringify({
+                        credits: credits,
+                        priceInCents: priceInCents,
+                        packageName: packageName
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create checkout session');
+                }
+
+                const session = await response.json();
+                
+                // Redirect to Stripe Checkout
+                const result = await stripe.redirectToCheckout({
+                    sessionId: session.sessionId
+                });
+
+                if (result.error) {
+                    showStatus(result.error.message, 'error');
+                }
+            } catch (error) {
+                console.error('Payment error:', error);
+                showStatus('Payment initialization failed. Please try again.', 'error');
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('paymentStatus');
+            statusDiv.textContent = message;
+            statusDiv.className = `payment-status ${type}`;
+            statusDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    statusDiv.style.display = 'none';
+                }, 5000);
+            }
+        }
+
+        // Handle success/cancel returns from Stripe
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('success')) {
+            showStatus('Payment successful! Credits have been added to your account.', 'success');
+            if (creditWidget) {
+                creditWidget.refreshAfterOperation();
+            }
+        } else if (urlParams.get('canceled')) {
+            showStatus('Payment was canceled.', 'error');
+        }
+
+        // Initialize page when loaded
+        document.addEventListener('DOMContentLoaded', initializePage);
+    </script>
+</body>
+</html> 

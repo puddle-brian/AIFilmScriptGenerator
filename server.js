@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs').promises;
@@ -8,7 +10,7 @@ const { Client, Pool } = require('pg');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const promptBuilders = require('./prompt-builders');
-require('dotenv').config();
+const PaymentHandler = require('./payment-handlers');
 
 // Add comprehensive error handling to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -30,6 +32,9 @@ const PORT = process.env.PORT || 3000;
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Initialize payment handler
+let paymentHandler;
 
 // Initialize PostgreSQL client (serverless-optimized with connection pooling)
 const dbClient = process.env.VERCEL ? 
@@ -89,14 +94,14 @@ const CREATE_USAGE_TRACKING_TABLES = `
   );
 
   -- Create credits_transactions table for credit purchases/grants
-  CREATE TABLE IF NOT EXISTS credit_transactions (
+      CREATE TABLE IF NOT EXISTS credit_transactions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     transaction_type VARCHAR(50) NOT NULL, -- 'purchase', 'grant', 'refund'
     credits_amount INTEGER NOT NULL,
     amount_paid DECIMAL(10,2),
     payment_method VARCHAR(50),
-    transaction_id VARCHAR(255),
+    payment_id VARCHAR(255),
     notes TEXT,
     created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -138,6 +143,10 @@ async function initializeDatabase() {
       console.log('✅ Admin user created with API key:', adminApiKey);
       console.log('   Save this API key securely - it won\'t be shown again!');
     }
+    
+    // Initialize payment handler
+    paymentHandler = new PaymentHandler(dbClient);
+    console.log('✅ Payment system initialized');
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
   }
@@ -5663,6 +5672,85 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (re
     res.status(500).json({ error: error.message || 'Failed to save dialogue content' });
   }
 });
+
+// ==================== PAYMENT SYSTEM ENDPOINTS ====================
+
+// Create Stripe checkout session for credit purchase
+app.post('/api/create-checkout-session', authenticateApiKey, async (req, res) => {
+  try {
+    const { credits, priceInCents, packageName } = req.body;
+    
+    if (!credits || !priceInCents || !packageName) {
+      return res.status(400).json({ error: 'Missing required fields: credits, priceInCents, packageName' });
+    }
+
+    if (!paymentHandler) {
+      return res.status(500).json({ error: 'Payment system not initialized' });
+    }
+
+    const session = await paymentHandler.createCheckoutSession(
+      req.user, 
+      credits, 
+      priceInCents, 
+      packageName
+    );
+
+    res.json(session);
+  } catch (error) {
+    console.error('Error creating checkout session:', error);
+    res.status(500).json({ error: 'Failed to create payment session' });
+  }
+});
+
+// Stripe webhook handler for payment completion
+app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  
+  try {
+    if (!paymentHandler) {
+      console.error('Payment handler not initialized');
+      return res.status(500).send('Payment system error');
+    }
+
+    const event = paymentHandler.verifyWebhookSignature(req.body, sig);
+    
+    console.log('Received Stripe webhook event:', event.type);
+
+    if (event.type === 'checkout.session.completed') {
+      await paymentHandler.handlePaymentSuccess(event);
+      console.log('✅ Payment processed successfully');
+    }
+
+    res.json({received: true});
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(400).send(`Webhook Error: ${error.message}`);
+  }
+});
+
+// Get payment history for current user
+app.get('/api/my-payment-history', authenticateApiKey, async (req, res) => {
+  try {
+    if (!paymentHandler) {
+      return res.status(500).json({ error: 'Payment system not initialized' });
+    }
+
+    const { limit = 10 } = req.query;
+    const history = await paymentHandler.getPaymentHistory(req.user.id, parseInt(limit));
+    
+    res.json({ history });
+  } catch (error) {
+    console.error('Error fetching payment history:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// Serve the buy credits page
+app.get('/buy-credits', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'buy-credits.html'));
+});
+
+// ==================== ADMIN ENDPOINTS ====================
 
 // Admin endpoints for credit management
 app.post('/api/admin/grant-credits', authenticateApiKey, async (req, res) => {
