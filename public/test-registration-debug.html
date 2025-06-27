@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registration Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .test-section {
+            background: #333;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        .result {
+            background: #222;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Registration Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Test New Registration</h2>
+        <button class="button" onclick="testRegistration()">Test Registration</button>
+        <div id="registrationResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Credit Widget Fetch</h2>
+        <input type="text" id="apiKeyInput" placeholder="Enter API key from registration" style="width: 400px; padding: 5px;">
+        <button class="button" onclick="testCreditFetch()">Test Credit Fetch</button>
+        <div id="creditResult" class="result"></div>
+    </div>
+
+    <script>
+    async function testRegistration() {
+        const resultDiv = document.getElementById('registrationResult');
+        const timestamp = Date.now();
+        const testUser = {
+            username: `testdebug${timestamp}`,
+            email: `testdebug${timestamp}@test.com`,
+            password: 'testpassword123'
+        };
+        
+        resultDiv.textContent = `Testing registration for: ${testUser.username}...`;
+        
+        try {
+            const response = await fetch('/api/v2/auth/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(testUser)
+            });
+            
+            const result = await response.json();
+            
+            resultDiv.textContent = `Status: ${response.status}
+Response: ${JSON.stringify(result, null, 2)}
+
+Analysis:
+- Has API key: ${!!result.apiKey}
+- Credits: ${result.user?.credits_remaining || 'Not found'}
+- API key starts with: ${result.apiKey ? result.apiKey.substring(0, 10) + '...' : 'None'}`;
+
+            if (result.apiKey) {
+                document.getElementById('apiKeyInput').value = result.apiKey;
+            }
+            
+        } catch (error) {
+            resultDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+    
+    async function testCreditFetch() {
+        const resultDiv = document.getElementById('creditResult');
+        const apiKey = document.getElementById('apiKeyInput').value;
+        
+        if (!apiKey) {
+            resultDiv.textContent = 'Please enter an API key first';
+            return;
+        }
+        
+        resultDiv.textContent = 'Testing credit fetch...';
+        
+        try {
+            const response = await fetch('/api/my-stats', {
+                method: 'GET',
+                headers: {
+                    'X-API-Key': apiKey
+                }
+            });
+            
+            const result = await response.json();
+            
+            resultDiv.textContent = `Status: ${response.status}
+Response: ${JSON.stringify(result, null, 2)}
+
+Analysis:
+- Credits found: ${result.user?.credits_remaining || 'Not found'}
+- User data: ${!!result.user}`;
+            
+        } catch (error) {
+            resultDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+    </script>
+</body>
+</html> 
