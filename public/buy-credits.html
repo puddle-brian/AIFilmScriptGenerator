@@ -263,14 +263,22 @@
         .back-link {
             display: inline-flex;
             align-items: center;
-            color: #667eea;
+            background: rgba(255, 255, 255, 0.9);
+            color: #374151;
             text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s ease;
+            font-weight: 600;
+            padding: 12px 20px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .back-link:hover {
-            color: #5a67d8;
+            background: white;
+            color: #667eea;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
 
         .back-link::before {
@@ -472,7 +480,7 @@
 <body>
     <div class="buy-credits-container">
         <div class="back-navigation">
-            <a href="/" class="back-link">Back to Script Generator</a>
+            <a href="/" class="back-link">Back to Screenplay Genie</a>
         </div>
 
         <div class="page-intro">
@@ -520,7 +528,7 @@
                     <li>~66 complete script generations</li>
                     <li>Best value for regular users</li>
                     <li>Credits never expire</li>
-                    <li>Priority support</li>
+                    <li>Full feature access</li>
                 </ul>
                 <button class="buy-button" onclick="purchaseCredits(2000, 1500, 'Popular Package')">
                     Most Popular
@@ -540,39 +548,11 @@
                     <li>~166 complete script generations</li>
                     <li>Perfect for professionals</li>
                     <li>Credits never expire</li>
-                    <li>Priority support</li>
+                    <li>Full feature access</li>
                 </ul>
                 <button class="buy-button" onclick="purchaseCredits(5000, 3000, 'Pro Package')">
                     Go Pro
                 </button>
-            </div>
-        </div>
-
-        <div class="value-proposition">
-            <h3>Why Choose Our Credit System?</h3>
-            <p>Get the most out of your screenwriting journey with our flexible, powerful credit system.</p>
-            
-            <div class="value-points">
-                <div class="value-point">
-                    <div class="value-point-icon">⏰</div>
-                    <h4>Never Expire</h4>
-                    <p>Your credits are yours forever. Use them at your own pace without any time pressure.</p>
-                </div>
-                <div class="value-point">
-                    <div class="value-point-icon">🎯</div>
-                    <h4>Transparent Pricing</h4>
-                    <p>Know exactly what you're paying for. No hidden fees, no surprises, just clear value.</p>
-                </div>
-                <div class="value-point">
-                    <div class="value-point-icon">🚀</div>
-                    <h4>Instant Access</h4>
-                    <p>Credits are added immediately after purchase. Start generating scripts right away.</p>
-                </div>
-                <div class="value-point">
-                    <div class="value-point-icon">🔒</div>
-                    <h4>Secure Payments</h4>
-                    <p>Protected by Stripe's industry-leading security. Your payment information is always safe.</p>
-                </div>
             </div>
         </div>
 
@@ -624,6 +604,34 @@
                             <div class="activity-time">--</div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="value-proposition">
+            <h3>Why Choose Our Credit System?</h3>
+            <p>Get the most out of your screenwriting journey with our flexible, powerful credit system.</p>
+            
+            <div class="value-points">
+                <div class="value-point">
+                    <div class="value-point-icon">⏰</div>
+                    <h4>Never Expire</h4>
+                    <p>Your credits are yours forever. Use them at your own pace without any time pressure.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🎯</div>
+                    <h4>Transparent Pricing</h4>
+                    <p>Know exactly what you're paying for. No hidden fees, no surprises, just clear value.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🚀</div>
+                    <h4>Instant Access</h4>
+                    <p>Credits are added immediately after purchase. Start generating scripts right away.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🔒</div>
+                    <h4>Secure Payments</h4>
+                    <p>Protected by Stripe's industry-leading security. Your payment information is always safe.</p>
                 </div>
             </div>
         </div>
