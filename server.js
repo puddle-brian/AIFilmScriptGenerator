@@ -5741,14 +5741,43 @@ app.post('/api/webhook-test', express.json(), (req, res) => {
   res.json({ success: true, message: 'Webhook endpoint is reachable' });
 });
 
+// Debug endpoint to see raw webhook data (TEMPORARY - remove after debugging)
+app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), async (req, res) => {
+  console.log('🔍 DEBUG: Webhook received (no signature verification)');
+  console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('   - Body preview:', req.body ? req.body.toString().substring(0, 200) + '...' : 'no body');
+  console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  
+  try {
+    const bodyStr = req.body.toString();
+    const parsed = JSON.parse(bodyStr);
+    console.log('   - Event type:', parsed.type);
+    console.log('   - Event ID:', parsed.id);
+    if (parsed.data && parsed.data.object) {
+      console.log('   - Object type:', parsed.data.object.object);
+      if (parsed.data.object.metadata) {
+        console.log('   - Metadata:', parsed.data.object.metadata);
+      }
+    }
+  } catch (e) {
+    console.log('   - Could not parse body as JSON:', e.message);
+  }
+  
+  res.json({ received: true, debug: true });
+});
+
 // Stripe webhook handler for payment completion
 app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   
   console.log('🎯 Webhook received!');
   console.log('   - Signature header present:', !!sig);
+  console.log('   - Signature preview:', sig ? sig.substring(0, 50) + '...' : 'none');
   console.log('   - Body length:', req.body ? req.body.length : 'no body');
   console.log('   - Content-Type:', req.headers['content-type']);
+  console.log('   - User-Agent:', req.headers['user-agent']);
+  console.log('   - Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
+  console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
   
   try {
     if (!paymentHandler) {
