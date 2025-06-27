@@ -5857,13 +5857,41 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     }
     
     const user = userResult.rows[0];
+    console.log(`🗑️ Found CCKRAD user to delete: ID ${user.id}`);
     
     // Delete user data in order (respecting foreign key constraints)
-    await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM user_libraries WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM usage_logs_v2 WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM users WHERE id = $1', [user.id]);
+    // Try each deletion separately and log results
+    try {
+      const creditResult = await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
+      console.log(`✅ Deleted ${creditResult.rowCount} credit transactions`);
+    } catch (e) {
+      console.log(`⚠️ Credit transactions deletion failed (might not exist):`, e.message);
+    }
+    
+    try {
+      const libResult = await dbClient.query('DELETE FROM user_libraries WHERE user_id = $1', [user.id]);
+      console.log(`✅ Deleted ${libResult.rowCount} user library entries`);
+    } catch (e) {
+      console.log(`⚠️ User libraries deletion failed (might not exist):`, e.message);
+    }
+    
+    try {
+      const projResult = await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
+      console.log(`✅ Deleted ${projResult.rowCount} user projects`);
+    } catch (e) {
+      console.log(`⚠️ User projects deletion failed (might not exist):`, e.message);
+    }
+    
+    try {
+      const logsResult = await dbClient.query('DELETE FROM usage_logs WHERE username = $1', [username]);
+      console.log(`✅ Deleted ${logsResult.rowCount} usage logs (by username)`);
+    } catch (e) {
+      console.log(`⚠️ Usage logs deletion failed (might not exist):`, e.message);
+    }
+    
+    // Finally delete the user
+    const userDeleteResult = await dbClient.query('DELETE FROM users WHERE id = $1', [user.id]);
+    console.log(`✅ Deleted user: ${userDeleteResult.rowCount} rows affected`);
     
     console.log(`🗑️ Emergency deleted CCKRAD user: ${username} (ID: ${user.id})`);
     
@@ -5878,7 +5906,11 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting CCKRAD user:', error);
-    res.status(500).json({ error: 'Failed to delete CCKRAD user' });
+    res.status(500).json({ 
+      error: 'Failed to delete CCKRAD user',
+      details: error.message,
+      stack: error.stack
+    });
   }
 });
 
