@@ -879,6 +879,92 @@
             return date.toLocaleDateString();
         }
 
+        function showManualRefreshOption() {
+            const statusElement = document.getElementById('paymentStatus');
+            if (statusElement && statusElement.style.display === 'block') {
+                // Add manual refresh button to existing success message
+                const existingContent = statusElement.innerHTML;
+                if (!existingContent.includes('manual-refresh-btn')) {
+                    statusElement.innerHTML = existingContent.replace(
+                        'Start Creating →</button>',
+                        `Start Creating →</button>
+                        <div style="margin-top: 20px; padding: 16px; background: #f59e0b20; border: 1px solid #f59e0b; border-radius: 8px;">
+                            <p style="margin: 0 0 12px 0; color: #92400e; font-size: 14px;">
+                                ⚠️ Credits not showing? This might be a webhook delay. Click below to manually refresh:
+                            </p>
+                            <button id="manual-refresh-btn" onclick="manualRefreshCredits()" style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                🔄 Refresh Credits Manually
+                            </button>
+                        </div>`
+                    );
+                }
+            }
+        }
+
+        async function manualRefreshCredits() {
+            const button = document.getElementById('manual-refresh-btn');
+            if (button) {
+                button.disabled = true;
+                button.textContent = '🔄 Refreshing...';
+            }
+            
+            try {
+                const apiKey = localStorage.getItem('apiKey');
+                if (!apiKey) {
+                    alert('Please log in to refresh credits');
+                    return;
+                }
+                
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                const response = await fetch(`${baseUrl}/api/debug/refresh-credits`, {
+                    method: 'POST',
+                    headers: {
+                        'X-API-Key': apiKey
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    // Force refresh the unified credit system
+                    if (window.unifiedCredits) {
+                        window.unifiedCredits.balance = null; // Force refresh
+                        await window.unifiedCredits.refreshAfterOperation();
+                    }
+                    
+                    // Reload credit management data
+                    loadCreditManagementData();
+                    
+                    // Show success message
+                    if (button) {
+                        button.textContent = '✅ Refreshed!';
+                        button.style.background = '#10b981';
+                        setTimeout(() => {
+                            button.textContent = '🔄 Refresh Credits Manually';
+                            button.style.background = '#f59e0b';
+                            button.disabled = false;
+                        }, 3000);
+                    }
+                } else {
+                    throw new Error(result.error || 'Failed to refresh credits');
+                }
+                
+            } catch (error) {
+                console.error('Manual refresh error:', error);
+                if (button) {
+                    button.textContent = '❌ Error - Try Again';
+                    button.style.background = '#ef4444';
+                    setTimeout(() => {
+                        button.textContent = '🔄 Refresh Credits Manually';
+                        button.style.background = '#f59e0b';
+                        button.disabled = false;
+                    }, 3000);
+                }
+            }
+        }
+
         function checkPaymentStatus() {
             const urlParams = new URLSearchParams(window.location.search);
             const statusElement = document.getElementById('paymentStatus');
@@ -929,6 +1015,11 @@
                         loadCreditManagementData();
                     }, delay);
                 });
+                
+                // Show manual refresh option after 20 seconds if credits haven't updated
+                setTimeout(() => {
+                    showManualRefreshOption();
+                }, 20000);
                 
             } else if (urlParams.get('canceled') === 'true') {
                 statusElement.className = 'payment-status error';
