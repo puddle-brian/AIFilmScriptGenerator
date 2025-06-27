@@ -5792,6 +5792,59 @@ app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), a
   res.json({ received: true, debug: true });
 });
 
+// Enhanced debug webhook endpoint to diagnose signature issues
+app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), (req, res) => {
+  console.log('🐛 DEBUG WEBHOOK RECEIVED:');
+  console.log('   - Timestamp:', new Date().toISOString());
+  console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  console.log('   - Body type:', typeof req.body);
+  console.log('   - Raw body preview:', req.body ? req.body.toString().substring(0, 200) + '...' : 'no body');
+  
+  const sig = req.headers['stripe-signature'];
+  if (sig) {
+    console.log('   - Signature header:', sig);
+    
+    // Try to parse the signature header
+    const sigElements = sig.split(',');
+    console.log('   - Signature elements:', sigElements);
+    
+    // Try manual verification with detailed logging
+    try {
+      const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+      console.log('   - Webhook secret preview:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 15) + '...' : 'none');
+      
+      const event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+      console.log('✅ DEBUG: Manual signature verification succeeded!');
+      console.log('   - Event type:', event.type);
+      console.log('   - Event ID:', event.id);
+      
+      res.json({ 
+        success: true, 
+        message: 'Debug webhook processed successfully',
+        eventType: event.type,
+        eventId: event.id
+      });
+    } catch (error) {
+      console.error('❌ DEBUG: Manual signature verification failed:');
+      console.error('   - Error:', error.message);
+      console.error('   - Error type:', error.constructor.name);
+      
+      res.status(400).json({ 
+        success: false, 
+        error: error.message,
+        errorType: error.constructor.name
+      });
+    }
+  } else {
+    console.error('❌ DEBUG: No signature header found');
+    res.status(400).json({ 
+      success: false, 
+      error: 'No stripe-signature header' 
+    });
+  }
+});
+
 // Stripe webhook handler for payment completion
 app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
