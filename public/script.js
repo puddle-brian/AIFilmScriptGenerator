@@ -1286,9 +1286,25 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     document.getElementById('universalLibrarySaveModal').classList.add('show');
     
-    // Focus on the name input
+    // Focus on the name input and set up Enter key handling
     setTimeout(() => {
-        document.getElementById('universalLibraryEntryName').focus();
+        const nameInput = document.getElementById('universalLibraryEntryName');
+        const descInput = document.getElementById('universalLibraryEntryDescription');
+        
+        nameInput.focus();
+        
+        // Add Enter key handling for form submission
+        const handleEnterKey = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveToLibraryAndContinue(type, isNewEntry);
+            }
+        };
+        
+        nameInput.addEventListener('keypress', handleEnterKey);
+        if (descInput) {
+            descInput.addEventListener('keypress', handleEnterKey);
+        }
     }, 100);
 }
 
@@ -7715,6 +7731,15 @@ function showCharacterModal() {
     if (modal) {
         modal.classList.add('show');
         console.log('ShowCharacterModal: Added show class, modal classes:', modal.className);
+        
+        // Focus on the first input field
+        setTimeout(() => {
+            const nameInput = document.getElementById('characterName');
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select(); // Select any existing text
+            }
+        }, 100);
     } else {
         console.error('ShowCharacterModal: Modal element not found!');
     }

@@ -488,6 +488,32 @@
     margin-top: 1.5rem;
 }
 
+/* Enhanced focus styles for modal buttons */
+.modal-actions .btn:focus {
+    outline: 2px solid #4facfe;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.2);
+}
+
+.modal-actions .btn-primary {
+    position: relative;
+}
+
+.modal-actions .btn-primary:focus {
+    outline: 2px solid #4facfe;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.3);
+    transform: translateY(-1px);
+}
+
+/* Form input focus styles in modals */
+.modal input:focus,
+.modal textarea:focus {
+    outline: none;
+    border-color: #4facfe;
+    box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+}
+
 /* Toast Notifications */
 .toast {
     position: fixed;

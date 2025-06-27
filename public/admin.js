@@ -637,6 +637,13 @@ function setupUserTableSearch() {
 function showCreateUserModal() {
     const modal = document.getElementById('createUserModal');
     modal.style.display = 'flex';
+    
+    // Focus on first input and set up Enter key handling
+    setTimeout(() => {
+        const firstInput = document.getElementById('newUsername');
+        firstInput.focus();
+        firstInput.select(); // Select any existing text
+    }, 100);
 }
 
 function hideCreateUserModal() {
@@ -659,6 +666,18 @@ function showGrantCreditsModal() {
     if (searchInput.value.trim()) {
         creditUsername.value = searchInput.value.trim();
     }
+    
+    // Focus on appropriate input and set up Enter key handling
+    setTimeout(() => {
+        if (creditUsername.value.trim()) {
+            // If username is pre-filled, focus on credit amount
+            const creditAmountInput = document.getElementById('creditAmount');
+            creditAmountInput.focus();
+        } else {
+            // Otherwise focus on username field
+            creditUsername.focus();
+        }
+    }, 100);
 }
 
 function hideGrantCreditsModal() {
@@ -1211,6 +1230,34 @@ function setupEventListeners() {
             }
         });
     }
+    
+    // Modal Enter key handling for Create User Modal
+    const createUserInputs = ['newUsername', 'newUserEmail', 'initialCredits'];
+    createUserInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    createUser();
+                }
+            });
+        }
+    });
+    
+    // Modal Enter key handling for Grant Credits Modal
+    const grantCreditsInputs = ['creditUsername', 'creditAmount', 'creditNotes'];
+    grantCreditsInputs.forEach(inputId => {
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    grantCredits();
+                }
+            });
+        }
+    });
     
     // Modal click outside to close
     document.addEventListener('click', function(e) {
