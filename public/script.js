@@ -38,6 +38,16 @@ const authManager = {
     init() {
         this.checkAuthStatus();
         this.updateUI();
+        
+        // Ensure credit widget is initialized after auth check
+        if (appState.isAuthenticated && appState.apiKey && window.CreditWidget) {
+            setTimeout(() => {
+                if (!window.creditWidget || !window.creditWidget.fetchBalance) {
+                    console.log('🔄 Initializing credit widget after auth check');
+                    window.creditWidget = window.CreditWidget.init(appState.apiKey);
+                }
+            }, 100);
+        }
     },
     
     checkAuthStatus() {
@@ -84,9 +94,13 @@ const authManager = {
                 profileUsername.textContent = appState.user.username;
             }
             
-            // Initialize credit widget if available
+            // Initialize/refresh credit widget if available
             if (window.creditWidget && typeof window.creditWidget.fetchBalance === 'function') {
                 window.creditWidget.fetchBalance();
+            } else if (window.CreditWidget && appState.apiKey) {
+                // Re-initialize credit widget with API key if not already initialized
+                console.log('🔄 Re-initializing credit widget with API key');
+                window.creditWidget = window.CreditWidget.init(appState.apiKey);
             }
         } else {
             // Show guest UI
@@ -1958,6 +1972,16 @@ async function initializeApp() {
     // Final progress meter update after everything is initialized
     if (typeof updateAllProgressMeters === 'function') {
         updateAllProgressMeters();
+    }
+    
+    // Force refresh credit widget after everything is loaded
+    if (appState.isAuthenticated && appState.apiKey && window.creditWidget) {
+        console.log('🔄 Force refreshing credit widget after app initialization');
+        setTimeout(() => {
+            window.creditWidget.fetchBalance().then(() => {
+                window.creditWidget.updateDisplay();
+            });
+        }, 500);
     }
     
     console.log('=== INITIALIZE APP COMPLETE ===');
