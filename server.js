@@ -1207,9 +1207,17 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 3. Each scene should advance this plot point's dramatic purpose step-by-step
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Create a natural flow between scenes in this sequence
-6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Each scene needs: title, location, time_of_day, description (3-6 sentences), characters, emotional_beats
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
-8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+8. Write in CINEMATIC LANGUAGE that translates story beats into visual terms
+9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+
+CINEMATIC WRITING FOUNDATION:
+• Lead with CHARACTER ACTIONS and decisions that drive the story forward
+• Show physical behaviors, movements, and reactions in visual detail
+• Focus on cause-and-effect storytelling through character choices
+• Use concrete, observable details that a camera could capture
+• Let the artistic influences naturally flavor this strong foundation
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
@@ -2975,9 +2983,17 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 3. Each scene should advance this plot point's dramatic purpose step-by-step
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Create a natural flow between scenes in this sequence
-6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Each scene needs: title, location, time_of_day, description (3-6 sentences), characters, emotional_beats
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
-8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+8. Write in CINEMATIC LANGUAGE that translates story beats into visual terms
+9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+
+CINEMATIC WRITING FOUNDATION:
+• Lead with CHARACTER ACTIONS and decisions that drive the story forward
+• Show physical behaviors, movements, and reactions in visual detail
+• Focus on cause-and-effect storytelling through character choices
+• Use concrete, observable details that a camera could capture
+• Let the artistic influences naturally flavor this strong foundation
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
@@ -7320,9 +7336,17 @@ MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
 3. Each scene should advance this plot point's dramatic purpose step-by-step
 4. Vary scene types: some dialogue-heavy, some action, some introspective
 5. Create a natural flow between scenes in this sequence
-6. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+6. Each scene needs: title, location, time_of_day, description (3-6 sentences), characters, emotional_beats
 7. Scenes should feel like organic parts of a sequence, not isolated fragments
-8. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+8. Write in CINEMATIC LANGUAGE that translates story beats into visual terms
+9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
+
+CINEMATIC WRITING FOUNDATION:
+• Lead with CHARACTER ACTIONS and decisions that drive the story forward
+• Show physical behaviors, movements, and reactions in visual detail
+• Focus on cause-and-effect storytelling through character choices
+• Use concrete, observable details that a camera could capture
+• Let the artistic influences naturally flavor this strong foundation
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     

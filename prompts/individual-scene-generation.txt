@@ -28,11 +28,19 @@ SCENE SEQUENCE REQUIREMENTS:
 2. Each scene should advance this plot point's specific purpose step-by-step
 3. Create a natural causal flow between scenes in this sequence: Scene 1 leads to Scene 2, which leads to Scene 3, etc.
 4. Vary scene types within the sequence: some dialogue-heavy, some action, some introspective
-5. Each scene needs: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
+5. Each scene needs: title, location, time_of_day, description (3-6 sentences), characters, emotional_beats
 6. Scenes should feel like organic parts of a sequence that collectively fulfill the plot point
 7. Show visual, external story beats that can be filmed - what does the audience SEE happening?
 8. Use concrete locations and specific time pressures to create cinematic tension
-9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward
+9. Write in CINEMATIC LANGUAGE focusing on what the camera sees, not plot summary
+10. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward
+
+CINEMATIC WRITING STYLE:
+• Focus on what the CAMERA SEES (visual details, blocking, movement)
+• Include ENVIRONMENTAL atmosphere (lighting, sounds, textures, space)
+• Show CHARACTER physicality (gestures, expressions, body language)
+• Add SENSORY details (what we hear, feel, see up close)
+• Think like a director describing each shot
 
 PLOT POINT BREAKDOWN STRATEGY:
 - Scene 1: Set up the situation or conflict described in the plot point
@@ -67,7 +75,7 @@ Return ONLY valid JSON in this exact format:
       "title": "Scene Title",
       "location": "Specific location",
       "time_of_day": "Morning/Afternoon/Evening/Night", 
-      "description": "What happens in this scene - be specific and visual",
+      "description": "Cinematic description of what the camera sees - include atmosphere, physicality, and sensory details",
       "characters": ["Character1", "Character2"],
       "emotional_beats": ["primary emotion", "secondary emotion"],
       "plotPointIndex": {{PLOT_POINT_INDEX}},
