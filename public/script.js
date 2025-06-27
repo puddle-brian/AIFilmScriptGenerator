@@ -122,10 +122,10 @@ const authManager = {
                         <button class="modal-close" onclick="authManager.hideRegistrationModal()">&times;</button>
                     </div>
                     <div class="modal-body">
-                        <p>To use AI-powered script generation, you'll need a free account with <strong>100 free credits</strong> to get started!</p>
+                        <p>To use AI-powered script generation, you'll need a free account with <strong>500 free credits</strong> to get started!</p>
                         <div class="registration-benefits">
                             <ul>
-                                <li>✨ <strong>100 free credits</strong> (worth $1.00)</li>
+                                <li>✨ <strong>500 free credits</strong> (worth $5.00)</li>
                                 <li>🎬 Generate complete film scripts</li>
                                 <li>💾 Save and manage your projects</li>
                                 <li>📊 Track your usage and costs</li>

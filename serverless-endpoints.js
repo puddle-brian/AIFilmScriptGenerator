@@ -78,7 +78,7 @@ router.post('/api/v2/auth/register', async (req, res) => {
       email,
       password_hash: hashedPassword,
       api_key: apiKey,
-      credits: 100,
+      credits: 500,
       email_updates: emailUpdates
     });
     
@@ -92,7 +92,7 @@ router.post('/api/v2/auth/register', async (req, res) => {
     const user = registrationResult.user;
     
     // Try to log credit transaction (non-critical)
-    await db.logCreditTransaction(user.id, 'grant', 100, 'Welcome bonus - 100 free credits');
+    await db.logCreditTransaction(user.id, 'grant', 500, 'Welcome bonus - 500 free credits');
     
     console.log(`New user registered: ${username} (${email}) - Method: ${registrationResult.method}`);
     

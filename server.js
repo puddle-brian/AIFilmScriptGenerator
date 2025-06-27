@@ -6016,7 +6016,7 @@ app.post('/api/auth/register', async (req, res) => {
       INSERT INTO credit_transactions (
         user_id, transaction_type, credits_amount, notes, created_at
       ) VALUES ($1, $2, $3, $4, NOW())
-    `, [user.id, 'grant', 100, 'Welcome bonus - 100 free credits']);
+    `, [user.id, 'grant', 500, 'Welcome bonus - 500 free credits']);
     
     // Populate starter pack with default libraries
     console.log(`New user registered: ${username} (${email}) - API Key: ${apiKey}`);
@@ -6592,7 +6592,7 @@ app.post('/api/v2/auth/register', async (req, res) => {
     // Generate API key
     const apiKey = 'user_' + crypto.randomBytes(32).toString('hex');
     
-    // Create user with initial credits (100 free credits = $1.00)
+    // Create user with initial credits (500 free credits = $5.00)
     const result = await dbClient.query(`
       INSERT INTO users (
         username, email, password_hash, api_key, 
@@ -6600,7 +6600,7 @@ app.post('/api/v2/auth/register', async (req, res) => {
         email_updates, email_verified, created_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING id, username, email, api_key, credits_remaining, created_at
-    `, [username, email, hashedPassword, apiKey, 100, 100, emailUpdates, false]);
+    `, [username, email, hashedPassword, apiKey, 500, 500, emailUpdates, false]);
     
     const user = result.rows[0];
     
