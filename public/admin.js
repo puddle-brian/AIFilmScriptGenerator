@@ -973,6 +973,72 @@ async function runHealthCheck() {
     }
 }
 
+async function testStripeWebhook() {
+    console.log('💳 Testing Stripe webhook...');
+    showAdminToast('Testing Stripe webhook...', 'warning');
+    
+    try {
+        // Create a test webhook payload (simulating a successful checkout)
+        const testPayload = {
+            id: 'evt_test_' + Date.now(),
+            object: 'event',
+            type: 'checkout.session.completed',
+            data: {
+                object: {
+                    id: 'cs_test_' + Date.now(),
+                    object: 'checkout_session',
+                    payment_status: 'paid',
+                    metadata: {
+                        userId: adminState.user.id.toString(),
+                        username: adminState.user.username,
+                        credits: '100',
+                        packageName: 'Admin Test Package'
+                    }
+                }
+            },
+            created: Math.floor(Date.now() / 1000)
+        };
+        
+        const response = await fetch('/api/stripe-webhook-debug', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'stripe-signature': 'test_signature_from_admin'
+            },
+            body: JSON.stringify(testPayload)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showAdminToast('✅ Webhook endpoint is reachable!', 'success');
+            console.log('Webhook test result:', result);
+            
+            // Show detailed results in console
+            console.log('🔍 Webhook Test Details:');
+            console.log('   - Endpoint Status:', response.status, response.statusText);
+            console.log('   - Event Type:', testPayload.type);
+            console.log('   - Test User:', adminState.user.username);
+            console.log('   - Test Credits:', '100');
+            console.log('   - Response:', result);
+            
+        } else {
+            showAdminToast(`❌ Webhook failed: ${result.error || 'Unknown error'}`, 'error');
+            console.error('Webhook test failed:', result);
+            
+            // Show debugging info
+            console.log('🔍 Webhook Debug Info:');
+            console.log('   - Response Status:', response.status);
+            console.log('   - Response Text:', response.statusText);
+            console.log('   - Error Details:', result);
+        }
+        
+    } catch (error) {
+        console.error('❌ Webhook test error:', error);
+        showAdminToast('❌ Webhook test failed: ' + error.message, 'error');
+    }
+}
+
 // Quick Action Functions
 async function viewErrorLogs() {
     showAdminToast('Feature coming soon', 'warning');
