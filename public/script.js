@@ -1088,13 +1088,30 @@ function addFromDropdownOrNew(type) {
             // For characters, add to main story characters (not influences)
             selectElement.value = '';
             
+            // Parse character data from JSON (new format) or handle legacy string format
+            let characterData;
+            try {
+                characterData = JSON.parse(value);
+                // Handle different possible character data structures
+                if (typeof characterData === 'string') {
+                    characterData = { name: characterData, description: '' };
+                } else if (characterData.entry_data) {
+                    characterData = characterData.entry_data;
+                } else if (!characterData.name) {
+                    characterData = { name: value, description: '' };
+                }
+            } catch (e) {
+                // Legacy string format fallback
+                characterData = { name: value, description: '' };
+            }
+            
             // Check if character already exists in project
-            const existingCharacter = appState.projectCharacters.find(char => char.name === value);
+            const existingCharacter = appState.projectCharacters.find(char => char.name === characterData.name);
             if (!existingCharacter) {
-                // Add character to project (with basic description)
+                // Add character to project with real description from library
                 appState.projectCharacters.push({
-                    name: value,
-                    description: `Main character: ${value}`,
+                    name: characterData.name,
+                    description: characterData.description,
                     fromLibrary: true
                 });
                 updateCharacterTags();
@@ -1107,12 +1124,12 @@ function addFromDropdownOrNew(type) {
                     autoSaveManager.markDirty();
                 }
                 
-                showToast(`Added "${value}" to your main characters`, 'success');
+                showToast(`Added "${characterData.name}" to your main characters`, 'success');
                 
                 // Check if this is a custom entry (not in default dropdown)
-                checkAndOfferLibrarySave(type, value);
+                checkAndOfferLibrarySave(type, characterData.name);
             } else {
-                showToast(`"${value}" is already in your characters`, 'warning');
+                showToast(`"${characterData.name}" is already in your characters`, 'warning');
             }
         } else if (type === 'storyconcept') {
             // For story concepts, we need to get the full concept data from the library
@@ -1796,12 +1813,12 @@ async function autoGenerate() {
     appState.influences.films = randomFilms;
     
     // Auto-generate sample characters BEFORE creating the project
-    // Use random characters from user's character library (characters are stored as strings)
+    // Use random characters from user's character library (characters are now objects with name and description)
     if (userLibraries.characters && userLibraries.characters.length > 0) {
         const shuffledCharacters = [...userLibraries.characters].sort(() => 0.5 - Math.random());
-        appState.projectCharacters = shuffledCharacters.slice(0, Math.min(3, shuffledCharacters.length)).map(characterName => ({
-            name: characterName,
-            description: `Main character: ${characterName}`,
+        appState.projectCharacters = shuffledCharacters.slice(0, Math.min(3, shuffledCharacters.length)).map(character => ({
+            name: character.name,
+            description: character.description,
             fromLibrary: true
         }));
     } else {
@@ -2110,8 +2127,9 @@ async function populateDropdowns() {
             console.log(`PopulateDropdowns: Adding ${allCharacters.length} characters`);
             allCharacters.forEach(character => {
                 const option = document.createElement('option');
-                option.value = character;
-                option.textContent = character;
+                // Store full character data as JSON
+                option.value = JSON.stringify(character);
+                option.textContent = character.name;
                 characterSelect.appendChild(option);
             });
         }
@@ -2167,7 +2185,12 @@ async function loadUserLibraries() {
                 
                 if (response.ok) {
                     const libraries = await response.json();
-                    userLibraries[type] = libraries.map(lib => lib.entry_data.name);
+                    // For characters, preserve full data structure; for others, just get name
+                    if (type === 'characters') {
+                        userLibraries[type] = libraries.map(lib => lib.entry_data);
+                    } else {
+                        userLibraries[type] = libraries.map(lib => lib.entry_data.name);
+                    }
                 }
             } catch (error) {
                 // Continue with empty array for this type
@@ -7956,7 +7979,13 @@ function validateCharactersRequired() {
 
 // Get characters as text for prompt generation (replaces old textarea value)
 function getCharactersForPrompt() {
-    return appState.projectCharacters.map(char => `${char.name}: ${char.description}`).join('\n\n');
+    return appState.projectCharacters.map(char => {
+        // Skip descriptions that are just "Main character: [name]" - show name only
+        if (char.description && !char.description.startsWith('Main character:')) {
+            return `${char.name} (${char.description})`;
+        }
+        return char.name;
+    }).join(', ');
 }
 
 // Modal click outside to close (for character modals)

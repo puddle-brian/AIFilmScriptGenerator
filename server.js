@@ -678,7 +678,11 @@ class HierarchicalContext {
     if (fullContext.projectCharacters && Array.isArray(fullContext.projectCharacters) && fullContext.projectCharacters.length > 0) {
       charactersDisplay = fullContext.projectCharacters.map(char => {
         if (typeof char === 'object' && char.name) {
-          return char.description ? `${char.name} (${char.description})` : char.name;
+          // Skip descriptions that are just "Main character: [name]" - show name only
+          if (char.description && !char.description.startsWith('Main character:')) {
+            return `${char.name} (${char.description})`;
+          }
+          return char.name;
         }
         return char;
       }).join(', ');
@@ -1028,7 +1032,11 @@ class HierarchicalContext {
       if (Array.isArray(story.characters)) {
         const characterDetails = story.characters.map(char => {
           if (typeof char === 'object' && char.name) {
-            return char.description ? `${char.name} (${char.description})` : char.name;
+            // Skip descriptions that are just "Main character: [name]" - show name only
+            if (char.description && !char.description.startsWith('Main character:')) {
+              return `${char.name} (${char.description})`;
+            }
+            return char.name;
           }
           return char;
         }).join(', ');
