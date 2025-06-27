@@ -1,5 +1,61 @@
 /* =================================
-   CREDIT SYSTEM STYLES
+   UNIFIED CREDIT SYSTEM STYLES
+   ================================= */
+
+/* Unified Credit System - Loading and State Management */
+.credits-badge.loading {
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+    animation: loading-pulse 1.5s infinite;
+}
+
+.credits-badge.unauthenticated {
+    background: linear-gradient(135deg, #e2e8f0 0%, #cbd5e1 100%);
+    color: #64748b;
+    cursor: default;
+}
+
+.credits-badge.error {
+    background: linear-gradient(135deg, #fca5a5 0%, #ef4444 100%);
+    animation: error-flash 2s infinite;
+}
+
+.credits-badge.critical {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+    animation: critical-pulse 2s infinite;
+}
+
+@keyframes loading-pulse {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 1; }
+}
+
+@keyframes error-flash {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+@keyframes critical-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* Prevent content shift during loading */
+.credits-amount {
+    min-width: 30px;
+    text-align: center;
+}
+
+/* Buy credits page balance display */
+#currentBalance {
+    transition: opacity 0.3s ease;
+}
+
+#currentBalance.loading {
+    opacity: 0.6;
+}
+
+/* =================================
+   LEGACY CREDIT SYSTEM STYLES
    ================================= */
 
 /* Header Credits Display */

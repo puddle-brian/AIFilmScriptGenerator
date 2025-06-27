@@ -412,8 +412,8 @@
         </div>
     </div>
 
-    <!-- Include credit widget for balance display -->
-    <script src="credits-widget.js"></script>
+    <!-- Include unified credit system for balance display -->
+    <script src="unified-credits.js"></script>
     <script src="auth.js"></script>
     <script>
         // Initialize Stripe with publishable key from server
@@ -445,9 +445,6 @@
             }
         }
         
-        // Initialize credit widget
-        let creditWidget;
-        
         // Check authentication and load user data
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize Stripe first
@@ -455,8 +452,8 @@
             
             const apiKey = localStorage.getItem('apiKey');
             if (apiKey) {
-                creditWidget = CreditWidget.init(apiKey);
-                await loadCurrentBalance();
+                // The unified credit system will handle balance display automatically
+                console.log('✅ Authenticated user detected, unified credit system will load balance');
             } else {
                 // Redirect to login if not authenticated
                 window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
@@ -465,27 +462,6 @@
             // Check for payment status in URL
             checkPaymentStatus();
         });
-
-        async function loadCurrentBalance() {
-            try {
-                const apiKey = localStorage.getItem('apiKey');
-                const baseUrl = window.location.hostname === 'localhost' ? 
-                    'https://screenplaygenie.com' : '';
-                
-                const response = await fetch(`${baseUrl}/api/my-stats`, {
-                    headers: { 'X-API-Key': apiKey }
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    const balance = data.user.credits_remaining || 0;
-                    document.getElementById('currentBalanceAmount').textContent = balance;
-                    document.getElementById('currentBalance').style.display = 'block';
-                }
-            } catch (error) {
-                console.warn('Failed to load current balance:', error);
-            }
-        }
 
         function checkPaymentStatus() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -512,11 +488,10 @@
                 `;
                 statusElement.style.display = 'block';
                 
-                // Refresh credit balance
-                if (creditWidget) {
-                    creditWidget.refreshAfterOperation();
+                // Refresh credit balance using unified system
+                if (window.unifiedCredits) {
+                    window.unifiedCredits.refreshAfterOperation();
                 }
-                setTimeout(loadCurrentBalance, 1000);
                 
             } else if (urlParams.get('canceled') === 'true') {
                 statusElement.className = 'payment-status error';

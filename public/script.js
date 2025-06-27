@@ -39,13 +39,11 @@ const authManager = {
         this.checkAuthStatus();
         this.updateUI();
         
-        // Ensure credit widget is initialized after auth check
-        if (appState.isAuthenticated && appState.apiKey && window.CreditWidget) {
+        // Ensure unified credit system is initialized after auth check
+        if (appState.isAuthenticated && appState.apiKey && window.UnifiedCreditSystem) {
             setTimeout(() => {
-                if (!window.creditWidget || !window.creditWidget.fetchBalance) {
-                    console.log('🔄 Initializing credit widget after auth check');
-                    window.creditWidget = window.CreditWidget.init(appState.apiKey);
-                }
+                console.log('🔄 Initializing unified credit system after auth check');
+                window.UnifiedCreditSystem.init(appState.apiKey);
             }, 100);
         }
     },
@@ -100,13 +98,13 @@ const authManager = {
                 adminAccess.style.display = appState.user.is_admin ? 'flex' : 'none';
             }
             
-            // Initialize/refresh credit widget if available
-            if (window.creditWidget && typeof window.creditWidget.fetchBalance === 'function') {
-                window.creditWidget.fetchBalance();
-            } else if (window.CreditWidget && appState.apiKey) {
-                // Re-initialize credit widget with API key if not already initialized
-                console.log('🔄 Re-initializing credit widget with API key');
-                window.creditWidget = window.CreditWidget.init(appState.apiKey);
+            // Initialize/refresh unified credit system if available
+            if (window.unifiedCredits && typeof window.unifiedCredits.fetchBalance === 'function') {
+                window.unifiedCredits.fetchBalance();
+            } else if (window.UnifiedCreditSystem && appState.apiKey) {
+                // Re-initialize unified credit system with API key if not already initialized
+                console.log('🔄 Re-initializing unified credit system with API key');
+                window.UnifiedCreditSystem.init(appState.apiKey);
             }
         } else {
             // Show guest UI
@@ -1985,9 +1983,9 @@ async function initializeApp() {
     if (appState.isAuthenticated && appState.apiKey && window.creditWidget) {
         console.log('🔄 Force refreshing credit widget after app initialization');
         setTimeout(() => {
-            window.creditWidget.fetchBalance().then(() => {
-                window.creditWidget.updateDisplay();
-            });
+                    window.unifiedCredits.fetchBalance().then(() => {
+            // Display is automatically updated by the unified system
+        });
         }, 500);
     }
     
