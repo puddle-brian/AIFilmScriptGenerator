@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Fix Account</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background: #1a1a1a;
+            color: white;
+        }
+        .button {
+            background: #4CAF50;
+            color: white;
+            padding: 20px 40px;
+            font-size: 18px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 20px;
+        }
+        .button:hover {
+            background: #45a049;
+        }
+        .result {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loading {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 Screenplay Genie</h1>
+    <h2>Test Fix Account - Add Starter Pack + Credits</h2>
+    <p>Testing with <strong>testuser54321</strong> account:</p>
+    
+    <button class="button" onclick="fixAccount()">
+        ✨ Fix testuser54321's Account ✨
+    </button>
+    
+    <div id="result"></div>
+
+    <script>
+    async function fixAccount() {
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = '<div class="result loading">🔄 Adding starter pack and credits to testuser54321\'s account...</div>';
+        
+        try {
+            // Step 1: Populate starter pack
+            const starterResponse = await fetch('/api/user-libraries/testuser54321/populate-starter-pack', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!starterResponse.ok) {
+                throw new Error(`Starter pack failed: HTTP ${starterResponse.status}: ${starterResponse.statusText}`);
+            }
+            
+            const starterData = await starterResponse.json();
+            
+            if (!starterData.success) {
+                throw new Error(starterData.message || 'Failed to populate starter pack');
+            }
+            
+            // Step 2: Grant 500 credits
+            resultDiv.innerHTML = '<div class="result loading">✅ Starter pack added! Now adding 500 credits...</div>';
+            
+            const creditsResponse = await fetch('/api/admin/grant-credits', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: 'testuser54321',
+                    credits: 500,
+                    notes: 'Test credit grant - account setup assistance'
+                })
+            });
+            
+            if (!creditsResponse.ok) {
+                throw new Error(`Credits failed: HTTP ${creditsResponse.status}: ${creditsResponse.statusText}`);
+            }
+            
+            const creditsData = await creditsResponse.json();
+            
+            // Success!
+            resultDiv.innerHTML = `
+                <div class="result success">
+                    <h3>✅ Complete Success!</h3>
+                    <p><strong>testuser54321's account has been fully fixed!</strong></p>
+                    <p><strong>📚 Starter Pack Added:</strong></p>
+                    <ul style="text-align: left; display: inline-block;">
+                        <li>📽️ ${starterData.counts.directors} Directors</li>
+                        <li>✍️ ${starterData.counts.screenwriters} Screenwriters</li>
+                        <li>🎥 ${starterData.counts.films} Films</li>
+                        <li>🎭 ${starterData.counts.tones} Tones</li>
+                        <li>👥 ${starterData.counts.characters} Characters</li>
+                    </ul>
+                    <p><strong>💰 Credits Added:</strong> 500 credits</p>
+                    <p><strong>Total Library Items: ${starterData.counts.total}</strong></p>
+                    <p>🎉 <strong>testuser54321 is all set!</strong> You can now refresh the main page and test the dropdowns!</p>
+                </div>
+            `;
+            
+        } catch (error) {
+            console.error('Error:', error);
+            resultDiv.innerHTML = `
+                <div class="result error">
+                    <h3>❌ Error</h3>
+                    <p><strong>Failed to fix testuser54321's account:</strong></p>
+                    <p>${error.message}</p>
+                    <p>Please try again or contact support.</p>
+                </div>
+            `;
+        }
+    }
+    </script>
+</body>
+</html> 
