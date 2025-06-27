@@ -487,58 +487,6 @@
 
         <div id="paymentStatus" class="payment-status"></div>
 
-        <!-- Credit Management Section -->
-        <div class="credit-management-section" id="creditManagementSection" style="display: none;">
-            <h3>📊 Credit Overview</h3>
-            <div class="credit-stats-grid">
-                <div class="credit-stat-card">
-                    <div class="stat-icon">💳</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Current Balance</div>
-                        <div class="stat-value" id="dashboardBalance">--</div>
-                        <div class="stat-subtext">credits available</div>
-                    </div>
-                </div>
-                <div class="credit-stat-card">
-                    <div class="stat-icon">📈</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Total Used</div>
-                        <div class="stat-value" id="totalUsed">--</div>
-                        <div class="stat-subtext">credits consumed</div>
-                    </div>
-                </div>
-                <div class="credit-stat-card">
-                    <div class="stat-icon">🎬</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Scripts Created</div>
-                        <div class="stat-value" id="scriptsCreated">--</div>
-                        <div class="stat-subtext">total projects</div>
-                    </div>
-                </div>
-                <div class="credit-stat-card">
-                    <div class="stat-icon">⚡</div>
-                    <div class="stat-content">
-                        <div class="stat-label">Avg. per Script</div>
-                        <div class="stat-value" id="avgPerScript">--</div>
-                        <div class="stat-subtext">credits per project</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="recent-activity">
-                <h4>📋 Recent Activity</h4>
-                <div class="activity-list" id="activityList">
-                    <div class="activity-item loading">
-                        <div class="activity-icon">⏳</div>
-                        <div class="activity-content">
-                            <div class="activity-text">Loading recent activity...</div>
-                            <div class="activity-time">--</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="credit-packages">
             <!-- Starter Package -->
             <div class="credit-package">
@@ -624,6 +572,58 @@
                     <div class="value-point-icon">🔒</div>
                     <h4>Secure Payments</h4>
                     <p>Protected by Stripe's industry-leading security. Your payment information is always safe.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Credit Management Section -->
+        <div class="credit-management-section" id="creditManagementSection" style="display: none;">
+            <h3>📊 Credit Overview</h3>
+            <div class="credit-stats-grid">
+                <div class="credit-stat-card">
+                    <div class="stat-icon">💳</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Current Balance</div>
+                        <div class="stat-value" id="dashboardBalance">--</div>
+                        <div class="stat-subtext">credits available</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Used</div>
+                        <div class="stat-value" id="totalUsed">--</div>
+                        <div class="stat-subtext">credits consumed</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">🎬</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Scripts Created</div>
+                        <div class="stat-value" id="scriptsCreated">--</div>
+                        <div class="stat-subtext">total projects</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Avg. per Script</div>
+                        <div class="stat-value" id="avgPerScript">--</div>
+                        <div class="stat-subtext">credits per project</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="recent-activity">
+                <h4>📋 Recent Activity</h4>
+                <div class="activity-list" id="activityList">
+                    <div class="activity-item loading">
+                        <div class="activity-icon">⏳</div>
+                        <div class="activity-content">
+                            <div class="activity-text">Loading recent activity...</div>
+                            <div class="activity-time">--</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -722,17 +722,16 @@
             // Update dashboard balance
             document.getElementById('dashboardBalance').textContent = user.credits_remaining || 0;
             
-            // Calculate total used (purchased - remaining)
-            const totalPurchased = user.credits_purchased || 0;
-            const totalUsed = totalPurchased - (user.credits_remaining || 0);
-            document.getElementById('totalUsed').textContent = totalUsed;
+            // Calculate total used from actual usage data (more accurate)
+            const totalUsed = usage.total_credits_used || 0;
+            document.getElementById('totalUsed').textContent = totalUsed >= 0 ? totalUsed : 0;
             
             // Scripts created (from usage data)
             const scriptsCreated = usage.total_requests || 0;
             document.getElementById('scriptsCreated').textContent = scriptsCreated;
             
             // Average credits per script
-            const avgPerScript = scriptsCreated > 0 ? Math.round(totalUsed / scriptsCreated) : 0;
+            const avgPerScript = scriptsCreated > 0 && totalUsed > 0 ? Math.round(totalUsed / scriptsCreated) : 0;
             document.getElementById('avgPerScript').textContent = avgPerScript;
         }
 
