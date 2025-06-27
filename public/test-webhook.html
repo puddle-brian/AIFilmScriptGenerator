@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Webhook Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a8b; }
+        .result { margin-top: 20px; padding: 15px; background: #f5f5f5; border-left: 4px solid #007cba; }
+        .error { border-left-color: #dc3545; background: #f8d7da; }
+        .success { border-left-color: #28a745; background: #d4edda; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Webhook Test Tool</h1>
+        <p>Test your Stripe webhook endpoints to diagnose issues.</p>
+        
+        <div>
+            <button onclick="testWebhookDebug()">Test Debug Endpoint</button>
+            <button onclick="testWebhookPing()">Test Ping Endpoint</button>
+            <button onclick="testWebhookMain()">Test Main Webhook</button>
+        </div>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testWebhookDebug() {
+            await testEndpoint('/api/stripe-webhook-debug', 'Debug Endpoint', {
+                type: 'test.event',
+                id: 'evt_test_123',
+                data: {
+                    object: {
+                        id: 'cs_test_123',
+                        object: 'checkout.session',
+                        payment_status: 'paid',
+                        metadata: {
+                            userId: '1',
+                            username: 'testuser',
+                            credits: '500',
+                            packageName: 'Test Package'
+                        }
+                    }
+                }
+            });
+        }
+
+        async function testWebhookPing() {
+            await testEndpoint('/api/webhook-ping', 'Ping Endpoint', {
+                message: 'test ping'
+            });
+        }
+
+        async function testWebhookMain() {
+            await testEndpoint('/api/stripe-webhook', 'Main Webhook', {
+                type: 'checkout.session.completed',
+                id: 'evt_test_123',
+                data: {
+                    object: {
+                        id: 'cs_test_123',
+                        object: 'checkout.session',
+                        payment_status: 'paid',
+                        metadata: {
+                            userId: '1',
+                            username: 'testuser',
+                            credits: '500',
+                            packageName: 'Test Package'
+                        }
+                    }
+                }
+            });
+        }
+
+        async function testEndpoint(endpoint, name, data) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = `<div>Testing ${name}...</div>`;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="result ${response.ok ? 'success' : 'error'}">
+                        <h3>✅ ${name} Result</h3>
+                        <p><strong>Status:</strong> ${response.status} ${response.statusText}</p>
+                        <p><strong>Response:</strong></p>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ ${name} Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+    </script>
+</body>
+</html> 
