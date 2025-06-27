@@ -4629,9 +4629,9 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
         }
       });
       
-    } catch (fileError) {
-      console.error('Error reading default data files:', fileError);
-      res.status(500).json({ error: 'Failed to read default data files' });
+    } catch (dataError) {
+      console.error('Error processing starter pack data:', dataError);
+      res.status(500).json({ error: 'Failed to process starter pack data', details: dataError.message });
     }
     
   } catch (error) {
