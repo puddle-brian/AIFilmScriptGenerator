@@ -4539,17 +4539,25 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
     
     console.log(`Populating starter pack for user: ${username} (ID: ${userId})`);
     
-    // Load all default data files
-    const fs = require('fs').promises;
-    const path = require('path');
+    // Load all default data files via HTTP (works better on serverless)
+    const fetch = require('node-fetch');
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
     
     try {
-      // Load default data from public/data directory
-      const directorsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'directors.json'), 'utf8'));
-      const screenwritersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'screenwriters.json'), 'utf8'));
-      const filmsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'films.json'), 'utf8'));
-      const tonesData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'tones.json'), 'utf8'));
-      const charactersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'characters.json'), 'utf8'));
+      // Load default data from public/data directory via HTTP
+      const [directorsRes, screenwritersRes, filmsRes, tonesRes, charactersRes] = await Promise.all([
+        fetch(`${baseUrl}/data/directors.json`),
+        fetch(`${baseUrl}/data/screenwriters.json`),
+        fetch(`${baseUrl}/data/films.json`),
+        fetch(`${baseUrl}/data/tones.json`),
+        fetch(`${baseUrl}/data/characters.json`)
+      ]);
+      
+      const directorsData = await directorsRes.json();
+      const screenwritersData = await screenwritersRes.json();
+      const filmsData = await filmsRes.json();
+      const tonesData = await tonesRes.json();
+      const charactersData = await charactersRes.json();
       
       let totalInserted = 0;
       
@@ -4644,15 +4652,23 @@ async function populateUserStarterPack(userId, username) {
   try {
     console.log(`Auto-populating starter pack for new user: ${username} (ID: ${userId})`);
     
-    const fs = require('fs').promises;
-    const path = require('path');
+    const fetch = require('node-fetch');
+    const baseUrl = process.env.DEPLOYED_URL || 'https://screenplaygenie.com';
     
-    // Load default data from public/data directory
-    const directorsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'directors.json'), 'utf8'));
-    const screenwritersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'screenwriters.json'), 'utf8'));
-    const filmsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'films.json'), 'utf8'));
-    const tonesData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'tones.json'), 'utf8'));
-    const charactersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'characters.json'), 'utf8'));
+    // Load default data from public/data directory via HTTP
+    const [directorsRes, screenwritersRes, filmsRes, tonesRes, charactersRes] = await Promise.all([
+      fetch(`${baseUrl}/data/directors.json`),
+      fetch(`${baseUrl}/data/screenwriters.json`),
+      fetch(`${baseUrl}/data/films.json`),
+      fetch(`${baseUrl}/data/tones.json`),
+      fetch(`${baseUrl}/data/characters.json`)
+    ]);
+    
+    const directorsData = await directorsRes.json();
+    const screenwritersData = await screenwritersRes.json();
+    const filmsData = await filmsRes.json();
+    const tonesData = await tonesRes.json();
+    const charactersData = await charactersRes.json();
     
     // Insert all data in parallel for better performance
     const insertPromises = [];
