@@ -5741,6 +5741,32 @@ app.post('/api/webhook-test', express.json(), (req, res) => {
   res.json({ success: true, message: 'Webhook endpoint is reachable' });
 });
 
+// Simple webhook connectivity test
+app.post('/api/webhook-ping', express.json(), (req, res) => {
+  console.log('🏓 WEBHOOK PING received!');
+  console.log('   - Timestamp:', new Date().toISOString());
+  console.log('   - Headers:', req.headers);
+  console.log('   - Body:', req.body);
+  res.json({ 
+    success: true, 
+    message: 'Webhook endpoint is reachable',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Test any webhook endpoint
+app.all('/api/webhook-test-all', (req, res) => {
+  console.log('🧪 WEBHOOK TEST (ALL METHODS) received!');
+  console.log('   - Method:', req.method);
+  console.log('   - Headers:', req.headers);
+  console.log('   - Body:', req.body);
+  res.json({ 
+    success: true, 
+    method: req.method,
+    message: 'Webhook endpoint is reachable via any method'
+  });
+});
+
 // Debug endpoint to see raw webhook data (TEMPORARY - remove after debugging)
 app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), async (req, res) => {
   console.log('🔍 DEBUG: Webhook received (no signature verification)');
