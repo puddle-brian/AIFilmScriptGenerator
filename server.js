@@ -6235,7 +6235,7 @@ app.post('/api/v2/auth/login', async (req, res) => {
     
     // Update last login (non-critical)
     try {
-      await dbClient.query('UPDATE users SET updated_at = NOW() WHERE id = $1', [user.id]);
+      await dbClient.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
     } catch (updateError) {
       console.log('Last login update failed:', updateError.message);
     }
@@ -6305,8 +6305,8 @@ app.post('/api/v2/auth/register', async (req, res) => {
       INSERT INTO users (
         username, email, password_hash, api_key, 
         credits_remaining, total_credits_purchased, 
-        email_updates, email_verified, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        email_updates, email_verified, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
       RETURNING id, username, email, api_key, credits_remaining, created_at
     `, [username, email, hashedPassword, apiKey, 100, 100, emailUpdates, false]);
     
