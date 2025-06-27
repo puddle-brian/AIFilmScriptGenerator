@@ -6,157 +6,318 @@
     <title>Buy Credits - Film Script Generator</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="stylesheet" href="credits.css">
+    <link rel="stylesheet" href="credits-widget.css">
     <script src="https://js.stripe.com/v3/"></script>
     <style>
+        .buy-credits-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .page-intro {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+        }
+
+        .page-intro h2 {
+            font-size: 2.5em;
+            margin-bottom: 16px;
+            font-weight: 700;
+        }
+
+        .page-intro p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .current-balance {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 16px 24px;
+            border-radius: 12px;
+            margin-top: 24px;
+            display: inline-block;
+        }
+
+        .current-balance-label {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .current-balance-amount {
+            font-size: 1.8em;
+            font-weight: 700;
+        }
+        
         .credit-packages {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-            margin: 32px 0;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 32px;
+            margin: 48px 0;
         }
         
         .credit-package {
             background: white;
             border: 2px solid #e0e7ff;
-            border-radius: 12px;
-            padding: 24px;
+            border-radius: 16px;
+            padding: 32px 24px;
             text-align: center;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         
         .credit-package:hover {
             border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(102, 126, 234, 0.15);
         }
         
         .credit-package.popular {
             border-color: #667eea;
             transform: scale(1.05);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
         }
         
         .credit-package.popular::before {
-            content: "Most Popular";
+            content: "🔥 Most Popular";
             position: absolute;
-            top: -12px;
+            top: -14px;
             left: 50%;
             transform: translateX(-50%);
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4px 16px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 6px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
         
         .package-credits {
-            font-size: 2.5em;
-            font-weight: 700;
+            font-size: 3em;
+            font-weight: 800;
             color: #667eea;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .package-credits-label {
+            font-size: 0.4em;
+            font-weight: 500;
+            color: #64748b;
+            margin-left: 8px;
         }
         
         .package-price {
-            font-size: 1.5em;
-            font-weight: 600;
+            font-size: 2em;
+            font-weight: 700;
             color: #2d3748;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
         
         .package-value {
+            font-size: 1em;
+            color: #64748b;
+            margin-bottom: 24px;
+            padding: 8px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            display: inline-block;
+        }
+
+        .package-savings {
+            color: #059669;
+            font-weight: 600;
             font-size: 0.9em;
-            color: #718096;
             margin-bottom: 20px;
         }
         
         .package-features {
             list-style: none;
             padding: 0;
-            margin: 20px 0;
-            font-size: 0.9em;
+            margin: 24px 0;
+            font-size: 0.95em;
         }
         
         .package-features li {
-            margin: 8px 0;
+            margin: 12px 0;
             color: #4a5568;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .package-features li::before {
             content: "✓";
-            color: #48bb78;
+            color: #10b981;
             font-weight: bold;
-            margin-right: 8px;
+            margin-right: 12px;
+            font-size: 1.2em;
         }
         
         .buy-button {
             width: 100%;
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
+            padding: 16px 24px;
+            border-radius: 12px;
             font-size: 16px;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: background 0.2s ease;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .buy-button:hover {
-            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
         }
         
         .buy-button:disabled {
-            background: #ccc;
+            background: #cbd5e1;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .payment-status {
-            margin: 20px 0;
-            padding: 16px;
-            border-radius: 8px;
+            margin: 32px 0;
+            padding: 20px;
+            border-radius: 12px;
             display: none;
+            text-align: center;
         }
         
         .payment-status.success {
-            background: #c6f6d5;
-            color: #22543d;
-            border: 1px solid #48bb78;
+            background: #d1fae5;
+            color: #065f46;
+            border: 2px solid #10b981;
         }
         
         .payment-status.error {
-            background: #fed7d7;
-            color: #742a2a;
-            border: 1px solid #e53e3e;
+            background: #fee2e2;
+            color: #991b1b;
+            border: 2px solid #ef4444;
         }
         
         .payment-status.processing {
-            background: #bee3f8;
-            color: #2a4365;
-            border: 1px solid #3182ce;
+            background: #dbeafe;
+            color: #1e40af;
+            border: 2px solid #3b82f6;
+        }
+
+        .value-proposition {
+            background: #f8fafc;
+            padding: 32px;
+            border-radius: 16px;
+            margin: 48px 0;
+            text-align: center;
+        }
+
+        .value-proposition h3 {
+            color: #374151;
+            margin-bottom: 16px;
+        }
+
+        .value-points {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-top: 32px;
+        }
+
+        .value-point {
+            text-align: center;
+        }
+
+        .value-point-icon {
+            font-size: 2.5em;
+            margin-bottom: 12px;
+        }
+
+        .value-point h4 {
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .value-point p {
+            color: #64748b;
+            font-size: 0.9em;
+        }
+
+        .back-navigation {
+            margin-bottom: 24px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .back-link:hover {
+            color: #5a67d8;
+        }
+
+        .back-link::before {
+            content: "←";
+            margin-right: 8px;
+            font-size: 1.2em;
+        }
+
+        @media (max-width: 768px) {
+            .credit-packages {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .credit-package.popular {
+                transform: none;
+            }
+
+            .page-intro h2 {
+                font-size: 2em;
+            }
+
+            .package-credits {
+                font-size: 2.5em;
+            }
+
+            .value-points {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
         }
     </style>
 </head>
 <body>
-    <header>
-        <div class="header-content">
-            <div class="logo">
-                <h1>🎬 Film Script Generator</h1>
-            </div>
-            <div class="user-info">
-                <div class="credits-badge" id="creditsBadge">
-                    <span class="credits-amount" id="creditsAmount">--</span>
-                    <span class="credits-label">credits</span>
-                </div>
-                <a href="/" class="back-button">← Back to Generator</a>
-            </div>
+    <div class="buy-credits-container">
+        <div class="back-navigation">
+            <a href="/" class="back-link">Back to Script Generator</a>
         </div>
-    </header>
 
-    <main class="container">
-        <div class="page-header">
+        <div class="page-intro">
             <h2>Buy Credits</h2>
-            <p>Choose a credit package to continue generating amazing scripts</p>
+            <p>Power your creativity with credits that never expire. Generate unlimited scripts and bring your stories to life.</p>
+            <div class="current-balance" id="currentBalance" style="display: none;">
+                <div class="current-balance-label">Current Balance</div>
+                <div class="current-balance-amount" id="currentBalanceAmount">--</div>
+                <span style="font-size: 0.8em; opacity: 0.8;">credits</span>
+            </div>
         </div>
 
         <div id="paymentStatus" class="payment-status"></div>
@@ -164,100 +325,181 @@
         <div class="credit-packages">
             <!-- Starter Package -->
             <div class="credit-package">
-                <div class="package-credits">500</div>
+                <div class="package-credits">
+                    500
+                    <span class="package-credits-label">credits</span>
+                </div>
                 <div class="package-price">$5.00</div>
                 <div class="package-value">$0.01 per credit</div>
                 <ul class="package-features">
-                    <li>~16 story generations</li>
-                    <li>Perfect for trying out</li>
-                    <li>No expiration</li>
+                    <li>~16 complete script generations</li>
+                    <li>Perfect for trying our platform</li>
+                    <li>Credits never expire</li>
+                    <li>Full feature access</li>
                 </ul>
                 <button class="buy-button" onclick="purchaseCredits(500, 500, 'Starter Package')">
-                    Buy 500 Credits
+                    Get Started
                 </button>
             </div>
 
             <!-- Popular Package -->
             <div class="credit-package popular">
-                <div class="package-credits">2,000</div>
+                <div class="package-credits">
+                    2,000
+                    <span class="package-credits-label">credits</span>
+                </div>
                 <div class="package-price">$15.00</div>
                 <div class="package-value">$0.0075 per credit</div>
+                <div class="package-savings">Save 25%</div>
                 <ul class="package-features">
-                    <li>~66 story generations</li>
-                    <li>25% savings</li>
-                    <li>Most popular choice</li>
-                    <li>No expiration</li>
+                    <li>~66 complete script generations</li>
+                    <li>Best value for regular users</li>
+                    <li>Credits never expire</li>
+                    <li>Priority support</li>
                 </ul>
                 <button class="buy-button" onclick="purchaseCredits(2000, 1500, 'Popular Package')">
-                    Buy 2,000 Credits
+                    Most Popular
                 </button>
             </div>
 
             <!-- Pro Package -->
             <div class="credit-package">
-                <div class="package-credits">5,000</div>
+                <div class="package-credits">
+                    5,000
+                    <span class="package-credits-label">credits</span>
+                </div>
                 <div class="package-price">$30.00</div>
                 <div class="package-value">$0.006 per credit</div>
+                <div class="package-savings">Save 40%</div>
                 <ul class="package-features">
-                    <li>~166 story generations</li>
-                    <li>40% savings</li>
-                    <li>Great for heavy users</li>
-                    <li>No expiration</li>
+                    <li>~166 complete script generations</li>
+                    <li>Perfect for professionals</li>
+                    <li>Credits never expire</li>
+                    <li>Priority support</li>
                 </ul>
                 <button class="buy-button" onclick="purchaseCredits(5000, 3000, 'Pro Package')">
-                    Buy 5,000 Credits
+                    Go Pro
                 </button>
             </div>
         </div>
 
-        <div class="info-section">
-            <h3>How Credits Work</h3>
-            <p>Credits are used for AI-powered story generation. Different operations cost different amounts:</p>
-            <ul>
-                <li><strong>Story Structure:</strong> ~25 credits</li>
-                <li><strong>Plot Points:</strong> ~15 credits per act</li>
-                <li><strong>Scene Generation:</strong> ~30 credits per scene</li>
-                <li><strong>Dialogue Generation:</strong> ~20 credits per scene</li>
-            </ul>
-            <p>Credits never expire and can be used across all your projects.</p>
+        <div class="value-proposition">
+            <h3>Why Choose Our Credit System?</h3>
+            <p>Get the most out of your screenwriting journey with our flexible, powerful credit system.</p>
+            
+            <div class="value-points">
+                <div class="value-point">
+                    <div class="value-point-icon">⏰</div>
+                    <h4>Never Expire</h4>
+                    <p>Your credits are yours forever. Use them at your own pace without any time pressure.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🎯</div>
+                    <h4>Transparent Pricing</h4>
+                    <p>Know exactly what you're paying for. No hidden fees, no surprises, just clear value.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🚀</div>
+                    <h4>Instant Access</h4>
+                    <p>Credits are added immediately after purchase. Start generating scripts right away.</p>
+                </div>
+                <div class="value-point">
+                    <div class="value-point-icon">🔒</div>
+                    <h4>Secure Payments</h4>
+                    <p>Protected by Stripe's industry-leading security. Your payment information is always safe.</p>
+                </div>
+            </div>
         </div>
-    </main>
+    </div>
 
+    <!-- Include credit widget for balance display -->
+    <script src="credits-widget.js"></script>
+    <script src="auth.js"></script>
     <script>
-        // Initialize Stripe (you'll need to add your publishable key)
-        const stripe = Stripe('pk_live_51RebwVIuuvn3nTg8ePfBMz8K8lIwfYDGwsTIZ99dyYQPy33ulzqfZq13hmeCdv3YGsvgmCKjMnsfkdh0qBWXrWvo00dFx3u95j'); // Replace with your ACTUAL publishable key from Stripe
+        // Initialize Stripe
+        const stripe = Stripe('pk_live_51RebwVCcC1QzMUzPGXPHYhVUH9rFLGzB8rNQkn9Lj4IVnuHB1Xz7uBZNWJkOdRl7xJnYqGfRXsKy8yQ9QZwMRKlx00yFpQZoJG');
         
-        // Load existing credit widget
+        // Initialize credit widget
         let creditWidget;
         
-        async function initializePage() {
-            // Load credit widget if available
-            if (window.CreditWidget) {
-                creditWidget = CreditWidget.init();
+        // Check authentication and load user data
+        document.addEventListener('DOMContentLoaded', async function() {
+            const apiKey = localStorage.getItem('apiKey');
+            if (apiKey) {
+                creditWidget = CreditWidget.init(apiKey);
+                await loadCurrentBalance();
+            } else {
+                // Redirect to login if not authenticated
+                window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
             }
             
-            // Check if user is logged in
-            const apiKey = localStorage.getItem('apiKey');
-            if (!apiKey) {
-                showStatus('Please log in to purchase credits', 'error');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 2000);
-                return;
+            // Check for payment status in URL
+            checkPaymentStatus();
+        });
+
+        async function loadCurrentBalance() {
+            try {
+                const apiKey = localStorage.getItem('apiKey');
+                const response = await fetch('/api/my-stats', {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const balance = data.user.credits_remaining || 0;
+                    document.getElementById('currentBalanceAmount').textContent = balance;
+                    document.getElementById('currentBalance').style.display = 'block';
+                }
+            } catch (error) {
+                console.warn('Failed to load current balance:', error);
+            }
+        }
+
+        function checkPaymentStatus() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusElement = document.getElementById('paymentStatus');
+            
+            if (urlParams.get('success') === 'true') {
+                statusElement.className = 'payment-status success';
+                statusElement.innerHTML = `
+                    <h3>🎉 Payment Successful!</h3>
+                    <p>Your credits have been added to your account. You can now generate amazing scripts!</p>
+                    <button onclick="window.location.href='/'" style="margin-top: 16px; padding: 12px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer;">Start Creating →</button>
+                `;
+                statusElement.style.display = 'block';
+                
+                // Refresh credit balance
+                if (creditWidget) {
+                    creditWidget.refreshAfterOperation();
+                }
+                setTimeout(loadCurrentBalance, 1000);
+                
+            } else if (urlParams.get('canceled') === 'true') {
+                statusElement.className = 'payment-status error';
+                statusElement.innerHTML = `
+                    <h3>Payment Canceled</h3>
+                    <p>Your payment was canceled. No charges were made to your account.</p>
+                `;
+                statusElement.style.display = 'block';
             }
         }
 
         async function purchaseCredits(credits, priceInCents, packageName) {
-            showStatus('Initializing payment...', 'processing');
-            
-            try {
-                const apiKey = localStorage.getItem('apiKey');
-                if (!apiKey) {
-                    showStatus('Please log in to purchase credits', 'error');
-                    return;
-                }
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) {
+                alert('Please log in to purchase credits');
+                window.location.href = 'login.html';
+                return;
+            }
 
-                // Create checkout session
+            // Disable all buy buttons
+            const buttons = document.querySelectorAll('.buy-button');
+            buttons.forEach(btn => {
+                btn.disabled = true;
+                btn.textContent = 'Processing...';
+            });
+
+            try {
                 const response = await fetch('/api/create-checkout-session', {
                     method: 'POST',
                     headers: {
@@ -271,52 +513,39 @@
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to create checkout session');
-                }
-
                 const session = await response.json();
-                
-                // Redirect to Stripe Checkout
-                const result = await stripe.redirectToCheckout({
-                    sessionId: session.sessionId
-                });
 
-                if (result.error) {
-                    showStatus(result.error.message, 'error');
+                if (session.sessionId) {
+                    // Redirect to Stripe Checkout
+                    const result = await stripe.redirectToCheckout({
+                        sessionId: session.sessionId
+                    });
+
+                    if (result.error) {
+                        throw new Error(result.error.message);
+                    }
+                } else {
+                    throw new Error(session.error || 'Failed to create payment session');
                 }
             } catch (error) {
                 console.error('Payment error:', error);
-                showStatus('Payment initialization failed. Please try again.', 'error');
+                
+                const statusElement = document.getElementById('paymentStatus');
+                statusElement.className = 'payment-status error';
+                statusElement.innerHTML = `
+                    <h3>Payment Error</h3>
+                    <p>${error.message}</p>
+                `;
+                statusElement.style.display = 'block';
+                
+                // Re-enable buttons
+                buttons.forEach((btn, index) => {
+                    btn.disabled = false;
+                    const originalTexts = ['Get Started', 'Most Popular', 'Go Pro'];
+                    btn.textContent = originalTexts[index] || 'Purchase';
+                });
             }
         }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('paymentStatus');
-            statusDiv.textContent = message;
-            statusDiv.className = `payment-status ${type}`;
-            statusDiv.style.display = 'block';
-            
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 5000);
-            }
-        }
-
-        // Handle success/cancel returns from Stripe
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('success')) {
-            showStatus('Payment successful! Credits have been added to your account.', 'success');
-            if (creditWidget) {
-                creditWidget.refreshAfterOperation();
-            }
-        } else if (urlParams.get('canceled')) {
-            showStatus('Payment was canceled.', 'error');
-        }
-
-        // Initialize page when loaded
-        document.addEventListener('DOMContentLoaded', initializePage);
     </script>
 </body>
 </html> 

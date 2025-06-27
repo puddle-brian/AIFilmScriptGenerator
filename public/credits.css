@@ -60,6 +60,44 @@
     opacity: 0.9;
 }
 
+/* Buy Credits Button */
+.buy-credits-button {
+    display: flex;
+    align-items: center;
+    margin-right: 15px;
+}
+
+.buy-credits-button .btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+    border: none;
+}
+
+.buy-credits-button .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+/* Show buy credits button only when credits are low */
+.buy-credits-button {
+    display: none;
+}
+
+.buy-credits-button.show-low-credits {
+    display: flex;
+}
+
 /* Credits Tooltip */
 .credits-tooltip {
     position: absolute;
