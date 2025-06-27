@@ -74,6 +74,7 @@ class UnifiedCreditSystem {
     // Buy credits page elements
     const buyCreditsBalance = document.getElementById('currentBalanceAmount');
     const buyCreditsContainer = document.getElementById('currentBalance');
+    const dashboardBalance = document.getElementById('dashboardBalance');
     
     if (mainAmount) {
       this.elements.set('mainAmount', mainAmount);
@@ -90,6 +91,9 @@ class UnifiedCreditSystem {
     if (buyCreditsContainer) {
       this.elements.set('buyCreditsContainer', buyCreditsContainer);
     }
+    if (dashboardBalance) {
+      this.elements.set('dashboardBalance', dashboardBalance);
+    }
 
     console.log(`📋 Registered ${this.elements.size} credit display elements`);
   }
@@ -97,7 +101,7 @@ class UnifiedCreditSystem {
   showLoadingState() {
     // Show loading state immediately to prevent flashing
     this.elements.forEach((element, key) => {
-      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance') {
+      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance' || key === 'dashboardBalance') {
         element.textContent = '--';
       }
       if (key === 'mainBadge') {
@@ -111,7 +115,7 @@ class UnifiedCreditSystem {
 
   showUnauthenticatedState() {
     this.elements.forEach((element, key) => {
-      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance') {
+      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance' || key === 'dashboardBalance') {
         element.textContent = '--';
       }
       if (key === 'mainBadge') {
@@ -168,7 +172,7 @@ class UnifiedCreditSystem {
         element.textContent = this.balance;
       }
       
-      if (key === 'buyCreditsBalance') {
+      if (key === 'buyCreditsBalance' || key === 'dashboardBalance') {
         element.textContent = this.balance;
       }
       
@@ -210,19 +214,15 @@ class UnifiedCreditSystem {
   updateTooltipAction() {
     const tooltipAction = document.querySelector('.tooltip-action a');
     if (tooltipAction) {
-      if (this.balance < 100) {
-        tooltipAction.textContent = '💳 Buy Credits →';
-        tooltipAction.href = 'buy-credits.html';
-      } else {
-        tooltipAction.textContent = 'Manage Credits →';
-        tooltipAction.href = 'profile.html#credits';
-      }
+      // Always link to buy-credits page for better UX
+      tooltipAction.textContent = '💳 Manage Credits →';
+      tooltipAction.href = 'buy-credits.html';
     }
   }
 
   showErrorState() {
     this.elements.forEach((element, key) => {
-      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance') {
+      if (key === 'mainAmount' || key === 'tooltipBalance' || key === 'buyCreditsBalance' || key === 'dashboardBalance') {
         element.textContent = '--';
       }
       if (key === 'mainBadge') {

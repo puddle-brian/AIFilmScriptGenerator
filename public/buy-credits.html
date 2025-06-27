@@ -279,6 +279,147 @@
             font-size: 1.2em;
         }
 
+        /* Credit Management Section Styles */
+        .credit-management-section {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            margin: 32px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            border: 2px solid #e0e7ff;
+        }
+
+        .credit-management-section h3 {
+            color: #374151;
+            margin-bottom: 24px;
+            font-size: 1.5em;
+        }
+
+        .credit-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .credit-stat-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .credit-stat-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+        }
+
+        .stat-icon {
+            font-size: 2em;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .stat-content {
+            flex: 1;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 2px;
+        }
+
+        .stat-subtext {
+            font-size: 0.8em;
+            color: #94a3b8;
+        }
+
+        .recent-activity {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 24px;
+        }
+
+        .recent-activity h4 {
+            color: #374151;
+            margin-bottom: 16px;
+            font-size: 1.2em;
+        }
+
+        .activity-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item.loading {
+            opacity: 0.6;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-size: 1.1em;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-text {
+            font-size: 0.95em;
+            color: #374151;
+            margin-bottom: 2px;
+        }
+
+        .activity-time {
+            font-size: 0.8em;
+            color: #94a3b8;
+        }
+
+        .activity-cost {
+            font-size: 0.9em;
+            color: #ef4444;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
         @media (max-width: 768px) {
             .credit-packages {
                 grid-template-columns: 1fr;
@@ -301,6 +442,30 @@
                 grid-template-columns: 1fr;
                 gap: 16px;
             }
+
+            .credit-stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 16px;
+            }
+
+            .credit-stat-card {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .stat-icon {
+                width: 48px;
+                height: 48px;
+                font-size: 1.5em;
+            }
+
+            .stat-value {
+                font-size: 1.5em;
+            }
+
+            .credit-management-section {
+                padding: 24px 20px;
+            }
         }
     </style>
 </head>
@@ -321,6 +486,58 @@
         </div>
 
         <div id="paymentStatus" class="payment-status"></div>
+
+        <!-- Credit Management Section -->
+        <div class="credit-management-section" id="creditManagementSection" style="display: none;">
+            <h3>📊 Credit Overview</h3>
+            <div class="credit-stats-grid">
+                <div class="credit-stat-card">
+                    <div class="stat-icon">💳</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Current Balance</div>
+                        <div class="stat-value" id="dashboardBalance">--</div>
+                        <div class="stat-subtext">credits available</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">📈</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Used</div>
+                        <div class="stat-value" id="totalUsed">--</div>
+                        <div class="stat-subtext">credits consumed</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">🎬</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Scripts Created</div>
+                        <div class="stat-value" id="scriptsCreated">--</div>
+                        <div class="stat-subtext">total projects</div>
+                    </div>
+                </div>
+                <div class="credit-stat-card">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Avg. per Script</div>
+                        <div class="stat-value" id="avgPerScript">--</div>
+                        <div class="stat-subtext">credits per project</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="recent-activity">
+                <h4>📋 Recent Activity</h4>
+                <div class="activity-list" id="activityList">
+                    <div class="activity-item loading">
+                        <div class="activity-icon">⏳</div>
+                        <div class="activity-content">
+                            <div class="activity-text">Loading recent activity...</div>
+                            <div class="activity-time">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <div class="credit-packages">
             <!-- Starter Package -->
@@ -454,6 +671,9 @@
             if (apiKey) {
                 // The unified credit system will handle balance display automatically
                 console.log('✅ Authenticated user detected, unified credit system will load balance');
+                
+                // Load credit management data
+                await loadCreditManagementData();
             } else {
                 // Redirect to login if not authenticated
                 window.location.href = 'login.html?redirect=' + encodeURIComponent(window.location.pathname);
@@ -462,6 +682,180 @@
             // Check for payment status in URL
             checkPaymentStatus();
         });
+
+        async function loadCreditManagementData() {
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) return;
+
+            try {
+                // Determine correct base URL for API calls
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                // Load user stats
+                const response = await fetch(`${baseUrl}/api/my-stats`, {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    displayCreditStats(data);
+                    
+                    // Show the credit management section
+                    document.getElementById('creditManagementSection').style.display = 'block';
+                } else {
+                    console.warn('Failed to load credit stats:', response.status);
+                }
+                
+                // Load recent activity
+                await loadRecentActivity();
+                
+            } catch (error) {
+                console.warn('Failed to load credit management data:', error);
+            }
+        }
+
+        function displayCreditStats(data) {
+            const user = data.user;
+            const usage = data.usage || {};
+            
+            // Update dashboard balance
+            document.getElementById('dashboardBalance').textContent = user.credits_remaining || 0;
+            
+            // Calculate total used (purchased - remaining)
+            const totalPurchased = user.credits_purchased || 0;
+            const totalUsed = totalPurchased - (user.credits_remaining || 0);
+            document.getElementById('totalUsed').textContent = totalUsed;
+            
+            // Scripts created (from usage data)
+            const scriptsCreated = usage.total_requests || 0;
+            document.getElementById('scriptsCreated').textContent = scriptsCreated;
+            
+            // Average credits per script
+            const avgPerScript = scriptsCreated > 0 ? Math.round(totalUsed / scriptsCreated) : 0;
+            document.getElementById('avgPerScript').textContent = avgPerScript;
+        }
+
+        async function loadRecentActivity() {
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) return;
+
+            try {
+                const baseUrl = window.location.hostname === 'localhost' ? 
+                    'https://screenplaygenie.com' : '';
+                
+                const response = await fetch(`${baseUrl}/api/usage-history?limit=10`, {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                
+                if (response.ok) {
+                    const history = await response.json();
+                    displayRecentActivity(history);
+                } else {
+                    // If no history endpoint, show placeholder
+                    displayPlaceholderActivity();
+                }
+                
+            } catch (error) {
+                console.warn('Failed to load recent activity:', error);
+                displayPlaceholderActivity();
+            }
+        }
+
+        function displayRecentActivity(history) {
+            const activityList = document.getElementById('activityList');
+            
+            if (!history || history.length === 0) {
+                activityList.innerHTML = `
+                    <div class="activity-item">
+                        <div class="activity-icon">📝</div>
+                        <div class="activity-content">
+                            <div class="activity-text">No recent activity</div>
+                            <div class="activity-time">Start creating scripts to see activity here</div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            activityList.innerHTML = history.map(item => `
+                <div class="activity-item">
+                    <div class="activity-icon">${getActivityIcon(item.operation)}</div>
+                    <div class="activity-content">
+                        <div class="activity-text">${getActivityText(item)}</div>
+                        <div class="activity-time">${formatDate(item.timestamp)}</div>
+                    </div>
+                    <div class="activity-cost">-${item.credits_used || 0}</div>
+                </div>
+            `).join('');
+        }
+
+        function displayPlaceholderActivity() {
+            const activityList = document.getElementById('activityList');
+            activityList.innerHTML = `
+                <div class="activity-item">
+                    <div class="activity-icon">🎬</div>
+                    <div class="activity-content">
+                        <div class="activity-text">Structure generation</div>
+                        <div class="activity-time">Recent activity will appear here</div>
+                    </div>
+                    <div class="activity-cost">-15</div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">📝</div>
+                    <div class="activity-content">
+                        <div class="activity-text">Scene generation</div>
+                        <div class="activity-time">Your usage history</div>
+                    </div>
+                    <div class="activity-cost">-25</div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-icon">💬</div>
+                    <div class="activity-content">
+                        <div class="activity-text">Dialogue generation</div>
+                        <div class="activity-time">Will be shown here</div>
+                    </div>
+                    <div class="activity-cost">-30</div>
+                </div>
+            `;
+        }
+
+        function getActivityIcon(operation) {
+            const icons = {
+                'structure': '🎬',
+                'plot-points': '📋',
+                'scenes': '📝',
+                'dialogue': '💬',
+                'individual-scene': '🎭'
+            };
+            return icons[operation] || '⚡';
+        }
+
+        function getActivityText(item) {
+            const operations = {
+                'structure': 'Generated story structure',
+                'plot-points': 'Created plot points',
+                'scenes': 'Generated scenes',
+                'dialogue': 'Added dialogue',
+                'individual-scene': 'Created individual scene'
+            };
+            return operations[item.operation] || `${item.operation} operation`;
+        }
+
+        function formatDate(timestamp) {
+            if (!timestamp) return 'Recently';
+            const date = new Date(timestamp);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+            
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
 
         function checkPaymentStatus() {
             const urlParams = new URLSearchParams(window.location.search);
