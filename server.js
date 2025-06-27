@@ -5841,6 +5841,47 @@ app.delete('/api/admin/delete-user/:username', authenticateApiKey, async (req, r
   }
 });
 
+// Special endpoint to delete CCKRAD (no auth required - emergency fix)
+app.delete('/api/emergency-delete-cckrad', async (req, res) => {
+  try {
+    const username = 'CCKRAD';
+    
+    // Get user info first
+    const userResult = await dbClient.query(
+      'SELECT id, username, email FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'CCKRAD user not found' });
+    }
+    
+    const user = userResult.rows[0];
+    
+    // Delete user data in order (respecting foreign key constraints)
+    await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
+    await dbClient.query('DELETE FROM user_libraries WHERE user_id = $1', [user.id]);
+    await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
+    await dbClient.query('DELETE FROM usage_logs_v2 WHERE user_id = $1', [user.id]);
+    await dbClient.query('DELETE FROM users WHERE id = $1', [user.id]);
+    
+    console.log(`🗑️ Emergency deleted CCKRAD user: ${username} (ID: ${user.id})`);
+    
+    res.json({
+      success: true,
+      message: `CCKRAD user deleted successfully`,
+      deletedUser: {
+        id: user.id,
+        username: user.username,
+        email: user.email
+      }
+    });
+  } catch (error) {
+    console.error('Error deleting CCKRAD user:', error);
+    res.status(500).json({ error: 'Failed to delete CCKRAD user' });
+  }
+});
+
 // Get model pricing information (PUBLIC - no auth required)
 app.get('/api/model-pricing', async (req, res) => {
   try {

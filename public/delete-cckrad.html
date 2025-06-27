@@ -79,11 +79,10 @@
             resultDiv.innerHTML = 'Deleting CCKRAD account...';
             
             try {
-                const response = await fetch('/api/admin/delete-user/CCKRAD', {
+                const response = await fetch('/api/emergency-delete-cckrad', {
                     method: 'DELETE',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'x-api-key': 'admin_screenplay_genie_2024_secure'
+                        'Content-Type': 'application/json'
                     }
                 });
                 
