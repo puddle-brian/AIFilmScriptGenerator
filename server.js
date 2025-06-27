@@ -549,13 +549,13 @@ class HierarchicalContext {
       'three-act': ['setup', 'confrontation_first_half', 'midpoint', 'confrontation_second_half', 'crisis', 'climax', 'resolution'],
       'save-the-cat': ['opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'],
       'hero-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
-      'booker-quest': ['preparation', 'call_to_quest', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
-      'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_nightmare'],
-      'booker-rags-to-riches': ['initial_wretchedness', 'call_to_adventure', 'getting_out', 'initial_success', 'getting_closer', 'final_crisis', 'final_triumph'],
-      'booker-voyage-return': ['anticipation_stage', 'journey_begins', 'first_challenges', 'adaptation', 'new_world_experience', 'longing_for_home', 'return_journey', 'readjustment'],
+      'booker-quest': ['call_to_quest', 'preparation', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
+      'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_triumph'],
+      'booker-rags-to-riches': ['humble_origins', 'call_to_adventure', 'getting_out', 'initial_success', 'first_crisis', 'final_crisis', 'final_triumph'],
+      'booker-voyage-return': ['ordinary_world', 'call_to_adventure', 'strange_world', 'initial_fascination', 'growing_threat', 'escape_and_return'],
       'booker-comedy': ['initial_situation', 'complication', 'development', 'crisis', 'resolution'],
-      'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction_stage'],
-      'booker-rebirth': ['initial_imprisonment', 'call_to_change', 'resistance', 'crisis', 'transformation']
+      'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction'],
+      'booker-rebirth': ['initial_state', 'call_to_life', 'resistance', 'crisis', 'final_awakening']
     };
     
     // Get template name from templateData
