@@ -123,9 +123,20 @@
                          resultsDiv.innerHTML += `
                  <div class="debug-info ${allSuccessful ? 'success' : 'error'}">
                      <strong>FINAL RESULT:</strong>
-                     ${allSuccessful ? '✅ SUCCESS! User ' + username + ' has been created and starter pack populated. Note: Credits need to be granted separately by an admin.' : '❌ Some steps failed. Check the details above.'}
+                     ${allSuccessful ? '✅ SUCCESS! User ' + username + ' has been created and starter pack populated.' : '❌ Some steps failed. Check the details above.'}
                  </div>
              `;
+             
+             // Add free credits section if successful
+             if (allSuccessful) {
+                 resultsDiv.innerHTML += `
+                     <div class="debug-info">
+                         <strong>🎁 GRANT FREE CREDITS:</strong>
+                         <button class="button" onclick="grantFreeCredits('${username}')">Grant 500 Free Credits</button>
+                         <p>Use code: <strong>FREECREDITS2024</strong></p>
+                     </div>
+                 `;
+             }
             
         } catch (error) {
             console.error('Error:', error);
@@ -136,8 +147,47 @@
                     ${error.stack}
                 </div>
             `;
-        }
-    }
-    </script>
+                 }
+     }
+     
+     async function grantFreeCredits(username) {
+         try {
+             console.log(`Granting free credits to ${username}...`);
+             
+             const response = await fetch('/api/free-credits', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json'
+                 },
+                 body: JSON.stringify({ 
+                     username: username,
+                     code: 'FREECREDITS2024'
+                 })
+             });
+             
+             const result = await response.text();
+             console.log('Free credits response:', response.status, result);
+             
+             const resultsDiv = document.getElementById('results');
+             resultsDiv.innerHTML += `
+                 <div class="debug-info ${response.status < 400 ? 'success' : 'error'}">
+                     <strong>💰 Free Credits Result:</strong>
+                     Status: ${response.status}
+                     Response: ${result}
+                 </div>
+             `;
+             
+         } catch (error) {
+             console.error('Error granting free credits:', error);
+             const resultsDiv = document.getElementById('results');
+             resultsDiv.innerHTML += `
+                 <div class="debug-info error">
+                     <strong>Free Credits Error:</strong>
+                     ${error.message}
+                 </div>
+             `;
+         }
+     }
+     </script>
 </body>
 </html> 

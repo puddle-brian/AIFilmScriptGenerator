@@ -5830,6 +5830,69 @@ function getModelDescription(model) {
   return descriptions[model] || 'Claude model';
 }
 
+// Free credits endpoint with simple code (no admin auth required)
+app.post('/api/free-credits', async (req, res) => {
+  try {
+    const { username, code } = req.body;
+    
+    // Simple code check (you can change this code)
+    if (code !== 'FREECREDITS2024') {
+      return res.status(400).json({ error: 'Invalid code' });
+    }
+    
+    // Find user
+    const userResult = await dbClient.query(
+      'SELECT id, username, credits_remaining FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+    const creditsToGrant = 500; // Grant 500 credits
+
+    // Check if user already used this code
+    const existingGrant = await dbClient.query(
+      'SELECT id FROM credit_transactions WHERE user_id = $1 AND notes = $2',
+      [user.id, 'Free credits code: FREECREDITS2024']
+    );
+
+    if (existingGrant.rows.length > 0) {
+      return res.status(400).json({ error: 'Code already used by this user' });
+    }
+
+    // Grant credits
+    await dbClient.query(
+      'UPDATE users SET credits_remaining = credits_remaining + $1 WHERE id = $2',
+      [creditsToGrant, user.id]
+    );
+
+    // Log transaction
+    await dbClient.query(`
+      INSERT INTO credit_transactions (
+        user_id, transaction_type, credits_amount, notes, created_at
+      ) VALUES ($1, $2, $3, $4, NOW())
+    `, [user.id, 'grant', creditsToGrant, 'Free credits code: FREECREDITS2024']);
+
+    const newBalance = user.credits_remaining + creditsToGrant;
+
+    console.log(`✅ Granted ${creditsToGrant} free credits to ${username} (new balance: ${newBalance})`);
+
+    res.json({ 
+      success: true,
+      message: `🎉 Success! Granted ${creditsToGrant} free credits to ${username}`,
+      newBalance: newBalance,
+      creditsGranted: creditsToGrant
+    });
+
+  } catch (error) {
+    console.error('Error granting free credits:', error);
+    res.status(500).json({ error: 'Failed to grant free credits' });
+  }
+});
+
 // Estimate cost for a request without making it
 app.post('/api/estimate-cost', authenticateApiKey, async (req, res) => {
   try {
