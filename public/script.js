@@ -2253,7 +2253,9 @@ function handleStorySubmission() {
         logline: appState.currentStoryConcept.logline,
         characters: getCharactersForPrompt(), // Use new character system
         charactersData: appState.projectCharacters, // Store structured character data
-        tone: formData.get('tone'),
+        tone: appState.influences.tones && appState.influences.tones.length > 0 
+            ? appState.influences.tones.join(' and ') 
+            : (formData.get('tone') || 'Dramatic'), // Multi-tone support with fallback to single tone
         totalScenes: 70, // Default value, will be configurable in scenes step
         influences: appState.influences, // Synchronized with current appState.influences
         influencePrompt: buildInfluencePrompt(),
