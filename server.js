@@ -5774,6 +5774,7 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
   console.log('   - Signature header present:', !!sig);
   console.log('   - Signature preview:', sig ? sig.substring(0, 50) + '...' : 'none');
   console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  console.log('   - Body type:', typeof req.body);
   console.log('   - Content-Type:', req.headers['content-type']);
   console.log('   - User-Agent:', req.headers['user-agent']);
   console.log('   - Webhook secret configured:', !!process.env.STRIPE_WEBHOOK_SECRET);
@@ -5796,28 +5797,60 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
       return res.status(400).send('Missing stripe-signature header');
     }
 
-    const event = paymentHandler.verifyWebhookSignature(req.body, sig);
+    // Enhanced signature verification with better error handling
+    let event;
+    try {
+      console.log('🔐 Attempting webhook signature verification...');
+      event = paymentHandler.verifyWebhookSignature(req.body, sig);
+      console.log('✅ Webhook signature verified successfully');
+    } catch (sigError) {
+      console.error('❌ Webhook signature verification failed:');
+      console.error('   - Error type:', sigError.constructor.name);
+      console.error('   - Error message:', sigError.message);
+      console.error('   - Signature header:', sig);
+      console.error('   - Body length:', req.body ? req.body.length : 'no body');
+      console.error('   - Body preview:', req.body ? req.body.toString().substring(0, 100) + '...' : 'no body');
+      
+      // Try manual verification for debugging
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        console.log('🔍 Attempting manual verification...');
+        const manualEvent = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('✅ Manual verification succeeded - there might be an issue with paymentHandler');
+        event = manualEvent;
+      } catch (manualError) {
+        console.error('❌ Manual verification also failed:', manualError.message);
+        return res.status(400).send(`Webhook signature verification failed: ${sigError.message}`);
+      }
+    }
     
     console.log('🎉 Received Stripe webhook event:', event.type);
     console.log('   - Event ID:', event.id);
+    console.log('   - Created:', new Date(event.created * 1000).toISOString());
 
     if (event.type === 'checkout.session.completed') {
       console.log('💳 Processing checkout.session.completed...');
       const session = event.data.object;
       console.log('   - Session ID:', session.id);
+      console.log('   - Payment status:', session.payment_status);
       console.log('   - Metadata:', session.metadata);
       
-      await paymentHandler.handlePaymentSuccess(event);
-      console.log('✅ Payment processed successfully');
+      if (session.payment_status === 'paid') {
+        await paymentHandler.handlePaymentSuccess(event);
+        console.log('✅ Payment processed successfully');
+      } else {
+        console.log('⚠️ Payment not completed, status:', session.payment_status);
+      }
     } else {
       console.log('ℹ️ Ignoring webhook event type:', event.type);
     }
 
     res.json({received: true});
   } catch (error) {
-    console.error('❌ Webhook error:', error);
+    console.error('❌ Webhook processing error:', error);
     console.error('   - Error type:', error.constructor.name);
     console.error('   - Error message:', error.message);
+    console.error('   - Stack trace:', error.stack);
     res.status(400).send(`Webhook Error: ${error.message}`);
   }
 });
@@ -5843,6 +5876,37 @@ app.get('/api/my-payment-history', authenticateApiKey, async (req, res) => {
   } catch (error) {
     console.error('Error fetching payment history:', error);
     res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
+});
+
+// Manual credit refresh endpoint (temporary for debugging)
+app.post('/api/debug/refresh-credits', authenticateApiKey, async (req, res) => {
+  try {
+    console.log('🔄 Manual credit refresh requested by:', req.user.username);
+    
+    // Get current user credits
+    const result = await dbClient.query(
+      'SELECT credits_remaining, total_credits_purchased FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = result.rows[0];
+    console.log('💰 Current credits for', req.user.username + ':', user.credits_remaining);
+    
+    res.json({ 
+      success: true,
+      credits_remaining: user.credits_remaining,
+      total_credits_purchased: user.total_credits_purchased,
+      message: 'Credits refreshed successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error refreshing credits:', error);
+    res.status(500).json({ error: 'Failed to refresh credits' });
   }
 });
 
