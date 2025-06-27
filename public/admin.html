@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - SCREENPLAY GENIE</title>
+    <link rel="stylesheet" href="styles.css?v=1.2">
+    <link rel="stylesheet" href="admin.css?v=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="admin-charts.js?v=1.0"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Admin Header -->
+        <header class="admin-header">
+            <div class="admin-header-top">
+                <div class="admin-title-section">
+                    <a href="index.html" class="back-link">← Back to Main Site</a>
+                    <h1 class="admin-title">Admin Panel</h1>
+                    <div class="admin-subtitle">System Administration & Testing Dashboard</div>
+                </div>
+                <div class="admin-user-info" id="adminUserInfo">
+                    <span class="admin-username" id="adminUsername">Admin</span>
+                    <span class="admin-badge">ADMIN</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- System Status -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>🚀 System Status</h2>
+                    <div class="status-indicator" id="systemStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Checking...</span>
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="metric-label">Database</div>
+                            <div class="metric-value" id="dbStatus">—</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">API</div>
+                            <div class="metric-value" id="apiStatus">—</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Total Users</div>
+                            <div class="metric-value" id="totalUsers">—</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="metric-label">Active Projects</div>
+                            <div class="metric-value" id="activeProjects">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Management -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>👥 User Management</h2>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-outline" onclick="refreshUserStats()">Refresh</button>
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <div class="user-management-grid">
+                        <!-- User Search -->
+                        <div class="user-search">
+                            <input type="text" id="userSearch" placeholder="Search users..." class="search-input">
+                            <button class="btn btn-primary btn-sm" onclick="searchUsers()">Search</button>
+                        </div>
+                        
+                        <!-- User Actions -->
+                        <div class="user-actions">
+                            <button class="btn btn-info btn-sm" onclick="loadAllUsers()">View All Users</button>
+                            <button class="btn btn-success btn-sm" onclick="showCreateUserModal()">Create User</button>
+                            <button class="btn btn-secondary btn-sm" onclick="showGrantCreditsModal()">Grant Credits</button>
+                        </div>
+                    </div>
+                    
+                    <!-- User Results -->
+                    <div class="user-results" id="userResults">
+                        <div class="loading-message">Enter a username to search</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing & Development -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>🧪 Testing & Development</h2>
+                </div>
+                <div class="admin-card-body">
+                    <div class="test-buttons-grid">
+                        <button class="test-btn" onclick="testDatabaseConnection()">
+                            <span class="test-icon">🔗</span>
+                            <span class="test-label">Test Database</span>
+                        </button>
+                        
+                        <button class="test-btn" onclick="testAnthropicAPI()">
+                            <span class="test-icon">🤖</span>
+                            <span class="test-label">Test AI API</span>
+                        </button>
+                        
+                        <button class="test-btn" onclick="generateTestProject()">
+                            <span class="test-icon">📄</span>
+                            <span class="test-label">Generate Test Project</span>
+                        </button>
+                        
+                        <button class="test-btn" onclick="clearSystemCache()">
+                            <span class="test-icon">🗑️</span>
+                            <span class="test-label">Clear Cache</span>
+                        </button>
+                        
+                        <button class="test-btn" onclick="exportSystemLogs()">
+                            <span class="test-icon">📋</span>
+                            <span class="test-label">Export Logs</span>
+                        </button>
+                        
+                        <button class="test-btn" onclick="runHealthCheck()">
+                            <span class="test-icon">❤️</span>
+                            <span class="test-label">Health Check</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Usage Analytics -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>📊 Usage Analytics</h2>
+                    <div class="card-actions">
+                        <select id="analyticsTimeframe" class="select-compact">
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d">Last 30 Days</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline" onclick="refreshAnalytics()">Refresh</button>
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <div class="analytics-loading" id="analyticsLoading">
+                        <div class="loading-spinner"></div>
+                        <span>Loading analytics...</span>
+                    </div>
+                    <div class="analytics-content" id="analyticsContent" style="display: none;">
+                        <!-- Quick Stats -->
+                        <div class="analytics-metrics">
+                            <div class="analytics-metric">
+                                <div class="metric-number" id="totalRequests">—</div>
+                                <div class="metric-description">Total Requests</div>
+                            </div>
+                            <div class="analytics-metric">
+                                <div class="metric-number" id="totalTokens">—</div>
+                                <div class="metric-description">Tokens Used</div>
+                            </div>
+                            <div class="analytics-metric">
+                                <div class="metric-number" id="totalCost">—</div>
+                                <div class="metric-description">Total Cost</div>
+                            </div>
+                            <div class="analytics-metric">
+                                <div class="metric-number" id="errorRate">—</div>
+                                <div class="metric-description">Error Rate</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Charts Section -->
+                        <div class="charts-grid">
+                            <div class="chart-container">
+                                <h3>📈 Daily Usage Trends</h3>
+                                <canvas id="usageTrendsChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>📊 Endpoint Popularity</h3>
+                                <canvas id="endpointChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>💰 Cost & Token Usage</h3>
+                                <canvas id="costTokenChart"></canvas>
+                            </div>
+                            <div class="chart-container">
+                                <h3>✅ Success vs Error Rate</h3>
+                                <canvas id="errorRateChart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Top Endpoints Table -->
+                        <div class="analytics-section">
+                            <h3>Top Endpoints</h3>
+                            <div class="endpoint-list" id="topEndpoints">
+                                <div class="loading-message">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Quick Actions -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>⚡ Quick Actions</h2>
+                </div>
+                <div class="admin-card-body">
+                    <div class="quick-actions-grid">
+                        <div class="quick-action" onclick="viewErrorLogs()">
+                            <div class="action-icon">⚠️</div>
+                            <div class="action-label">View Error Logs</div>
+                        </div>
+                        
+                        <div class="quick-action" onclick="backupDatabase()">
+                            <div class="action-icon">💾</div>
+                            <div class="action-label">Backup Database</div>
+                        </div>
+                        
+                        <div class="quick-action" onclick="maintenanceMode()">
+                            <div class="action-icon">🔧</div>
+                            <div class="action-label">Maintenance Mode</div>
+                        </div>
+                        
+                        <div class="quick-action" onclick="broadcastMessage()">
+                            <div class="action-icon">📢</div>
+                            <div class="action-label">Broadcast Message</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modals -->
+    <div id="createUserModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create New User</h3>
+                <button class="modal-close" onclick="hideCreateUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="newUserEmail">Email (optional)</label>
+                    <input type="email" id="newUserEmail" placeholder="Enter email">
+                </div>
+                <div class="form-group">
+                    <label for="initialCredits">Initial Credits</label>
+                    <input type="number" id="initialCredits" placeholder="0" value="500">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideCreateUserModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="createUser()">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="grantCreditsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Grant Credits</h3>
+                <button class="modal-close" onclick="hideGrantCreditsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="creditUsername">Username</label>
+                    <input type="text" id="creditUsername" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="creditAmount">Credits to Grant</label>
+                    <input type="number" id="creditAmount" placeholder="Enter amount">
+                </div>
+                <div class="form-group">
+                    <label for="creditNotes">Notes (optional)</label>
+                    <textarea id="creditNotes" placeholder="Reason for granting credits"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideGrantCreditsModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="grantCredits()">Grant Credits</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div id="adminToast" class="toast">
+        <div class="toast-content">
+            <span class="toast-message" id="toastMessage"></span>
+            <button class="toast-close" onclick="hideAdminToast()">&times;</button>
+        </div>
+    </div>
+
+    <!-- Admin Scripts -->
+    <script src="admin.js?v=1.0"></script>
+</body>
+</html> 

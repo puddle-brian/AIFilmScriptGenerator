@@ -150,6 +150,35 @@ body {
     color: white;
 }
 
+/* Admin Button */
+.admin-access {
+    display: flex;
+    align-items: center;
+}
+
+.admin-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(5px);
+}
+
+.admin-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #ffffff;
+    transform: scale(1.05);
+}
+
 /* Profile Dropdown */
 .profile-dropdown {
     position: relative;

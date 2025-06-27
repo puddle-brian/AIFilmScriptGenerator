@@ -82,6 +82,7 @@ const authManager = {
         const userControls = document.getElementById('userControls');
         const userName = document.getElementById('userName');
         const profileUsername = document.getElementById('profileUsername');
+        const adminAccess = document.getElementById('adminAccess');
         
         if (appState.isAuthenticated && appState.user) {
             // Show authenticated user UI
@@ -92,6 +93,11 @@ const authManager = {
             }
             if (profileUsername) {
                 profileUsername.textContent = appState.user.username;
+            }
+            
+            // Show admin button for admin users
+            if (adminAccess) {
+                adminAccess.style.display = appState.user.is_admin ? 'flex' : 'none';
             }
             
             // Initialize/refresh credit widget if available
@@ -106,6 +112,7 @@ const authManager = {
             // Show guest UI
             if (guestActions) guestActions.style.display = 'flex';
             if (userControls) userControls.style.display = 'none';
+            if (adminAccess) adminAccess.style.display = 'none';
             
             // Show registration prompt for key actions
             this.showRegistrationPrompts();

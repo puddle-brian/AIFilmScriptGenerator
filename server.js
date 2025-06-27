@@ -5706,6 +5706,98 @@ app.post('/api/admin/grant-credits', authenticateApiKey, async (req, res) => {
   }
 });
 
+// Get all users (admin only)
+app.get('/api/admin/users', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const { limit = 50, offset = 0, sort = 'created_at', order = 'DESC' } = req.query;
+    
+    // Validate sort parameter
+    const validSortColumns = ['created_at', 'total_cost', 'total_tokens', 'total_requests', 'username'];
+    const sortColumn = validSortColumns.includes(sort) ? sort : 'created_at';
+    const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Get users with basic info, project counts, and usage statistics
+    const users = await dbClient.query(`
+      SELECT 
+        u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
+        u.total_credits_purchased, u.created_at,
+        COUNT(DISTINCT p.id) as project_count,
+        COALESCE(SUM(COALESCE(ul.input_tokens, 0) + COALESCE(ul.output_tokens, 0)), 0) as total_tokens,
+        COALESCE(SUM(ul.total_cost), 0) as total_cost,
+        COUNT(ul.id) as total_requests
+      FROM users u
+      LEFT JOIN user_projects p ON u.id = p.user_id 
+      LEFT JOIN usage_logs_v2 ul ON u.username = ul.username
+      GROUP BY u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
+               u.total_credits_purchased, u.created_at
+      ORDER BY 
+        CASE WHEN '${sortColumn}' = 'total_cost' THEN 
+          CASE WHEN COALESCE(SUM(ul.total_cost), 0) > 0 THEN COALESCE(SUM(ul.total_cost), 0) ELSE NULL END
+        END ${sortOrder} NULLS LAST,
+        CASE WHEN '${sortColumn}' = 'total_tokens' THEN COALESCE(SUM(COALESCE(ul.input_tokens, 0) + COALESCE(ul.output_tokens, 0)), 0) END ${sortOrder} NULLS LAST,
+        CASE WHEN '${sortColumn}' = 'total_requests' THEN COUNT(ul.id) END ${sortOrder} NULLS LAST,
+        CASE WHEN '${sortColumn}' = 'username' THEN u.username END ${sortOrder} NULLS LAST,
+        CASE WHEN '${sortColumn}' = 'created_at' THEN u.created_at END ${sortOrder} NULLS LAST
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    // Get total count
+    const countResult = await dbClient.query('SELECT COUNT(*) FROM users');
+    const totalUsers = parseInt(countResult.rows[0].count);
+
+    res.json({
+      users: users.rows,
+      pagination: {
+        total: totalUsers,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: (parseInt(offset) + parseInt(limit)) < totalUsers
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Delete user (admin only)
+app.delete('/api/admin/user/:userId', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  const { userId } = req.params;
+
+  try {
+    // First check if user exists
+    const userCheck = await dbClient.query('SELECT username FROM users WHERE id = $1', [userId]);
+    
+    if (userCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const username = userCheck.rows[0].username;
+
+    // Delete user (this will cascade delete related records due to foreign key constraints)
+    await dbClient.query('DELETE FROM users WHERE id = $1', [userId]);
+
+    console.log(`🗑️ User ${username} (ID: ${userId}) deleted by admin ${req.user.username}`);
+    
+    res.json({ 
+      success: true, 
+      message: `User ${username} has been deleted successfully`,
+      deletedUser: { id: userId, username }
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
 // Get user usage statistics
 app.get('/api/admin/usage-stats/:username', authenticateApiKey, async (req, res) => {
   if (!req.user.is_admin) {
@@ -5838,6 +5930,404 @@ app.delete('/api/admin/delete-user/:username', authenticateApiKey, async (req, r
   } catch (error) {
     console.error('Error deleting user:', error);
     res.status(500).json({ error: 'Failed to delete user' });
+  }
+});
+
+// Additional admin endpoints for the admin panel
+app.get('/api/admin/system-status', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    // Test database connection
+    const dbTest = await dbClient.query('SELECT NOW()');
+    
+    // Get system metrics
+    const usersCount = await dbClient.query('SELECT COUNT(*) FROM users');
+    const projectsCount = await dbClient.query('SELECT COUNT(*) FROM user_projects');
+    
+    res.json({
+      database: '✅ Connected',
+      api: '✅ Active',
+      totalUsers: parseInt(usersCount.rows[0].count),
+      activeProjects: parseInt(projectsCount.rows[0].count),
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error checking system status:', error);
+    res.status(500).json({ 
+      database: '❌ Error',
+      api: '❌ Error',
+      totalUsers: 0,
+      activeProjects: 0,
+      error: error.message 
+    });
+  }
+});
+
+app.get('/api/admin/metrics', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const usersCount = await dbClient.query('SELECT COUNT(*) FROM users');
+    const projectsCount = await dbClient.query('SELECT COUNT(*) FROM user_projects');
+    
+    res.json({
+      database: '✅ Connected',
+      api: '✅ Active',
+      totalUsers: parseInt(usersCount.rows[0].count),
+      activeProjects: parseInt(projectsCount.rows[0].count)
+    });
+  } catch (error) {
+    console.error('Error loading metrics:', error);
+    res.status(500).json({ error: 'Failed to load metrics' });
+  }
+});
+
+// Chart data endpoint (separate from analytics)
+app.get('/api/admin/chart-data', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const { timeframe = '24h' } = req.query;
+    
+    let days;
+    switch (timeframe) {
+      case '24h': days = 1; break;
+      case '7d': days = 7; break;
+      case '30d': days = 30; break;
+      default: days = 1;
+    }
+
+    // Get daily usage data
+    const dailyUsageResult = await dbClient.query(`
+      SELECT 
+        DATE(timestamp) as date,
+        COUNT(*) as requests,
+        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as tokens,
+        COALESCE(SUM(total_cost), 0) as cost,
+        ROUND(AVG(CASE WHEN success = true THEN 1 ELSE 0 END) * 100, 1) as success_rate
+      FROM usage_logs_v2 
+      WHERE timestamp >= NOW() - INTERVAL '${days} days'
+      GROUP BY DATE(timestamp)
+      ORDER BY date ASC
+    `);
+
+    // Get endpoint data
+    const endpointResult = await dbClient.query(`
+      SELECT 
+        endpoint,
+        COUNT(*) as requests
+      FROM usage_logs_v2 
+      WHERE timestamp >= NOW() - INTERVAL '${days} days'
+      GROUP BY endpoint 
+      ORDER BY requests DESC 
+      LIMIT 6
+    `);
+
+    // Format daily usage data
+    const dailyUsage = dailyUsageResult.rows.map(row => ({
+      date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      requests: parseInt(row.requests) || 0,
+      tokens: parseInt(row.tokens) || 0,
+      cost: parseFloat(row.cost) || 0,
+      successRate: parseFloat(row.success_rate) || 0,
+      errorRate: 100 - (parseFloat(row.success_rate) || 0)
+    }));
+
+    // Format endpoint data
+    const endpoints = endpointResult.rows.map(row => ({
+      name: row.endpoint.replace('/api/', '').replace('generate-', ''),
+      requests: parseInt(row.requests) || 0
+    }));
+
+    res.json({
+      dailyUsage,
+      endpoints
+    });
+  } catch (error) {
+    console.error('Error loading chart data:', error);
+    res.status(500).json({ error: 'Failed to load chart data' });
+  }
+});
+
+app.get('/api/admin/analytics', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const { timeframe = '24h' } = req.query;
+    
+    let interval;
+    switch (timeframe) {
+      case '24h': interval = '1 day'; break;
+      case '7d': interval = '7 days'; break;
+      case '30d': interval = '30 days'; break;
+      default: interval = '1 day';
+    }
+
+    // Get real analytics from usage_logs_v2 table
+    const timeFilter = `WHERE timestamp >= NOW() - INTERVAL '${interval}'`;
+    
+    // Total requests
+    const requestsResult = await dbClient.query(`
+      SELECT COUNT(*) as total_requests 
+      FROM usage_logs_v2 
+      ${timeFilter}
+    `);
+    
+    // Total tokens and cost
+    const tokensResult = await dbClient.query(`
+      SELECT 
+        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as total_tokens,
+        COALESCE(SUM(total_cost), 0) as total_cost
+      FROM usage_logs_v2 
+      ${timeFilter}
+    `);
+    
+    // Error rate
+    const errorResult = await dbClient.query(`
+      SELECT 
+        COUNT(*) as total_calls,
+        COUNT(CASE WHEN success = false THEN 1 END) as error_calls
+      FROM usage_logs_v2 
+      ${timeFilter}
+    `);
+    
+    // Top endpoints
+    const endpointsResult = await dbClient.query(`
+      SELECT 
+        endpoint,
+        COUNT(*) as request_count,
+        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as total_tokens,
+        COALESCE(SUM(total_cost), 0) as total_cost,
+        ROUND(AVG(CASE WHEN success = true THEN 1 ELSE 0 END) * 100, 1) as success_rate
+      FROM usage_logs_v2 
+      ${timeFilter}
+      GROUP BY endpoint 
+      ORDER BY request_count DESC 
+      LIMIT 10
+    `);
+
+    const totalCalls = parseInt(errorResult.rows[0].total_calls) || 0;
+    const errorCalls = parseInt(errorResult.rows[0].error_calls) || 0;
+    const errorRate = totalCalls > 0 ? Math.round((errorCalls / totalCalls) * 100 * 10) / 10 : 0;
+
+    res.json({
+      totalRequests: parseInt(requestsResult.rows[0].total_requests) || 0,
+      totalTokens: parseInt(tokensResult.rows[0].total_tokens) || 0,
+      totalCost: parseFloat(tokensResult.rows[0].total_cost) || 0,
+      errorRate: errorRate,
+      topEndpoints: endpointsResult.rows.map(row => ({
+        endpoint: row.endpoint,
+        requests: parseInt(row.request_count),
+        tokens: parseInt(row.total_tokens),
+        cost: parseFloat(row.total_cost),
+        successRate: parseFloat(row.success_rate)
+      }))
+    });
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    res.status(500).json({ error: 'Failed to load analytics' });
+  }
+});
+
+// Testing endpoints
+app.post('/api/admin/test-database', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const result = await dbClient.query('SELECT NOW() as timestamp, version() as version');
+    
+    // Also check the usage_logs_v2 table structure
+    const tableInfo = await dbClient.query(`
+      SELECT column_name, data_type 
+      FROM information_schema.columns 
+      WHERE table_name = 'usage_logs_v2'
+      ORDER BY ordinal_position
+    `);
+    
+    res.json({ 
+      success: true, 
+      message: 'Database connection successful',
+      data: result.rows[0],
+      usage_logs_v2_columns: tableInfo.rows
+    });
+  } catch (error) {
+    console.error('Database test failed:', error);
+    res.status(500).json({ error: 'Database test failed', message: error.message });
+  }
+});
+
+app.post('/api/admin/test-anthropic', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const testMessage = await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 50,
+      messages: [{ role: 'user', content: 'Test message - please respond with "API test successful"' }]
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Anthropic API test successful',
+      response: testMessage.content[0].text
+    });
+  } catch (error) {
+    console.error('Anthropic API test failed:', error);
+    res.status(500).json({ error: 'Anthropic API test failed', message: error.message });
+  }
+});
+
+app.post('/api/admin/health-check', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    // Check database
+    await dbClient.query('SELECT 1');
+    
+    // Check Anthropic API
+    await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 10,
+      messages: [{ role: 'user', content: 'ping' }]
+    });
+
+    res.json({ 
+      healthy: true, 
+      status: 'All systems operational',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({ 
+      healthy: false,
+      status: 'System issues detected',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Admin status check endpoint (no auth required - for initial setup)
+app.get('/api/admin-status', async (req, res) => {
+  try {
+    const adminUser = await dbClient.query(
+      'SELECT username, api_key, is_admin FROM users WHERE is_admin = TRUE LIMIT 1'
+    );
+    
+    if (adminUser.rows.length === 0) {
+      res.json({ 
+        hasAdmin: false, 
+        message: 'No admin user found. Server will create one on next restart.' 
+      });
+    } else {
+      res.json({ 
+        hasAdmin: true, 
+        adminUsername: adminUser.rows[0].username,
+        message: 'Admin user exists. Check server logs for API key or use existing credentials.' 
+      });
+    }
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    res.status(500).json({ error: 'Failed to check admin status' });
+  }
+});
+
+// Create admin user endpoint (no auth required - emergency access)
+app.post('/api/create-emergency-admin', async (req, res) => {
+  try {
+    // Check if admin already exists
+    const existingAdmin = await dbClient.query(
+      'SELECT username FROM users WHERE is_admin = TRUE LIMIT 1'
+    );
+    
+    if (existingAdmin.rows.length > 0) {
+      return res.status(400).json({ 
+        error: 'Admin user already exists',
+        adminUsername: existingAdmin.rows[0].username 
+      });
+    }
+    
+    // Create new admin user
+    const adminApiKey = 'admin_' + require('crypto').randomBytes(32).toString('hex');
+    await dbClient.query(`
+      INSERT INTO users (username, api_key, credits_remaining, is_admin)
+      VALUES ($1, $2, $3, $4)
+    `, ['admin', adminApiKey, 999999, true]);
+    
+    console.log('🚨 Emergency admin user created with API key:', adminApiKey);
+    
+    res.json({
+      success: true,
+      message: 'Emergency admin user created',
+      username: 'admin',
+      apiKey: adminApiKey,
+      warning: 'Save this API key securely - it won\'t be shown again!'
+    });
+  } catch (error) {
+    console.error('Error creating emergency admin:', error);
+    res.status(500).json({ error: 'Failed to create emergency admin' });
+  }
+});
+
+// Promote existing user to admin (no auth required - initial setup helper)
+app.post('/api/promote-to-admin', async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+    
+    // Check if user exists
+    const user = await dbClient.query(
+      'SELECT id, username, is_admin FROM users WHERE username = $1',
+      [username]
+    );
+    
+    if (user.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (user.rows[0].is_admin) {
+      return res.json({ 
+        message: `${username} is already an admin`,
+        username: username,
+        wasAlreadyAdmin: true
+      });
+    }
+    
+    // Promote user to admin
+    await dbClient.query(
+      'UPDATE users SET is_admin = TRUE WHERE username = $1',
+      [username]
+    );
+    
+    console.log(`👑 User ${username} promoted to admin`);
+    
+    res.json({
+      success: true,
+      message: `${username} has been promoted to admin`,
+      username: username,
+      isNowAdmin: true
+    });
+  } catch (error) {
+    console.error('Error promoting user to admin:', error);
+    res.status(500).json({ error: 'Failed to promote user to admin' });
   }
 });
 
