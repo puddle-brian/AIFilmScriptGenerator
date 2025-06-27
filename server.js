@@ -5683,9 +5683,6 @@ app.get('/api/my-stats', authenticateApiKey, async (req, res) => {
 // AUTHENTICATION ENDPOINTS
 // =====================================
 
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
-
 // User Registration
 app.post('/api/auth/register', async (req, res) => {
   try {
@@ -5730,19 +5727,19 @@ app.post('/api/auth/register', async (req, res) => {
       INSERT INTO users (
         username, email, password_hash, api_key, 
         credits_remaining, total_credits_purchased, 
-        email_updates, email_verified, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+        email_updates, email_verified, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
       RETURNING id, username, email, api_key, credits_remaining, created_at
     `, [username, email, hashedPassword, apiKey, 100, 100, emailUpdates, false]);
     
+    const user = result.rows[0];
+    
     // Log the credit grant
     await dbClient.query(`
-      INSERT INTO credit_transactions_v2 (
-        username, transaction_type, credits_amount, notes, created_at
+      INSERT INTO credit_transactions (
+        user_id, transaction_type, credits_amount, notes, created_at
       ) VALUES ($1, $2, $3, $4, NOW())
-    `, [username, 'grant', 100, 'Welcome bonus - 100 free credits']);
-    
-    const user = result.rows[0];
+    `, [user.id, 'grant', 100, 'Welcome bonus - 100 free credits']);
     
     // TODO: Send welcome email with email verification link
     console.log(`New user registered: ${username} (${email}) - API Key: ${apiKey}`);
