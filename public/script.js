@@ -1985,7 +1985,7 @@ async function initializeApp() {
         setTimeout(() => {
                     window.unifiedCredits.fetchBalance().then(() => {
             // Display is automatically updated by the unified system
-        });
+            });
         }, 500);
     }
     

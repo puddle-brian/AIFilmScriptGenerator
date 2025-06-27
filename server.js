@@ -94,7 +94,7 @@ const CREATE_USAGE_TRACKING_TABLES = `
   );
 
   -- Create credits_transactions table for credit purchases/grants
-      CREATE TABLE IF NOT EXISTS credit_transactions (
+  CREATE TABLE IF NOT EXISTS credit_transactions (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     transaction_type VARCHAR(50) NOT NULL, -- 'purchase', 'grant', 'refund'

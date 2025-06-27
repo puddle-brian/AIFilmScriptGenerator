@@ -220,20 +220,20 @@ class CreditWidget {
       `;
     } else {
       modalContent = `
-        <div class="credit-modal-content">
+      <div class="credit-modal-content">
           <h3>💳 Credit Balance</h3>
-          <div class="credit-balance-large">${this.balance}</div>
-          <p>Credits remaining</p>
+        <div class="credit-balance-large">${this.balance}</div>
+        <p>Credits remaining</p>
           <div class="credit-usage-info">
             <p>💡 Each script generation typically uses 10-50 credits</p>
             <p>📊 <a href="profile.html#credits">View detailed usage →</a></p>
           </div>
-          <div class="credit-actions">
+        <div class="credit-actions">
             <button class="buy-credits-btn secondary" onclick="window.location.href='buy-credits.html'">Buy More Credits</button>
             <button class="modal-close" onclick="this.parentElement.parentElement.parentElement.remove()">Close</button>
-          </div>
         </div>
-      `;
+      </div>
+    `;
     }
     
     modal.innerHTML = modalContent;
@@ -255,8 +255,8 @@ class CreditWidget {
         <h3>⚠️ Insufficient Credits</h3>
         <div class="insufficient-credits-info">
           <div class="credit-requirement">
-            <p>This operation requires <strong>${estimate.creditsRequired}</strong> credits</p>
-            <p>You have <strong>${estimate.userCreditsRemaining}</strong> credits remaining</p>
+        <p>This operation requires <strong>${estimate.creditsRequired}</strong> credits</p>
+        <p>You have <strong>${estimate.userCreditsRemaining}</strong> credits remaining</p>
             <p class="shortage">You need <strong>${estimate.creditsRequired - estimate.userCreditsRemaining}</strong> more credits</p>
           </div>
         </div>
