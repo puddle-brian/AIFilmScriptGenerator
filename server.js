@@ -5983,6 +5983,60 @@ app.get('/api/my-payment-history', authenticateApiKey, async (req, res) => {
   }
 });
 
+// Manual credit addition endpoint (temporary for debugging webhook issues)
+app.post('/api/debug/add-credits', authenticateApiKey, async (req, res) => {
+  try {
+    // Only allow admin users for safety
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    
+    const { credits = 100, reason = 'Manual debug addition' } = req.body;
+    
+    console.log(`🔧 DEBUG: Manual credit addition - ${credits} credits for user ${req.user.username}`);
+    
+    // Add credits to user account
+    await dbClient.query(
+      'UPDATE users SET credits_remaining = credits_remaining + $1 WHERE id = $2',
+      [parseInt(credits), req.user.id]
+    );
+
+    // Log the transaction
+    await dbClient.query(`
+      INSERT INTO credit_transactions (
+        user_id, transaction_type, credits_amount, notes, payment_method, payment_id
+      ) VALUES ($1, $2, $3, $4, $5, $6)
+    `, [
+      req.user.id,
+      'debug_addition',
+      parseInt(credits),
+      reason,
+      'manual',
+      'debug_' + Date.now()
+    ]);
+
+    // Get updated balance
+    const result = await dbClient.query(
+      'SELECT credits_remaining FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    
+    const newBalance = result.rows[0].credits_remaining;
+    console.log(`✅ DEBUG: Credits added successfully. New balance: ${newBalance}`);
+    
+    res.json({ 
+      success: true, 
+      creditsAdded: credits,
+      newBalance: newBalance,
+      message: `${credits} credits added successfully`
+    });
+    
+  } catch (error) {
+    console.error('❌ DEBUG: Error adding credits:', error);
+    res.status(500).json({ error: 'Failed to add credits', details: error.message });
+  }
+});
+
 // Manual credit refresh endpoint (temporary for debugging)
 app.post('/api/debug/refresh-credits', authenticateApiKey, async (req, res) => {
   try {

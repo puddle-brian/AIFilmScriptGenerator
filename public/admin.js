@@ -1106,6 +1106,43 @@ async function debugStripeEnvironment() {
     }
 }
 
+async function testAddCredits() {
+    console.log('➕ Testing manual credit addition...');
+    showAdminToast('Testing credit addition...', 'warning');
+    
+    try {
+        const response = await fetch('/api/debug/add-credits', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': adminState.apiKey
+            },
+            body: JSON.stringify({
+                credits: 100,
+                reason: 'Admin panel test - webhook debugging'
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showAdminToast(`✅ ${result.creditsAdded} credits added! New balance: ${result.newBalance}`, 'success');
+            console.log('Credit addition result:', result);
+            
+            // This will test if the unified credit system picks up the change
+            console.log('🔄 Testing if unified credit system detects the change...');
+            
+        } else {
+            showAdminToast(`❌ Credit addition failed: ${result.error}`, 'error');
+            console.error('Credit addition failed:', result);
+        }
+        
+    } catch (error) {
+        console.error('❌ Credit addition error:', error);
+        showAdminToast('❌ Credit addition failed: ' + error.message, 'error');
+    }
+}
+
 // Quick Action Functions
 async function viewErrorLogs() {
     showAdminToast('Feature coming soon', 'warning');
