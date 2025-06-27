@@ -52,49 +52,71 @@
         const resultsDiv = document.getElementById('results');
         resultsDiv.innerHTML = `<div class="debug-info">Starting fix for ${username}...</div>`;
         
-        try {
-                         // Step 1: Register the user (this will create them if they don't exist)
-             console.log(`Step 1: Creating user ${username}...`);
-             const registerResponse = await fetch('/api/v2/auth/register', {
+                 try {
+             // Step 1: Check if user exists, create if needed
+             console.log(`Step 1: Checking if user ${username} exists...`);
+             let userExists = true;
+             let registerResponse = { status: 200 };
+             let registerResult = 'User already exists';
+             
+             // Try to populate starter pack first to see if user exists
+             const testResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
                  method: 'POST',
                  headers: {
                      'Content-Type': 'application/json'
-                 },
-                 body: JSON.stringify({ username: username })
+                 }
              });
-            
-            const registerResult = await registerResponse.text();
-            console.log('Register response:', registerResponse.status, registerResult);
-            
-            resultsDiv.innerHTML += `
-                <div class="debug-info">
-                    <strong>Step 1 - User Creation:</strong>
-                    Status: ${registerResponse.status}
-                    Response: ${registerResult}
-                </div>
-            `;
-            
-            // Step 2: Populate starter pack
-            console.log(`Step 2: Populating starter pack for ${username}...`);
-            const starterResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-            const starterResult = await starterResponse.text();
-            console.log('Starter pack response:', starterResponse.status, starterResult);
-            
-            resultsDiv.innerHTML += `
-                <div class="debug-info">
-                    <strong>Step 2 - Starter Pack:</strong>
-                    Status: ${starterResponse.status}
-                    Response: ${starterResult}
-                </div>
-            `;
-            
-                         // Final summary
+             
+             if (testResponse.status === 404) {
+                 // User doesn't exist, try to create them
+                 console.log(`User ${username} doesn't exist, creating...`);
+                 userExists = false;
+                 registerResponse = await fetch('/api/auth/register', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json'
+                     },
+                     body: JSON.stringify({ 
+                         username: username,
+                         email: `${username}@example.com`,
+                         password: 'temppassword123'
+                     })
+                 });
+                 
+                 registerResult = await registerResponse.text();
+                 console.log('Register response:', registerResponse.status, registerResult);
+             }
+             
+             resultsDiv.innerHTML += `
+                 <div class="debug-info">
+                     <strong>Step 1 - User Check/Creation:</strong>
+                     Status: ${registerResponse.status}
+                     Response: ${registerResult}
+                     ${userExists ? '(User already existed)' : '(Created new user)'}
+                 </div>
+             `;
+             
+             // Step 2: Populate starter pack (do this regardless of whether user was created or existed)
+             console.log(`Step 2: Populating starter pack for ${username}...`);
+             const starterResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json'
+                 }
+             });
+             
+             const starterResult = await starterResponse.text();
+             console.log('Starter pack response:', starterResponse.status, starterResult);
+             
+             resultsDiv.innerHTML += `
+                 <div class="debug-info">
+                     <strong>Step 2 - Starter Pack:</strong>
+                     Status: ${starterResponse.status}
+                     Response: ${starterResult}
+                 </div>
+             `;
+             
+             // Final summary
              const allSuccessful = registerResponse.status < 400 && 
                                  starterResponse.status < 400;
             
