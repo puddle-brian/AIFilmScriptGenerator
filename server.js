@@ -5767,6 +5767,35 @@ app.all('/api/webhook-test-all', (req, res) => {
   });
 });
 
+// Debug endpoint to check environment variables
+app.get('/api/debug-env', authenticateApiKey, (req, res) => {
+  // Only allow admin users
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  console.log('🔍 ENVIRONMENT DEBUG REQUEST');
+  
+  const envDebug = {
+    NODE_ENV: process.env.NODE_ENV,
+    VERCEL: !!process.env.VERCEL,
+    STRIPE_SECRET_KEY_EXISTS: !!process.env.STRIPE_SECRET_KEY,
+    STRIPE_SECRET_KEY_LENGTH: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 0,
+    STRIPE_SECRET_KEY_PREFIX: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 8) + '...' : 'none',
+    STRIPE_PUBLISHABLE_KEY_EXISTS: !!process.env.STRIPE_PUBLISHABLE_KEY,
+    STRIPE_PUBLISHABLE_KEY_LENGTH: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.length : 0,
+    STRIPE_PUBLISHABLE_KEY_PREFIX: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 8) + '...' : 'none',
+    STRIPE_WEBHOOK_SECRET_EXISTS: !!process.env.STRIPE_WEBHOOK_SECRET,
+    STRIPE_WEBHOOK_SECRET_LENGTH: process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.length : 0,
+    STRIPE_WEBHOOK_SECRET_PREFIX: process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.substring(0, 8) + '...' : 'none',
+    ALL_STRIPE_ENV_VARS: Object.keys(process.env).filter(key => key.startsWith('STRIPE_'))
+  };
+  
+  console.log('Environment Debug Info:', envDebug);
+  
+  res.json(envDebug);
+});
+
 // Debug endpoint to see raw webhook data (TEMPORARY - remove after debugging)
 app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), async (req, res) => {
   console.log('🔍 DEBUG: Webhook received (no signature verification)');

@@ -1039,6 +1039,73 @@ async function testStripeWebhook() {
     }
 }
 
+async function debugStripeEnvironment() {
+    console.log('🔍 Debugging Stripe environment variables...');
+    showAdminToast('Checking Stripe environment...', 'warning');
+    
+    try {
+        const response = await fetch('/api/debug-env', {
+            headers: { 'X-API-Key': adminState.apiKey }
+        });
+        
+        if (response.ok) {
+            const envInfo = await response.json();
+            showAdminToast('📊 Environment info logged to console', 'success');
+            
+            console.log('🔍 STRIPE ENVIRONMENT DEBUG:');
+            console.log('=====================================');
+            console.log('NODE_ENV:', envInfo.NODE_ENV);
+            console.log('VERCEL:', envInfo.VERCEL);
+            console.log('');
+            console.log('STRIPE_SECRET_KEY:');
+            console.log('  - Exists:', envInfo.STRIPE_SECRET_KEY_EXISTS);
+            console.log('  - Length:', envInfo.STRIPE_SECRET_KEY_LENGTH);
+            console.log('  - Prefix:', envInfo.STRIPE_SECRET_KEY_PREFIX);
+            console.log('');
+            console.log('STRIPE_PUBLISHABLE_KEY:');
+            console.log('  - Exists:', envInfo.STRIPE_PUBLISHABLE_KEY_EXISTS);
+            console.log('  - Length:', envInfo.STRIPE_PUBLISHABLE_KEY_LENGTH);
+            console.log('  - Prefix:', envInfo.STRIPE_PUBLISHABLE_KEY_PREFIX);
+            console.log('');
+            console.log('STRIPE_WEBHOOK_SECRET:');
+            console.log('  - Exists:', envInfo.STRIPE_WEBHOOK_SECRET_EXISTS);
+            console.log('  - Length:', envInfo.STRIPE_WEBHOOK_SECRET_LENGTH);
+            console.log('  - Prefix:', envInfo.STRIPE_WEBHOOK_SECRET_PREFIX);
+            console.log('');
+            console.log('All Stripe env vars:', envInfo.ALL_STRIPE_ENV_VARS);
+            console.log('=====================================');
+            
+            // Check for common issues
+            const issues = [];
+            if (!envInfo.STRIPE_WEBHOOK_SECRET_EXISTS) {
+                issues.push('❌ STRIPE_WEBHOOK_SECRET is missing');
+            } else if (envInfo.STRIPE_WEBHOOK_SECRET_LENGTH < 30) {
+                issues.push('⚠️ STRIPE_WEBHOOK_SECRET seems too short');
+            }
+            
+            if (!envInfo.STRIPE_SECRET_KEY_EXISTS) {
+                issues.push('❌ STRIPE_SECRET_KEY is missing');
+            } else if (!envInfo.STRIPE_SECRET_KEY_PREFIX.startsWith('sk_')) {
+                issues.push('⚠️ STRIPE_SECRET_KEY should start with sk_');
+            }
+            
+            if (issues.length > 0) {
+                console.log('🚨 POTENTIAL ISSUES FOUND:');
+                issues.forEach(issue => console.log(issue));
+            } else {
+                console.log('✅ No obvious environment variable issues found');
+            }
+            
+        } else {
+            throw new Error('Failed to fetch environment info');
+        }
+        
+    } catch (error) {
+        console.error('Environment debug error:', error);
+        showAdminToast('❌ Environment debug failed: ' + error.message, 'error');
+    }
+}
+
 // Quick Action Functions
 async function viewErrorLogs() {
     showAdminToast('Feature coming soon', 'warning');
