@@ -232,14 +232,15 @@
 
                     <!-- Tone/Style -->
                     <div class="form-group">
-                        <label for="tone">Tone/Style</label>
+                        <label for="toneInfluences">Tone/Style Influences</label>
                         <div class="influence-container">
-                            <select id="tone" name="tone">
-                                <option value="">Select tone</option>
+                            <select id="toneSelect" class="influence-select">
+                                <option value="">Select a tone...</option>
                                 <!-- Options will be populated dynamically from JSON -->
                             </select>
                             <button type="button" class="add-new-btn" onclick="addFromDropdownOrNew('tone')" title="Add from dropdown or create new">+ Add New</button>
                         </div>
+                        <div id="toneTags" class="influence-tags"></div>
                     </div>
                     
                     <div class="form-actions">

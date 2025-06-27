@@ -13,7 +13,8 @@ const appState = {
     influences: {
         directors: [],
         screenwriters: [],
-        films: []
+        films: [],
+        tones: []
     },
     projectCharacters: [], // Add characters to appState for persistence
     currentStoryConcept: null, // Current story concept (title + logline)
@@ -194,7 +195,8 @@ const authManager = {
             influences: {
                 directors: [],
                 screenwriters: [],
-                films: []
+                films: [],
+                tones: []
             },
             projectCharacters: [],
             currentStoryConcept: null,
@@ -210,6 +212,7 @@ const authManager = {
             updateInfluenceTags('director');
             updateInfluenceTags('screenwriter');
             updateInfluenceTags('film');
+            updateInfluenceTags('tone');
         }
         if (typeof updateStoryConceptDisplay === 'function') updateStoryConceptDisplay();
     }
@@ -915,13 +918,23 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
             // For new entries, also add to the current form
             if (isNewEntry) {
                 if (type === 'tone') {
-                    // Add to tone dropdown and select it
-                    const toneSelect = document.getElementById('tone');
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    option.selected = true;
-                    toneSelect.appendChild(option);
+                    // Add to tone influences array (like other influences)
+                    // Ensure tones array exists
+                    if (!appState.influences.tones) {
+                        appState.influences.tones = [];
+                    }
+                    
+                    if (!appState.influences.tones.includes(name)) {
+                        appState.influences.tones.push(name);
+                        updateInfluenceTags('tone');
+                        saveToLocalStorage();
+                        
+                        // Mark as dirty to trigger auto-save
+                        appState.pendingChanges = true;
+                        if (autoSaveManager) {
+                            autoSaveManager.markDirty();
+                        }
+                    }
                 } else if (type === 'character') {
                     // Add to main story characters (not influences)
                     const existingCharacter = appState.projectCharacters.find(char => char.name === name);
@@ -1014,9 +1027,19 @@ function setupUniversalLibraryKeyboardSupport() {
 }
 
 function removeInfluence(type, value) {
-    const index = appState.influences[type + 's'].indexOf(value);
+    // Ensure influences object and specific array exist
+    if (!appState.influences) {
+        appState.influences = {};
+    }
+    
+    const pluralType = type + 's';
+    if (!appState.influences[pluralType]) {
+        appState.influences[pluralType] = [];
+    }
+    
+    const index = appState.influences[pluralType].indexOf(value);
     if (index > -1) {
-        appState.influences[type + 's'].splice(index, 1);
+        appState.influences[pluralType].splice(index, 1);
         
         // 🔧 SYNC FIX: Keep storyInput.influences synchronized
         if (appState.storyInput) {
@@ -1051,51 +1074,17 @@ function removeCharacter(index) {
     }
 }
 
-// Handle custom tone addition
-function addCustomTone() {
-    const customInput = document.getElementById('customTone');
-    const toneSelect = document.getElementById('tone');
-    
-    let value = customInput.value.trim();
-    
-    if (value) {
-        // Set the tone in the dropdown
-        toneSelect.value = value;
-        
-        // Create option if it doesn't exist
-        if (!Array.from(toneSelect.options).some(option => option.value === value)) {
-            const option = document.createElement('option');
-            option.value = value;
-            option.textContent = value;
-            option.selected = true;
-            toneSelect.appendChild(option);
-        }
-        
-        // Clear the input
-        customInput.value = '';
-        
-        // Offer to save to library if authenticated
-        if (appState.isAuthenticated) {
-            checkAndOfferLibrarySave('tone', value);
-        }
-        
-        showToast(`Custom tone "${value}" added`, 'success');
-    }
-}
+// Custom tone addition is now handled by the universal system via addFromDropdownOrNew('tone')
 
 // Smart unified function - adds from dropdown if selected, otherwise opens modal for new entry
 function addFromDropdownOrNew(type) {
-    const selectElement = document.getElementById(type === 'tone' ? 'tone' : (type === 'storyconcept' ? 'storyConceptSelect' : `${type}Select`));
+    const selectElement = document.getElementById(type === 'tone' ? 'toneSelect' : (type === 'storyconcept' ? 'storyConceptSelect' : `${type}Select`));
     
     // If something is selected in dropdown, add it
     if (selectElement && selectElement.value) {
         const value = selectElement.value;
         
-        if (type === 'tone') {
-            // For tone, just confirm and offer to save to library (keep selection)
-            showToast(`Tone "${value}" selected`, 'success');
-            checkAndOfferLibrarySave(type, value);
-        } else if (type === 'character') {
+        if (type === 'character') {
             // For characters, add to main story characters (not influences)
             selectElement.value = '';
             
@@ -1157,8 +1146,18 @@ function addFromDropdownOrNew(type) {
             // For influences, clear selection and add to tags
             selectElement.value = '';
             
-            if (value && !appState.influences[type + 's'].includes(value)) {
-                appState.influences[type + 's'].push(value);
+            // Ensure influences object and specific array exist
+            if (!appState.influences) {
+                appState.influences = {};
+            }
+            
+            const pluralType = type + 's';
+            if (!appState.influences[pluralType]) {
+                appState.influences[pluralType] = [];
+            }
+            
+            if (value && !appState.influences[pluralType].includes(value)) {
+                appState.influences[pluralType].push(value);
                 updateInfluenceTags(type);
                 saveToLocalStorage();
                 
@@ -1310,9 +1309,21 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
 
 function updateInfluenceTags(type) {
     const container = document.getElementById(`${type}Tags`);
+    if (!container) return; // Handle case where element doesn't exist
+    
     container.innerHTML = '';
     
-    appState.influences[type + 's'].forEach(influence => {
+    // Ensure influences object and specific array exist
+    if (!appState.influences) {
+        appState.influences = {};
+    }
+    
+    const pluralType = type + 's';
+    if (!appState.influences[pluralType]) {
+        appState.influences[pluralType] = [];
+    }
+    
+    appState.influences[pluralType].forEach(influence => {
         const tag = document.createElement('div');
         tag.className = 'influence-tag clickable-tag';
         tag.innerHTML = `
@@ -1586,7 +1597,9 @@ function buildInfluencePrompt() {
         prompt += `drawing inspiration from films like ${appState.influences.films.join(', ')}, `;
     }
     
-
+    if (appState.influences.tones.length > 0) {
+        prompt += `with a tone that is ${appState.influences.tones.join(' and ')}, `;
+    }
     
     return prompt;
 }
@@ -1771,7 +1784,7 @@ async function autoGenerate() {
     });
     
     // Clear existing influences
-    appState.influences = { directors: [], screenwriters: [], films: [] };
+    appState.influences = { directors: [], screenwriters: [], films: [], tones: [] };
     
     // Add random influences (1-3 of each type) from user's libraries
     const randomDirectors = [...(userLibraries.directors || [])].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 3) + 1);
@@ -1799,8 +1812,9 @@ async function autoGenerate() {
         ];
     }
     
-    // Set tone before project initialization
-    document.getElementById('tone').value = (userLibraries.tones || [])[Math.floor(Math.random() * (userLibraries.tones?.length || 1))] || '';
+    // Add random tone to influences
+    const randomTones = [...(userLibraries.tones || [])].sort(() => 0.5 - Math.random()).slice(0, Math.floor(Math.random() * 2) + 1);
+    appState.influences.tones = randomTones;
     
     // Initialize new project from story concept (this does all the proper setup)
     console.log('🎲 AutoGenerate: Initializing project with:', { title, logline });
@@ -1816,6 +1830,7 @@ async function autoGenerate() {
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
+    updateInfluenceTags('tone');
     updateCharacterTags(); // This was missing!
     updateStoryConceptDisplay(); // This was missing!
     
@@ -1894,6 +1909,7 @@ async function initializeApp() {
             updateInfluenceTags('director');
             updateInfluenceTags('screenwriter');
             updateInfluenceTags('film');
+            updateInfluenceTags('tone');
             updateStoryConceptDisplay();
             
             // Restore template selection UI if a template was selected
@@ -2071,7 +2087,7 @@ async function populateDropdowns() {
         
         // Populate tones dropdown (user library only)
         console.log('PopulateDropdowns: Populating tones dropdown...');
-        const toneSelect = document.getElementById('tone');
+        const toneSelect = document.getElementById('toneSelect');
         if (!toneSelect) {
             console.error('PopulateDropdowns: toneSelect element not found!');
         } else {
@@ -5909,6 +5925,7 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         updateInfluenceTags('director');
         updateInfluenceTags('screenwriter');
         updateInfluenceTags('film');
+        updateInfluenceTags('tone');
         updateStoryConceptDisplay();
     } else if (stepNumber === 2) {
         // Step 2: Template Selection - Show selected template or template options
@@ -6507,12 +6524,15 @@ function startFreshProject() {
     appState.projectCharacters = [];
     updateCharacterTags();
     document.getElementById('totalScenes').value = '70';
-    document.getElementById('tone').value = '';
+    
+    // Clear influences arrays
+    appState.influences = { directors: [], screenwriters: [], films: [], tones: [] };
     
     // Clear influence tags
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
+    updateInfluenceTags('tone');
     
     // Hide project header
     hideProjectHeader();
@@ -6683,7 +6703,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     // Load project data (unified v2.0 format - with temporary legacy localStorage compatibility)
     appState.currentStoryConcept = projectData.storyInput?.storyConcept || {};
     appState.projectCharacters = projectData.projectCharacters || projectData.storyInput?.charactersData || [];
-    appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [] };
+    appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [], tones: [] };
     appState.storyInput = projectData.storyInput || {};
     // Temporary fallbacks for legacy localStorage data (can be removed after migration period)
     appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
@@ -6716,7 +6736,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     updateInfluenceTags('director');
     updateInfluenceTags('screenwriter');
     updateInfluenceTags('film');
-    document.getElementById('tone').value = projectData.storyInput?.tone || '';
+    updateInfluenceTags('tone');
     
     console.log('✅ Project loaded (unified v2.0):', {
         storyConcept: !!appState.currentStoryConcept,
