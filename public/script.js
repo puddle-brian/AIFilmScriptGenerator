@@ -2766,108 +2766,79 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
         return;
     }
     
-    // Check if we already have a preview showing
+    // Remove any existing preview since we're showing the actual generated structure now
     const existingPreview = container.parentNode.querySelector('#templateStructurePreview');
     if (existingPreview) {
-        // Update the existing preview cards with generated content
-        Object.entries(structure).forEach(([key, element]) => {
-            if (typeof element === 'object' && element.name) {
-                const previewCard = existingPreview.querySelector(`[data-act-key="${key}"]`);
-                if (previewCard) {
-                    const placeholder = previewCard.querySelector('.act-placeholder');
-                    if (placeholder) {
-                        // Replace placeholder with generated content
-                        placeholder.innerHTML = `
-                            <div class="generated-content">
-                                <p><strong>Generated Content:</strong></p>
-                                <p>${element.description || 'No description available'}</p>
-                                ${element.character_developments || element.character_development ? 
-                                    `<p><strong>Character Development:</strong> ${element.character_developments || element.character_development}</p>` : ''}
-                                ${element.important_plot_points ? 
-                                    `<p><strong>Key Plot Points:</strong> ${element.important_plot_points}</p>` : ''}
-                            </div>
-                        `;
-                        placeholder.style.background = 'rgba(79, 172, 254, 0.1)';
-                        placeholder.style.borderColor = '#4facfe';
-                        placeholder.style.borderStyle = 'solid';
-                    }
-                }
-            }
-        });
-        
-        // Update the preview header to show completion
-        const previewHint = existingPreview.querySelector('.structure-preview-hint');
-        if (previewHint) {
-            previewHint.innerHTML = '<strong>✅ Generated:</strong> Your story structure has been created successfully!';
-            previewHint.style.borderLeftColor = '#68d391';
-            previewHint.style.background = 'rgba(104, 211, 145, 0.1)';
-        }
-        
-        // Don't create duplicate content in container
-        container.innerHTML = '';
-    } else {
-        // No preview exists, create the normal structure display
-        container.innerHTML = '';
-        
-        // Add prompt review section if available
-        if (prompt && systemMessage) {
-            const promptSection = document.createElement('div');
-            promptSection.className = 'prompt-review-section';
-            promptSection.innerHTML = `
-                <div class="prompt-review-header">
-                    <h3>📋 Generated Using This Prompt</h3>
-                    <button class="btn btn-outline btn-sm" onclick="showUsedPromptModal()">View Full Prompt</button>
-                </div>
-                <div class="prompt-summary">
-                    <p><strong>Template:</strong> ${appState.templateData?.name || 'Unknown'}</p>
-                    <p><strong>Story:</strong> ${appState.storyInput?.title || 'Untitled'}</p>
-                    <p><strong>Influences:</strong> ${getInfluencesSummary()}</p>
-                </div>
-            `;
-            container.appendChild(promptSection);
-        }
-        
-        // Create editable content blocks for each act in chronological order
-        const structureKeys = Object.keys(structure);
-        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
-        const totalActs = chronologicalKeys.length;
-        
-        chronologicalKeys.forEach((key, index) => {
-            const element = structure[key];
-            if (typeof element === 'object' && element.name) {
-                const actContent = JSON.stringify(element);
-                const actProgress = `${index + 1}/${totalActs}`;
-                const actTitle = element.name || key.replace(/_/g, ' ').toUpperCase();
-                
-                createEditableContentBlock({
-                    id: `act-${key}`,
-                    type: 'acts',
-                    title: `${actProgress} ${actTitle}`,
-                    content: actContent,
-                    container: container,
-                    metadata: { actKey: key },
-                    onSave: async (newContent, block) => {
-                        // Save the edited act content
-                        await saveActContent(key, newContent);
-                        
-                        // Update the app state
-                        if (appState.generatedStructure && appState.generatedStructure[key]) {
-                            try {
-                                const updatedAct = JSON.parse(newContent);
-                                appState.generatedStructure[key] = { ...appState.generatedStructure[key], ...updatedAct };
-                            } catch (e) {
-                                // If not JSON, update description
-                                appState.generatedStructure[key].description = newContent;
-                            }
-                        }
-                        
-                        // Save to local storage
-                        saveToLocalStorage();
-                    }
-                });
-            }
-        });
+        existingPreview.remove();
     }
+    
+    // Clear container and create the normal structure display
+    container.innerHTML = '';
+    
+    // Add prompt review section if available
+    if (prompt && systemMessage) {
+        const promptSection = document.createElement('div');
+        promptSection.className = 'prompt-review-section';
+        promptSection.innerHTML = `
+            <div class="prompt-review-header">
+                <h3>📋 Generated Using This Prompt</h3>
+                <button class="btn btn-outline btn-sm" onclick="showUsedPromptModal()">View Full Prompt</button>
+            </div>
+            <div class="prompt-summary">
+                <p><strong>Template:</strong> ${appState.templateData?.name || 'Unknown'}</p>
+                <p><strong>Story:</strong> ${appState.storyInput?.title || 'Untitled'}</p>
+                <p><strong>Influences:</strong> ${getInfluencesSummary()}</p>
+            </div>
+        `;
+        container.appendChild(promptSection);
+    }
+    
+    // Create editable content blocks for each act in chronological order
+    const structureKeys = Object.keys(structure);
+    const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+    const totalActs = chronologicalKeys.length;
+    
+    console.log(`🔧 displayStructure: Displaying ${totalActs} acts in chronological order:`, chronologicalKeys);
+    
+    chronologicalKeys.forEach((key, index) => {
+        const element = structure[key];
+        if (typeof element === 'object' && element.name) {
+            const actContent = JSON.stringify(element);
+            const actProgress = `${index + 1}/${totalActs}`;
+            const actTitle = element.name || key.replace(/_/g, ' ').toUpperCase();
+            
+            console.log(`🔧 displayStructure: Creating act ${actProgress} - ${actTitle} (${key})`);
+            
+            createEditableContentBlock({
+                id: `act-${key}`,
+                type: 'acts',
+                title: `${actProgress} ${actTitle}`,
+                content: actContent,
+                container: container,
+                metadata: { actKey: key },
+                onSave: async (newContent, block) => {
+                    // Save the edited act content
+                    await saveActContent(key, newContent);
+                    
+                    // Update the app state
+                    if (appState.generatedStructure && appState.generatedStructure[key]) {
+                        try {
+                            const updatedAct = JSON.parse(newContent);
+                            appState.generatedStructure[key] = { ...appState.generatedStructure[key], ...updatedAct };
+                        } catch (e) {
+                            // If not JSON, update description
+                            appState.generatedStructure[key].description = newContent;
+                        }
+                    }
+                    
+                    // Save to local storage
+                    saveToLocalStorage();
+                }
+            });
+        } else {
+            console.log(`🔧 displayStructure: Skipping invalid element for key ${key}:`, element);
+        }
+    });
     
     // Show regenerate and approve buttons after structure is displayed
     const regenerateBtn = document.getElementById('regenerateBtn');
