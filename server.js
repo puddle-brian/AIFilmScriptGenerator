@@ -5,6 +5,8 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Anthropic = require('@anthropic-ai/sdk');
 const { Client, Pool } = require('pg');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const promptBuilders = require('./prompt-builders');
 require('dotenv').config();
 
@@ -56,10 +58,13 @@ const CREATE_USAGE_TRACKING_TABLES = `
   CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(255) UNIQUE NOT NULL,
-    email VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255),
     api_key VARCHAR(255) UNIQUE,
     credits_remaining INTEGER DEFAULT 0,
     total_credits_purchased INTEGER DEFAULT 0,
+    email_updates BOOLEAN DEFAULT FALSE,
+    email_verified BOOLEAN DEFAULT FALSE,
     is_admin BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -101,6 +106,14 @@ const CREATE_USAGE_TRACKING_TABLES = `
   CREATE INDEX IF NOT EXISTS idx_usage_logs_user_id ON usage_logs(user_id);
   CREATE INDEX IF NOT EXISTS idx_usage_logs_created_at ON usage_logs(created_at);
   CREATE INDEX IF NOT EXISTS idx_credit_transactions_user_id ON credit_transactions(user_id);
+  
+  -- Add missing columns to existing users table
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255);
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_updates BOOLEAN DEFAULT FALSE;
+  ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+  
+  -- Make email unique if not already
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users(email) WHERE email IS NOT NULL;
 `;
 
 // Initialize database tables
@@ -6218,7 +6231,6 @@ app.post('/api/v2/auth/login', async (req, res) => {
     const user = result.rows[0];
     
     // Verify password
-    const bcrypt = require('bcrypt');
     const passwordValid = await bcrypt.compare(password, user.password_hash);
     if (!passwordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
@@ -6285,12 +6297,10 @@ app.post('/api/v2/auth/register', async (req, res) => {
     }
     
     // Hash password
-    const bcrypt = require('bcrypt');
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     // Generate API key
-    const crypto = require('crypto');
     const apiKey = 'user_' + crypto.randomBytes(32).toString('hex');
     
     // Create user with initial credits (100 free credits = $1.00)
