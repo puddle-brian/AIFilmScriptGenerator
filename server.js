@@ -156,8 +156,16 @@ async function initializeDatabase() {
 async function connectToDatabase() {
   try {
     if (process.env.VERCEL) {
-      // In serverless, skip initialization - let queries connect on demand
+      // In serverless, skip database connection but initialize payment handler
       console.log('🔧 Serverless mode - database connection on-demand');
+      
+      // Initialize payment handler even in serverless mode
+      try {
+        paymentHandler = new PaymentHandler(dbClient);
+        console.log('✅ Payment system initialized (serverless mode)');
+      } catch (error) {
+        console.error('❌ Failed to initialize payment system:', error);
+      }
     } else {
       // Traditional persistent connection for local development
       await dbClient.connect();
@@ -5685,7 +5693,14 @@ app.post('/api/create-checkout-session', authenticateApiKey, async (req, res) =>
     }
 
     if (!paymentHandler) {
-      return res.status(500).json({ error: 'Payment system not initialized' });
+      try {
+        // Lazy initialization fallback for serverless
+        paymentHandler = new PaymentHandler(dbClient);
+        console.log('✅ Payment system lazy-initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize payment system:', error);
+        return res.status(500).json({ error: 'Payment system not initialized', details: error.message });
+      }
     }
 
     const session = await paymentHandler.createCheckoutSession(
@@ -5708,8 +5723,14 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
   
   try {
     if (!paymentHandler) {
-      console.error('Payment handler not initialized');
-      return res.status(500).send('Payment system error');
+      try {
+        // Lazy initialization fallback for serverless
+        paymentHandler = new PaymentHandler(dbClient);
+        console.log('✅ Payment system lazy-initialized for webhook');
+      } catch (error) {
+        console.error('❌ Failed to initialize payment system for webhook:', error);
+        return res.status(500).send('Payment system error');
+      }
     }
 
     const event = paymentHandler.verifyWebhookSignature(req.body, sig);
@@ -5732,7 +5753,14 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
 app.get('/api/my-payment-history', authenticateApiKey, async (req, res) => {
   try {
     if (!paymentHandler) {
-      return res.status(500).json({ error: 'Payment system not initialized' });
+      try {
+        // Lazy initialization fallback for serverless
+        paymentHandler = new PaymentHandler(dbClient);
+        console.log('✅ Payment system lazy-initialized for history');
+      } catch (error) {
+        console.error('❌ Failed to initialize payment system for history:', error);
+        return res.status(500).json({ error: 'Payment system not initialized', details: error.message });
+      }
     }
 
     const { limit = 10 } = req.query;
