@@ -42,7 +42,11 @@ class CreditWidget {
     if (!this.apiKey) return true;
 
     try {
-      const response = await fetch('/api/estimate-cost', {
+      // Use correct base URL for cross-origin requests
+      const baseUrl = window.location.hostname === 'localhost' ? 
+        'https://screenplaygenie.com' : '';
+      
+      const response = await fetch(`${baseUrl}/api/estimate-cost`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -79,7 +83,11 @@ class CreditWidget {
     if (!this.apiKey) return;
 
     try {
-      const response = await fetch('/api/my-stats', {
+      // Use correct base URL for cross-origin requests
+      const baseUrl = window.location.hostname === 'localhost' ? 
+        'https://screenplaygenie.com' : '';
+      
+      const response = await fetch(`${baseUrl}/api/my-stats`, {
         headers: { 'X-API-Key': this.apiKey }
       });
       
