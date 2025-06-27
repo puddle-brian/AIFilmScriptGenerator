@@ -4524,6 +4524,216 @@ app.delete('/api/user-libraries/:username/:type/:key', async (req, res) => {
   }
 });
 
+// Populate starter pack for user
+app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    console.log(`Populating starter pack for user: ${username} (ID: ${userId})`);
+    
+    // Load all default data files
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    try {
+      // Load default data from public/data directory
+      const directorsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'directors.json'), 'utf8'));
+      const screenwritersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'screenwriters.json'), 'utf8'));
+      const filmsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'films.json'), 'utf8'));
+      const tonesData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'tones.json'), 'utf8'));
+      const charactersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'characters.json'), 'utf8'));
+      
+      let totalInserted = 0;
+      
+      // Insert directors
+      for (const director of directorsData) {
+        await dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'directors', director, JSON.stringify({ name: director })]
+        );
+        totalInserted++;
+      }
+      
+      // Insert screenwriters
+      for (const screenwriter of screenwritersData) {
+        await dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'screenwriters', screenwriter, JSON.stringify({ name: screenwriter })]
+        );
+        totalInserted++;
+      }
+      
+      // Insert films
+      for (const film of filmsData) {
+        await dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'films', film, JSON.stringify({ name: film })]
+        );
+        totalInserted++;
+      }
+      
+      // Insert tones
+      for (const tone of tonesData) {
+        await dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'tones', tone, JSON.stringify({ name: tone })]
+        );
+        totalInserted++;
+      }
+      
+      // Insert characters (characters have a different structure with name and description)
+      for (const character of charactersData) {
+        await dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'characters', character.name, JSON.stringify({ name: character.name, description: character.description })]
+        );
+        totalInserted++;
+      }
+      
+      console.log(`✅ Starter pack populated for ${username}: ${totalInserted} entries added`);
+      console.log(`   - Directors: ${directorsData.length}`);
+      console.log(`   - Screenwriters: ${screenwritersData.length}`);
+      console.log(`   - Films: ${filmsData.length}`);
+      console.log(`   - Tones: ${tonesData.length}`);
+      console.log(`   - Characters: ${charactersData.length}`);
+      
+      res.json({
+        success: true,
+        message: `Starter pack populated successfully! Added ${directorsData.length} directors, ${screenwritersData.length} screenwriters, ${filmsData.length} films, ${tonesData.length} tones, and ${charactersData.length} characters.`,
+        counts: {
+          directors: directorsData.length,
+          screenwriters: screenwritersData.length,
+          films: filmsData.length,
+          tones: tonesData.length,
+          characters: charactersData.length,
+          total: totalInserted
+        }
+      });
+      
+    } catch (fileError) {
+      console.error('Error reading default data files:', fileError);
+      res.status(500).json({ error: 'Failed to read default data files' });
+    }
+    
+  } catch (error) {
+    console.error('Failed to populate starter pack:', error);
+    res.status(500).json({ error: 'Failed to populate starter pack' });
+  }
+});
+
+// Helper function to populate starter pack (for use in registration)
+async function populateUserStarterPack(userId, username) {
+  try {
+    console.log(`Auto-populating starter pack for new user: ${username} (ID: ${userId})`);
+    
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    // Load default data from public/data directory
+    const directorsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'directors.json'), 'utf8'));
+    const screenwritersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'screenwriters.json'), 'utf8'));
+    const filmsData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'films.json'), 'utf8'));
+    const tonesData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'tones.json'), 'utf8'));
+    const charactersData = JSON.parse(await fs.readFile(path.join(__dirname, 'public', 'data', 'characters.json'), 'utf8'));
+    
+    // Insert all data in parallel for better performance
+    const insertPromises = [];
+    
+    // Insert directors
+    directorsData.forEach(director => {
+      insertPromises.push(
+        dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'directors', director, JSON.stringify({ name: director })]
+        )
+      );
+    });
+    
+    // Insert screenwriters
+    screenwritersData.forEach(screenwriter => {
+      insertPromises.push(
+        dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'screenwriters', screenwriter, JSON.stringify({ name: screenwriter })]
+        )
+      );
+    });
+    
+    // Insert films
+    filmsData.forEach(film => {
+      insertPromises.push(
+        dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'films', film, JSON.stringify({ name: film })]
+        )
+      );
+    });
+    
+    // Insert tones
+    tonesData.forEach(tone => {
+      insertPromises.push(
+        dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'tones', tone, JSON.stringify({ name: tone })]
+        )
+      );
+    });
+    
+    // Insert characters
+    charactersData.forEach(character => {
+      insertPromises.push(
+        dbClient.query(
+          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
+           VALUES ($1, $2, $3, $4, NOW()) 
+           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
+          [userId, 'characters', character.name, JSON.stringify({ name: character.name, description: character.description })]
+        )
+      );
+    });
+    
+    // Wait for all inserts to complete
+    await Promise.all(insertPromises);
+    
+    console.log(`✅ Auto-populated starter pack for ${username}:`);
+    console.log(`   - Directors: ${directorsData.length}`);
+    console.log(`   - Screenwriters: ${screenwritersData.length}`);
+    console.log(`   - Films: ${filmsData.length}`);
+    console.log(`   - Tones: ${tonesData.length}`);
+    console.log(`   - Characters: ${charactersData.length}`);
+    
+    return true;
+  } catch (error) {
+    console.error(`Failed to auto-populate starter pack for ${username}:`, error);
+    return false;
+  }
+}
+
 // User Projects Management
 app.get('/api/user-projects/:username', async (req, res) => {
   try {
@@ -4811,7 +5021,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     }
     
     // Save back to database
-    await dbClient.query(
+        await dbClient.query(
       'UPDATE user_projects SET project_context = $1, updated_at = NOW() WHERE user_id = $2 AND project_name = $3',
       [JSON.stringify(projectContext), userId, projectPath]
     );
@@ -4970,7 +5180,7 @@ Return ONLY a JSON object with this exact structure:
     
     // Save updated plot points back to database
     projectContext.plotPoints[structureKey] = plotPointsData;
-    await dbClient.query(
+        await dbClient.query(
       'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
       [JSON.stringify(projectContext), userId, projectPath]
     );
@@ -5206,7 +5416,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     };
     
     // Update database with new scenes
-    await dbClient.query(
+        await dbClient.query(
       'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
       [JSON.stringify(projectContext), userId, projectPath]
     );
@@ -5280,7 +5490,7 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
     };
     
     // Save back to database
-    await dbClient.query(
+        await dbClient.query(
       'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
       [JSON.stringify(projectContext), userId, projectPath]
     );
@@ -5338,8 +5548,8 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) =
     await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
     
     console.log(`Plot points for ${actKey} updated successfully`);
-    res.json({ 
-      success: true, 
+      res.json({
+        success: true,
       message: 'Plot points updated successfully',
       plotPoints: updatedPlotPoints
     });
@@ -5741,8 +5951,23 @@ app.post('/api/auth/register', async (req, res) => {
       ) VALUES ($1, $2, $3, $4, NOW())
     `, [user.id, 'grant', 100, 'Welcome bonus - 100 free credits']);
     
-    // TODO: Send welcome email with email verification link
+    // Populate starter pack with default libraries
     console.log(`New user registered: ${username} (${email}) - API Key: ${apiKey}`);
+    console.log(`Populating starter pack for new user: ${username}`);
+    
+    try {
+      const starterPackSuccess = await populateUserStarterPack(user.id, username);
+      if (starterPackSuccess) {
+        console.log(`✅ Starter pack successfully populated for ${username}`);
+      } else {
+        console.log(`⚠️ Failed to populate starter pack for ${username}, but user account created successfully`);
+      }
+    } catch (starterPackError) {
+      console.error(`Error populating starter pack for ${username}:`, starterPackError);
+      // Don't fail registration if starter pack fails
+    }
+    
+    // TODO: Send welcome email with email verification link
     
     res.status(201).json({
       message: 'Account created successfully',
@@ -6313,6 +6538,20 @@ app.post('/api/v2/auth/register', async (req, res) => {
     const user = result.rows[0];
     
     console.log(`New user registered via v2: ${username} (${email})`);
+    console.log(`Populating starter pack for new v2 user: ${username}`);
+    
+    // Populate starter pack with default libraries (non-blocking)
+    try {
+      const starterPackSuccess = await populateUserStarterPack(user.id, username);
+      if (starterPackSuccess) {
+        console.log(`✅ Starter pack successfully populated for ${username} (v2)`);
+      } else {
+        console.log(`⚠️ Failed to populate starter pack for ${username} (v2), but user account created successfully`);
+      }
+    } catch (starterPackError) {
+      console.error(`Error populating starter pack for ${username} (v2):`, starterPackError);
+      // Don't fail registration if starter pack fails
+    }
     
     res.status(201).json({
       success: true,
