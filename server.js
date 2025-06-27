@@ -4645,22 +4645,16 @@ async function populateUserStarterPack(userId, username) {
   try {
     console.log(`Auto-populating starter pack for new user: ${username} (ID: ${userId})`);
     
-    const baseUrl = process.env.DEPLOYED_URL || 'https://screenplaygenie.com';
+    // Hardcoded starter pack data (more reliable for serverless)
+    const directorsData = ["Ingmar Bergman","Alfred Hitchcock","Orson Welles","Stanley Kubrick","David Lynch","Francis Ford Coppola","Martin Scorsese","Quentin Tarantino","Alejandro González Iñárritu","Wes Anderson","Todd Phillips","Todd Haynes","Peter Weir","Paul Thomas Anderson","Terrence Malick","Lars von Trier","Alejandro Jodorowsky","Yorgos Lanthimos","Yimou Zhang","David Fincher","David Cronenberg","Nicolas Winding Refn","David O. Russell","Akira Kurosawa","Federico Fellini","Jean-Luc Godard","Andrei Tarkovsky","Luis Buñuel","Michelangelo Antonioni","François Truffaut","Vittorio De Sica","Yasujirō Ozu","Robert Bresson","Krzysztof Kieślowski","Agnès Varda","Chantal Akerman","Wong Kar-wai","Abbas Kiarostami","Béla Tarr","Apichatpong Weerasethakul"];
     
-    // Load default data from public/data directory via HTTP
-    const [directorsRes, screenwritersRes, filmsRes, tonesRes, charactersRes] = await Promise.all([
-      fetch(`${baseUrl}/data/directors.json`),
-      fetch(`${baseUrl}/data/screenwriters.json`),
-      fetch(`${baseUrl}/data/films.json`),
-      fetch(`${baseUrl}/data/tones.json`),
-      fetch(`${baseUrl}/data/characters.json`)
-    ]);
+    const screenwritersData = ["Cesare Zavattini (Bicycle Thieves, Umberto D)","Suso Cecchi d'Amico (Rocco and His Brothers, 8½)","Jean-Claude Carrière (Belle de Jour, The Discreet Charm)","Ingmar Bergman (Persona, Scenes from a Marriage)","Robert Towne (Chinatown, The Last Detail)","Charlie Kaufman (Being John Malkovich, Eternal Sunshine)","Aaron Sorkin (The Social Network, Steve Jobs)","Paul Schrader (Taxi Driver, Raging Bull)","William Goldman (Butch Cassidy, The Princess Bride)","Christopher Nolan (Memento, Inception)"];
     
-    const directorsData = await directorsRes.json();
-    const screenwritersData = await screenwritersRes.json();
-    const filmsData = await filmsRes.json();
-    const tonesData = await tonesRes.json();
-    const charactersData = await charactersRes.json();
+    const filmsData = ["8½ (1963)","Persona (1966)","Bicycle Thieves (1948)","Citizen Kane (1941)","Vertigo (1958)","2001: A Space Odyssey (1968)","Apocalypse Now (1979)","Taxi Driver (1976)","Pulp Fiction (1994)","The Godfather (1972)","Casablanca (1942)","Some Like It Hot (1959)","Singin' in the Rain (1952)","The Rules of the Game (1939)","Tokyo Story (1953)","The Searchers (1956)","Psycho (1960)","Chinatown (1974)"];
+    
+    const tonesData = ["Contemplative/Meditative","Psychological Intensity","Existential Angst","Surreal/Dreamlike","Nostalgic/Melancholic","Dark Comedy","Satirical/Ironic","Epic/Mythical","Intimate/Personal","Gritty Realism","Whimsical/Fantastical","Suspenseful/Tense","Romantic/Passionate","Coming-of-Age","Tragic/Dramatic","Action-Packed","Horror/Gothic","Science Fiction","Western","Film Noir","Experimental","Documentary-Style"];
+    
+    const charactersData = [{"name":"Ellen Ripley","description":"Resourceful space officer who transforms from corporate employee to fierce survivor, facing alien threats with intelligence and determination. Represents the evolution from victim to warrior."},{"name":"Travis Bickle","description":"Isolated taxi driver descending into vigilante violence, representing urban alienation and the dangerous psychology of the lonely outsider seeking purpose through violence."},{"name":"Dorothy Gale","description":"Young farm girl swept into a fantastical journey, learning that home and self-worth come from within. The classic hero's journey through a child's eyes."}];
     
     // Insert all data in parallel for better performance
     const insertPromises = [];
