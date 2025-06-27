@@ -97,15 +97,13 @@ class PaymentHandler {
             // Log the purchase transaction
             await this.dbClient.query(`
                 INSERT INTO credit_transactions (
-                    user_id, transaction_type, credits_amount, notes, payment_method, payment_id
-                ) VALUES ($1, $2, $3, $4, $5, $6)
+                    user_id, transaction_type, credits_amount, notes
+                ) VALUES ($1, $2, $3, $4)
             `, [
                 parseInt(userId),
                 'purchase',
                 parseInt(credits),
-                `Credit purchase: ${packageName}`,
-                'stripe',
-                session.payment_intent
+                `Credit purchase: ${packageName} (Stripe session: ${session.id})`
             ]);
 
             console.log(`✅ Payment processed: ${credits} credits added to user ${username}`);
@@ -118,15 +116,13 @@ class PaymentHandler {
             try {
                 await this.dbClient.query(`
                     INSERT INTO credit_transactions (
-                        user_id, transaction_type, credits_amount, notes, payment_method, payment_id
-                    ) VALUES ($1, $2, $3, $4, $5, $6)
+                        user_id, transaction_type, credits_amount, notes
+                    ) VALUES ($1, $2, $3, $4)
                 `, [
                     parseInt(userId),
                     'purchase_failed',
                     parseInt(credits),
-                    `Payment processing failed: ${error.message}`,
-                    'stripe',
-                    session.payment_intent
+                    `Payment processing failed: ${error.message} (Stripe session: ${session.id})`
                 ]);
             } catch (logError) {
                 console.error('Failed to log failed transaction:', logError);

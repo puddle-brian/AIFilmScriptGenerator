@@ -5797,7 +5797,7 @@ app.get('/api/debug-env', authenticateApiKey, (req, res) => {
 });
 
 // Enhanced debug webhook endpoint to diagnose signature issues
-app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), (req, res) => {
+app.post('/api/stripe-webhook-debug', express.raw({type: '*/*'}), (req, res) => {
   console.log('🐛 DEBUG WEBHOOK RECEIVED:');
   console.log('   - Timestamp:', new Date().toISOString());
   console.log('   - Headers:', JSON.stringify(req.headers, null, 2));
@@ -5850,7 +5850,7 @@ app.post('/api/stripe-webhook-debug', express.raw({type: 'application/json'}), (
 });
 
 // Stripe webhook handler for payment completion
-app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
+app.post('/api/stripe-webhook', express.raw({type: '*/*'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   
   console.log('🎯 Webhook received!');
@@ -6004,15 +6004,13 @@ app.post('/api/debug/add-credits', authenticateApiKey, async (req, res) => {
     // Log the transaction
     await dbClient.query(`
       INSERT INTO credit_transactions (
-        user_id, transaction_type, credits_amount, notes, payment_method, payment_id
-      ) VALUES ($1, $2, $3, $4, $5, $6)
+        user_id, transaction_type, credits_amount, notes
+      ) VALUES ($1, $2, $3, $4)
     `, [
       req.user.id,
       'debug_addition',
       parseInt(credits),
-      reason,
-      'manual',
-      'debug_' + Date.now()
+      reason
     ]);
 
     // Get updated balance
