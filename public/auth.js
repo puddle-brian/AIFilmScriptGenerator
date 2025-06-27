@@ -152,12 +152,27 @@ async function handleRegistration(event) {
         
         if (response.ok) {
             // Registration successful
-            showMessage(successDiv, 'Account created successfully! You can now sign in.');
+            showMessage(successDiv, 'Account created successfully! Logging you in...');
             
-            // Store user data and redirect after short delay
-            setTimeout(() => {
-                window.location.href = 'login.html?registered=true';
-            }, 1500);
+            // Store user data and API key for automatic login
+            if (result.apiKey) {
+                authState.isAuthenticated = true;
+                authState.user = result.user;
+                authState.apiKey = result.apiKey;
+                
+                localStorage.setItem('apiKey', result.apiKey);
+                localStorage.setItem('userData', JSON.stringify(result.user));
+                
+                // Redirect to main app after short delay
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+            } else {
+                // Fallback: redirect to login if no API key
+                setTimeout(() => {
+                    window.location.href = 'login.html?registered=true';
+                }, 1500);
+            }
             
         } else {
             // Registration failed

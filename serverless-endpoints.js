@@ -106,6 +106,7 @@ router.post('/api/v2/auth/register', async (req, res) => {
         credits_remaining: user.credits_remaining,
         created_at: user.created_at
       },
+      apiKey: apiKey,  // Return API key so user can be automatically logged in
       registrationMethod: registrationResult.method
     });
     

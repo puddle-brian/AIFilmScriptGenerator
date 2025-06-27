@@ -6629,7 +6629,8 @@ app.post('/api/v2/auth/register', async (req, res) => {
         email: user.email,
         credits_remaining: user.credits_remaining,
         created_at: user.created_at
-      }
+      },
+      apiKey: user.api_key  // Return API key so user can be automatically logged in
     });
     
   } catch (error) {
