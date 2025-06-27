@@ -5733,9 +5733,22 @@ app.post('/api/create-checkout-session', authenticateApiKey, async (req, res) =>
   }
 });
 
+// Test endpoint to check if webhooks are reachable
+app.post('/api/webhook-test', express.json(), (req, res) => {
+  console.log('🧪 Webhook test endpoint hit!');
+  console.log('   - Headers:', req.headers);
+  console.log('   - Body:', req.body);
+  res.json({ success: true, message: 'Webhook endpoint is reachable' });
+});
+
 // Stripe webhook handler for payment completion
 app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
+  
+  console.log('🎯 Webhook received!');
+  console.log('   - Signature header present:', !!sig);
+  console.log('   - Body length:', req.body ? req.body.length : 'no body');
+  console.log('   - Content-Type:', req.headers['content-type']);
   
   try {
     if (!paymentHandler) {
@@ -5749,18 +5762,33 @@ app.post('/api/stripe-webhook', express.raw({type: 'application/json'}), async (
       }
     }
 
+    if (!sig) {
+      console.error('❌ No stripe-signature header found');
+      return res.status(400).send('Missing stripe-signature header');
+    }
+
     const event = paymentHandler.verifyWebhookSignature(req.body, sig);
     
-    console.log('Received Stripe webhook event:', event.type);
+    console.log('🎉 Received Stripe webhook event:', event.type);
+    console.log('   - Event ID:', event.id);
 
     if (event.type === 'checkout.session.completed') {
+      console.log('💳 Processing checkout.session.completed...');
+      const session = event.data.object;
+      console.log('   - Session ID:', session.id);
+      console.log('   - Metadata:', session.metadata);
+      
       await paymentHandler.handlePaymentSuccess(event);
       console.log('✅ Payment processed successfully');
+    } else {
+      console.log('ℹ️ Ignoring webhook event type:', event.type);
     }
 
     res.json({received: true});
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('❌ Webhook error:', error);
+    console.error('   - Error type:', error.constructor.name);
+    console.error('   - Error message:', error.message);
     res.status(400).send(`Webhook Error: ${error.message}`);
   }
 });

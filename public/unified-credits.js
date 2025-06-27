@@ -145,10 +145,15 @@ class UnifiedCreditSystem {
         const data = await response.json();
         const newBalance = data.user.credits_remaining || 0;
         
+        console.log(`💰 Fetched balance: ${newBalance} (previous: ${this.balance})`);
+        
         // Only update if balance actually changed to prevent unnecessary re-renders
         if (this.balance !== newBalance) {
+          console.log(`🔄 Balance changed from ${this.balance} to ${newBalance}, updating displays`);
           this.balance = newBalance;
           this.updateAllDisplays();
+        } else {
+          console.log(`⏹️ Balance unchanged at ${this.balance}, skipping update`);
         }
       } else {
         console.warn('Failed to fetch credits:', response.status);

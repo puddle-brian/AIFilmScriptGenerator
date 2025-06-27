@@ -904,25 +904,31 @@
                 `;
                 statusElement.style.display = 'block';
                 
-                // Refresh credit balance using unified system with retry logic
+                // Refresh credit balance using unified system with aggressive retry logic
                 if (window.unifiedCredits) {
+                    console.log('🔄 Starting credit refresh sequence after payment success');
+                    
                     // Immediate refresh
                     window.unifiedCredits.refreshAfterOperation();
                     
-                    // Additional refreshes to ensure webhook has processed
-                    setTimeout(() => window.unifiedCredits.refreshAfterOperation(), 2000);
-                    setTimeout(() => window.unifiedCredits.refreshAfterOperation(), 5000);
+                    // Aggressive refresh schedule to catch webhook processing
+                    const refreshTimes = [1000, 2000, 3000, 5000, 8000, 12000, 20000];
+                    refreshTimes.forEach(delay => {
+                        setTimeout(() => {
+                            console.log(`🔄 Refreshing credits after ${delay}ms`);
+                            window.unifiedCredits.refreshAfterOperation();
+                        }, delay);
+                    });
                 }
                 
                 // Reload all credit management data after successful payment
-                setTimeout(() => {
-                    loadCreditManagementData();
-                }, 1000); // Give time for the webhook to process
-                
-                // Additional reload to ensure data is current
-                setTimeout(() => {
-                    loadCreditManagementData();
-                }, 3000);
+                const reloadTimes = [1000, 3000, 6000, 10000, 15000];
+                reloadTimes.forEach(delay => {
+                    setTimeout(() => {
+                        console.log(`📊 Reloading credit management data after ${delay}ms`);
+                        loadCreditManagementData();
+                    }, delay);
+                });
                 
             } else if (urlParams.get('canceled') === 'true') {
                 statusElement.className = 'payment-status error';

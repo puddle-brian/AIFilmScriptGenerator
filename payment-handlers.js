@@ -15,6 +15,8 @@ class PaymentHandler {
         console.log('   - VERCEL:', process.env.VERCEL);
         console.log('   - STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
         console.log('   - STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.length : 'undefined');
+        console.log('   - STRIPE_WEBHOOK_SECRET exists:', !!process.env.STRIPE_WEBHOOK_SECRET);
+        console.log('   - STRIPE_WEBHOOK_SECRET length:', process.env.STRIPE_WEBHOOK_SECRET ? process.env.STRIPE_WEBHOOK_SECRET.length : 'undefined');
         
         // Check for required environment variables first
         if (!process.env.STRIPE_SECRET_KEY) {
