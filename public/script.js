@@ -2461,7 +2461,7 @@ async function previewPrompt() {
         return;
     }
     
-    // Create sample story input if none exists
+    // Create story input for server - always ensure characters are formatted strings
     let storyInput = appState.storyInput;
     if (!storyInput) {
         storyInput = {
@@ -2473,6 +2473,14 @@ async function previewPrompt() {
             influences: { directors: [], screenwriters: [], films: [] },
             influencePrompt: ''
         };
+    } else {
+        // 🔧 CRITICAL FIX: Always use formatted character strings for server
+        // Clone storyInput and ensure characters field contains formatted strings, not objects
+        storyInput = {
+            ...storyInput,
+            characters: getCharactersForPrompt() || storyInput.characters || '[Your main characters]'
+        };
+        console.log('🔧 Fixed character format for prompt preview:', storyInput.characters);
     }
     
     console.log('🔍 DEBUG: About to send request with:', {
@@ -2599,6 +2607,13 @@ async function generateStructureWithCustomPrompt() {
     try {
         showLoading('Generating plot structure with custom prompt...');
         
+        // 🔧 CRITICAL FIX: Ensure formatted character strings before sending to server
+        const storyInputForServer = {
+            ...appState.storyInput,
+            characters: getCharactersForPrompt() || appState.storyInput.characters || 'Main Characters'
+        };
+        console.log('🔧 Fixed character format for custom prompt generation:', storyInputForServer.characters);
+        
         const response = await fetch('/api/generate-structure-custom', {
             method: 'POST',
             headers: {
@@ -2606,7 +2621,7 @@ async function generateStructureWithCustomPrompt() {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                storyInput: appState.storyInput,
+                storyInput: storyInputForServer,
                 template: appState.selectedTemplate,
                 customPrompt: appState.customPrompt,
                 model: getSelectedModel()
@@ -2698,6 +2713,13 @@ async function generateStructure() {
             }
         }
 
+        // 🔧 CRITICAL FIX: Ensure formatted character strings before sending to server
+        const storyInputForServer = {
+            ...appState.storyInput,
+            characters: getCharactersForPrompt() || appState.storyInput.characters || 'Main Characters'
+        };
+        console.log('🔧 Fixed character format for structure generation:', storyInputForServer.characters);
+        
         const response = await fetch('/api/generate-structure', {
             method: 'POST',
             headers: {
@@ -2705,7 +2727,7 @@ async function generateStructure() {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                storyInput: appState.storyInput,
+                storyInput: storyInputForServer,
                 template: appState.selectedTemplate,
                 customTemplateData: customTemplateData, // 🔧 Send order-corrected template data
                 model: getSelectedModel()
@@ -6705,6 +6727,13 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.projectCharacters = projectData.projectCharacters || projectData.storyInput?.charactersData || [];
     appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [], tones: [] };
     appState.storyInput = projectData.storyInput || {};
+    
+    // 🔧 CRITICAL FIX: Always regenerate formatted character strings when loading projects
+    // This prevents [object Object] issues in prompts caused by character objects being saved in storyInput.characters
+    if (appState.projectCharacters && appState.projectCharacters.length > 0 && appState.storyInput) {
+        appState.storyInput.characters = getCharactersForPrompt();
+        console.log('🔧 Fixed character format on project load:', appState.storyInput.characters);
+    }
     // Temporary fallbacks for legacy localStorage data (can be removed after migration period)
     appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
     appState.templateData = projectData.templateData || projectData.template;
@@ -8071,11 +8100,18 @@ const autoSaveManager = {
             appState.projectPath = `${titleSlug}_${timestamp}`;
         }
         
-        // 🔧 SYNC FIX: Ensure storyInput.influences stays synchronized with appState.influences
+        // 🔧 SYNC FIX: Ensure storyInput stays synchronized with appState
         if (appState.storyInput && appState.influences) {
             appState.storyInput.influences = appState.influences;
             appState.storyInput.influencePrompt = buildInfluencePrompt();
             console.log('🔄 AUTO-SAVE: Synchronized influences to storyInput:', appState.influences);
+        }
+        
+        // 🔧 CRITICAL FIX: Always ensure formatted character strings before saving
+        // This prevents character objects from corrupting the storyInput.characters field
+        if (appState.projectCharacters && appState.projectCharacters.length > 0 && appState.storyInput) {
+            appState.storyInput.characters = getCharactersForPrompt();
+            console.log('🔧 AUTO-SAVE: Ensured character format:', appState.storyInput.characters);
         }
         
         // DEBUG: Log what we're about to save
