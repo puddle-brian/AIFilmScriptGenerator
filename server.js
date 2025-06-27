@@ -5830,6 +5830,32 @@ function getModelDescription(model) {
   return descriptions[model] || 'Claude model';
 }
 
+// Check user credits (debug endpoint - no auth required)
+app.get('/api/check-credits/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    
+    const userResult = await dbClient.query(
+      'SELECT username, credits_remaining FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = userResult.rows[0];
+    res.json({ 
+      username: user.username,
+      credits_remaining: user.credits_remaining
+    });
+
+  } catch (error) {
+    console.error('Error checking credits:', error);
+    res.status(500).json({ error: 'Failed to check credits' });
+  }
+});
+
 // Free credits endpoint with simple code (no admin auth required)
 app.post('/api/free-credits', async (req, res) => {
   try {
