@@ -845,7 +845,7 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         if (isEditing && !isEditing.isNewCharacterEntry) {
             // Editing existing entry
             method = 'PUT';
-            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${encodeURIComponent(isEditing.key)}`;
+            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${isEditing.key}`;
         } else {
             // Creating new entry
             method = 'POST';
@@ -1607,7 +1607,7 @@ async function editCharacterEntry(characterIndex) {
             actualKey = entryData.entry_key;
         } else if (entryData.name) {
             actualData = { name: entryData.name, description: entryData.description || '' };
-            actualKey = entryData.entry_key;
+            actualKey = entryData.entry_key || entryData.key;
         } else {
             actualData = { name: character.name, description: character.description || '' };
             actualKey = character.name.toLowerCase().replace(/\s+/g, '_');
@@ -2790,8 +2790,6 @@ async function populateDropdowns() {
         if (!directorSelect) {
             console.error('PopulateDropdowns: directorSelect element not found!');
         } else {
-            // Clear existing options first
-            directorSelect.innerHTML = '<option value="">Select a director...</option>';
             console.log(`PopulateDropdowns: Adding ${userLibraries.directors?.length || 0} directors`);
             (userLibraries.directors || []).forEach(director => {
                 const option = document.createElement('option');
@@ -2807,8 +2805,6 @@ async function populateDropdowns() {
         if (!screenwriterSelect) {
             console.error('PopulateDropdowns: screenwriterSelect element not found!');
         } else {
-            // Clear existing options first
-            screenwriterSelect.innerHTML = '<option value="">Select a screenwriter...</option>';
             console.log(`PopulateDropdowns: Adding ${userLibraries.screenwriters?.length || 0} screenwriters`);
             (userLibraries.screenwriters || []).forEach(screenwriter => {
                 const option = document.createElement('option');
@@ -2824,8 +2820,6 @@ async function populateDropdowns() {
         if (!filmSelect) {
             console.error('PopulateDropdowns: filmSelect element not found!');
         } else {
-            // Clear existing options first
-            filmSelect.innerHTML = '<option value="">Select a film...</option>';
             console.log(`PopulateDropdowns: Adding ${userLibraries.films?.length || 0} films`);
             (userLibraries.films || []).forEach(film => {
                 const option = document.createElement('option');
@@ -2841,8 +2835,6 @@ async function populateDropdowns() {
         if (!toneSelect) {
             console.error('PopulateDropdowns: toneSelect element not found!');
         } else {
-            // Clear existing options first
-            toneSelect.innerHTML = '<option value="">Select a tone...</option>';
             console.log(`PopulateDropdowns: Adding ${userLibraries.tones?.length || 0} tones`);
             (userLibraries.tones || []).forEach(tone => {
                 const option = document.createElement('option');
@@ -2858,8 +2850,6 @@ async function populateDropdowns() {
         if (!characterSelect) {
             console.error('PopulateDropdowns: characterSelect element not found!');
         } else {
-            // Clear existing options first
-            characterSelect.innerHTML = '<option value="">Select a character...</option>';
             const allCharacters = userLibraries.characters || [];
             console.log(`PopulateDropdowns: Adding ${allCharacters.length} characters`);
             allCharacters.forEach(character => {
@@ -2877,8 +2867,6 @@ async function populateDropdowns() {
         if (!storyConceptSelect) {
             console.error('PopulateDropdowns: storyConceptSelect element not found!');
         } else {
-            // Clear existing options first
-            storyConceptSelect.innerHTML = '<option value="">Select a story concept...</option>';
             const allStoryConcepts = userLibraries.storyconcepts || [];
             console.log(`PopulateDropdowns: Adding ${allStoryConcepts.length} story concepts`);
             allStoryConcepts.forEach(concept => {
@@ -2924,12 +2912,9 @@ async function loadUserLibraries() {
                 
                 if (response.ok) {
                     const libraries = await response.json();
-                    // For characters, preserve full data structure including entry_key; for others, just get name
+                    // For characters, preserve full data structure; for others, just get name
                     if (type === 'characters') {
-                        userLibraries[type] = libraries.map(lib => ({
-                            ...lib.entry_data,
-                            entry_key: lib.entry_key
-                        }));
+                        userLibraries[type] = libraries.map(lib => lib.entry_data);
                     } else {
                         userLibraries[type] = libraries.map(lib => lib.entry_data.name);
                     }
