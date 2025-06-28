@@ -4,13 +4,13 @@ TASK: Generate {{PLOT_POINT_COUNT}} plot points for the current story act.
 
 KEY REQUIREMENTS:
 • Each plot point = a concrete ACTION or EVENT (not feelings)
-• Connect causally: if there's a 🔗 connection above, start from that
+• Connect causally: if there's a 🔗 connection above, use BUT/THEREFORE logic to continue from that exact moment
 • Show character through choices under pressure
 • Create visual, filmable moments with specific locations
 • CRITICAL: Use strict "BUT/THEREFORE" logic for dramatic flow
 
 CAUSAL FLOW RULES:
-• First plot point: Establishes the situation for this act
+• First plot point: IF there's a 🔗 connection above, use "But" or "Therefore" to continue from that moment. OTHERWISE, establish the situation for this act.
 • Subsequent plot points: MUST start with "But" (conflict/complication) or "Therefore" (consequence/progress)
 • "But" = introduces conflict, obstacles, or unexpected complications
 • "Therefore" = shows consequences, progress, or logical results
