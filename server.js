@@ -5702,7 +5702,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
 // API Endpoints for Editable Content System
 
 // Save edited act content
-app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
+app.put('/api/edit-content/acts/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
     const { content } = req.body;
@@ -5770,7 +5770,7 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', async (req, res) => {
 });
 
 // Save edited plot points content
-app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) => {
+app.put('/api/edit-content/plot-points/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
     const { content } = req.body;
@@ -5779,12 +5779,25 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) =
       return res.status(400).json({ error: 'Content is required' });
     }
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const plotPointsDir = path.join(projectDir, '02_plot-points');
-    const plotPointsFile = path.join(plotPointsDir, `${actKey}.json`);
+    // Load project data from database
+    const username = req.user.username;
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Ensure directory exists
-    await fs.mkdir(plotPointsDir, { recursive: true });
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
     
     // Parse the new content
     let updatedPlotPoints;
@@ -5799,18 +5812,27 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) =
       updatedPlotPoints = content.split('\n').filter(line => line.trim());
     }
     
-    const plotPointsData = {
+    // Initialize plotPoints structure if it doesn't exist
+    if (!projectContext.plotPoints) {
+      projectContext.plotPoints = {};
+    }
+    
+    // Update the specific act's plot points
+    projectContext.plotPoints[actKey] = {
       plotPoints: updatedPlotPoints,
       actKey: actKey,
       lastModified: new Date().toISOString()
     };
     
-    // Save to file
-    await fs.writeFile(plotPointsFile, JSON.stringify(plotPointsData, null, 2));
+    // Save back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     console.log(`Plot points for ${actKey} updated successfully`);
-      res.json({
-        success: true,
+    res.json({
+      success: true,
       message: 'Plot points updated successfully',
       plotPoints: updatedPlotPoints
     });
@@ -5822,7 +5844,7 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', async (req, res) =
 });
 
 // Save edited scene content
-app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req, res) => {
+app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey, sceneIndex } = req.params;
     const { content } = req.body;
@@ -5832,18 +5854,36 @@ app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req,
       return res.status(400).json({ error: 'Content is required' });
     }
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const scenesDir = path.join(projectDir, '03_scenes', actKey);
-    const sceneFile = path.join(scenesDir, `scene-${sceneIndexNum}.json`);
+    // Load project data from database
+    const username = req.user.username;
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
-    // Load existing scene if it exists
-    let existingScene = {};
-    try {
-      const existingData = await fs.readFile(sceneFile, 'utf8');
-      existingScene = JSON.parse(existingData);
-    } catch (e) {
-      // File doesn't exist, start with empty object
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Initialize scenes structure if it doesn't exist
+    if (!projectContext.scenes) {
+      projectContext.scenes = {};
+    }
+    if (!projectContext.scenes[actKey]) {
+      projectContext.scenes[actKey] = {};
+    }
+    
+    // Get existing scene data
+    const existingScene = projectContext.scenes[actKey][sceneIndexNum] || {};
     
     // Parse the new content
     let updatedScene;
@@ -5863,11 +5903,14 @@ app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req,
       lastModified: new Date().toISOString()
     };
     
-    // Ensure directory exists
-    await fs.mkdir(scenesDir, { recursive: true });
+    // Update the specific scene
+    projectContext.scenes[actKey][sceneIndexNum] = sceneData;
     
-    // Save to file
-    await fs.writeFile(sceneFile, JSON.stringify(sceneData, null, 2));
+    // Save back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     console.log(`Scene ${actKey}[${sceneIndex}] updated successfully`);
     res.json({ 
@@ -5883,7 +5926,7 @@ app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req,
 });
 
 // Save edited dialogue content
-app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (req, res) => {
+app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey, sceneIndex } = req.params;
     const { content } = req.body;
@@ -5893,9 +5936,33 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (re
       return res.status(400).json({ error: 'Content is required' });
     }
     
-    const projectDir = path.join(__dirname, 'generated', projectPath);
-    const dialogueDir = path.join(projectDir, '04_dialogue', actKey);
-    const dialogueFile = path.join(dialogueDir, `scene-${sceneIndexNum}.json`);
+    // Load project data from database
+    const username = req.user.username;
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    const projectResult = await dbClient.query(
+      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    
+    // Initialize dialogue structure if it doesn't exist
+    if (!projectContext.dialogue) {
+      projectContext.dialogue = {};
+    }
+    if (!projectContext.dialogue[actKey]) {
+      projectContext.dialogue[actKey] = {};
+    }
     
     const dialogueData = {
       dialogue: content,
@@ -5904,11 +5971,14 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (re
       lastModified: new Date().toISOString()
     };
     
-    // Ensure directory exists
-    await fs.mkdir(dialogueDir, { recursive: true });
+    // Update the specific dialogue
+    projectContext.dialogue[actKey][sceneIndexNum] = dialogueData;
     
-    // Save to file
-    await fs.writeFile(dialogueFile, JSON.stringify(dialogueData, null, 2));
+    // Save back to database
+    await dbClient.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+      [JSON.stringify(projectContext), userId, projectPath]
+    );
     
     console.log(`Dialogue for ${actKey}[${sceneIndex}] updated successfully`);
     res.json({ 
