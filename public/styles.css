@@ -4856,3 +4856,447 @@ h2 .progress-meter {
     }
 }
 
+/* AI Story Analysis Feedback Styles */
+.story-analysis-results {
+    margin-top: 2rem;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    animation: slideDown 0.3s ease-out;
+}
+
+.analysis-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.analysis-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-analysis-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.close-analysis-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.analysis-content {
+    padding: 2rem;
+}
+
+.analysis-overall-score {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.score-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    font-size: 2rem;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.score-circle.high { background: #28a745; }
+.score-circle.medium { background: #ffc107; color: #333; }
+.score-circle.low { background: #dc3545; }
+
+.readiness-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.readiness-badge.exceptional { 
+    background: linear-gradient(45deg, #4CAF50, #45a049); 
+    color: white; 
+    font-weight: bold;
+}
+.readiness-badge.ready { background: #fff3cd; color: #856404; }
+.readiness-badge.needs_work { background: #f8d7da; color: #721c24; }
+
+.analysis-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.analysis-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.analysis-section-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.analysis-section h4 {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.analysis-score {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.score-bar {
+    width: 100px;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.score-fill.high { background: #28a745; }
+.score-fill.medium { background: #ffc107; }
+.score-fill.low { background: #dc3545; }
+
+.score-number {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.analysis-feedback {
+    color: #555;
+    line-height: 1.6;
+    margin-top: 0.75rem;
+}
+
+.analysis-strengths, .analysis-suggestions {
+    margin-top: 1.5rem;
+}
+
+.analysis-strengths h4, .analysis-suggestions h4 {
+    color: #333;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.analysis-strengths ul, .analysis-suggestions ul {
+    list-style: none;
+    padding: 0;
+}
+
+.analysis-strengths li, .analysis-suggestions li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: #555;
+    line-height: 1.5;
+}
+
+.analysis-strengths li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: #28a745;
+    font-weight: bold;
+}
+
+.analysis-suggestions li::before {
+    content: '💡';
+    position: absolute;
+    left: 0;
+}
+
+/* Enhanced Analysis Sections */
+.analysis-dealbreakers {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #fff5f5;
+    border: 1px solid #fed7d7;
+    border-radius: 8px;
+}
+
+.analysis-dealbreakers h4 {
+    color: #c53030;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.analysis-dealbreakers ul {
+    list-style: none;
+    padding: 0;
+}
+
+.analysis-dealbreakers li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: #c53030;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.analysis-dealbreakers li::before {
+    content: '🚨';
+    position: absolute;
+    left: 0;
+}
+
+.analysis-weaknesses {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #fffaf0;
+    border: 1px solid #fbd38d;
+    border-radius: 8px;
+}
+
+.analysis-weaknesses h4 {
+    color: #d69e2e;
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.analysis-weaknesses ul {
+    list-style: none;
+    padding: 0;
+}
+
+.analysis-weaknesses li {
+    padding: 0.5rem 0;
+    padding-left: 1.5rem;
+    position: relative;
+    color: #d69e2e;
+    line-height: 1.5;
+}
+
+.analysis-weaknesses li::before {
+    content: '⚠️';
+    position: absolute;
+    left: 0;
+}
+
+/* Dual Score Display */
+.analysis-score-double {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.score-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.score-label {
+    font-size: 0.8rem;
+    color: #666;
+    min-width: 80px;
+    font-weight: 500;
+}
+
+@media (max-width: 768px) {
+    .analysis-score-double {
+        gap: 0.75rem;
+    }
+    
+    .score-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.25rem;
+    }
+    
+    .score-label {
+        min-width: auto;
+        font-size: 0.75rem;
+    }
+}
+
+.confidence-level {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.confidence-level h5 {
+    margin: 0 0 0.5rem 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.confidence-score {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #667eea;
+}
+
+.analyzed-prompt-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 12px;
+    border: 1px solid #dee2e6;
+    text-align: center;
+}
+
+.analyzed-prompt-section .btn {
+    margin-bottom: 0.5rem;
+}
+
+.prompt-note {
+    margin: 0.5rem 0 0 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+    font-style: italic;
+}
+
+/* Large Modal for Prompt Display */
+.large-modal {
+    max-width: 900px;
+    width: 90vw;
+}
+
+.large-modal .modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.prompt-info {
+    background: #e3f2fd;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #2196f3;
+}
+
+.prompt-info p {
+    margin: 0.5rem 0;
+    color: #1565c0;
+}
+
+.prompt-content {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    max-height: 400px;
+    overflow: auto;
+}
+
+.prompt-content pre {
+    margin: 0;
+    padding: 1.5rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: #495057;
+}
+
+.template-info {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f1f3f4;
+    border-radius: 8px;
+    border-left: 4px solid #28a745;
+}
+
+.template-info h4 {
+    margin: 0 0 1rem 0;
+    color: #155724;
+    font-size: 1.1rem;
+}
+
+.template-info p {
+    margin: 0.5rem 0;
+    color: #155724;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.analyze-btn-loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.analyze-btn-loading::after {
+    content: '';
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-left: 8px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+}
+
+@media (max-width: 768px) {
+    .analysis-header {
+        padding: 1rem 1.5rem;
+    }
+    
+    .analysis-content {
+        padding: 1.5rem;
+    }
+    
+    .analysis-section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .score-circle {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+}
+

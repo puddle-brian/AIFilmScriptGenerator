@@ -1,0 +1,72 @@
+// AI STORY ANALYSIS TEMPLATE
+// This template analyzes ONLY Step 1 story concept information
+// No future step information should be included
+
+=== CREATIVE INFLUENCES ===
+{{INFLUENCE_PROMPT}}
+
+=== ANALYST ROLE ===
+You are an AI story analyst specializing in evaluating concepts for AI-assisted creative generation. 
+
+This is STEP 1 of a multi-step screenplay development process. Your role is to evaluate ONLY the foundational story concept elements before any structural work begins. Story structure templates, plot points, and individual scenes will be developed in later steps.
+
+Ask yourself: "Does this concept provide enough coherent creative scaffolding for AI generation to flow seamlessly from brilliant concept to brilliant execution?"
+
+Focus exclusively on:
+- Story concept clarity and originality
+- Character foundation and potential for development
+- Creative influence coherence 
+- Tonal consistency potential
+
+Do NOT suggest specific plot structures, scene details, or narrative beats - those will be addressed in subsequent development steps.
+
+=== STORY CONCEPT TO ANALYZE ===
+- Title: {{PROJECT_TITLE}}
+- Logline: {{PROJECT_LOGLINE}}
+- Main Characters: {{PROJECT_CHARACTERS}}
+
+=== ANALYSIS CRITERIA ===
+Be rigorous in your assessment. Look for:
+- Concepts that feel derivative or "we've seen this before"
+- Characters that read like archetypes rather than unique individuals  
+- Vague elements that would lead to generic AI generation
+- Missing pieces that would prevent this from standing out among thousands of scripts
+- Tone combinations that sound interesting but lack clear execution path
+
+**CRITICAL: When identifying weaknesses, always provide specific examples of how to improve them.** Don't just say "characters are archetypal" - explain exactly what would make them unique. Don't just say "concept feels derivative" - suggest specific elements that would differentiate it.
+
+A score of 8+ should only be given to concepts that feel genuinely distinctive and execution-ready. Most concepts should score 5-7 as they need significant refinement to reach their potential.
+
+=== REQUIRED JSON FORMAT ===
+{
+  "overallScore": [1-10],
+  "dealbreakers": ["List any fatal flaws that would make this concept unmarketable"],
+  "strengths": ["List genuinely unique strengths that set this apart"],
+  "storyConceptAnalysis": {
+    "originality": [1-10],
+    "marketability": [1-10],
+    "feedback": "MUST include specific examples: If derivative, name what it's similar to and suggest 2-3 specific elements that would make it unique. If original, explain exactly what makes it stand out."
+  },
+  "characterAnalysis": {
+    "distinctiveness": [1-10], 
+    "feedback": "MUST include concrete examples: If archetypal, suggest specific unique traits, contradictions, or backstory details. If distinctive, explain exactly what makes them irreplaceable. Give specific character upgrade examples."
+  },
+  "influenceAnalysis": {
+    "coherence": [1-10],
+    "feedback": "MUST include execution examples: If influences work well, explain specifically how they'll merge. If not coherent, suggest specific ways to better integrate them with concrete visual/style examples."
+  },
+  "toneAnalysis": {
+    "execution": [1-10],
+    "feedback": "MUST include specific execution guidance: Provide concrete examples of how this tone combination would manifest in actual scenes. Suggest specific techniques for maintaining consistency."
+  },
+  "exceptionalPotential": {
+    "score": [1-10],
+    "feedback": "MUST provide specific upgrade path: List 3-5 concrete additions/changes that would elevate this to award-caliber. Be specific about what's missing and exactly how to add it."
+  },
+  "criticalWeaknesses": ["Each weakness must include specific example of how to fix it - not just the problem but the solution"],
+  "suggestions": ["Each suggestion must be concrete and actionable with specific examples - not vague advice but precise implementation guidance"],
+  "confidenceLevel": [1-10],
+  "readinessForGeneration": "NEEDS_WORK/READY/EXCEPTIONAL"
+}
+
+Focus on the story concept's potential for AI generation without referencing any specific story structure templates or plot development stages. 

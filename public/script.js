@@ -1666,6 +1666,291 @@ function buildInfluencePrompt() {
     return prompt;
 }
 
+// NEW: AI Story Analysis Functions
+async function analyzeStoryConcept() {
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    
+    // Validation - need at least a story concept
+    if (!appState.currentStoryConcept || !appState.currentStoryConcept.title) {
+        showToast('Please create a story concept first before getting AI feedback', 'error');
+        return;
+    }
+    
+    // AI feedback analyzes Step 1 information only - no template required yet!
+    
+    // Show loading state
+    analyzeBtn.classList.add('analyze-btn-loading');
+    analyzeBtn.disabled = true;
+    analyzeBtn.textContent = '🔍 Analyzing...';
+    
+    try {
+        // Build the full story input with influence prompt (same as structure generation)
+        const influencePrompt = buildInfluencePrompt();
+        const charactersForPrompt = getCharactersForPrompt();
+        
+        const storyInput = {
+            title: appState.currentStoryConcept.title,
+            logline: appState.currentStoryConcept.logline || '',
+            characters: charactersForPrompt,
+            influencePrompt: influencePrompt,
+            influences: appState.influences
+        };
+        
+        // Use default template if none selected (AI feedback works at Step 1)
+        const templateForAnalysis = appState.selectedTemplate || 'three-act';
+        
+        const requestData = {
+            storyInput: storyInput,
+            template: templateForAnalysis,
+            customTemplateData: appState.customTemplateData,
+            projectPath: appState.projectPath
+        };
+        
+        console.log('🔍 Sending story analysis request:', requestData);
+        
+        const response = await fetch('/api/analyze-story-concept', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Analysis failed');
+        }
+        
+        const data = await response.json();
+        console.log('📊 Analysis response:', data);
+        
+        displayStoryAnalysis(data.analysis, data.promptAnalyzed, data.templateData);
+        showToast('Story analysis completed! Click "View Analyzed Prompt" to see exactly what was reviewed.', 'success');
+        
+    } catch (error) {
+        console.error('Error analyzing story concept:', error);
+        showToast('Failed to analyze story concept: ' + error.message, 'error');
+    } finally {
+        // Reset button state
+        analyzeBtn.classList.remove('analyze-btn-loading');
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = '🔍 Get AI Feedback on My Story';
+    }
+}
+
+function displayStoryAnalysis(analysis, promptAnalyzed = null, templateData = null) {
+    const resultsContainer = document.getElementById('storyAnalysisResults');
+    const contentContainer = document.getElementById('analysisContent');
+    
+    // Store the analyzed prompt for modal display
+    window.lastAnalyzedPrompt = promptAnalyzed;
+    window.lastAnalyzedTemplate = templateData;
+    
+    // Build the analysis display HTML
+    const overallScoreClass = getScoreClass(analysis.overallScore);
+    const readinessClass = analysis.readinessForGeneration.toLowerCase();
+    
+    contentContainer.innerHTML = `
+        <div class="analysis-overall-score">
+            <div class="score-circle ${overallScoreClass}">${analysis.overallScore}/10</div>
+            <div class="readiness-badge ${readinessClass}">${analysis.readinessForGeneration} Readiness</div>
+        </div>
+        
+        ${analysis.dealbreakers && analysis.dealbreakers.length > 0 ? `
+        <div class="analysis-dealbreakers">
+            <h4>🚨 Critical Issues</h4>
+            <ul>
+                ${analysis.dealbreakers.map(issue => `<li>${issue}</li>`).join('')}
+            </ul>
+        </div>
+        ` : ''}
+        
+        ${analysis.strengths && analysis.strengths.length > 0 ? `
+        <div class="analysis-strengths">
+            <h4>✅ Unique Strengths</h4>
+            <ul>
+                ${analysis.strengths.map(strength => `<li>${strength}</li>`).join('')}
+            </ul>
+        </div>
+        ` : ''}
+        
+        <div class="analysis-section">
+            <div class="analysis-section-header">
+                <h4>📖 Story Concept</h4>
+                <div class="analysis-score-double">
+                    <div class="score-item">
+                        <span class="score-label">Originality</span>
+                        <div class="score-bar">
+                            <div class="score-fill ${getScoreClass(analysis.storyConceptAnalysis.originality)}" 
+                                 style="width: ${analysis.storyConceptAnalysis.originality * 10}%"></div>
+                        </div>
+                        <span class="score-number">${analysis.storyConceptAnalysis.originality}/10</span>
+                    </div>
+                    <div class="score-item">
+                        <span class="score-label">Marketability</span>
+                        <div class="score-bar">
+                            <div class="score-fill ${getScoreClass(analysis.storyConceptAnalysis.marketability)}" 
+                                 style="width: ${analysis.storyConceptAnalysis.marketability * 10}%"></div>
+                        </div>
+                        <span class="score-number">${analysis.storyConceptAnalysis.marketability}/10</span>
+                    </div>
+                </div>
+            </div>
+            <div class="analysis-feedback">${analysis.storyConceptAnalysis.feedback}</div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-section-header">
+                <h4>👥 Characters</h4>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.characterAnalysis.distinctiveness)}" 
+                             style="width: ${analysis.characterAnalysis.distinctiveness * 10}%"></div>
+                    </div>
+                    <span class="score-number">${analysis.characterAnalysis.distinctiveness}/10</span>
+                </div>
+            </div>
+            <div class="analysis-feedback">${analysis.characterAnalysis.feedback}</div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-section-header">
+                <h4>🎨 Creative Influences</h4>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.influenceAnalysis.coherence)}" 
+                             style="width: ${analysis.influenceAnalysis.coherence * 10}%"></div>
+                    </div>
+                    <span class="score-number">${analysis.influenceAnalysis.coherence}/10</span>
+                </div>
+            </div>
+            <div class="analysis-feedback">${analysis.influenceAnalysis.feedback}</div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-section-header">
+                <h4>🎭 Tone & Atmosphere</h4>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.toneAnalysis.execution)}" 
+                             style="width: ${analysis.toneAnalysis.execution * 10}%"></div>
+                    </div>
+                    <span class="score-number">${analysis.toneAnalysis.execution}/10</span>
+                </div>
+            </div>
+            <div class="analysis-feedback">${analysis.toneAnalysis.feedback}</div>
+        </div>
+        
+        <div class="analysis-section">
+            <div class="analysis-section-header">
+                <h4>🏆 Award Potential</h4>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.exceptionalPotential.score)}" 
+                             style="width: ${analysis.exceptionalPotential.score * 10}%"></div>
+                    </div>
+                    <span class="score-number">${analysis.exceptionalPotential.score}/10</span>
+                </div>
+            </div>
+            <div class="analysis-feedback">${analysis.exceptionalPotential.feedback}</div>
+        </div>
+        
+        ${analysis.criticalWeaknesses && analysis.criticalWeaknesses.length > 0 ? `
+        <div class="analysis-weaknesses">
+            <h4>⚠️ Critical Weaknesses</h4>
+            <ul>
+                ${analysis.criticalWeaknesses.map(weakness => `<li>${weakness}</li>`).join('')}
+            </ul>
+        </div>
+        ` : ''}
+        
+        ${analysis.suggestions && analysis.suggestions.length > 0 ? `
+        <div class="analysis-suggestions">
+            <h4>🎯 Essential Improvements</h4>
+            <ul>
+                ${analysis.suggestions.map(suggestion => `<li>${suggestion}</li>`).join('')}
+            </ul>
+        </div>
+        ` : ''}
+        
+        <div class="confidence-level">
+            <h5>AI Confidence Level</h5>
+            <div class="confidence-score">${analysis.confidenceLevel}/10</div>
+        </div>
+        
+        ${promptAnalyzed ? `
+        <div class="analyzed-prompt-section">
+            <button class="btn btn-outline" onclick="showAnalyzedPromptModal()">
+                📋 View Analyzed Prompt
+            </button>
+            <p class="prompt-note">See the exact prompt that was analyzed (same as generation uses)</p>
+        </div>
+        ` : ''}
+    `;
+    
+    // Show the results
+    resultsContainer.style.display = 'block';
+    
+    // Scroll to the analysis results
+    resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function getScoreClass(score) {
+    if (score >= 8) return 'high';
+    if (score >= 6) return 'medium';
+    return 'low';
+}
+
+function hideStoryAnalysis() {
+    const resultsContainer = document.getElementById('storyAnalysisResults');
+    resultsContainer.style.display = 'none';
+}
+
+// Analyzed Prompt Modal Functions
+function showAnalyzedPromptModal() {
+    const modal = document.getElementById('analyzedPromptModal');
+    const promptText = document.getElementById('analyzedPromptText');
+    const templateInfo = document.getElementById('templateInfo');
+    const templateDetails = document.getElementById('templateDetails');
+    
+    if (window.lastAnalyzedPrompt) {
+        promptText.textContent = window.lastAnalyzedPrompt;
+        modal.style.display = 'block';
+        
+        // Show template info if available
+        if (window.lastAnalyzedTemplate) {
+            templateInfo.style.display = 'block';
+            templateDetails.innerHTML = `
+                <p><strong>Template:</strong> ${window.lastAnalyzedTemplate.name}</p>
+                <p><strong>Description:</strong> ${window.lastAnalyzedTemplate.description}</p>
+                <p><strong>Category:</strong> ${window.lastAnalyzedTemplate.category}</p>
+            `;
+        } else {
+            templateInfo.style.display = 'none';
+        }
+    } else {
+        showToast('No analyzed prompt available', 'error');
+    }
+}
+
+function hideAnalyzedPromptModal() {
+    const modal = document.getElementById('analyzedPromptModal');
+    modal.style.display = 'none';
+}
+
+function copyAnalyzedPrompt() {
+    const promptText = document.getElementById('analyzedPromptText');
+    if (promptText.textContent) {
+        navigator.clipboard.writeText(promptText.textContent).then(() => {
+            showToast('Prompt copied to clipboard!', 'success');
+        }).catch(err => {
+            console.error('Failed to copy prompt:', err);
+            showToast('Failed to copy prompt', 'error');
+        });
+    }
+}
+
 // Model selection functions
 function setupModelSelector() {
     // Setup both model selectors (main form and project header)
@@ -8011,7 +8296,8 @@ document.getElementById('characterForm').onsubmit = function(e) {
 // Characters are now optional - validation disabled
 function validateCharactersRequired() {
     // Characters are now optional, so always enable the continue button
-    const continueBtn = document.querySelector('#step1 .btn-primary');
+    // Target only navigation buttons, not our AI feedback button
+    const continueBtn = document.querySelector('#step1 .step-actions .btn-primary');
     if (continueBtn) {
             continueBtn.disabled = false;
             continueBtn.textContent = 'Continue to Act Selection';

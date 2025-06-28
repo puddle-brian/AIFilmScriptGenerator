@@ -12,6 +12,7 @@ const crypto = require('crypto');
 const promptBuilders = require('./prompt-builders');
 const PaymentHandler = require('./payment-handlers');
 const starterPack = require('./starter-pack-data');
+const AIFeedbackSystem = require('./ai-feedback-system');
 
 // Add comprehensive error handling to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -36,6 +37,9 @@ const anthropic = new Anthropic({
 
 // Initialize payment handler
 let paymentHandler;
+
+// Initialize AI feedback system
+let aiFeedbackSystem;
 
 // Initialize PostgreSQL client (serverless-optimized with connection pooling)
 const dbClient = process.env.VERCEL ? 
@@ -148,6 +152,10 @@ async function initializeDatabase() {
     // Initialize payment handler
     paymentHandler = new PaymentHandler(dbClient);
     console.log('✅ Payment system initialized');
+    
+    // Initialize AI feedback system
+    aiFeedbackSystem = new AIFeedbackSystem(process.env.ANTHROPIC_API_KEY, HierarchicalContext);
+    console.log('✅ AI feedback system initialized');
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
   }
@@ -169,6 +177,14 @@ async function connectToDatabase() {
         console.error('❌ Failed to initialize payment system in serverless mode:', error);
         console.error('❌ Error details:', error.message);
         console.error('❌ Stack trace:', error.stack);
+      }
+      
+      // Initialize AI feedback system in serverless mode
+      try {
+        aiFeedbackSystem = new AIFeedbackSystem(process.env.ANTHROPIC_API_KEY, HierarchicalContext);
+        console.log('✅ AI feedback system initialized (serverless mode)');
+      } catch (error) {
+        console.error('❌ Failed to initialize AI feedback system in serverless mode:', error);
       }
     } else {
       // Traditional persistent connection for local development
@@ -1404,6 +1420,48 @@ app.get('/api/template/:templateId', async (req, res) => {
   } catch (error) {
     console.error('Error loading template:', error);
     res.status(404).json({ error: 'Template not found' });
+  }
+});
+
+// AI Feedback System - Clean endpoint using modular system
+app.post('/api/analyze-story-concept', authenticateApiKey, async (req, res) => {
+  try {
+    const { storyInput, template, customTemplateData, projectPath } = req.body;
+    
+
+    
+    if (!storyInput || !storyInput.title) {
+      return res.status(400).json({ error: 'Story concept with title is required' });
+    }
+
+    if (!template) {
+      return res.status(400).json({ error: 'Template selection is required for analysis' });
+    }
+
+    // Load template data - same logic as structure generation
+    let templateData;
+    if (customTemplateData && customTemplateData.structure) {
+      console.log('🎭 Using customized template data for analysis');
+      templateData = customTemplateData;
+    } else {
+      console.log('🎭 Loading original template data from file for analysis');
+      const templatePath = path.join(__dirname, 'templates', `${template}.json`);
+      const templateContent = await fs.readFile(templatePath, 'utf8');
+      templateData = JSON.parse(templateContent);
+    }
+
+    // Use the modular AI feedback system with EXACT same prompt building
+    const result = await aiFeedbackSystem.analyzeStoryConcept(
+      storyInput, 
+      templateData,
+      projectPath
+    );
+    
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error analyzing story concept:', error);
+    res.status(500).json({ error: 'Failed to analyze story concept: ' + error.message });
   }
 });
 

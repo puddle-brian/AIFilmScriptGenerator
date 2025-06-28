@@ -39,12 +39,26 @@ function loadTemplate(templateName) {
         // Read the template file fresh every time (for now)
         const templateContent = fs.readFileSync(templatePath, 'utf8');
         
+        // 🔧 CRITICAL FIX: Strip out comment lines and clean up template
+        const cleanedTemplate = templateContent
+            .split('\n')
+            .filter(line => {
+                const trimmed = line.trim();
+                // Remove comment lines, blank lines, and template explanation lines
+                return trimmed && 
+                       !trimmed.startsWith('//') && 
+                       !trimmed.startsWith('*') &&
+                       trimmed !== '';
+            })
+            .join('\n')
+            .trim();
+        
         // Cache it for next time (disabled for now)
-        templateCache[templateName] = templateContent;
+        templateCache[templateName] = cleanedTemplate;
         
-        console.log(`🔄 Loaded template: ${templateName}.txt (${templateContent.length} chars)`);
+        console.log(`🔄 Loaded template: ${templateName}.txt (${templateContent.length} chars -> ${cleanedTemplate.length} chars clean)`);
         
-        return templateContent;
+        return cleanedTemplate;
     } catch (error) {
         console.error(`❌ Failed to load template: ${templateName}.txt`);
         console.error('Error:', error.message);
@@ -111,7 +125,7 @@ function buildStructurePrompt(storyInput, templateData) {
     const placeholders = {
         PROJECT_TITLE: storyInput.title,
         PROJECT_LOGLINE: storyInput.logline,
-        PROJECT_CHARACTERS: storyInput.characters,
+        PROJECT_CHARACTERS: storyInput.characters || 'No characters specified',
         TEMPLATE_NAME: templateData.name,
         INFLUENCE_PROMPT: storyInput.influencePrompt || '',
         STRUCTURE_DESCRIPTION: structureDescription,

@@ -245,8 +245,23 @@
                     
                     <div class="form-actions">
                         <button type="button" class="btn btn-outline" onclick="autoGenerate()">🎲 Auto Generate (Debug)</button>
+                        <button type="button" class="btn btn-success" onclick="analyzeStoryConcept()" id="analyzeBtn">
+                            🔍 Get AI Feedback on My Story
+                        </button>
                     </div>
                 </form>
+                
+                <!-- AI Feedback Display -->
+                <div id="storyAnalysisResults" class="story-analysis-results" style="display: none;">
+                    <div class="analysis-header">
+                        <h3>📊 AI Story Analysis</h3>
+                        <button type="button" class="close-analysis-btn" onclick="hideStoryAnalysis()">×</button>
+                    </div>
+                    <div id="analysisContent" class="analysis-content">
+                        <!-- Analysis results will be populated here -->
+                    </div>
+                </div>
+                
                 <div class="step-actions">
                     <!-- Universal navigation buttons will be added here dynamically -->
                 </div>
@@ -838,6 +853,33 @@
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="hideCharacterLibraryModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analyzed Prompt Modal -->
+        <div id="analyzedPromptModal" class="modal" style="display: none;">
+            <div class="modal-content large-modal">
+                <div class="modal-header">
+                    <h3>📋 Analyzed Prompt</h3>
+                    <span class="close" onclick="hideAnalyzedPromptModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="prompt-info">
+                        <p><strong>This is the exact prompt that was analyzed by the AI feedback system.</strong></p>
+                        <p>It's identical to what would be sent for structure generation, ensuring perfect alignment between analysis and generation.</p>
+                    </div>
+                    <div class="prompt-content">
+                        <pre id="analyzedPromptText"></pre>
+                    </div>
+                    <div class="template-info" id="templateInfo" style="display: none;">
+                        <h4>Template Information</h4>
+                        <div id="templateDetails"></div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="copyAnalyzedPrompt()">📋 Copy Prompt</button>
+                    <button class="btn btn-primary" onclick="hideAnalyzedPromptModal()">Close</button>
                 </div>
             </div>
         </div>
