@@ -11,6 +11,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const promptBuilders = require('./prompt-builders');
 const PaymentHandler = require('./payment-handlers');
+const starterPack = require('./starter-pack-data');
 
 // Add comprehensive error handling to prevent server crashes
 process.on('uncaughtException', (error) => {
@@ -4702,16 +4703,13 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
     
     console.log(`Populating starter pack for user: ${username} (ID: ${userId})`);
     
-    // Hardcoded starter pack data (more reliable for serverless)
-    const directorsData = ["Ingmar Bergman","Alfred Hitchcock","Orson Welles","Stanley Kubrick","David Lynch","Francis Ford Coppola","Martin Scorsese","Quentin Tarantino","Alejandro González Iñárritu","Wes Anderson","Todd Phillips","Todd Haynes","Peter Weir","Paul Thomas Anderson","Terrence Malick","Lars von Trier","Alejandro Jodorowsky","Yorgos Lanthimos","Yimou Zhang","David Fincher","David Cronenberg","Nicolas Winding Refn","David O. Russell","Akira Kurosawa","Federico Fellini","Jean-Luc Godard","Andrei Tarkovsky","Luis Buñuel","Michelangelo Antonioni","François Truffaut","Vittorio De Sica","Yasujirō Ozu","Robert Bresson","Krzysztof Kieślowski","Agnès Varda","Chantal Akerman","Wong Kar-wai","Abbas Kiarostami","Béla Tarr","Apichatpong Weerasethakul"];
-    
-    const screenwritersData = ["Cesare Zavattini","Suso Cecchi d'Amico","Jean-Claude Carrière","Ingmar Bergman","Robert Towne","Charlie Kaufman","Aaron Sorkin","Paul Schrader","William Goldman","Christopher Nolan"];
-    
-    const filmsData = ["8½ (1963)","Persona (1966)","Bicycle Thieves (1948)","Citizen Kane (1941)","Vertigo (1958)","2001: A Space Odyssey (1968)","Apocalypse Now (1979)","Taxi Driver (1976)","Pulp Fiction (1994)","The Godfather (1972)","Casablanca (1942)","Some Like It Hot (1959)","Singin' in the Rain (1952)","The Rules of the Game (1939)","Tokyo Story (1953)","The Searchers (1956)","Psycho (1960)","Chinatown (1974)"];
-    
-    const tonesData = ["Contemplative/Meditative","Psychological Intensity","Existential Angst","Surreal/Dreamlike","Nostalgic/Melancholic","Dark Comedy","Satirical/Ironic","Epic/Mythical","Intimate/Personal","Gritty Realism","Whimsical/Fantastical","Suspenseful/Tense","Romantic/Passionate","Coming-of-Age","Tragic/Dramatic","Action-Packed","Horror/Gothic","Science Fiction","Western","Film Noir","Experimental","Documentary-Style"];
-    
-    const charactersData = [{"name":"Ellen Ripley","description":"Resourceful space officer who transforms from corporate employee to fierce survivor, facing alien threats with intelligence and determination. Represents the evolution from victim to warrior."},{"name":"Travis Bickle","description":"Isolated taxi driver descending into vigilante violence, representing urban alienation and the dangerous psychology of the lonely outsider seeking purpose through violence."},{"name":"Dorothy Gale","description":"Young farm girl swept into a fantastical journey, learning that home and self-worth come from within. The classic hero's journey through a child's eyes."}];
+    // Get starter pack data from dedicated module
+    const starterPackData = starterPack.getStarterPackData();
+    const directorsData = starterPackData.directors;
+    const screenwritersData = starterPackData.screenwriters;
+    const filmsData = starterPackData.films;
+    const tonesData = starterPackData.tones;
+    const charactersData = starterPackData.characters;
     
     try {
       
@@ -4772,22 +4770,23 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
         totalInserted++;
       }
       
+      const counts = starterPack.getStarterPackCounts();
       console.log(`✅ Starter pack populated for ${username}: ${totalInserted} entries added`);
-      console.log(`   - Directors: ${directorsData.length}`);
-      console.log(`   - Screenwriters: ${screenwritersData.length}`);
-      console.log(`   - Films: ${filmsData.length}`);
-      console.log(`   - Tones: ${tonesData.length}`);
-      console.log(`   - Characters: ${charactersData.length}`);
+      console.log(`   - Directors: ${counts.directors}`);
+      console.log(`   - Screenwriters: ${counts.screenwriters}`);
+      console.log(`   - Films: ${counts.films}`);
+      console.log(`   - Tones: ${counts.tones}`);
+      console.log(`   - Characters: ${counts.characters}`);
       
       res.json({
         success: true,
-        message: `Starter pack populated successfully! Added ${directorsData.length} directors, ${screenwritersData.length} screenwriters, ${filmsData.length} films, ${tonesData.length} tones, and ${charactersData.length} characters.`,
+        message: `Starter pack populated successfully! Added ${counts.directors} directors, ${counts.screenwriters} screenwriters, ${counts.films} films, ${counts.tones} tones, and ${counts.characters} characters.`,
         counts: {
-          directors: directorsData.length,
-          screenwriters: screenwritersData.length,
-          films: filmsData.length,
-          tones: tonesData.length,
-          characters: charactersData.length,
+          directors: counts.directors,
+          screenwriters: counts.screenwriters,
+          films: counts.films,
+          tones: counts.tones,
+          characters: counts.characters,
           total: totalInserted
         }
       });
@@ -4808,16 +4807,13 @@ async function populateUserStarterPack(userId, username) {
   try {
     console.log(`Auto-populating starter pack for new user: ${username} (ID: ${userId})`);
     
-    // Hardcoded starter pack data (more reliable for serverless)
-    const directorsData = ["Ingmar Bergman","Alfred Hitchcock","Orson Welles","Stanley Kubrick","David Lynch","Francis Ford Coppola","Martin Scorsese","Quentin Tarantino","Alejandro González Iñárritu","Wes Anderson","Todd Phillips","Todd Haynes","Peter Weir","Paul Thomas Anderson","Terrence Malick","Lars von Trier","Alejandro Jodorowsky","Yorgos Lanthimos","Yimou Zhang","David Fincher","David Cronenberg","Nicolas Winding Refn","David O. Russell","Akira Kurosawa","Federico Fellini","Jean-Luc Godard","Andrei Tarkovsky","Luis Buñuel","Michelangelo Antonioni","François Truffaut","Vittorio De Sica","Yasujirō Ozu","Robert Bresson","Krzysztof Kieślowski","Agnès Varda","Chantal Akerman","Wong Kar-wai","Abbas Kiarostami","Béla Tarr","Apichatpong Weerasethakul"];
-    
-    const screenwritersData = ["Cesare Zavattini","Suso Cecchi d'Amico","Jean-Claude Carrière","Ingmar Bergman","Robert Towne","Charlie Kaufman","Aaron Sorkin","Paul Schrader","William Goldman","Christopher Nolan"];
-    
-    const filmsData = ["8½ (1963)","Persona (1966)","Bicycle Thieves (1948)","Citizen Kane (1941)","Vertigo (1958)","2001: A Space Odyssey (1968)","Apocalypse Now (1979)","Taxi Driver (1976)","Pulp Fiction (1994)","The Godfather (1972)","Casablanca (1942)","Some Like It Hot (1959)","Singin' in the Rain (1952)","The Rules of the Game (1939)","Tokyo Story (1953)","The Searchers (1956)","Psycho (1960)","Chinatown (1974)"];
-    
-    const tonesData = ["Contemplative/Meditative","Psychological Intensity","Existential Angst","Surreal/Dreamlike","Nostalgic/Melancholic","Dark Comedy","Satirical/Ironic","Epic/Mythical","Intimate/Personal","Gritty Realism","Whimsical/Fantastical","Suspenseful/Tense","Romantic/Passionate","Coming-of-Age","Tragic/Dramatic","Action-Packed","Horror/Gothic","Science Fiction","Western","Film Noir","Experimental","Documentary-Style"];
-    
-    const charactersData = [{"name":"Ellen Ripley","description":"Resourceful space officer who transforms from corporate employee to fierce survivor, facing alien threats with intelligence and determination. Represents the evolution from victim to warrior."},{"name":"Travis Bickle","description":"Isolated taxi driver descending into vigilante violence, representing urban alienation and the dangerous psychology of the lonely outsider seeking purpose through violence."},{"name":"Dorothy Gale","description":"Young farm girl swept into a fantastical journey, learning that home and self-worth come from within. The classic hero's journey through a child's eyes."}];
+    // Get starter pack data from dedicated module
+    const starterPackData = starterPack.getStarterPackData();
+    const directorsData = starterPackData.directors;
+    const screenwritersData = starterPackData.screenwriters;
+    const filmsData = starterPackData.films;
+    const tonesData = starterPackData.tones;
+    const charactersData = starterPackData.characters;
     
     // Insert all data in parallel for better performance
     const insertPromises = [];
@@ -4885,12 +4881,13 @@ async function populateUserStarterPack(userId, username) {
     // Wait for all inserts to complete
     await Promise.all(insertPromises);
     
+    const counts = starterPack.getStarterPackCounts();
     console.log(`✅ Auto-populated starter pack for ${username}:`);
-    console.log(`   - Directors: ${directorsData.length}`);
-    console.log(`   - Screenwriters: ${screenwritersData.length}`);
-    console.log(`   - Films: ${filmsData.length}`);
-    console.log(`   - Tones: ${tonesData.length}`);
-    console.log(`   - Characters: ${charactersData.length}`);
+    console.log(`   - Directors: ${counts.directors}`);
+    console.log(`   - Screenwriters: ${counts.screenwriters}`);
+    console.log(`   - Films: ${counts.films}`);
+    console.log(`   - Tones: ${counts.tones}`);
+    console.log(`   - Characters: ${counts.characters}`);
     
     return true;
   } catch (error) {
