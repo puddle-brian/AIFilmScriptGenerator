@@ -1031,6 +1031,25 @@ class HierarchicalContext {
     
     let prompt = '';
     
+    // CRITICAL FIX: Put CURRENT STORY ACT first when generating plot points to ensure edited acts take precedence
+    const isPlotPointGeneration = targetLevel === 4;
+    
+    // Current act focus - Show FIRST for plot point generation to give it precedence
+    if (this.contexts.act && targetLevel >= 3 && isPlotPointGeneration) {
+      const currentAct = this.contexts.act.data;
+      prompt += `CURRENT STORY ACT (TAKES PRECEDENCE):\n`;
+      prompt += `${currentAct.name}\n`;
+      prompt += `Purpose: ${currentAct.description}\n`;
+      
+      // Include character development if available
+      if (currentAct.characterDevelopment) {
+        prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
+      }
+      
+      // Add explicit instruction for plot point generation
+      prompt += `\n⚠️  IMPORTANT: Generate plot points that match THIS CURRENT ACT's description above, not the general story details below.\n\n`;
+    }
+    
     // Level 1: Story Foundation with Full Creative Context
     // Story context is built properly below - no need to dump raw object
     if (this.contexts.story) {
@@ -1102,8 +1121,8 @@ class HierarchicalContext {
       }
     }
     
-    // Current act focus - ALWAYS show this right before the task (optimal position)
-    if (this.contexts.act && targetLevel >= 3) {
+    // Current act focus - Show at normal position for non-plot-point generation
+    if (this.contexts.act && targetLevel >= 3 && !isPlotPointGeneration) {
       const currentAct = this.contexts.act.data;
       prompt += `CURRENT STORY ACT:\n`;
       prompt += `${currentAct.name}\n`;
