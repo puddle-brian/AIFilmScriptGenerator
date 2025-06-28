@@ -1923,7 +1923,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 // Initialize application
 async function initializeApp() {
-    console.log('=== INITIALIZE APP DEBUG ===');
+
     
     // Initialize authentication first
     authManager.init();
@@ -1934,9 +1934,7 @@ async function initializeApp() {
     updateProgressBar();
     updateStepIndicators();
     
-    // Update universal navigation buttons and breadcrumbs
-    updateUniversalNavigation();
-    updateBreadcrumbNavigation();
+    // Navigation will be updated after localStorage restoration via updateAllProgressMeters()
     
     // Populate dropdowns from JSON files
     await populateDropdowns();
@@ -2068,9 +2066,9 @@ async function initializeApp() {
         appState.currentActPlotPoints = {};
     }
     
-    // Final progress meter update after everything is initialized
-    if (typeof updateAllProgressMeters === 'function') {
-        updateAllProgressMeters();
+    // Final step indicator update after everything is initialized (includes progress meters)
+    if (typeof updateStepIndicators === 'function') {
+        updateStepIndicators();
     }
     
     // Force refresh credit widget after everything is loaded
@@ -2083,7 +2081,7 @@ async function initializeApp() {
         }, 500);
     }
     
-    console.log('=== INITIALIZE APP COMPLETE ===');
+
 }
 
 // Populate dropdowns from user libraries ONLY (no more hardcoded JSON)
@@ -6116,6 +6114,8 @@ function canNavigateToStep(stepNumber) {
             // Need complete story input (title is sufficient, logline is optional)
             result = !!(appState.storyInput && 
                        appState.storyInput.title);
+            
+
             break;
         case 3:
             // Need template selected (Step 2 complete)
@@ -6358,15 +6358,7 @@ function updateStepIndicators() {
             appliedClass = 'disabled';
         }
         
-        // Debug logging for step indicators (can be removed in production)
-        if (stepNumber <= 7) { // Only log first few steps to reduce noise
-            console.log(`Step ${stepNumber} indicator:`, {
-                isCurrentStep: stepNumber === appState.currentStep,
-                isFullyComplete: isStepFullyComplete(stepNumber),
-                canNavigate: canNavigateToStep(stepNumber),
-                appliedClass: appliedClass
-            });
-        }
+
         
         // Add click handler if not already added
         if (!step.hasAttribute('data-click-handler')) {
@@ -6384,6 +6376,10 @@ function updateAllProgressMeters() {
     for (let stepNumber = 1; stepNumber <= 7; stepNumber++) {
         updateStepHeaderProgressMeter(stepNumber);
     }
+    
+    // Also update navigation buttons (but NOT step indicators to avoid infinite loop)
+    updateUniversalNavigation();
+    updateBreadcrumbNavigation();
 }
 
 // NEW: Progress meter update function for step headers
