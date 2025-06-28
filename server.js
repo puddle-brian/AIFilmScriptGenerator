@@ -4717,44 +4717,48 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
       
       // Insert directors
       for (const director of directorsData) {
+        const entryKey = starterPack.generateEntryKey(director);
         await dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'directors', director, JSON.stringify({ name: director })]
+          [userId, 'directors', entryKey, JSON.stringify({ name: director })]
         );
         totalInserted++;
       }
       
       // Insert screenwriters
       for (const screenwriter of screenwritersData) {
+        const entryKey = starterPack.generateEntryKey(screenwriter);
         await dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'screenwriters', screenwriter, JSON.stringify({ name: screenwriter })]
+          [userId, 'screenwriters', entryKey, JSON.stringify({ name: screenwriter })]
         );
         totalInserted++;
       }
       
       // Insert films
       for (const film of filmsData) {
+        const entryKey = starterPack.generateEntryKey(film);
         await dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'films', film, JSON.stringify({ name: film })]
+          [userId, 'films', entryKey, JSON.stringify({ name: film })]
         );
         totalInserted++;
       }
       
       // Insert tones
       for (const tone of tonesData) {
+        const entryKey = starterPack.generateEntryKey(tone);
         await dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'tones', tone, JSON.stringify({ name: tone })]
+          [userId, 'tones', entryKey, JSON.stringify({ name: tone })]
         );
         totalInserted++;
       }
@@ -4820,48 +4824,52 @@ async function populateUserStarterPack(userId, username) {
     
     // Insert directors
     directorsData.forEach(director => {
+      const entryKey = starterPack.generateEntryKey(director);
       insertPromises.push(
         dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'directors', director, JSON.stringify({ name: director })]
+          [userId, 'directors', entryKey, JSON.stringify({ name: director })]
         )
       );
     });
     
     // Insert screenwriters
     screenwritersData.forEach(screenwriter => {
+      const entryKey = starterPack.generateEntryKey(screenwriter);
       insertPromises.push(
         dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'screenwriters', screenwriter, JSON.stringify({ name: screenwriter })]
+          [userId, 'screenwriters', entryKey, JSON.stringify({ name: screenwriter })]
         )
       );
     });
     
     // Insert films
     filmsData.forEach(film => {
+      const entryKey = starterPack.generateEntryKey(film);
       insertPromises.push(
         dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'films', film, JSON.stringify({ name: film })]
+          [userId, 'films', entryKey, JSON.stringify({ name: film })]
         )
       );
     });
     
     // Insert tones
     tonesData.forEach(tone => {
+      const entryKey = starterPack.generateEntryKey(tone);
       insertPromises.push(
         dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'tones', tone, JSON.stringify({ name: tone })]
+          [userId, 'tones', entryKey, JSON.stringify({ name: tone })]
         )
       );
     });

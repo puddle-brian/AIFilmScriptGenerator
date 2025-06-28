@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Starter Pack Migration - SCREENPLAY GENIE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .migration-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.5rem;
+        }
+        .migration-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button.success {
+            background: #059669;
+        }
+        button.success:hover {
+            background: #047857;
+        }
+        .compact-checkbox-list button {
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .compact-checkbox-list button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .success {
+            color: #059669;
+            background: #ecfdf5;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #a7f3d0;
+        }
+        .error {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #fecaca;
+        }
+        .warning {
+            color: #d97706;
+            background: #fefbf2;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #fed7aa;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .instructions {
+            background: #eff6ff;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+            margin-bottom: 2rem;
+        }
+        .legacy-item {
+            background: #fef2f2;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #dc2626;
+        }
+        .new-item {
+            background: #ecfdf5;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #059669;
+        }
+        .keep-item {
+            background: #eff6ff;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #3b82f6;
+        }
+        .category-section {
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .stat {
+            background: #f3f4f6;
+            padding: 0.75rem;
+            border-radius: 6px;
+            text-align: center;
+            flex: 1;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="migration-container">
+        <h1>🔄 Smart Starter Pack Migration</h1>
+        
+        <div class="instructions">
+            <h3>✨ Intelligent Library Upgrade for BGibson</h3>
+            <p>This tool will:</p>
+            <ul>
+                <li><strong>🔍 Scan</strong> your library for old legacy starter pack entries</li>
+                <li><strong>🗑️ Remove</strong> only the outdated entries (like "Ingmar Bergman", "Pulp Fiction (1994)")</li>
+                <li><strong>📚 Keep</strong> all your custom additions and modifications</li>
+                <li><strong>✨ Add</strong> new expressive starter pack entries</li>
+                <li><strong>📊 Show</strong> detailed before/after report</li>
+            </ul>
+            <div class="warning">
+                <strong>⚠️ Recommended:</strong> First run "Analyze Current Library" to see what will be changed!
+            </div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🔍 Step 1: Analyze Current Library</h3>
+            <p>See what's currently in your library and what will be changed:</p>
+            <button onclick="analyzeLibrary('BGibson')">Analyze BGibson's Library</button>
+            <div id="analysisResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🚀 Step 2: Perform Smart Migration</h3>
+            <p>Replace legacy entries with new expressive starter pack (keeping your custom entries):</p>
+            <button class="success" onclick="performMigration('BGibson')" id="migrateBtn" disabled>
+                Migrate BGibson's Library
+            </button>
+            <div id="migrationResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>📊 Step 3: Verify Results</h3>
+            <p>Check your updated library:</p>
+            <button onclick="verifyMigration('BGibson')">Verify BGibson's Updated Library</button>
+            <div id="verificationResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🔗 Step 4: Test in Main App</h3>
+            <p>Try out your new expressive prompt components:</p>
+            <a href="index.html" style="display: inline-block; background: #10b981; color: white; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px;">Open Main App</a>
+        </div>
+    </div>
+
+    <script>
+        // Legacy starter pack data to identify and remove
+        const LEGACY_STARTER_PACK = {
+            directors: ["Ingmar Bergman","Alfred Hitchcock","Orson Welles","Stanley Kubrick","David Lynch","Francis Ford Coppola","Martin Scorsese","Quentin Tarantino","Alejandro González Iñárritu","Wes Anderson","Todd Phillips","Todd Haynes","Peter Weir","Paul Thomas Anderson","Terrence Malick","Lars von Trier","Alejandro Jodorowsky","Yorgos Lanthimos","Yimou Zhang","David Fincher","David Cronenberg","Nicolas Winding Refn","David O. Russell","Akira Kurosawa","Federico Fellini","Jean-Luc Godard","Andrei Tarkovsky","Luis Buñuel","Michelangelo Antonioni","François Truffaut","Vittorio De Sica","Yasujirō Ozu","Robert Bresson","Krzysztof Kieślowski","Agnès Varda","Chantal Akerman","Wong Kar-wai","Abbas Kiarostami","Béla Tarr","Apichatpong Weerasethakul"],
+            screenwriters: ["Cesare Zavattini","Suso Cecchi d'Amico","Jean-Claude Carrière","Ingmar Bergman","Robert Towne","Charlie Kaufman","Aaron Sorkin","Paul Schrader","William Goldman","Christopher Nolan"],
+            films: ["8½ (1963)","Persona (1966)","Bicycle Thieves (1948)","Citizen Kane (1941)","Vertigo (1958)","2001: A Space Odyssey (1968)","Apocalypse Now (1979)","Taxi Driver (1976)","Pulp Fiction (1994)","The Godfather (1972)","Casablanca (1942)","Some Like It Hot (1959)","Singin' in the Rain (1952)","The Rules of the Game (1939)","Tokyo Story (1953)","The Searchers (1956)","Psycho (1960)","Chinatown (1974)"],
+            tones: ["Contemplative/Meditative","Psychological Intensity","Existential Angst","Surreal/Dreamlike","Nostalgic/Melancholic","Dark Comedy","Satirical/Ironic","Epic/Mythical","Intimate/Personal","Gritty Realism","Whimsical/Fantastical","Suspenseful/Tense","Romantic/Passionate","Coming-of-Age","Tragic/Dramatic","Action-Packed","Horror/Gothic","Science Fiction","Western","Film Noir","Experimental","Documentary-Style"],
+            characters: ["Ellen Ripley", "Travis Bickle", "Dorothy Gale"]
+        };
+
+        async function analyzeLibrary(username) {
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Analyzing current library...';
+
+            try {
+                // Load current library by category
+                const libraries = {};
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                
+                for (const category of categories) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/${username}/${category}`);
+                        if (response.ok) {
+                            libraries[category] = await response.json();
+                        } else {
+                            libraries[category] = []; // Empty if category doesn't exist yet
+                        }
+                    } catch (err) {
+                        libraries[category] = []; // Empty if error
+                    }
+                }
+
+                const analysis = analyzeLibraryData(libraries);
+                displayAnalysis(analysis, resultDiv);
+                
+                // Enable migration button - always enable now since we have manual selection
+                const migrateBtn = document.getElementById('migrateBtn');
+                migrateBtn.disabled = false;
+                
+                if (analysis.totalLegacy > 0) {
+                    migrateBtn.textContent = `🤖 Auto-Migrate BGibson's Library (${analysis.totalLegacy} auto-detected items)`;
+                } else {
+                    migrateBtn.textContent = '🤖 Auto-Migrate BGibson\'s Library (Add starter pack only)';
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error analyzing library: ${error.message}`;
+            }
+        }
+
+        function analyzeLibraryData(libraries) {
+            const analysis = {
+                legacy: { directors: [], screenwriters: [], films: [], tones: [], characters: [] },
+                custom: { directors: [], screenwriters: [], films: [], tones: [], characters: [] },
+                all: { directors: [], screenwriters: [], films: [], tones: [], characters: [] },
+                totalLegacy: 0,
+                totalCustom: 0,
+                totalItems: 0
+            };
+
+            for (const [category, items] of Object.entries(libraries)) {
+                if (!items || !Array.isArray(items)) continue;
+                
+                analysis.totalItems += items.length;
+                
+                items.forEach(item => {
+                    // Handle both string format and object format from API
+                    const itemName = typeof item === 'string' ? item : 
+                                   (item.entry_data ? item.entry_data.name : (item.name || ''));
+                    
+                    // Store all items for manual selection
+                    analysis.all[category].push({
+                        name: itemName,
+                        key: item.entry_key || itemName,
+                        isLegacy: LEGACY_STARTER_PACK[category] && LEGACY_STARTER_PACK[category].includes(itemName)
+                    });
+                    
+                    if (LEGACY_STARTER_PACK[category] && LEGACY_STARTER_PACK[category].includes(itemName)) {
+                        analysis.legacy[category].push(itemName);
+                        analysis.totalLegacy++;
+                    } else {
+                        analysis.custom[category].push(itemName);
+                        analysis.totalCustom++;
+                    }
+                });
+            }
+
+            return analysis;
+        }
+
+        function displayAnalysis(analysis, resultDiv) {
+            let html = `
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalItems}</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalLegacy}</div>
+                        <div class="stat-label">Auto-Detected Legacy</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalCustom}</div>
+                        <div class="stat-label">Custom to Keep</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">50</div>
+                        <div class="stat-label">New Items to Add</div>
+                    </div>
+                </div>
+            `;
+
+            // Auto-detected sections
+            for (const [category, items] of Object.entries(analysis.legacy)) {
+                if (items.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <h4>🗑️ ${category.toUpperCase()} - Auto-detected legacy items to remove (${items.length})</h4>
+                            ${items.map(item => `<div class="legacy-item">${item}</div>`).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            for (const [category, items] of Object.entries(analysis.custom)) {
+                if (items.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <h4>💾 ${category.toUpperCase()} - Auto-detected custom items to keep (${items.length})</h4>
+                            ${items.map(item => `<div class="keep-item">${item}</div>`).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            // Manual selection sections
+            html += `<h4>🎯 Manual Selection Override:</h4>`;
+            for (const [category, items] of Object.entries(analysis.all)) {
+                if (items.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <h5 style="margin: 0;">${category.toUpperCase()} - Choose items to remove (${items.length} items):</h5>
+                                <div>
+                                    <button onclick="selectAllCategory('${category}')" style="padding: 0.25rem 0.5rem; margin: 0 0.25rem; font-size: 0.8rem; background: #dc2626;">
+                                        ✓ All
+                                    </button>
+                                    <button onclick="selectNoneCategory('${category}')" style="padding: 0.25rem 0.5rem; margin: 0 0.25rem; font-size: 0.8rem; background: #059669;">
+                                        ✗ None
+                                    </button>
+                                    <button onclick="selectLegacyCategory('${category}')" style="padding: 0.25rem 0.5rem; margin: 0 0.25rem; font-size: 0.8rem; background: #f59e0b;">
+                                        🤖 Auto
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="compact-checkbox-list" style="max-height: 200px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0.5rem; background: #fafafa;">
+                    `;
+                    items.forEach(item => {
+                        const bgColor = item.isLegacy ? '#fef2f2' : '#f0f9ff';
+                        const borderColor = item.isLegacy ? '#dc2626' : '#3b82f6';
+                        html += `
+                            <div style="display: flex; align-items: center; margin: 0.1rem 0; padding: 0.2rem 0.3rem; background: ${bgColor}; border-left: 3px solid ${borderColor}; border-radius: 3px;">
+                                <input type="checkbox" id="remove_${category}_${item.key}" 
+                                       class="category-${category}-checkbox"
+                                       ${item.isLegacy ? 'checked' : ''} 
+                                       style="margin-right: 0.4rem; transform: scale(0.9);">
+                                <label for="remove_${category}_${item.key}" style="font-size: 0.85rem; cursor: pointer; flex: 1; margin: 0; line-height: 1.2;">
+                                    ${item.name}
+                                </label>
+                            </div>
+                        `;
+                    });
+                    html += `</div></div>`;
+                }
+            }
+
+            if (analysis.totalLegacy === 0 && analysis.totalItems === 0) {
+                html += `
+                    <div class="success">
+                        <h4>✅ Library is Empty!</h4>
+                        <p>No items found in your library. The migration will just add the new starter pack.</p>
+                    </div>
+                `;
+            } else {
+                const actionText = analysis.totalLegacy > 0 ? 
+                    `Auto-migration will remove ${analysis.totalLegacy} detected legacy items` :
+                    'No legacy items auto-detected, but you can manually select items to remove above';
+                
+                html += `
+                    <div class="warning">
+                        <h4>📋 Migration Options</h4>
+                        <p><strong>Auto-detected:</strong> ${actionText}</p>
+                        <p><strong>Manual override:</strong> Use the compact checkbox lists above with handy "All/None/Auto" buttons per category</p>
+                        <p><strong>Will add:</strong> 50 new expressive starter pack items</p>
+                        <p><strong>💡 Tip:</strong> Click "✓ All" then uncheck the few you want to keep!</p>
+                        <button onclick="performManualMigration('BGibson')" style="background: #f59e0b; margin-top: 1rem;">
+                            🎯 Manual Migration (Use Checkboxes Above)
+                        </button>
+                    </div>
+                `;
+            }
+
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = html;
+        }
+
+        async function performMigration(username) {
+            const resultDiv = document.getElementById('migrationResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Performing auto-migration...';
+
+            try {
+                // Step 1: Get current library by category
+                const currentLibraries = {};
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                
+                for (const category of categories) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/${username}/${category}`);
+                        if (response.ok) {
+                            currentLibraries[category] = await response.json();
+                        } else {
+                            currentLibraries[category] = [];
+                        }
+                    } catch (err) {
+                        currentLibraries[category] = [];
+                    }
+                }
+
+                // Step 2: Identify and remove legacy items
+                let removedCount = 0;
+                for (const [category, items] of Object.entries(currentLibraries)) {
+                    if (!items || !Array.isArray(items)) continue;
+                    
+                    for (const item of items) {
+                        const itemName = typeof item === 'string' ? item : 
+                                       (item.entry_data ? item.entry_data.name : (item.name || ''));
+                        
+                        if (LEGACY_STARTER_PACK[category] && LEGACY_STARTER_PACK[category].includes(itemName)) {
+                            // Remove this legacy item using the entry_key
+                            const itemKey = item.entry_key || encodeURIComponent(itemName);
+                            const deleteResponse = await fetch(`/api/user-libraries/${username}/${category}/${encodeURIComponent(itemKey)}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            if (deleteResponse.ok) {
+                                removedCount++;
+                            }
+                        }
+                    }
+                }
+
+                // Step 3: Add new starter pack
+                const populateResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                    method: 'POST'
+                });
+                
+                const populateResult = await populateResponse.json();
+                
+                if (!populateResponse.ok) {
+                    throw new Error(populateResult.error || 'Failed to populate new starter pack');
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h4>✅ Auto-Migration Completed Successfully!</h4>
+                    <p><strong>Removed:</strong> ${removedCount} auto-detected legacy items</p>
+                    <p><strong>Added:</strong> 50 new expressive starter pack items</p>
+                    <p><strong>Result:</strong> ${populateResult.message}</p>
+                    
+                    <div class="new-item">
+                        Your custom entries have been preserved, and you now have the new expressive starter pack!
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Migration failed: ${error.message}`;
+            }
+        }
+
+        async function performManualMigration(username) {
+            const resultDiv = document.getElementById('migrationResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Performing manual migration...';
+
+            try {
+                // Step 1: Get all selected checkboxes
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                let removedCount = 0;
+                let removedItems = [];
+
+                for (const category of categories) {
+                    const checkboxes = document.querySelectorAll(`input[id^="remove_${category}_"]:checked`);
+                    
+                    for (const checkbox of checkboxes) {
+                        const itemKey = checkbox.id.replace(`remove_${category}_`, '');
+                        
+                        try {
+                            const deleteResponse = await fetch(`/api/user-libraries/${username}/${category}/${encodeURIComponent(itemKey)}`, {
+                                method: 'DELETE'
+                            });
+                            
+                            if (deleteResponse.ok) {
+                                removedCount++;
+                                const itemName = checkbox.nextElementSibling.textContent;
+                                removedItems.push(`${category}: ${itemName}`);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to delete ${itemKey}:`, err);
+                        }
+                    }
+                }
+
+                // Step 2: Add new starter pack
+                const populateResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                    method: 'POST'
+                });
+                
+                const populateResult = await populateResponse.json();
+                
+                if (!populateResponse.ok) {
+                    throw new Error(populateResult.error || 'Failed to populate new starter pack');
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h4>✅ Manual Migration Completed Successfully!</h4>
+                    <p><strong>Removed:</strong> ${removedCount} manually selected items</p>
+                    <p><strong>Added:</strong> 50 new expressive starter pack items</p>
+                    <p><strong>Result:</strong> ${populateResult.message}</p>
+                    
+                    <details style="margin-top: 1rem;">
+                        <summary style="cursor: pointer; color: #6b7280;">View removed items</summary>
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: #f9fafb; border-radius: 4px;">
+                            ${removedItems.map(item => `<div>${item}</div>`).join('')}
+                        </div>
+                    </details>
+                    
+                    <div class="new-item">
+                        Your selected entries have been removed and replaced with the new expressive starter pack!
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Manual migration failed: ${error.message}`;
+            }
+        }
+
+        // Category selection helper functions
+        function selectAllCategory(category) {
+            const checkboxes = document.querySelectorAll(`.category-${category}-checkbox`);
+            checkboxes.forEach(checkbox => checkbox.checked = true);
+        }
+
+        function selectNoneCategory(category) {
+            const checkboxes = document.querySelectorAll(`.category-${category}-checkbox`);
+            checkboxes.forEach(checkbox => checkbox.checked = false);
+        }
+
+        function selectLegacyCategory(category) {
+            const checkboxes = document.querySelectorAll(`.category-${category}-checkbox`);
+            checkboxes.forEach(checkbox => {
+                // Check if this checkbox was originally auto-detected as legacy
+                const itemKey = checkbox.id.replace(`remove_${category}_`, '');
+                // Find the item in our analysis to see if it was legacy
+                const wasOriginallyLegacy = LEGACY_STARTER_PACK[category] && 
+                    LEGACY_STARTER_PACK[category].some(legacyItem => 
+                        checkbox.nextElementSibling.textContent.trim() === legacyItem
+                    );
+                checkbox.checked = wasOriginallyLegacy;
+            });
+        }
+
+        async function verifyMigration(username) {
+            const resultDiv = document.getElementById('verificationResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Verifying migration results...';
+
+            try {
+                // Load library by category
+                const libraries = {};
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                
+                for (const category of categories) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/${username}/${category}`);
+                        if (response.ok) {
+                            libraries[category] = await response.json();
+                        } else {
+                            libraries[category] = [];
+                        }
+                    } catch (err) {
+                        libraries[category] = [];
+                    }
+                }
+
+                let html = '<h4>📊 Updated Library Contents:</h4>';
+                
+                for (const [category, items] of Object.entries(libraries)) {
+                    if (!items || !Array.isArray(items)) continue;
+                    
+                    html += `
+                        <div class="category-section">
+                            <h5>${category.toUpperCase()} (${items.length} items)</h5>
+                    `;
+                    
+                    items.slice(0, 5).forEach(item => {
+                        const itemName = typeof item === 'string' ? item : (item.name || '');
+                        const isExpressive = itemName.includes(' - ') || itemName.length > 50;
+                        const cssClass = isExpressive ? 'new-item' : 'keep-item';
+                        html += `<div class="${cssClass}">${itemName}</div>`;
+                    });
+                    
+                    if (items.length > 5) {
+                        html += `<div style="text-align: center; padding: 0.5rem; color: #6b7280;">... and ${items.length - 5} more items</div>`;
+                    }
+                    
+                    html += '</div>';
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error verifying migration: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

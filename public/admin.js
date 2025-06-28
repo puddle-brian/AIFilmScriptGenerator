@@ -1162,6 +1162,705 @@ async function testAddCredits() {
     }
 }
 
+async function createTestUser() {
+    const testBtn = event.target;
+    const originalText = testBtn.innerHTML;
+    
+    try {
+        testBtn.innerHTML = '<span class="test-icon">⏳</span><span class="test-label">Creating...</span>';
+        testBtn.disabled = true;
+        
+        // Backup admin session to prevent interference
+        const adminBackup = {
+            apiKey: localStorage.getItem('apiKey'),
+            userData: localStorage.getItem('userData')
+        };
+        
+        // Generate random test user data
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const testUser = {
+            username: `test_user_${timestamp}_${randomSuffix}`,
+            email: `test_${timestamp}_${randomSuffix}@example.com`,
+            password: 'TestPassword123!',
+            emailUpdates: false
+        };
+        
+        console.log('🧪 Creating test user:', testUser.username);
+        
+        // Create the test user
+        const response = await fetch('/api/v2/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Test-Request': 'true',  // Mark as isolated test
+                'X-Admin-Test': 'createTestUser'
+            },
+            body: JSON.stringify(testUser)
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            console.log('✅ Test user created successfully:', result);
+            
+            // Check if API key was returned (for auto-login)
+            const autoLoginStatus = result.apiKey ? '✅ Auto-login ready' : '❌ No API key - requires manual login';
+            
+            // Show detailed results
+            showAdminToast(`✅ Test User Created: ${testUser.username}`, 'success');
+            
+            // Display detailed information
+            const details = `
+                <div style="text-align: left; font-family: monospace; font-size: 12px;">
+                    <strong>Test User Details:</strong><br>
+                    Username: ${testUser.username}<br>
+                    Email: ${testUser.email}<br>
+                    Password: ${testUser.password}<br>
+                    Credits: ${result.user?.credits_remaining || 'N/A'}<br>
+                    Auto-login: ${autoLoginStatus}<br>
+                    <br>
+                    <button onclick="navigator.clipboard.writeText('${JSON.stringify(testUser, null, 2)}')" 
+                            style="padding: 4px 8px; font-size: 11px;">Copy User Data</button>
+                    <button onclick="testUserLogin('${testUser.username}', '${testUser.password}')" 
+                            style="padding: 4px 8px; font-size: 11px; margin-left: 4px;">Test Login</button>
+                    <button onclick="quickTestAsUser('${testUser.username}', '${testUser.password}')" 
+                            style="padding: 4px 8px; font-size: 11px; margin-left: 4px; background: #007bff; color: white;">Quick Test</button>
+                </div>
+            `;
+            
+            // Create a custom toast with more details
+            setTimeout(() => {
+                const toast = document.createElement('div');
+                toast.className = 'admin-toast success';
+                toast.innerHTML = details;
+                toast.style.maxWidth = '500px';
+                toast.style.left = '20px';
+                toast.style.right = 'auto';
+                toast.style.position = 'fixed';
+                toast.style.top = '20px';
+                toast.style.zIndex = '10000';
+                toast.style.backgroundColor = '#d4edda';
+                toast.style.border = '1px solid #c3e6cb';
+                toast.style.borderRadius = '8px';
+                toast.style.padding = '12px';
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        toast.parentNode.removeChild(toast);
+                    }
+                }, 15000);
+            }, 100);
+            
+        } else {
+            showAdminToast(`❌ Test User Creation Failed: ${result.error}`, 'error');
+            console.error('❌ Test user creation failed:', result);
+        }
+        
+    } catch (error) {
+        console.error('❌ Test user creation error:', error);
+        showAdminToast(`❌ Test User Creation Error: ${error.message}`, 'error');
+    } finally {
+        // Restore admin session to prevent interference
+        if (adminBackup && adminBackup.apiKey && adminBackup.userData) {
+            localStorage.setItem('apiKey', adminBackup.apiKey);
+            localStorage.setItem('userData', adminBackup.userData);
+            
+            // Verify session restoration
+            setTimeout(() => verifyAdminSession(), 100);
+        }
+        
+        testBtn.innerHTML = originalText;
+        testBtn.disabled = false;
+    }
+}
+
+async function testNewUserFlow() {
+    const testBtn = event.target;
+    const originalText = testBtn.innerHTML;
+    
+    try {
+        testBtn.innerHTML = '<span class="test-icon">⏳</span><span class="test-label">Testing Flow...</span>';
+        testBtn.disabled = true;
+        
+        console.log('🧪 Testing complete new user flow...');
+        
+        // CRITICAL: Backup current admin session to protect it
+        const adminBackup = {
+            apiKey: localStorage.getItem('apiKey'),
+            userData: localStorage.getItem('userData'),
+            currentUser: adminState.user ? adminState.user.username : null
+        };
+        console.log('🔒 Admin session backed up:', adminBackup.currentUser);
+        
+        // Step 1: Create test user
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2, 8);
+        const testUser = {
+            username: `newuser_${timestamp}_${randomSuffix}`,
+            email: `newuser_${timestamp}_${randomSuffix}@example.com`,
+            password: 'NewUserTest123!',
+            emailUpdates: false
+        };
+        
+        const flowResults = {
+            registration: null,
+            starterPack: null,
+            libraryPopulation: null,
+            autoLogin: null
+        };
+        
+        // Test registration
+        console.log('📝 Step 1: Testing registration...');
+        const regResponse = await fetch('/api/v2/auth/register', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-Test-Request': 'true',  // Mark as isolated test request
+                'X-Admin-Test': adminBackup.currentUser || 'admin'
+            },
+            body: JSON.stringify(testUser)
+        });
+        
+        const regResult = await regResponse.json();
+        flowResults.registration = { success: regResponse.ok, data: regResult };
+        
+        if (regResponse.ok) {
+            console.log('✅ Registration successful');
+            
+            // Check auto-login capability
+            flowResults.autoLogin = { 
+                apiKeyProvided: !!regResult.apiKey,
+                userDataComplete: !!(regResult.user && regResult.user.username)
+            };
+            
+            // Step 2: Check if user libraries were populated
+            if (regResult.apiKey) {
+                console.log('📚 Step 2: Checking library population...');
+                
+                // Wait a moment for starter pack to populate
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Fix: Use username, not user ID for the endpoint
+                // ISOLATED: Use test user's API key explicitly to avoid session interference
+                const libraryCheck = await fetch(`/api/user-libraries/${regResult.user.username}/directors`, {
+                    headers: { 
+                        'X-API-Key': regResult.apiKey,
+                        'X-Test-Request': 'true'  // Mark as test request
+                    }
+                });
+                
+                if (libraryCheck.ok) {
+                    const libraries = await libraryCheck.json();
+                    flowResults.libraryPopulation = { 
+                        success: true, 
+                        directorCount: libraries.length,
+                        populated: libraries.length > 0
+                    };
+                } else {
+                    const errorText = await libraryCheck.text();
+                    flowResults.libraryPopulation = { 
+                        success: false, 
+                        error: `HTTP ${libraryCheck.status}: ${errorText}` 
+                    };
+                }
+            }
+            
+            // Step 3: Test login flow
+            console.log('🔐 Step 3: Testing manual login...');
+            const loginResponse = await fetch('/api/v2/auth/login', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Test-Request': 'true',  // Mark as isolated test request
+                    'X-Admin-Test': adminBackup.currentUser || 'admin'
+                },
+                body: JSON.stringify({
+                    email: testUser.email,    // Fix: Use email, not username
+                    password: testUser.password
+                })
+            });
+            
+            const loginResult = await loginResponse.json();
+            flowResults.manualLogin = { success: loginResponse.ok, data: loginResult };
+        }
+        
+        // Display comprehensive results
+        const resultsHtml = `
+            <div style="text-align: left; font-family: monospace; font-size: 11px; max-height: 400px; overflow-y: auto;">
+                <strong>🧪 New User Flow Test Results</strong><br>
+                <strong>User:</strong> ${testUser.username}<br>
+                <strong>Email:</strong> ${testUser.email}<br><br>
+                
+                <strong>1. Registration:</strong> ${flowResults.registration?.success ? '✅ SUCCESS' : '❌ FAILED'}<br>
+                ${flowResults.registration?.success ? 
+                    `   Credits: ${flowResults.registration.data.user?.credits_remaining || 'N/A'}<br>` : 
+                    `   Error: ${flowResults.registration?.data?.error || 'Unknown error'}<br>`}
+                
+                <strong>2. Auto-Login Capability:</strong><br>
+                   API Key Provided: ${flowResults.autoLogin?.apiKeyProvided ? '✅ YES' : '❌ NO'}<br>
+                   User Data Complete: ${flowResults.autoLogin?.userDataComplete ? '✅ YES' : '❌ NO'}<br>
+                
+                <strong>3. Library Population:</strong> ${flowResults.libraryPopulation?.success ? '✅ SUCCESS' : '❌ FAILED'}<br>
+                ${flowResults.libraryPopulation?.success ? 
+                    `   Directors Populated: ${flowResults.libraryPopulation.populated ? '✅ YES' : '❌ NO'} (${flowResults.libraryPopulation.directorCount})<br>` :
+                    `   Error: ${flowResults.libraryPopulation?.error || 'N/A'}<br>`}
+                
+                <strong>4. Manual Login:</strong> ${flowResults.manualLogin?.success ? '✅ SUCCESS' : '❌ FAILED'}<br>
+                
+                <br><strong>Issues Found:</strong><br>
+                ${!flowResults.autoLogin?.apiKeyProvided ? '• Auto-login may fail (no API key)<br>' : ''}
+                ${!flowResults.libraryPopulation?.populated ? '• Libraries not populated<br>' : ''}
+                ${!flowResults.manualLogin?.success ? '• Manual login failed<br>' : ''}
+                ${flowResults.autoLogin?.apiKeyProvided && flowResults.libraryPopulation?.populated && flowResults.manualLogin?.success ? '• No issues detected!<br>' : ''}
+                
+                <br>
+                <button onclick="navigator.clipboard.writeText('${JSON.stringify(flowResults, null, 2)}')" 
+                        style="padding: 4px 8px; font-size: 10px;">Copy Full Results</button>
+                <button onclick="openTestUserTab('${testUser.username}', '${testUser.password}')" 
+                        style="padding: 4px 8px; font-size: 10px; margin-left: 4px;">Open As New User</button>
+                <button onclick="quickTestAsUser('${testUser.username}', '${testUser.password}')" 
+                        style="padding: 4px 8px; font-size: 10px; margin-left: 4px; background: #007bff; color: white;">Quick Test</button>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const toast = document.createElement('div');
+            toast.className = 'admin-toast success';
+            toast.innerHTML = resultsHtml;
+            toast.style.maxWidth = '600px';
+            toast.style.left = '20px';
+            toast.style.right = 'auto';  
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.zIndex = '10000';
+            toast.style.backgroundColor = '#d4edda';
+            toast.style.border = '1px solid #c3e6cb';
+            toast.style.borderRadius = '8px';
+            toast.style.padding = '12px';
+            toast.style.maxHeight = '500px';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 20000);
+        }, 100);
+        
+        console.log('🏁 New user flow test completed:', flowResults);
+        
+    } catch (error) {
+        console.error('❌ New user flow test error:', error);
+        showAdminToast(`❌ New User Flow Test Error: ${error.message}`, 'error');
+    } finally {
+        // CRITICAL: Restore admin session to prevent interference
+        if (typeof adminBackup !== 'undefined' && adminBackup.apiKey && adminBackup.userData) {
+            console.log('🔒 Restoring admin session for:', adminBackup.currentUser);
+            localStorage.setItem('apiKey', adminBackup.apiKey);
+            localStorage.setItem('userData', adminBackup.userData);
+            
+            // Verify the session is actually restored
+            const restoredUser = JSON.parse(adminBackup.userData);
+            if (restoredUser && restoredUser.username !== adminState.user?.username) {
+                console.log('🔄 Admin session restored, updating state...');
+                adminState.user = restoredUser;
+                adminState.apiKey = adminBackup.apiKey;
+            }
+            
+            // Double-check the session is working
+            setTimeout(() => verifyAdminSession(), 100);
+        } else {
+            console.warn('⚠️ Could not restore admin session - backup missing');
+            showAdminToast('⚠️ Admin session may be affected. Use "Restore Admin Session" if needed.', 'warning');
+        }
+        
+        testBtn.innerHTML = originalText;
+        testBtn.disabled = false;
+    }
+}
+
+// Helper function to test login for a specific user
+async function testUserLogin(username, password) {
+    try {
+        // Note: We need to construct the email from username for testing
+        // In real scenarios, users would use their actual email
+        const email = username.includes('@') ? username : `${username}@example.com`;
+        
+        const response = await fetch('/api/v2/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: email,    // Use email, not username
+                password: password 
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            showAdminToast(`✅ Login test successful for ${username}`, 'success');
+            console.log('✅ Login test passed:', result);
+        } else {
+            showAdminToast(`❌ Login test failed for ${username}: ${result.error}`, 'error');
+            console.error('❌ Login test failed:', result);
+        }
+    } catch (error) {
+        showAdminToast(`❌ Login test error: ${error.message}`, 'error');
+        console.error('❌ Login test error:', error);
+    }
+}
+
+// Helper function to open login page with test user credentials  
+function openTestUserTab(username, password) {
+    // Create a clean session by opening in incognito-like mode with session clearing
+    const loginUrl = `login.html?test_user=${encodeURIComponent(username)}&test_pass=${encodeURIComponent(password)}&clear_session=true`;
+    
+    // Option 1: Open in new window and instruct user to clear session
+    const newWindow = window.open(loginUrl, '_blank', 'width=1200,height=800');
+    
+    // Show instructions to the user
+    setTimeout(() => {
+        const instructions = `
+            <div style="text-align: left; font-family: monospace; font-size: 12px;">
+                <strong>🧪 Test User Session Instructions</strong><br><br>
+                <strong>New window opened!</strong> To test as the new user:<br><br>
+                <strong>Option 1 (Recommended):</strong><br>
+                • Use incognito/private browsing mode<br>
+                • Copy this URL and paste in incognito window:<br>
+                <input type="text" value="${window.location.origin}/${loginUrl}" 
+                       style="width: 100%; font-size: 10px; padding: 4px; margin: 4px 0;"
+                       onclick="this.select()" readonly><br>
+                
+                <strong>Option 2 (Quick test):</strong><br>
+                • In the new window, open DevTools (F12)<br>
+                • Go to Application → Storage → Clear storage<br>
+                • Click "Clear site data"<br>
+                • Refresh the page<br><br>
+                
+                <strong>Test User Credentials:</strong><br>
+                Email: ${username.includes('@') ? username : username + '@example.com'}<br>
+                Password: ${password}<br><br>
+                
+                <button onclick="navigator.clipboard.writeText('${username.includes('@') ? username : username + '@example.com'}')" 
+                        style="padding: 4px 8px; font-size: 10px;">Copy Email</button>
+                <button onclick="navigator.clipboard.writeText('${password}')" 
+                        style="padding: 4px 8px; font-size: 10px; margin-left: 4px;">Copy Password</button>
+            </div>
+        `;
+        
+        const toast = document.createElement('div');
+        toast.className = 'admin-toast success';
+        toast.innerHTML = instructions;
+        toast.style.maxWidth = '600px';
+        toast.style.left = '20px';
+        toast.style.right = 'auto';
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.zIndex = '10000';
+        toast.style.backgroundColor = '#e6f3ff';
+        toast.style.border = '1px solid #b3d9ff';
+        toast.style.borderRadius = '8px';
+        toast.style.padding = '12px';
+        toast.style.maxHeight = '400px';
+        document.body.appendChild(toast);
+        
+        // Add close button
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '×';
+        closeBtn.style.cssText = 'position: absolute; top: 8px; right: 12px; background: none; border: none; font-size: 18px; cursor: pointer;';
+        closeBtn.onclick = () => toast.remove();
+        toast.appendChild(closeBtn);
+        
+        // Auto-remove after 30 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 30000);
+         }, 100);
+}
+
+// Helper function for quick testing - logs out current user and logs in as test user
+async function quickTestAsUser(username, password) {
+    try {
+        const email = username.includes('@') ? username : `${username}@example.com`;
+        
+        showAdminToast('🔄 Switching to test user...', 'warning');
+        console.log('🧪 Quick Test: Starting user switch to:', username);
+        
+        // Step 1: Clear current session completely
+        console.log('🧪 Quick Test: Clearing current session...');
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Also clear any other possible auth storage
+        localStorage.removeItem('apiKey');
+        localStorage.removeItem('userData');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userSession');
+        
+        // Step 2: Login as test user
+        console.log('🧪 Quick Test: Attempting login as:', email);
+        const response = await fetch('/api/v2/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: email,
+                password: password 
+            })
+        });
+        
+        const result = await response.json();
+        console.log('🧪 Quick Test: Login response:', response.ok, result);
+        
+        if (response.ok && result.apiKey && result.user) {
+            // Step 3: Store new session data
+            console.log('🧪 Quick Test: Storing new session for:', result.user.username);
+            localStorage.setItem('apiKey', result.apiKey);
+            localStorage.setItem('userData', JSON.stringify(result.user));
+            
+            showAdminToast(`✅ Successfully logged in as: ${result.user.username}`, 'success');
+            
+            // Step 4: Force a complete page reload to ensure clean state
+            console.log('🧪 Quick Test: Redirecting to main app...');
+            setTimeout(() => {
+                // Use location.replace to ensure no back button issues
+                window.location.replace('index.html?test_mode=true&user=' + encodeURIComponent(result.user.username));
+            }, 1000);
+            
+        } else {
+            console.error('🧪 Quick Test: Login failed:', result);
+            showAdminToast(`❌ Failed to login as test user: ${result.error || 'Unknown error'}`, 'error');
+            
+            // Restore original session if available
+            const originalApiKey = prompt('Quick test failed. Enter your admin API key to restore session (or cancel to stay logged out):');
+            if (originalApiKey) {
+                localStorage.setItem('apiKey', originalApiKey);
+                location.reload();
+            }
+        }
+        
+    } catch (error) {
+        console.error('🧪 Quick Test error:', error);
+        showAdminToast(`❌ Quick test error: ${error.message}`, 'error');
+        
+        // Offer to restore session
+        setTimeout(() => {
+            if (confirm('Quick test failed. Would you like to reload the admin page to restore your session?')) {
+                location.reload();
+            }
+        }, 2000);
+         }
+}
+
+// Helper function to restore admin session when testing gets mixed up
+async function restoreAdminSession() {
+    try {
+        showAdminToast('🔄 Restoring admin session...', 'warning');
+        
+        // Clear any mixed state
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Ask for admin credentials
+        const email = prompt('Enter your admin email:');
+        if (!email) return;
+        
+        const password = prompt('Enter your admin password:');
+        if (!password) return;
+        
+        console.log('🔄 Attempting admin session restore for:', email);
+        
+        const response = await fetch('/api/v2/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                email: email,
+                password: password 
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.user && result.user.is_admin) {
+            localStorage.setItem('apiKey', result.apiKey);
+            localStorage.setItem('userData', JSON.stringify(result.user));
+            
+            showAdminToast(`✅ Admin session restored for: ${result.user.username}`, 'success');
+            
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+            
+        } else if (response.ok && result.user && !result.user.is_admin) {
+            showAdminToast('❌ Account found but not an admin account', 'error');
+        } else {
+            showAdminToast(`❌ Login failed: ${result.error || 'Invalid credentials'}`, 'error');
+        }
+        
+    } catch (error) {
+        console.error('Admin session restore error:', error);
+        showAdminToast(`❌ Restore error: ${error.message}`, 'error');
+    }
+}
+
+async function testStarterPackSystem() {
+    const testBtn = event.target;
+    const originalText = testBtn.innerHTML;
+    
+    try {
+        testBtn.innerHTML = '<span class="test-icon">⏳</span><span class="test-label">Testing...</span>';
+        testBtn.disabled = true;
+        
+        console.log('📚 Testing starter pack system...');
+        
+        // Step 1: Test if we can create a user and manually populate starter pack
+        const timestamp = Date.now();
+        const testUser = {
+            username: `startertest_${timestamp}`,
+            email: `startertest_${timestamp}@example.com`,
+            password: 'StarterTest123!',
+            emailUpdates: false
+        };
+        
+        console.log('📝 Creating test user for starter pack test...');
+        const regResponse = await fetch('/api/v2/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(testUser)
+        });
+        
+        const regResult = await regResponse.json();
+        
+        if (!regResponse.ok) {
+            showAdminToast(`❌ Failed to create test user: ${regResult.error}`, 'error');
+            return;
+        }
+        
+        const username = regResult.user.username;
+        const apiKey = regResult.apiKey;
+        
+        console.log('✅ Test user created, now testing starter pack manually...');
+        
+        // Step 2: Manually trigger starter pack population
+        const populateResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey 
+            },
+            body: JSON.stringify({})
+        });
+        
+        const populateResult = populateResponse.ok ? await populateResponse.json() : await populateResponse.text();
+        
+        // Step 3: Check each library type
+        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+        const libraryResults = {};
+        
+        for (const type of libraryTypes) {
+            try {
+                console.log(`📖 Checking ${type} library...`);
+                const response = await fetch(`/api/user-libraries/${username}/${type}`, {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    libraryResults[type] = { 
+                        success: true, 
+                        count: data.length,
+                        sampleEntries: data.slice(0, 3).map(entry => entry.entry_key || entry.entry_data?.name)
+                    };
+                } else {
+                    const errorText = await response.text();
+                    libraryResults[type] = { 
+                        success: false, 
+                        error: `HTTP ${response.status}: ${errorText}` 
+                    };
+                }
+            } catch (error) {
+                libraryResults[type] = { 
+                    success: false, 
+                    error: error.message 
+                };
+            }
+        }
+        
+        // Display results
+        const resultsHtml = `
+            <div style="text-align: left; font-family: monospace; font-size: 11px; max-height: 400px; overflow-y: auto;">
+                <strong>📚 Starter Pack System Test Results</strong><br>
+                <strong>Test User:</strong> ${username}<br><br>
+                
+                <strong>Manual Population:</strong> ${populateResponse.ok ? '✅ SUCCESS' : '❌ FAILED'}<br>
+                ${!populateResponse.ok ? `Error: ${populateResult}<br>` : ''}
+                <br>
+                
+                <strong>Library Population Results:</strong><br>
+                ${libraryTypes.map(type => {
+                    const result = libraryResults[type];
+                    const status = result.success ? '✅' : '❌';
+                    const details = result.success ? 
+                        `${result.count} entries (${result.sampleEntries.join(', ')})` :
+                        `Error: ${result.error}`;
+                    return `${status} ${type}: ${details}`;
+                }).join('<br>')}<br>
+                <br>
+                
+                <strong>Summary:</strong><br>
+                • Total libraries tested: ${libraryTypes.length}<br>
+                • Successful: ${Object.values(libraryResults).filter(r => r.success).length}<br>
+                • Failed: ${Object.values(libraryResults).filter(r => !r.success).length}<br>
+                • Overall status: ${Object.values(libraryResults).every(r => r.success) ? '✅ ALL WORKING' : '❌ SOME ISSUES'}<br>
+                <br>
+                
+                <button onclick="navigator.clipboard.writeText('${JSON.stringify(libraryResults, null, 2)}')" 
+                        style="padding: 4px 8px; font-size: 10px;">Copy Full Results</button>
+                <button onclick="openTestUserTab('${username}', '${testUser.password}')" 
+                        style="padding: 4px 8px; font-size: 10px; margin-left: 4px;">Open As User</button>
+                <button onclick="quickTestAsUser('${username}', '${testUser.password}')" 
+                        style="padding: 4px 8px; font-size: 10px; margin-left: 4px; background: #007bff; color: white;">Quick Test</button>
+            </div>
+        `;
+        
+        setTimeout(() => {
+            const toast = document.createElement('div');
+            toast.className = 'admin-toast success';
+            toast.innerHTML = resultsHtml;
+            toast.style.maxWidth = '650px';
+            toast.style.left = '20px';
+            toast.style.right = 'auto';
+            toast.style.position = 'fixed';
+            toast.style.top = '20px';
+            toast.style.zIndex = '10000';
+            toast.style.backgroundColor = '#d4edda';
+            toast.style.border = '1px solid #c3e6cb';
+            toast.style.borderRadius = '8px';
+            toast.style.padding = '12px';
+            toast.style.maxHeight = '500px';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.parentNode.removeChild(toast);
+                }
+            }, 25000);
+        }, 100);
+        
+        console.log('📚 Starter pack test completed:', libraryResults);
+        
+    } catch (error) {
+        console.error('❌ Starter pack test error:', error);
+        showAdminToast(`❌ Starter Pack Test Error: ${error.message}`, 'error');
+    } finally {
+        testBtn.innerHTML = originalText;
+        testBtn.disabled = false;
+    }
+}
+
 // Quick Action Functions
 async function viewErrorLogs() {
     showAdminToast('Feature coming soon', 'warning');
@@ -1279,9 +1978,39 @@ function setupEventListeners() {
     });
 }
 
+// Helper function to verify admin session is still intact
+function verifyAdminSession() {
+    const apiKey = localStorage.getItem('apiKey');
+    const userData = localStorage.getItem('userData');
+    
+    if (!apiKey || !userData) {
+        console.warn('⚠️ Admin session missing after test');
+        showAdminToast('⚠️ Admin session lost. Please refresh page.', 'warning');
+        return false;
+    }
+    
+    try {
+        const user = JSON.parse(userData);
+        if (!user.is_admin) {
+            console.warn('⚠️ Non-admin session detected after test');
+            showAdminToast('⚠️ Non-admin user detected. Use "Restore Admin Session".', 'error');
+            return false;
+        }
+        
+        console.log('✅ Admin session verified:', user.username);
+        return true;
+    } catch (error) {
+        console.error('❌ Error verifying admin session:', error);
+        showAdminToast('❌ Session verification failed. Please refresh page.', 'error');
+        return false;
+    }
+}
+
 // Auto-refresh system status every 30 seconds
 setInterval(() => {
     if (document.visibilityState === 'visible') {
         checkSystemStatus();
+        // Also verify admin session periodically
+        verifyAdminSession();
     }
 }, 30000); 

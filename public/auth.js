@@ -108,6 +108,84 @@ function handleUrlParameters() {
     if (verifyToken) {
         verifyEmail(verifyToken);
     }
+    
+    // Handle test user credentials (for admin testing)
+    const testUser = urlParams.get('test_user');
+    const testPass = urlParams.get('test_pass');
+    const clearSession = urlParams.get('clear_session');
+    
+    // Clear session if requested (for testing)
+    if (clearSession === 'true') {
+        console.log('🧪 Clearing session for test user...');
+        localStorage.removeItem('apiKey');
+        localStorage.removeItem('userData');
+        // Clear any other stored data
+        sessionStorage.clear();
+    }
+    
+    if (testUser && testPass && window.location.pathname.includes('login.html')) {
+        // Auto-fill login form with test credentials
+        setTimeout(() => {
+            const usernameField = document.getElementById('username');
+            const passwordField = document.getElementById('password');
+            
+            if (usernameField && passwordField) {
+                // Convert username to email format if needed (since login expects email)
+                const emailValue = testUser.includes('@') ? testUser : `${testUser}@example.com`;
+                usernameField.value = emailValue;
+                passwordField.value = testPass;
+                
+                // Add visual indicator this is a test account
+                const form = document.getElementById('loginForm');
+                if (form) {
+                    const testIndicator = document.createElement('div');
+                    testIndicator.style.cssText = `
+                        background: #fff3cd; 
+                        border: 1px solid #ffeaa7; 
+                        color: #856404; 
+                        padding: 8px 12px; 
+                        border-radius: 6px; 
+                        margin-bottom: 15px; 
+                        font-size: 14px;
+                        text-align: center;
+                    `;
+                    testIndicator.innerHTML = `
+                        🧪 <strong>Test Account Mode</strong><br>
+                        Credentials auto-filled for testing. Click login to proceed.
+                    `;
+                    form.insertBefore(testIndicator, form.firstChild);
+                }
+                
+                console.log('🧪 Test credentials auto-filled for:', testUser);
+            }
+        }, 100);
+    }
+    
+    // Handle registration success redirect
+    const registered = urlParams.get('registered');
+    if (registered === 'true' && window.location.pathname.includes('login.html')) {
+        setTimeout(() => {
+            const form = document.getElementById('loginForm');
+            if (form) {
+                const welcomeMsg = document.createElement('div');
+                welcomeMsg.style.cssText = `
+                    background: #d4edda; 
+                    border: 1px solid #c3e6cb; 
+                    color: #155724; 
+                    padding: 8px 12px; 
+                    border-radius: 6px; 
+                    margin-bottom: 15px; 
+                    font-size: 14px;
+                    text-align: center;
+                `;
+                welcomeMsg.innerHTML = `
+                    ✅ <strong>Registration Successful!</strong><br>
+                    Please log in with your new account credentials.
+                `;
+                form.insertBefore(welcomeMsg, form.firstChild);
+            }
+        }, 100);
+    }
 }
 
 /**

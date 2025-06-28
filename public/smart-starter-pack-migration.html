@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Starter Pack Migration - SCREENPLAY GENIE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .migration-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1f2937;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 0.5rem;
+        }
+        .migration-section {
+            margin: 2rem 0;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem 0;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button.danger {
+            background: #dc2626;
+        }
+        button.danger:hover {
+            background: #b91c1c;
+        }
+        button.success {
+            background: #059669;
+        }
+        button.success:hover {
+            background: #047857;
+        }
+        .success {
+            color: #059669;
+            background: #ecfdf5;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #a7f3d0;
+        }
+        .error {
+            color: #dc2626;
+            background: #fef2f2;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #fecaca;
+        }
+        .warning {
+            color: #d97706;
+            background: #fefbf2;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #fed7aa;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .instructions {
+            background: #eff6ff;
+            padding: 1rem;
+            border-radius: 6px;
+            border: 1px solid #bfdbfe;
+            margin-bottom: 2rem;
+        }
+        .legacy-item {
+            background: #fef2f2;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #dc2626;
+        }
+        .new-item {
+            background: #ecfdf5;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #059669;
+        }
+        .keep-item {
+            background: #eff6ff;
+            padding: 0.5rem;
+            margin: 0.25rem 0;
+            border-radius: 4px;
+            border-left: 4px solid #3b82f6;
+        }
+        .category-section {
+            margin: 1rem 0;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+        }
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .stat {
+            background: #f3f4f6;
+            padding: 0.75rem;
+            border-radius: 6px;
+            text-align: center;
+            flex: 1;
+        }
+        .stat-number {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+        .stat-label {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <div class="migration-container">
+        <h1>🔄 Smart Starter Pack Migration</h1>
+        
+        <div class="instructions">
+            <h3>✨ Intelligent Library Upgrade</h3>
+            <p>This tool will:</p>
+            <ul>
+                <li><strong>🔍 Scan</strong> your library for old legacy starter pack entries</li>
+                <li><strong>🗑️ Remove</strong> only the outdated entries (like "Ingmar Bergman", "Pulp Fiction (1994)")</li>
+                <li><strong>📚 Keep</strong> all your custom additions and modifications</li>
+                <li><strong>✨ Add</strong> new expressive starter pack entries</li>
+                <li><strong>📊 Show</strong> detailed before/after report</li>
+            </ul>
+            <div class="warning">
+                <strong>⚠️ Recommended:</strong> First run "Analyze Current Library" to see what will be changed before migrating!
+            </div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🔍 Step 1: Analyze Current Library</h3>
+            <p>See what's currently in your library and what will be changed:</p>
+            <button onclick="analyzeLibrary('BGibson')">Analyze BGibson's Library</button>
+            <div id="analysisResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🚀 Step 2: Perform Smart Migration</h3>
+            <p>Replace legacy entries with new expressive starter pack (keeping your custom entries):</p>
+            <button class="success" onclick="performMigration('BGibson')" id="migrateBtn" disabled>
+                Migrate BGibson's Library
+            </button>
+            <div id="migrationResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>📊 Step 3: Verify Results</h3>
+            <p>Check your updated library:</p>
+            <button onclick="verifyMigration('BGibson')">Verify BGibson's Updated Library</button>
+            <div id="verificationResult"></div>
+        </div>
+
+        <div class="migration-section">
+            <h3>🔗 Step 4: Test in Main App</h3>
+            <p>Try out your new expressive prompt components:</p>
+            <a href="index.html" style="display: inline-block; background: #10b981; color: white; padding: 0.75rem 1.5rem; text-decoration: none; border-radius: 6px;">Open Main App</a>
+        </div>
+    </div>
+
+    <script>
+        // Legacy starter pack data to identify and remove
+        const LEGACY_STARTER_PACK = {
+            directors: ["Ingmar Bergman","Alfred Hitchcock","Orson Welles","Stanley Kubrick","David Lynch","Francis Ford Coppola","Martin Scorsese","Quentin Tarantino","Alejandro González Iñárritu","Wes Anderson","Todd Phillips","Todd Haynes","Peter Weir","Paul Thomas Anderson","Terrence Malick","Lars von Trier","Alejandro Jodorowsky","Yorgos Lanthimos","Yimou Zhang","David Fincher","David Cronenberg","Nicolas Winding Refn","David O. Russell","Akira Kurosawa","Federico Fellini","Jean-Luc Godard","Andrei Tarkovsky","Luis Buñuel","Michelangelo Antonioni","François Truffaut","Vittorio De Sica","Yasujirō Ozu","Robert Bresson","Krzysztof Kieślowski","Agnès Varda","Chantal Akerman","Wong Kar-wai","Abbas Kiarostami","Béla Tarr","Apichatpong Weerasethakul"],
+            screenwriters: ["Cesare Zavattini","Suso Cecchi d'Amico","Jean-Claude Carrière","Ingmar Bergman","Robert Towne","Charlie Kaufman","Aaron Sorkin","Paul Schrader","William Goldman","Christopher Nolan"],
+            films: ["8½ (1963)","Persona (1966)","Bicycle Thieves (1948)","Citizen Kane (1941)","Vertigo (1958)","2001: A Space Odyssey (1968)","Apocalypse Now (1979)","Taxi Driver (1976)","Pulp Fiction (1994)","The Godfather (1972)","Casablanca (1942)","Some Like It Hot (1959)","Singin' in the Rain (1952)","The Rules of the Game (1939)","Tokyo Story (1953)","The Searchers (1956)","Psycho (1960)","Chinatown (1974)"],
+            tones: ["Contemplative/Meditative","Psychological Intensity","Existential Angst","Surreal/Dreamlike","Nostalgic/Melancholic","Dark Comedy","Satirical/Ironic","Epic/Mythical","Intimate/Personal","Gritty Realism","Whimsical/Fantastical","Suspenseful/Tense","Romantic/Passionate","Coming-of-Age","Tragic/Dramatic","Action-Packed","Horror/Gothic","Science Fiction","Western","Film Noir","Experimental","Documentary-Style"],
+            characters: ["Ellen Ripley", "Travis Bickle", "Dorothy Gale"]
+        };
+
+        async function analyzeLibrary(username) {
+            const resultDiv = document.getElementById('analysisResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Analyzing current library...';
+
+            try {
+                // Load current library
+                const response = await fetch(`/api/user-libraries/${username}`);
+                const libraries = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(libraries.error || 'Failed to load library');
+                }
+
+                const analysis = analyzeLibraryData(libraries);
+                displayAnalysis(analysis, resultDiv);
+                
+                // Enable migration button if legacy items found
+                const migrateBtn = document.getElementById('migrateBtn');
+                if (analysis.totalLegacy > 0) {
+                    migrateBtn.disabled = false;
+                    migrateBtn.textContent = `Migrate BGibson's Library (${analysis.totalLegacy} legacy items to replace)`;
+                } else {
+                    migrateBtn.textContent = 'No legacy items found - Library already up to date!';
+                }
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error analyzing library: ${error.message}`;
+            }
+        }
+
+        function analyzeLibraryData(libraries) {
+            const analysis = {
+                legacy: { directors: [], screenwriters: [], films: [], tones: [], characters: [] },
+                custom: { directors: [], screenwriters: [], films: [], tones: [], characters: [] },
+                totalLegacy: 0,
+                totalCustom: 0,
+                totalItems: 0
+            };
+
+            for (const [category, items] of Object.entries(libraries)) {
+                if (!items || !Array.isArray(items)) continue;
+                
+                analysis.totalItems += items.length;
+                
+                items.forEach(item => {
+                    const itemName = typeof item === 'string' ? item : (item.name || '');
+                    
+                    if (LEGACY_STARTER_PACK[category] && LEGACY_STARTER_PACK[category].includes(itemName)) {
+                        analysis.legacy[category].push(itemName);
+                        analysis.totalLegacy++;
+                    } else {
+                        analysis.custom[category].push(itemName);
+                        analysis.totalCustom++;
+                    }
+                });
+            }
+
+            return analysis;
+        }
+
+        function displayAnalysis(analysis, resultDiv) {
+            let html = `
+                <div class="stats">
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalItems}</div>
+                        <div class="stat-label">Total Items</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalLegacy}</div>
+                        <div class="stat-label">Legacy to Replace</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">${analysis.totalCustom}</div>
+                        <div class="stat-label">Custom to Keep</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">50</div>
+                        <div class="stat-label">New Items to Add</div>
+                    </div>
+                </div>
+            `;
+
+            for (const [category, items] of Object.entries(analysis.legacy)) {
+                if (items.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <h4>🗑️ ${category.toUpperCase()} - Legacy items to remove (${items.length})</h4>
+                            ${items.map(item => `<div class="legacy-item">${item}</div>`).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            for (const [category, items] of Object.entries(analysis.custom)) {
+                if (items.length > 0) {
+                    html += `
+                        <div class="category-section">
+                            <h4>💾 ${category.toUpperCase()} - Custom items to keep (${items.length})</h4>
+                            ${items.map(item => `<div class="keep-item">${item}</div>`).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            if (analysis.totalLegacy === 0) {
+                html += `
+                    <div class="success">
+                        <h4>✅ Library Already Up to Date!</h4>
+                        <p>No legacy starter pack items found. Your library appears to already have the new expressive entries or only custom entries.</p>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="warning">
+                        <h4>📋 Migration Summary</h4>
+                        <p><strong>Will remove:</strong> ${analysis.totalLegacy} legacy starter pack items</p>
+                        <p><strong>Will keep:</strong> ${analysis.totalCustom} custom items you've added</p>
+                        <p><strong>Will add:</strong> 50 new expressive starter pack items</p>
+                        <p><strong>Final total:</strong> ${analysis.totalCustom + 50} items</p>
+                    </div>
+                `;
+            }
+
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = html;
+        }
+
+        async function performMigration(username) {
+            const resultDiv = document.getElementById('migrationResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Performing smart migration...';
+
+            try {
+                // Step 1: Get current library
+                const currentResponse = await fetch(`/api/user-libraries/${username}`);
+                const currentLibraries = await currentResponse.json();
+                
+                if (!currentResponse.ok) {
+                    throw new Error(currentLibraries.error || 'Failed to load current library');
+                }
+
+                // Step 2: Identify and remove legacy items
+                let removedCount = 0;
+                for (const [category, items] of Object.entries(currentLibraries)) {
+                    if (!items || !Array.isArray(items)) continue;
+                    
+                    for (const item of items) {
+                        const itemName = typeof item === 'string' ? item : (item.name || '');
+                        
+                        if (LEGACY_STARTER_PACK[category] && LEGACY_STARTER_PACK[category].includes(itemName)) {
+                            // Remove this legacy item
+                            const deleteResponse = await fetch(`/api/user-libraries/${username}/${category}`, {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ entry_key: itemName })
+                            });
+                            
+                            if (deleteResponse.ok) {
+                                removedCount++;
+                            }
+                        }
+                    }
+                }
+
+                // Step 3: Add new starter pack
+                const populateResponse = await fetch(`/api/user-libraries/${username}/populate-starter-pack`, {
+                    method: 'POST'
+                });
+                
+                const populateResult = await populateResponse.json();
+                
+                if (!populateResponse.ok) {
+                    throw new Error(populateResult.error || 'Failed to populate new starter pack');
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `
+                    <h4>✅ Migration Completed Successfully!</h4>
+                    <p><strong>Removed:</strong> ${removedCount} legacy starter pack items</p>
+                    <p><strong>Added:</strong> 50 new expressive starter pack items</p>
+                    <p><strong>Result:</strong> ${populateResult.message}</p>
+                    
+                    <div class="new-item">
+                        Your custom entries have been preserved, and you now have the new expressive starter pack!
+                    </div>
+                `;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Migration failed: ${error.message}`;
+            }
+        }
+
+        async function verifyMigration(username) {
+            const resultDiv = document.getElementById('verificationResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Verifying migration results...';
+
+            try {
+                const response = await fetch(`/api/user-libraries/${username}`);
+                const libraries = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(libraries.error || 'Failed to load library');
+                }
+
+                let html = '<h4>📊 Updated Library Contents:</h4>';
+                
+                for (const [category, items] of Object.entries(libraries)) {
+                    if (!items || !Array.isArray(items)) continue;
+                    
+                    html += `
+                        <div class="category-section">
+                            <h5>${category.toUpperCase()} (${items.length} items)</h5>
+                    `;
+                    
+                    items.slice(0, 5).forEach(item => {
+                        const itemName = typeof item === 'string' ? item : (item.name || '');
+                        const isExpressive = itemName.includes(' - ') || itemName.length > 50;
+                        const cssClass = isExpressive ? 'new-item' : 'keep-item';
+                        html += `<div class="${cssClass}">${itemName}</div>`;
+                    });
+                    
+                    if (items.length > 5) {
+                        html += `<div style="text-align: center; padding: 0.5rem; color: #6b7280;">... and ${items.length - 5} more items</div>`;
+                    }
+                    
+                    html += '</div>';
+                }
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Error verifying migration: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

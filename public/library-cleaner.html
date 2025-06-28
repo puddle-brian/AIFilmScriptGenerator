@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Cleaner - SCREENPLAY GENIE</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #f8fafc;
+        }
+        .cleaner-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #1f2937;
+            border-bottom: 2px solid #dc2626;
+            padding-bottom: 0.5rem;
+        }
+        .warning {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            color: #7f1d1d;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .success {
+            background: #ecfdf5;
+            border: 2px solid #059669;
+            color: #064e3b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .error {
+            background: #fef2f2;
+            border: 2px solid #dc2626;
+            color: #7f1d1d;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        button {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            margin: 0.5rem;
+        }
+        button:hover {
+            background: #b91c1c;
+        }
+        button.safe {
+            background: #059669;
+        }
+        button.safe:hover {
+            background: #047857;
+        }
+        .stats {
+            background: #f3f4f6;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+        .result {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f9fafb;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="cleaner-container">
+        <h1>🧹 BGibson Library Cleaner</h1>
+        
+        <div class="stats">
+            <h3>🔍 Duplicate Entry Debugger</h3>
+            <p>Check for duplicate entries (like "Singin' in the Rain") that can't be deleted:</p>
+            <input type="text" id="searchEntry" placeholder="Enter name (e.g. Singin' in the Rain)" style="padding: 8px; margin-right: 10px; width: 300px;">
+            <button onclick="findDuplicateEntries()" class="safe">🔍 Find Duplicates</button>
+            <div id="duplicateResult"></div>
+        </div>
+        
+        <div class="warning">
+            <h3>⚠️ Nuclear Option</h3>
+            <p>This tool will help you completely clear your library and start fresh with just the new starter pack.</p>
+            <p><strong>USE WITH CAUTION:</strong> This will delete ALL your library items!</p>
+        </div>
+
+        <div class="stats">
+            <h3>📊 Current Library Status</h3>
+            <button onclick="checkLibraryStatus()" class="safe">Check Current Library Counts</button>
+            <div id="statusResult"></div>
+        </div>
+
+
+
+        <div class="success">
+            <h3>✨ Add Starter Pack</h3>
+            <p><strong>Safe Option:</strong> Add new starter pack items WITHOUT deleting existing entries:</p>
+            <button onclick="addNewStarterPack()" class="safe">➕ Add New Starter Pack (Keep Existing)</button>
+            <div id="starterResult"></div>
+            
+            <div style="margin-top: 1rem; padding: 1rem; background: #e6fffa; border-radius: 6px; border-left: 4px solid #10b981;">
+                <small><strong>How it works:</strong> This will add all 50 new expressive starter pack items to the library. Any items that already exist (same entry_key) will be skipped, so your custom entries stay safe!</small>
+            </div>
+        </div>
+
+        <div class="warning">
+            <h3>🗑️ Nuclear Option: Complete Library Wipe</h3>
+            <p><strong>Only use if you want to start completely fresh!</strong></p>
+            <p>This will delete EVERYTHING in your library first, then add the starter pack:</p>
+            <ul>
+                <li>All directors</li>
+                <li>All screenwriters</li>
+                <li>All films</li>
+                <li>All tones</li>
+                <li>All characters</li>
+            </ul>
+            <button onclick="confirmClearAll()">🚨 CLEAR ENTIRE LIBRARY</button>
+            <div id="clearResult"></div>
+        </div>
+
+        <div style="margin-top: 2rem; text-align: center;">
+            <a href="smart-migration.html" style="color: #3b82f6;">← Back to Smart Migration</a> | 
+            <a href="index.html" style="color: #3b82f6;">Go to Main App →</a>
+        </div>
+    </div>
+
+    <script>
+        async function checkLibraryStatus() {
+            const resultDiv = document.getElementById('statusResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Checking library status...';
+
+            try {
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                let statusHtml = '<h4>Current Library Counts:</h4>';
+                let totalItems = 0;
+
+                for (const category of categories) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/BGibson/${category}`);
+                        if (response.ok) {
+                            const items = await response.json();
+                            const count = items.length;
+                            totalItems += count;
+                            statusHtml += `<p><strong>${category}:</strong> ${count} items</p>`;
+                        } else {
+                            statusHtml += `<p><strong>${category}:</strong> Error loading</p>`;
+                        }
+                    } catch (err) {
+                        statusHtml += `<p><strong>${category}:</strong> Error</p>`;
+                    }
+                }
+
+                statusHtml += `<p><strong>TOTAL:</strong> ${totalItems} items</p>`;
+                
+                if (totalItems > 60) {
+                    statusHtml += `<div style="color: #dc2626; font-weight: bold; margin-top: 1rem;">⚠️ Library has grown beyond expected size (>60 items). Consider clearing and starting fresh.</div>`;
+                }
+
+                resultDiv.innerHTML = statusHtml;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `Error checking status: ${error.message}`;
+            }
+        }
+
+        async function confirmClearAll() {
+            const confirmed = confirm("🚨 ARE YOU ABSOLUTELY SURE?\n\nThis will DELETE ALL ITEMS in your library!\n\nThis action cannot be undone.\n\nClick OK only if you want to completely start over.");
+            
+            if (confirmed) {
+                await clearAllLibraries();
+            }
+        }
+
+        async function clearAllLibraries() {
+            const resultDiv = document.getElementById('clearResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Clearing all libraries...';
+
+            try {
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                let totalDeleted = 0;
+                let deletionLog = 'Deletion Progress:\n\n';
+
+                for (const category of categories) {
+                    deletionLog += `Clearing ${category}...\n`;
+                    
+                    try {
+                        // Get all items in this category
+                        const response = await fetch(`/api/user-libraries/BGibson/${category}`);
+                        if (response.ok) {
+                            const items = await response.json();
+                            
+                            // Delete each item
+                            for (const item of items) {
+                                const itemKey = item.entry_key;
+                                try {
+                                    const deleteResponse = await fetch(`/api/user-libraries/BGibson/${category}/${encodeURIComponent(itemKey)}`, {
+                                        method: 'DELETE'
+                                    });
+                                    if (deleteResponse.ok) {
+                                        totalDeleted++;
+                                    }
+                                } catch (delErr) {
+                                    console.error(`Failed to delete ${itemKey}:`, delErr);
+                                }
+                            }
+                            deletionLog += `  - Deleted ${items.length} ${category}\n`;
+                        }
+                    } catch (err) {
+                        deletionLog += `  - Error with ${category}: ${err.message}\n`;
+                    }
+                }
+
+                deletionLog += `\n✅ TOTAL DELETED: ${totalDeleted} items\n`;
+                deletionLog += '\nLibrary is now completely empty.';
+
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = deletionLog;
+                
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `Error during clearing: ${error.message}`;
+            }
+        }
+
+        async function findDuplicateEntries() {
+            const searchName = document.getElementById('searchEntry').value.trim();
+            if (!searchName) {
+                alert('Please enter a name to search for');
+                return;
+            }
+
+            const resultDiv = document.getElementById('duplicateResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = `Searching for duplicates of "${searchName}"...`;
+
+            try {
+                const categories = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
+                let duplicatesFound = false;
+                let duplicateReport = `🔍 Duplicate Search Results for "${searchName}":\n\n`;
+
+                for (const category of categories) {
+                    try {
+                        const response = await fetch(`/api/user-libraries/BGibson/${category}`);
+                        if (response.ok) {
+                            const items = await response.json();
+                            
+                            // Find all entries that match the search name
+                            const matches = items.filter(item => {
+                                const itemName = item.entry_data?.name || item.name || '';
+                                return itemName.toLowerCase().includes(searchName.toLowerCase());
+                            });
+
+                            if (matches.length > 0) {
+                                duplicateReport += `${category.toUpperCase()}:\n`;
+                                matches.forEach((match, index) => {
+                                    duplicateReport += `  ${index + 1}. Name: "${match.entry_data?.name || match.name}"\n`;
+                                    duplicateReport += `     Key: "${match.entry_key}"\n`;
+                                    duplicateReport += `     ID: ${match.id || 'N/A'}\n`;
+                                    if (matches.length > 1) duplicatesFound = true;
+                                });
+                                duplicateReport += '\n';
+                            }
+                        }
+                    } catch (err) {
+                        duplicateReport += `${category}: Error loading\n`;
+                    }
+                }
+
+                if (duplicatesFound) {
+                    duplicateReport += '⚠️ DUPLICATES DETECTED! Multiple entries found with the same name.\n';
+                    duplicateReport += 'This explains the flickering behavior on hover.\n\n';
+                    duplicateReport += '🔧 Solution: Use the "CLEAR ENTIRE LIBRARY" option below to remove all duplicates.';
+                } else {
+                    duplicateReport += '✅ No duplicates found. The issue might be elsewhere.';
+                }
+
+                resultDiv.className = duplicatesFound ? 'result error' : 'result success';
+                resultDiv.innerHTML = duplicateReport;
+
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `Error searching for duplicates: ${error.message}`;
+            }
+        }
+
+        async function addNewStarterPack() {
+            const resultDiv = document.getElementById('starterResult');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result';
+            resultDiv.innerHTML = 'Adding new starter pack...';
+
+            try {
+                const response = await fetch('/api/user-libraries/BGibson/populate-starter-pack', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Success!\n\n${result.message}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Error: ${result.error}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Network Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

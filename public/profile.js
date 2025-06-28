@@ -191,12 +191,16 @@ function displayLibraries(type, libraries) {
     }
     
     // Create influence tags (step 1 badge pattern)
-    container.innerHTML = libraries.map(lib => `
-        <div class="influence-tag clickable-tag" onclick="editLibraryEntry('${type}', '${lib.entry_key}', ${JSON.stringify(lib.entry_data).replace(/"/g, '&quot;')})">
-            <span>${lib.entry_data.name}</span>
-            <button class="remove-tag" onclick="event.stopPropagation(); deleteLibraryEntry('${type}', '${lib.entry_key}')" title="Remove">&times;</button>
-        </div>
-    `).join('');
+    container.innerHTML = libraries.map(lib => {
+        const escapedKey = lib.entry_key.replace(/'/g, "\\'");
+        const escapedData = JSON.stringify(lib.entry_data).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        return `
+            <div class="influence-tag clickable-tag" onclick="editLibraryEntry('${type}', '${escapedKey}', ${escapedData})">
+                <span>${lib.entry_data.name}</span>
+                <button class="remove-tag" onclick="event.stopPropagation(); deleteLibraryEntry('${type}', '${escapedKey}')" title="Remove">&times;</button>
+            </div>
+        `;
+    }).join('');
 }
 
 function addLibraryEntry(type) {
@@ -247,7 +251,7 @@ async function deleteLibraryEntry(type, key) {
     if (!confirm('Are you sure you want to delete this entry?')) return;
     
     try {
-        const response = await fetch(`/api/user-libraries/${currentUser}/${type}/${key}`, {
+        const response = await fetch(`/api/user-libraries/${currentUser}/${type}/${encodeURIComponent(key)}`, {
             method: 'DELETE'
         });
         
@@ -813,7 +817,7 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         if (isEditing) {
             // Editing existing entry
             method = 'PUT';
-            url = `/api/user-libraries/${currentUser}/${isEditing.type}/${isEditing.key}`;
+            url = `/api/user-libraries/${currentUser}/${isEditing.type}/${encodeURIComponent(isEditing.key)}`;
         } else {
             // Creating new entry
             method = 'POST';
