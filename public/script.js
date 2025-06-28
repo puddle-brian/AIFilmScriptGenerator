@@ -1734,6 +1734,9 @@ async function analyzeStoryConcept() {
         const data = await response.json();
         console.log('📊 Analysis response:', data);
         
+        // Store the analysis globally for apply suggestions
+        window.lastAnalysis = data.analysis;
+        
         displayStoryAnalysis(data.analysis, data.promptAnalyzed, data.templateData);
         showToast('Story analysis completed! Click "View Analyzed Prompt" to see exactly what was reviewed.', 'success');
         
@@ -1896,6 +1899,15 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null, templateData = nu
             <p class="prompt-note">See the exact prompt that was analyzed (same as generation uses)</p>
         </div>
         ` : ''}
+        
+        ${analysis.suggestions && analysis.suggestions.length > 0 ? `
+        <div class="apply-suggestions-section">
+            <button class="btn btn-primary" onclick="applySuggestions()" id="applySuggestionsBtn">
+                🔄 Apply AI Suggestions to My Story
+            </button>
+            <p class="apply-note">AI will improve your story concept based on the feedback above</p>
+        </div>
+        ` : ''}
     `;
     
     // Show the results
@@ -1957,6 +1969,231 @@ function copyAnalyzedPrompt() {
             console.error('Failed to copy prompt:', err);
             showToast('Failed to copy prompt', 'error');
         });
+    }
+}
+
+// Apply AI Suggestions Functions
+async function applySuggestions() {
+    const btn = document.getElementById('applySuggestionsBtn');
+    
+    if (!window.lastAnalysis || !appState.storyInput) {
+        showToast('Missing analysis data or story input', 'error');
+        return;
+    }
+
+    try {
+        // Update button state
+        btn.disabled = true;
+        btn.textContent = '🔄 Applying Suggestions...';
+        btn.classList.add('loading');
+
+        // Call the backend API
+        const response = await fetch('/api/apply-suggestions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
+            body: JSON.stringify({
+                storyInput: appState.storyInput,
+                analysisResult: window.lastAnalysis
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Store the improvements for the preview modal
+            window.lastImprovements = result.improvements;
+            window.originalStory = result.originalStory;
+            
+            // Show the preview modal
+            showImprovementPreviewModal(result.improvements, result.originalStory);
+            
+            showToast('Story improvements generated successfully!', 'success');
+        } else {
+            throw new Error(result.error || 'Failed to apply suggestions');
+        }
+
+    } catch (error) {
+        console.error('Error applying suggestions:', error);
+        showToast('Failed to apply suggestions: ' + error.message, 'error');
+    } finally {
+        // Reset button state
+        btn.disabled = false;
+        btn.textContent = '🔄 Apply AI Suggestions to My Story';
+        btn.classList.remove('loading');
+    }
+}
+
+function showImprovementPreviewModal(improvements, originalStory) {
+    const modal = document.getElementById('improvementPreviewModal');
+    const content = document.getElementById('improvementPreviewContent');
+    
+    content.innerHTML = `
+        <div class="improvement-comparison">
+            <div class="comparison-header">
+                <h3>📝 Story Improvements Preview</h3>
+                <p>Review the AI's suggested changes before applying them to your story.</p>
+            </div>
+            
+            <div class="improvement-section">
+                <h4>📚 Title</h4>
+                <div class="comparison-box">
+                    <div class="before-after">
+                        <div class="before">
+                            <label>Current:</label>
+                            <div class="content">${originalStory.title}</div>
+                        </div>
+                        <div class="after">
+                            <label>Improved:</label>
+                            <div class="content">${improvements.improvedTitle}</div>
+                        </div>
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="title">
+                            Apply this change
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="improvement-section">
+                <h4>📖 Logline</h4>
+                <div class="comparison-box">
+                    <div class="before-after">
+                        <div class="before">
+                            <label>Current:</label>
+                            <div class="content">${originalStory.logline}</div>
+                        </div>
+                        <div class="after">
+                            <label>Improved:</label>
+                            <div class="content">${improvements.improvedLogline}</div>
+                        </div>
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="logline">
+                            Apply this change
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="improvement-section">
+                <h4>👥 Characters</h4>
+                <div class="comparison-box">
+                    <div class="before-after">
+                        <div class="before">
+                            <label>Current:</label>
+                            <div class="content">${originalStory.characters || 'No characters specified'}</div>
+                        </div>
+                        <div class="after">
+                            <label>Improved:</label>
+                            <div class="content">${improvements.improvedCharacters}</div>
+                        </div>
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="characters">
+                            Apply this change
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            ${improvements.changesSummary && improvements.changesSummary.length > 0 ? `
+            <div class="changes-summary">
+                <h4>🎯 What Changed</h4>
+                <ul>
+                    ${improvements.changesSummary.map(change => `<li>${change}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+            
+            ${improvements.preservedElements && improvements.preservedElements.length > 0 ? `
+            <div class="preserved-elements">
+                <h4>✅ What Stayed the Same</h4>
+                <ul>
+                    ${improvements.preservedElements.map(element => `<li>${element}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+        </div>
+        
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="hideImprovementPreviewModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="applySelectedImprovements()">Apply Selected Changes</button>
+        </div>
+    `;
+    
+    modal.style.display = 'block';
+}
+
+function hideImprovementPreviewModal() {
+    const modal = document.getElementById('improvementPreviewModal');
+    modal.style.display = 'none';
+}
+
+function applySelectedImprovements() {
+    if (!window.lastImprovements || !window.originalStory) {
+        showToast('Missing improvement data', 'error');
+        return;
+    }
+
+    const checkboxes = document.querySelectorAll('#improvementPreviewContent input[type="checkbox"]');
+    const improvements = window.lastImprovements;
+    
+    // Apply only selected improvements
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            const field = checkbox.dataset.field;
+            
+            switch(field) {
+                case 'title':
+                    if (improvements.improvedTitle !== window.originalStory.title) {
+                        document.getElementById('storyTitle').value = improvements.improvedTitle;
+                        appState.storyInput.title = improvements.improvedTitle;
+                    }
+                    break;
+                case 'logline':
+                    if (improvements.improvedLogline !== window.originalStory.logline) {
+                        document.getElementById('storyLogline').value = improvements.improvedLogline;
+                        appState.storyInput.logline = improvements.improvedLogline;
+                    }
+                    break;
+                case 'characters':
+                    if (improvements.improvedCharacters !== (window.originalStory.characters || '')) {
+                        // Update characters in the appropriate format
+                        appState.storyInput.characters = improvements.improvedCharacters;
+                        
+                        // Update the influence prompt and display
+                        buildInfluencePrompt();
+                        updateStoryConceptDisplay();
+                    }
+                    break;
+            }
+        }
+    });
+
+    // Hide the modal
+    hideImprovementPreviewModal();
+    
+    // Update displays
+    updateStoryConceptDisplay();
+    updateAutoGenerateButtonVisibility();
+    
+    // Show success message
+    showToast('Story improvements applied successfully!', 'success');
+    
+    // Auto-save if available
+    if (window.autoSaveManager) {
+        window.autoSaveManager.markDirty();
     }
 }
 

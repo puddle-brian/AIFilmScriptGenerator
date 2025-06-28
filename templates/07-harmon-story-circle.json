@@ -1,0 +1,57 @@
+{
+  "name": "Dan Harmon's Story Circle",
+  "description": "Character psychology-focused structure based on simplified hero's journey. Emphasizes internal transformation through external adventure",
+  "category": "essential",
+  "total_plot_points": 40,
+  "distribution_philosophy": "Equal emphasis on psychological states with character need driving each transition",
+  "structure": {
+    "comfort_zone": {
+      "name": "You (Comfort Zone)",
+      "description": "Character in familiar situation but lacking something",
+      "elements": ["Character Introduction", "Established World", "Missing Element", "Unconscious Want"],
+      "plotPoints": 5
+    },
+    "want_something": {
+      "name": "Need (Want Something)",
+      "description": "Character becomes aware of what they lack",
+      "elements": ["Recognition of Need", "Desire Awakens", "Motivation Established", "Goal Defined"],
+      "plotPoints": 5
+    },
+    "enter_unfamiliar": {
+      "name": "Go (Enter Unfamiliar Situation)", 
+      "description": "Character leaves comfort zone to pursue their need",
+      "elements": ["Departure", "New Environment", "First Challenges", "Commitment to Journey"],
+      "plotPoints": 5
+    },
+    "struggle_adapt": {
+      "name": "Search (Struggle to Adapt)",
+      "description": "Character faces obstacles in the unfamiliar situation",
+      "elements": ["Initial Failures", "Learning Process", "Skill Development", "Persistence"],
+      "plotPoints": 7
+    },
+    "find_what_wanted": {
+      "name": "Find (Discover What You Actually Needed)",
+      "description": "Character discovers the true nature of what they needed",
+      "elements": ["True Discovery", "Revelation", "Understanding Self", "Real Need Revealed"],
+      "plotPoints": 5
+    },
+    "pay_heavy_price": {
+      "name": "Take (Pay a Heavy Price)",
+      "description": "Character must sacrifice something important to gain what they need",
+      "elements": ["Difficult Choice", "Sacrifice", "Personal Cost", "Commitment Test"],
+      "plotPoints": 5
+    },
+    "return_home": {
+      "name": "Return (Come Back Changed)",
+      "description": "Character returns to familiar world but transformed",
+      "elements": ["Journey Back", "Integration", "Transformation Evident", "New Perspective"],
+      "plotPoints": 4
+    },
+    "change_world": {
+      "name": "Change (Transform Your World)",
+      "description": "Character's transformation impacts their original environment",
+      "elements": ["Applied Wisdom", "World Improvement", "Cycle Completion", "New Equilibrium"],
+      "plotPoints": 4
+    }
+  }
+} 

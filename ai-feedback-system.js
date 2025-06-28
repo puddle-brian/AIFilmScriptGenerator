@@ -186,6 +186,136 @@ class AIFeedbackSystem {
   }
 
   /**
+   * Apply AI suggestions to improve story concept
+   * @param {Object} storyInput - Current story data
+   * @param {Object} analysisResult - AI feedback with suggestions
+   * @returns {Object} Proposed story improvements
+   */
+  async applyStorySuggestions(storyInput, analysisResult) {
+    try {
+      console.log('🔄 Applying AI suggestions to story concept:', storyInput.title);
+      
+      const improvementPrompt = this._buildImprovementPrompt(storyInput, analysisResult);
+      const improvements = await this._makeImprovementRequest(improvementPrompt);
+      
+      console.log('✅ Story improvements generated');
+      
+      return {
+        success: true,
+        improvements: improvements,
+        originalStory: storyInput,
+        metadata: {
+          improvementType: 'story_concept_enhancement',
+          timestamp: new Date().toISOString(),
+          model: this.model
+        }
+      };
+
+    } catch (error) {
+      console.error('Error applying story suggestions:', error);
+      throw new Error(`Story improvement failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Build improvement prompt for applying suggestions
+   * @private
+   */
+  _buildImprovementPrompt(storyInput, analysisResult) {
+    const suggestions = analysisResult.suggestions || [];
+    const criticalWeaknesses = analysisResult.criticalWeaknesses || [];
+    const characterIssues = analysisResult.characterAnalysis?.feedback || '';
+    
+    return `You are an expert story development consultant. Your task is to take AI feedback and transform it into specific, actionable improvements to the story concept.
+
+CURRENT STORY:
+- Title: ${storyInput.title}
+- Logline: ${storyInput.logline}
+- Characters: ${storyInput.characters || 'No characters specified'}
+
+AI FEEDBACK TO ADDRESS:
+Suggestions: ${suggestions.join('; ')}
+Critical Weaknesses: ${criticalWeaknesses.join('; ')}
+Character Issues: ${characterIssues}
+
+TASK: Provide specific improvements to the story fields. Preserve the user's creative voice while addressing the feedback. Focus on concrete additions and clarifications, not complete rewrites.
+
+Return ONLY valid JSON in this exact format:
+{
+  "improvedTitle": "enhanced title if needed, or original title",
+  "improvedLogline": "enhanced logline with specific improvements",
+  "improvedCharacters": "enhanced character descriptions with specific traits and backstories",
+  "changesSummary": [
+    "Specific change 1 and why it helps AI generation",
+    "Specific change 2 and why it helps AI generation"
+  ],
+  "preservedElements": [
+    "Original elements that were kept and why they work"
+  ]
+}
+
+Guidelines:
+- Add specific visual details, character backstories, or world-building elements
+- Address vague elements with concrete specifics
+- Preserve the original tone and creative vision
+- Focus on elements that will help AI generate better content
+- Be surgical in changes - improve don't overhaul`;
+  }
+
+  /**
+   * Make API request for story improvements
+   * @private
+   */
+  async _makeImprovementRequest(improvementPrompt) {
+    const response = await fetch(this.apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': this.apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: this.model,
+        max_tokens: 2500,
+        temperature: 0.4,
+        messages: [{
+          role: 'user',
+          content: improvementPrompt
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Improvement API call failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const improvementText = data.content[0].text;
+    
+    console.log('📊 Raw improvement response:', improvementText);
+    
+    return this._parseImprovementResponse(improvementText);
+  }
+
+  /**
+   * Parse improvement response into structured data
+   * @private
+   */
+  _parseImprovementResponse(improvementText) {
+    try {
+      const jsonMatch = improvementText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('No JSON found in improvement response');
+      }
+    } catch (parseError) {
+      console.error('Failed to parse improvement JSON:', parseError);
+      throw new Error('Failed to parse AI improvement response');
+    }
+  }
+
+  /**
    * Suggest improvements based on analysis
    * @param {Object} analysisResults - Previous analysis results
    */

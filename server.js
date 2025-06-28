@@ -1366,6 +1366,31 @@ app.get('/api/templates', async (req, res) => {
         description: "Widely-used, accessible story structures perfect for beginners and commercial projects",
         templates: templates.filter(t => t.category === 'essential')
       },
+      character_driven: {
+        title: "Character-Driven Structures",
+        description: "Templates focusing on internal transformation and psychological development",
+        templates: templates.filter(t => t.category === 'character-driven')
+      },
+      plot_driven: {
+        title: "Plot-Driven Structures", 
+        description: "Templates emphasizing plot progression and structural beats",
+        templates: templates.filter(t => t.category === 'plot-driven')
+      },
+      television: {
+        title: "Television Formats",
+        description: "Structures designed specifically for TV episodes and series",
+        templates: templates.filter(t => t.category === 'television')
+      },
+      cultural: {
+        title: "Cultural & International",
+        description: "Story structures from different cultural traditions and storytelling philosophies",
+        templates: templates.filter(t => t.category === 'cultural')
+      },
+      crisis_driven: {
+        title: "Crisis & Tension-Driven",
+        description: "Templates built around sustained tension and multiple crisis points",
+        templates: templates.filter(t => t.category === 'crisis-driven')
+      },
       booker_7_plots: {
         title: "Booker's 7 Basic Plots",
         description: "Christopher Booker's archetypal story patterns found throughout literature and film",
@@ -1462,6 +1487,30 @@ app.post('/api/analyze-story-concept', authenticateApiKey, async (req, res) => {
   } catch (error) {
     console.error('Error analyzing story concept:', error);
     res.status(500).json({ error: 'Failed to analyze story concept: ' + error.message });
+  }
+});
+
+// Apply AI suggestions to improve story concept
+app.post('/api/apply-suggestions', authenticateApiKey, async (req, res) => {
+  try {
+    const { storyInput, analysisResult } = req.body;
+
+    if (!storyInput || !storyInput.title) {
+      return res.status(400).json({ error: 'Story concept with title is required' });
+    }
+
+    if (!analysisResult || !analysisResult.suggestions) {
+      return res.status(400).json({ error: 'Analysis result with suggestions is required' });
+    }
+
+    // Use the AI feedback system to apply suggestions
+    const result = await aiFeedbackSystem.applyStorySuggestions(storyInput, analysisResult);
+    
+    res.json(result);
+
+  } catch (error) {
+    console.error('Error applying story suggestions:', error);
+    res.status(500).json({ error: 'Failed to apply suggestions: ' + error.message });
   }
 });
 

@@ -1,0 +1,45 @@
+{
+  "name": "4-Act TV Structure",
+  "description": "Television-specific structure designed around commercial breaks. Creates multiple mini-climaxes to maintain audience engagement",
+  "category": "essential",
+  "total_plot_points": 38,
+  "distribution_philosophy": "Each act ends with a hook or cliffhanger, designed for commercial break retention",
+  "structure": {
+    "cold_open": {
+      "name": "Cold Open",
+      "description": "Pre-credits sequence that hooks the audience immediately",
+      "elements": ["Immediate Hook", "Teaser", "Character Introduction", "Intrigue Setup"],
+      "plotPoints": 3
+    },
+    "act_1": {
+      "name": "Act 1 (Post-Credits)",
+      "description": "Setup main story, establish stakes, end with first major turn",
+      "elements": ["Story Setup", "Character Goals", "Stakes Establishment", "First Turn"],
+      "plotPoints": 8
+    },
+    "act_2": {
+      "name": "Act 2",
+      "description": "Develop complications, raise stakes, end with major cliffhanger",
+      "elements": ["Complications Develop", "Obstacles Increase", "Character Conflict", "Major Cliffhanger"],
+      "plotPoints": 10
+    },
+    "act_3": {
+      "name": "Act 3",
+      "description": "Crisis deepens, character's darkest moment, setup for resolution",
+      "elements": ["Crisis Peak", "Darkest Moment", "Final Revelation", "Resolution Setup"],
+      "plotPoints": 9
+    },
+    "act_4": {
+      "name": "Act 4",
+      "description": "Climax and resolution, with setup for next episode if series",
+      "elements": ["Climactic Action", "Resolution", "Character Growth", "Series Hook"],
+      "plotPoints": 6
+    },
+    "tag": {
+      "name": "Tag (Post-Credits)",
+      "description": "Brief scene that provides closure or sets up future storylines",
+      "elements": ["Final Beat", "Closure", "Future Setup", "Character Moment"],
+      "plotPoints": 2
+    }
+  }
+} 

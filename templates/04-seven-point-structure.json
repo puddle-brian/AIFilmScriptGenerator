@@ -1,0 +1,51 @@
+{
+  "name": "Seven-Point Story Structure",
+  "description": "Dan Wells' structure focusing on character arc through seven key plot points. Balances plot progression with character development",
+  "category": "essential",
+  "total_plot_points": 42,
+  "distribution_philosophy": "Structured around seven major plot points with character development woven throughout each section",
+  "structure": {
+    "hook": {
+      "name": "Hook",
+      "description": "Establish character in their starting state, opposite of where they'll end",
+      "elements": ["Character Introduction", "Starting State", "World Establishment", "Reader Engagement"],
+      "plotPoints": 6
+    },
+    "plot_turn_1": {
+      "name": "Plot Turn 1 (Inciting Incident)",
+      "description": "Something happens that changes the character's situation",
+      "elements": ["Inciting Incident", "Status Quo Disruption", "New Goal", "Journey Begins"],
+      "plotPoints": 4
+    },
+    "pinch_point_1": {
+      "name": "Pinch Point 1",
+      "description": "Apply pressure, show the power of the opposition",
+      "elements": ["Opposition Strength", "Stakes Raised", "Pressure Applied", "Challenge Escalation"],
+      "plotPoints": 6
+    },
+    "midpoint": {
+      "name": "Midpoint (Plot Turn 2)",
+      "description": "Character moves from reaction to action, or gains new information",
+      "elements": ["Shift to Action", "New Information", "Game Changer", "Character Agency"],
+      "plotPoints": 6
+    },
+    "pinch_point_2": {
+      "name": "Pinch Point 2", 
+      "description": "Apply more pressure, show opposition's ultimate power",
+      "elements": ["Maximum Pressure", "Opposition Peak", "Desperation", "Final Test Approach"],
+      "plotPoints": 6
+    },
+    "plot_turn_3": {
+      "name": "Plot Turn 3 (Crisis)",
+      "description": "Character's final piece of information or tool needed for resolution",
+      "elements": ["Final Revelation", "Last Tool", "Complete Understanding", "Resolution Setup"],
+      "plotPoints": 4
+    },
+    "resolution": {
+      "name": "Resolution",
+      "description": "Character reaches their ending state, opposite of where they started",
+      "elements": ["Conflict Resolution", "Character Transformation", "New State", "Story Completion"],
+      "plotPoints": 10
+    }
+  }
+} 

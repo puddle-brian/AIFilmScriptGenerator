@@ -1,0 +1,33 @@
+{
+  "name": "Ki-Sho-Ten-Ketsu (Japanese 4-Act)",
+  "description": "Traditional Japanese story structure focused on gradual revelation rather than conflict. Emphasizes harmony, observation, and unexpected perspective shifts",
+  "category": "essential",
+  "total_plot_points": 36,
+  "distribution_philosophy": "Non-conflict based structure with equal development across four acts, emphasizing the 'Ten' (twist) as the key turning point",
+  "structure": {
+    "ki": {
+      "name": "Ki (Introduction)",
+      "description": "Establish the setting, characters, and initial situation without conflict or tension",
+      "elements": ["Character Introduction", "World Building", "Daily Life", "Peaceful Establishment"],
+      "plotPoints": 10
+    },
+    "sho": {
+      "name": "Sho (Development)", 
+      "description": "Develop the situation and characters through observation and gradual deepening",
+      "elements": ["Character Development", "Relationship Building", "Situation Deepening", "Subtle Progression"],
+      "plotPoints": 10
+    },
+    "ten": {
+      "name": "Ten (Twist/Turn)",
+      "description": "Introduce an unexpected element or new perspective that recontextualizes everything",
+      "elements": ["Unexpected Revelation", "Perspective Shift", "New Understanding", "Recontextualization"],
+      "plotPoints": 8
+    },
+    "ketsu": {
+      "name": "Ketsu (Conclusion)",
+      "description": "Peaceful resolution that incorporates the new understanding from the twist",
+      "elements": ["Integration", "New Harmony", "Acceptance", "Transformed Understanding"],
+      "plotPoints": 8
+    }
+  }
+} 

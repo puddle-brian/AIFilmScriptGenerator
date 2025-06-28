@@ -1,0 +1,57 @@
+{
+  "name": "Fichtean Curve",
+  "description": "Story structure built around multiple crisis points creating sustained tension. Emphasizes continuous rising action rather than traditional acts",
+  "category": "essential",
+  "total_plot_points": 44,
+  "distribution_philosophy": "Multiple crisis peaks with brief respites, creating sustained tension and momentum",
+  "structure": {
+    "exposition": {
+      "name": "Exposition",
+      "description": "Brief setup of character and situation before first crisis",
+      "elements": ["Character Introduction", "Basic Setup", "World Establishment", "Initial Stakes"],
+      "plotPoints": 6
+    },
+    "rising_action_crisis_1": {
+      "name": "Rising Action - Crisis 1",
+      "description": "First major challenge creates immediate tension",
+      "elements": ["First Challenge", "Stakes Introduced", "Character Response", "Initial Conflict"],
+      "plotPoints": 8
+    },
+    "brief_respite_1": {
+      "name": "Brief Respite 1",
+      "description": "Short breathing space before next crisis",
+      "elements": ["Temporary Relief", "Character Reflection", "Setup Next Crisis", "False Security"],
+      "plotPoints": 3
+    },
+    "rising_action_crisis_2": {
+      "name": "Rising Action - Crisis 2",
+      "description": "Second crisis escalates the stakes and tension",
+      "elements": ["Escalated Challenge", "Higher Stakes", "Character Growth", "Increased Pressure"],
+      "plotPoints": 8
+    },
+    "brief_respite_2": {
+      "name": "Brief Respite 2",
+      "description": "Another short breathing space, tension still building",
+      "elements": ["Momentary Calm", "Character Development", "Foreshadowing", "Gathering Storm"],
+      "plotPoints": 3
+    },
+    "rising_action_crisis_3": {
+      "name": "Rising Action - Crisis 3",
+      "description": "Third crisis pushes character to their limits",
+      "elements": ["Maximum Pressure", "Character Breaking Point", "Ultimate Challenge", "Desperation"],
+      "plotPoints": 8
+    },
+    "climax": {
+      "name": "Climax",
+      "description": "Final crisis and resolution of all built-up tension",
+      "elements": ["Ultimate Confrontation", "All Threads Converge", "Character Transformation", "Final Resolution"],
+      "plotPoints": 6
+    },
+    "denouement": {
+      "name": "Denouement",
+      "description": "Brief conclusion showing the aftermath",
+      "elements": ["Aftermath", "New Normal", "Character Growth", "Final Image"],
+      "plotPoints": 2
+    }
+  }
+} 
