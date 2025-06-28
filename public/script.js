@@ -1705,13 +1705,9 @@ async function analyzeStoryConcept() {
             influences: appState.influences
         };
         
-        // Use default template if none selected (AI feedback works at Step 1)
-        const templateForAnalysis = appState.selectedTemplate || 'three-act';
-        
+        // AI feedback only needs story input - no template data required
         const requestData = {
             storyInput: storyInput,
-            template: templateForAnalysis,
-            customTemplateData: appState.customTemplateData,
             projectPath: appState.projectPath
         };
         
@@ -1737,7 +1733,7 @@ async function analyzeStoryConcept() {
         // Store the analysis globally for apply suggestions
         window.lastAnalysis = data.analysis;
         
-        displayStoryAnalysis(data.analysis, data.promptAnalyzed, data.templateData);
+        displayStoryAnalysis(data.analysis, data.promptAnalyzed);
         showToast('Story analysis completed! Click "View Analyzed Prompt" to see exactly what was reviewed.', 'success');
         
     } catch (error) {
@@ -1751,13 +1747,12 @@ async function analyzeStoryConcept() {
     }
 }
 
-function displayStoryAnalysis(analysis, promptAnalyzed = null, templateData = null) {
+function displayStoryAnalysis(analysis, promptAnalyzed = null) {
     const resultsContainer = document.getElementById('storyAnalysisResults');
     const contentContainer = document.getElementById('analysisContent');
     
     // Store the analyzed prompt for modal display
     window.lastAnalyzedPrompt = promptAnalyzed;
-    window.lastAnalyzedTemplate = templateData;
     
     // Build the analysis display HTML
     const overallScoreClass = getScoreClass(analysis.overallScore);
@@ -2157,24 +2152,37 @@ function applySelectedImprovements() {
             switch(field) {
                 case 'title':
                     if (improvements.improvedTitle !== window.originalStory.title) {
-                        document.getElementById('storyTitle').value = improvements.improvedTitle;
-                        appState.storyInput.title = improvements.improvedTitle;
+                        // Update the current story concept
+                        if (appState.currentStoryConcept) {
+                            appState.currentStoryConcept.title = improvements.improvedTitle;
+                        }
+                        // Update story input
+                        if (appState.storyInput) {
+                            appState.storyInput.title = improvements.improvedTitle;
+                        }
                     }
                     break;
                 case 'logline':
                     if (improvements.improvedLogline !== window.originalStory.logline) {
-                        document.getElementById('storyLogline').value = improvements.improvedLogline;
-                        appState.storyInput.logline = improvements.improvedLogline;
+                        // Update the current story concept
+                        if (appState.currentStoryConcept) {
+                            appState.currentStoryConcept.logline = improvements.improvedLogline;
+                        }
+                        // Update story input
+                        if (appState.storyInput) {
+                            appState.storyInput.logline = improvements.improvedLogline;
+                        }
                     }
                     break;
                 case 'characters':
                     if (improvements.improvedCharacters !== (window.originalStory.characters || '')) {
                         // Update characters in the appropriate format
-                        appState.storyInput.characters = improvements.improvedCharacters;
+                        if (appState.storyInput) {
+                            appState.storyInput.characters = improvements.improvedCharacters;
+                        }
                         
                         // Update the influence prompt and display
                         buildInfluencePrompt();
-                        updateStoryConceptDisplay();
                     }
                     break;
             }

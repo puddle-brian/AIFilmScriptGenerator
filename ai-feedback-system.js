@@ -19,11 +19,10 @@ class AIFeedbackSystem {
   /**
    * Analyze a story concept for AI generation readiness
    * @param {Object} storyInput - Story concept data
-   * @param {Object} templateData - Template data for structure generation
    * @param {string} projectPath - Optional project path for context
    * @returns {Object} Analysis results with scores and suggestions
    */
-  async analyzeStoryConcept(storyInput, templateData, projectPath = null) {
+  async analyzeStoryConcept(storyInput, projectPath = null) {
     try {
       console.log('🔍 Analyzing story concept:', storyInput.title);
       
@@ -40,7 +39,6 @@ class AIFeedbackSystem {
         success: true,
         analysis: analysis,
         promptAnalyzed: storyAnalysisPrompt,
-        templateData: templateData,
         metadata: {
           analysisType: 'story_concept',
           timestamp: new Date().toISOString(),

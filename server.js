@@ -1451,34 +1451,18 @@ app.get('/api/template/:templateId', async (req, res) => {
 // AI Feedback System - Clean endpoint using modular system
 app.post('/api/analyze-story-concept', authenticateApiKey, async (req, res) => {
   try {
-    const { storyInput, template, customTemplateData, projectPath } = req.body;
-    
-
+    const { storyInput, projectPath } = req.body;
     
     if (!storyInput || !storyInput.title) {
       return res.status(400).json({ error: 'Story concept with title is required' });
     }
 
-    if (!template) {
-      return res.status(400).json({ error: 'Template selection is required for analysis' });
-    }
+    // AI feedback works independently of templates - it only analyzes story concept
+    console.log('🎭 AI feedback analysis - no template data needed');
 
-    // Load template data - same logic as structure generation
-    let templateData;
-    if (customTemplateData && customTemplateData.structure) {
-      console.log('🎭 Using customized template data for analysis');
-      templateData = customTemplateData;
-    } else {
-      console.log('🎭 Loading original template data from file for analysis');
-      const templatePath = path.join(__dirname, 'templates', `${template}.json`);
-      const templateContent = await fs.readFile(templatePath, 'utf8');
-      templateData = JSON.parse(templateContent);
-    }
-
-    // Use the modular AI feedback system with EXACT same prompt building
+    // Use the modular AI feedback system (templateData not needed for story concept analysis)
     const result = await aiFeedbackSystem.analyzeStoryConcept(
       storyInput, 
-      templateData,
       projectPath
     );
     
