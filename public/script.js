@@ -842,15 +842,10 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         const isEditing = window.editingLibraryEntry;
         let url, method;
         
-        console.log('saveToLibraryAndContinue - isEditing:', isEditing);
-        console.log('saveToLibraryAndContinue - type:', type);
-        console.log('saveToLibraryAndContinue - name:', name);
-        
         if (isEditing && !isEditing.isNewCharacterEntry) {
             // Editing existing entry
             method = 'PUT';
-            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${isEditing.key}`;
-            console.log('Using PUT method, URL:', url);
+            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${encodeURIComponent(isEditing.key)}`;
         } else {
             // Creating new entry
             method = 'POST';
@@ -1579,16 +1574,12 @@ async function editCharacterEntry(characterIndex) {
         return;
     }
     
-    console.log('Character to edit:', character);
-    
     // Get the config for characters
     const config = LIBRARY_TYPES.character;
     
     // Load user libraries to find the full data for this character
     const userLibraries = await loadUserLibraries();
     const characterEntries = userLibraries.characters || [];
-    
-    console.log('Character entries from library:', characterEntries);
     
     // Find the entry data - library entries can be strings or objects
     const entryData = characterEntries.find(entry => {
@@ -1602,8 +1593,6 @@ async function editCharacterEntry(characterIndex) {
         }
         return false;
     });
-    
-    console.log('Found entry data:', entryData);
     
     if (entryData) {
         // Extract the actual data based on the structure found
