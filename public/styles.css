@@ -5278,6 +5278,74 @@ h2 .progress-meter {
     animation: spin 1s linear infinite;
 }
 
+/* Template Recommendation Styling */
+.template-recommendation {
+    border: 2px solid #4F46E5;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #EEF2FF 0%, #F8FAFC 100%);
+}
+
+.template-recommendation .analysis-section-header h4 {
+    color: #4F46E5;
+}
+
+.recommended-template-name {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: #1E293B;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+}
+
+.alternative-templates {
+    margin-top: 15px;
+    padding: 12px;
+    background: #F8FAFC;
+    border-radius: 6px;
+    border-left: 3px solid #94A3B8;
+}
+
+.alternative-templates h5 {
+    margin: 0 0 8px 0;
+    font-size: 0.9em;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.alternative-templates ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.alternative-templates li {
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    color: #475569;
+}
+
+.template-action {
+    margin-top: 15px;
+    text-align: center;
+}
+
+.template-action .btn {
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    border: none;
+    padding: 10px 20px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.template-action .btn:hover {
+    background: linear-gradient(135deg, #4338CA 0%, #6D28D9 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
 @media (max-width: 768px) {
     .analysis-header {
         padding: 1rem 1.5rem;

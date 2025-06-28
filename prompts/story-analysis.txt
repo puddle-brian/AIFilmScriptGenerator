@@ -37,6 +37,9 @@ Be rigorous in your assessment. Look for:
 
 A score of 8+ should only be given to concepts that feel genuinely distinctive and execution-ready. Most concepts should score 5-7 as they need significant refinement to reach their potential.
 
+=== AVAILABLE STORY STRUCTURE TEMPLATES ===
+{{AVAILABLE_TEMPLATES}}
+
 === REQUIRED JSON FORMAT ===
 {
   "overallScore": [1-10],
@@ -58,6 +61,12 @@ A score of 8+ should only be given to concepts that feel genuinely distinctive a
   "toneAnalysis": {
     "execution": [1-10],
     "feedback": "MUST include specific execution guidance: Provide concrete examples of how this tone combination would manifest in actual scenes. Suggest specific techniques for maintaining consistency."
+  },
+  "templateRecommendation": {
+    "recommendedTemplate": "Exact name of the most suitable template from the list above",
+    "confidence": [1-10],
+    "reasoning": "MUST provide detailed explanation of why this template fits the story concept best, referencing specific story elements and template structure features",
+    "alternativeOptions": ["List 1-2 other suitable templates with brief explanations of when they might work better"]
   },
   "exceptionalPotential": {
     "score": [1-10],

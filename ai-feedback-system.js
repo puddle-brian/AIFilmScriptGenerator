@@ -67,6 +67,9 @@ class AIFeedbackSystem {
     const templatePath = path.join(__dirname, 'prompts', 'story-analysis.txt');
     const template = fs.readFileSync(templatePath, 'utf8');
     
+    // Load available story structure templates for recommendation
+    const availableTemplates = this._loadAvailableTemplates();
+    
     // Clean the template (remove comments and blank lines)
     const cleanedTemplate = template
       .split('\n')
@@ -80,12 +83,13 @@ class AIFeedbackSystem {
       .join('\n')
       .trim();
     
-    // Prepare placeholders with ONLY Step 1 data
+    // Prepare placeholders with ONLY Step 1 data + available templates
     const placeholders = {
       PROJECT_TITLE: storyInput.title,
       PROJECT_LOGLINE: storyInput.logline,
       PROJECT_CHARACTERS: storyInput.characters || 'No characters specified',
-      INFLUENCE_PROMPT: storyInput.influencePrompt || ''
+      INFLUENCE_PROMPT: storyInput.influencePrompt || '',
+      AVAILABLE_TEMPLATES: this._formatTemplatesForAnalysis(availableTemplates)
     };
     
     // Replace placeholders
@@ -320,6 +324,61 @@ Guidelines:
   async suggestImprovements(analysisResults) {
     // TODO: Implement improvement suggestions
     throw new Error('Improvement suggestions not yet implemented');
+  }
+
+  /**
+   * Load available story structure templates
+   * @private
+   */
+  _loadAvailableTemplates() {
+    const fs = require('fs');
+    const path = require('path');
+    
+    try {
+      const templatesDir = path.join(__dirname, 'templates');
+      const templateFiles = fs.readdirSync(templatesDir).filter(file => file.endsWith('.json'));
+      
+      const templates = [];
+      templateFiles.forEach(file => {
+        try {
+          const templatePath = path.join(templatesDir, file);
+          const templateData = JSON.parse(fs.readFileSync(templatePath, 'utf8'));
+          templates.push({
+            id: file.replace('.json', ''),
+            name: templateData.name,
+            description: templateData.description,
+            category: templateData.category || 'other',
+            structure: Object.keys(templateData.structure || {}).map(key => ({
+              key: key,
+              name: templateData.structure[key].name,
+              description: templateData.structure[key].description
+            }))
+          });
+        } catch (error) {
+          console.warn(`Failed to load template ${file}:`, error);
+        }
+      });
+      
+      return templates;
+    } catch (error) {
+      console.warn('Failed to load templates directory:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Format templates for AI analysis
+   * @private
+   */
+  _formatTemplatesForAnalysis(templates) {
+    if (!templates || templates.length === 0) {
+      return 'No templates available';
+    }
+
+    return templates.map(template => {
+      const structureSummary = template.structure.map(act => `${act.name}: ${act.description}`).join('; ');
+      return `${template.name} (${template.category}) - ${template.description}. Structure: ${structureSummary}`;
+    }).join('\n\n');
   }
 }
 

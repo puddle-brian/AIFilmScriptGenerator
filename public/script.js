@@ -1903,6 +1903,38 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
             <p class="apply-note">AI will improve your story concept based on the feedback above</p>
         </div>
         ` : ''}
+        
+        ${analysis.templateRecommendation ? `
+        <div class="analysis-section template-recommendation">
+            <div class="analysis-section-header">
+                <h4>🎯 Next Step: Recommended Template</h4>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.templateRecommendation.confidence)}" 
+                             style="width: ${analysis.templateRecommendation.confidence * 10}%"></div>
+                    </div>
+                    <span class="score-number">${analysis.templateRecommendation.confidence}/10</span>
+                </div>
+            </div>
+            <div class="template-recommendation-content">
+                <div class="recommended-template-name">${analysis.templateRecommendation.recommendedTemplate}</div>
+                <div class="analysis-feedback">${analysis.templateRecommendation.reasoning}</div>
+                ${analysis.templateRecommendation.alternativeOptions && analysis.templateRecommendation.alternativeOptions.length > 0 ? `
+                <div class="alternative-templates">
+                    <h5>Alternative Options:</h5>
+                    <ul>
+                        ${analysis.templateRecommendation.alternativeOptions.map(alt => `<li>${alt}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                <div class="template-action">
+                    <button class="btn btn-primary" onclick="applyRecommendedTemplate('${analysis.templateRecommendation.recommendedTemplate}')">
+                        🎯 Use This Template (Continue to Step 2)
+                    </button>
+                </div>
+            </div>
+        </div>
+        ` : ''}
     `;
     
     // Show the results
@@ -1910,6 +1942,41 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
     
     // Scroll to the analysis results
     resultsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Apply recommended template from AI feedback
+async function applyRecommendedTemplate(templateName) {
+    try {
+        // Find the template ID by name
+        const templateId = findTemplateIdByName(templateName);
+        
+        if (!templateId) {
+            showToast(`Template "${templateName}" not found`, 'error');
+            return;
+        }
+        
+        // Load and select the template
+        await loadTemplates();
+        selectTemplate(templateId);
+        
+        // Update the UI and project state
+        updateTemplatePageForSelection();
+        
+        // Auto-save the change
+        if (window.autoSaveManager) {
+            window.autoSaveManager.markDirty();
+        }
+        
+        // Show success message
+        showToast(`Applied recommended template: ${templateName}`, 'success');
+        
+        // Directly navigate to Step 2 to review the selected template
+        await goToStep(2);
+        
+    } catch (error) {
+        console.error('Error applying recommended template:', error);
+        showToast('Failed to apply recommended template', 'error');
+    }
 }
 
 function getScoreClass(score) {
