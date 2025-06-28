@@ -1607,7 +1607,7 @@ async function editCharacterEntry(characterIndex) {
             actualKey = entryData.entry_key;
         } else if (entryData.name) {
             actualData = { name: entryData.name, description: entryData.description || '' };
-            actualKey = entryData.entry_key || entryData.key;
+            actualKey = entryData.entry_key;
         } else {
             actualData = { name: character.name, description: character.description || '' };
             actualKey = character.name.toLowerCase().replace(/\s+/g, '_');
@@ -2912,9 +2912,12 @@ async function loadUserLibraries() {
                 
                 if (response.ok) {
                     const libraries = await response.json();
-                    // For characters, preserve full data structure; for others, just get name
+                    // For characters, preserve full data structure including entry_key; for others, just get name
                     if (type === 'characters') {
-                        userLibraries[type] = libraries.map(lib => lib.entry_data);
+                        userLibraries[type] = libraries.map(lib => ({
+                            ...lib.entry_data,
+                            entry_key: lib.entry_key
+                        }));
                     } else {
                         userLibraries[type] = libraries.map(lib => lib.entry_data.name);
                     }
