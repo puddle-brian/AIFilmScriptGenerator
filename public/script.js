@@ -1228,9 +1228,21 @@ function addNewToLibrary(type) {
 // Enhanced universal modal to handle both save-existing and create-new flows
 function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
     
-    const modalTitle = isNewEntry ? `Add New ${config.displayName}` : `Save ${config.displayName} to Library`;
+    const modalTitle = isNewEntry ? `Add New ${
+        type === 'director' ? 'Directional Style' : 
+        type === 'screenwriter' ? 'Prose Style' : 
+        type === 'film' ? 'Essence' : 
+        type === 'tone' ? 'Tone & Atmosphere' : 
+        config.displayName
+    }` : `Save ${config.displayName} to Library`;
     const modalMessage = isNewEntry ? 
-        `Create a new ${config.singular} for your library:` :
+        `Create a new ${
+            type === 'director' ? 'directional influence' : 
+            type === 'screenwriter' ? 'prose influence' : 
+            type === 'film' ? 'creative influence' : 
+            type === 'tone' ? 'tone influence' : 
+            config.singular
+        } for your library:` :
         `Would you like to save "<strong>${value}</strong>" to your ${config.plural} library for future projects?`;
     
     // Create prompt context help text based on type
@@ -1276,7 +1288,11 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
                             </div>
                         ` : `
                             <div class="form-group">
-                                <label for="universalLibraryEntryName">${config.displayName} Influence</label>
+                                <label for="universalLibraryEntryName">${type === 'director' ? 'Direction reminiscent of...' : 
+                                    type === 'screenwriter' ? 'Prose style that invokes...' : 
+                                    type === 'film' ? 'Channeling the essence of...' : 
+                                    type === 'tone' ? 'Tone and atmosphere inspired by...' : 
+                                    `${config.displayName} Influence`}</label>
                                 <input type="text" id="universalLibraryEntryName" value="${value}" required 
                                     placeholder="${config.placeholder}">
                                 <small class="form-help">${promptHelpText}</small>
