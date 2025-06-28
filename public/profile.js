@@ -658,13 +658,29 @@ function getLibraryTypeConfig(type) {
 function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
     console.log('Profile: Showing universal library modal for', type);
     
+    // Check if this is an edit operation (existing entry from library)
+    const isEdit = window.editingLibraryEntry && !isNewEntry;
+    
     const modalTitle = isNewEntry ? `Add New ${
         type === 'director' ? 'Directional Style' : 
         type === 'screenwriter' ? 'Prose Style' : 
         type === 'film' ? 'Essence' : 
         type === 'tone' ? 'Tone & Atmosphere' : 
         config.displayName
-    }` : `Save ${config.displayName} to Library`;
+    }` : isEdit ? `Edit ${
+        type === 'director' ? 'Directional Style' : 
+        type === 'screenwriter' ? 'Prose Style' : 
+        type === 'film' ? 'Essence' : 
+        type === 'tone' ? 'Tone & Atmosphere' : 
+        config.displayName
+    }` : `Save ${
+        type === 'director' ? 'Directional Style' : 
+        type === 'screenwriter' ? 'Prose Style' : 
+        type === 'film' ? 'Essence' : 
+        type === 'tone' ? 'Tone & Atmosphere' : 
+        config.displayName
+    } to Library`;
+    
     const modalMessage = isNewEntry ? 
         `Create a new ${
             type === 'director' ? 'directional influence' : 
@@ -672,8 +688,21 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
             type === 'film' ? 'creative influence' : 
             type === 'tone' ? 'tone influence' : 
             config.singular
-        } for your library:` :
-        `Would you like to save "<strong>${value}</strong>" to your ${config.plural} library for future projects?`;
+        } for your library:` : isEdit ? 
+        `Edit this ${
+            type === 'director' ? 'directional influence' : 
+            type === 'screenwriter' ? 'prose influence' : 
+            type === 'film' ? 'creative influence' : 
+            type === 'tone' ? 'tone influence' : 
+            config.singular
+        }:` :
+        `Would you like to save "<strong>${value}</strong>" to your ${
+            type === 'director' ? 'directional styles' : 
+            type === 'screenwriter' ? 'prose styles' : 
+            type === 'film' ? 'essences' : 
+            type === 'tone' ? 'tones & atmosphere' : 
+            config.plural
+        } library for future projects?`;
     
     // Create prompt context help text based on type
     let promptHelpText = '';
@@ -731,7 +760,7 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="hideUniversalLibrarySaveModal()">Cancel</button>
                     <button class="btn btn-primary" onclick="saveToLibraryAndContinue('${type}', ${isNewEntry})">
-                        ${isNewEntry ? 'Add to Library' : 'Save to Library'}
+                        ${isNewEntry ? 'Add to Library' : isEdit ? 'Update' : 'Save to Library'}
                     </button>
                 </div>
             </div>
