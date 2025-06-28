@@ -1394,6 +1394,9 @@ function updateInfluenceTags(type) {
         `;
         container.appendChild(tag);
     });
+    
+    // Update autogenerate button visibility when influences change
+    updateAutoGenerateButtonVisibility();
 }
 
 function updateCharacterTags() {
@@ -1411,6 +1414,9 @@ function updateCharacterTags() {
         `;
         container.appendChild(tag);
     });
+    
+    // Update autogenerate button visibility when characters change
+    updateAutoGenerateButtonVisibility();
 }
 
 function updateStoryConceptDisplay() {
@@ -1449,6 +1455,9 @@ function updateStoryConceptDisplay() {
     if (typeof updateAllProgressMeters === 'function') {
         updateAllProgressMeters();
     }
+    
+    // Update autogenerate button visibility when story concept changes
+    updateAutoGenerateButtonVisibility();
 }
 
 function editStoryConcept() {
@@ -2065,6 +2074,81 @@ function getSelectedModel() {
     return appState.selectedModel;
 }
 
+// Check if project has any existing content (check for actual content, not just empty objects)
+function hasExistingContent() {
+    // Check for actual content in generated objects
+    const hasGeneratedStructure = appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0;
+    const hasGeneratedPlotPoints = appState.generatedPlotPoints && Object.keys(appState.generatedPlotPoints).length > 0;
+    const hasGeneratedScenes = appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0;
+    const hasGeneratedDialogues = appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0;
+    
+    return !!(
+        hasGeneratedStructure ||
+        hasGeneratedPlotPoints ||
+        hasGeneratedScenes ||
+        hasGeneratedDialogues ||
+        appState.projectPath ||
+        appState.isLoadedProject ||
+        (appState.storyInput && (appState.storyInput.title || appState.storyInput.logline)) ||
+        (appState.selectedTemplate && appState.selectedTemplate !== '') ||
+        (appState.projectCharacters && appState.projectCharacters.length > 0) ||
+        (appState.influences && (
+            appState.influences.directors?.length > 0 ||
+            appState.influences.screenwriters?.length > 0 ||
+            appState.influences.films?.length > 0 ||
+            appState.influences.tones?.length > 0
+        ))
+    );
+}
+
+// Update both button visibilities based on project state  
+function updateAutoGenerateButtonVisibility() {
+    const autoGenerateBtn = document.getElementById('autoGenerateBtn');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    
+    // Check if we have story concept content specifically
+    const hasStoryConcept = !!(appState.storyInput && (appState.storyInput.title || appState.storyInput.logline));
+    const hasAnyContent = hasExistingContent();
+    
+    // 🔧 DEBUG: Log the current state
+    console.log('🔧 Button visibility check:', {
+        hasStoryConcept,
+        hasAnyContent,
+        projectPath: appState.projectPath,
+        isLoadedProject: appState.isLoadedProject,
+        storyInputTitle: appState.storyInput?.title,
+        storyInputLogline: appState.storyInput?.logline,
+        selectedTemplate: appState.selectedTemplate,
+        charactersCount: appState.projectCharacters?.length || 0,
+        influencesDirectors: appState.influences?.directors?.length || 0,
+        influencesScreenwriters: appState.influences?.screenwriters?.length || 0,
+        influencesFilms: appState.influences?.films?.length || 0,
+        influencesTones: appState.influences?.tones?.length || 0
+    });
+    
+    // Autogenerate button: show only for brand new projects (no content at all)
+    if (autoGenerateBtn) {
+        if (hasAnyContent) {
+            autoGenerateBtn.style.display = 'none';
+            console.log('🔧 Hiding autogenerate button (has content)');
+        } else {
+            autoGenerateBtn.style.display = 'inline-block';
+            console.log('🔧 Showing autogenerate button (no content)');
+        }
+    }
+    
+    // AI feedback button: show only when there's a story concept to analyze
+    if (analyzeBtn) {
+        if (hasStoryConcept) {
+            analyzeBtn.style.display = 'inline-block';
+            console.log('🔧 Showing AI feedback button (has story concept)');
+        } else {
+            analyzeBtn.style.display = 'none';
+            console.log('🔧 Hiding AI feedback button (no story concept)');
+        }
+    }
+}
+
 // Auto-generation for debugging
 async function autoGenerate() {
     console.log('🎲 AutoGenerate: Starting...');
@@ -2224,9 +2308,9 @@ async function initializeApp() {
     // Populate dropdowns from JSON files
     await populateDropdowns();
     
-    // Load from localStorage if available
+    // Load from localStorage if available (unless starting fresh)
     const savedState = localStorage.getItem('filmScriptGenerator');
-    if (savedState) {
+    if (savedState && !window.startingFreshProject) {
         try {
             const parsed = JSON.parse(savedState);
             console.log('Parsed saved state:', {
@@ -2256,6 +2340,7 @@ async function initializeApp() {
             updateInfluenceTags('film');
             updateInfluenceTags('tone');
             updateStoryConceptDisplay();
+            updateAutoGenerateButtonVisibility();
             
             // Restore template selection UI if a template was selected
             if (appState.selectedTemplate && appState.availableTemplates) {
@@ -2366,6 +2451,8 @@ async function initializeApp() {
         }, 500);
     }
     
+    // Update button visibility after initialization
+    updateAutoGenerateButtonVisibility();
 
 }
 
@@ -6845,7 +6932,12 @@ function clearAllContentContainers() {
 
 // Helper function to start a fresh project
 function startFreshProject() {
-    // Clear all app state
+    console.log('🆕 Starting completely fresh project...');
+    
+    // Set flag to prevent automatic project restoration
+    window.startingFreshProject = true;
+    
+    // Clear all app state completely
     Object.assign(appState, {
         currentStep: 1,
         storyInput: {},
@@ -6856,10 +6948,13 @@ function startFreshProject() {
         generatedDialogues: {},
         projectId: null,
         projectPath: null,
+        isLoadedProject: false,  // Explicitly set to false
+        projectCharacters: [],   // Clear characters
         influences: {
             directors: [],
             screenwriters: [],
-            films: []
+            films: [],
+            tones: []            // Clear tones too
         },
         customPrompt: null,
         originalPrompt: null,
@@ -6867,7 +6962,12 @@ function startFreshProject() {
         plotPoints: {},
         totalPlotPoints: null,  // Reset to null so template default will be used
         manuallySetPlotPoints: {},  // Reset manual tracking
-        currentActPlotPoints: {}    // Reset current values tracking
+        currentActPlotPoints: {},    // Reset current values tracking
+        currentStoryConcept: null,   // Clear story concept
+        generatedPlotPoints: {},     // Clear plot points
+        user: appState.user,         // Preserve user data
+        apiKey: appState.apiKey,     // Preserve API key
+        isAuthenticated: appState.isAuthenticated  // Preserve auth state
     });
     
     // Clear template UI selection state
@@ -6919,7 +7019,24 @@ function startFreshProject() {
     // Clear localStorage
     localStorage.removeItem('filmScriptGenerator');
     
+    // Update autogenerate button visibility (should show for fresh project)
+    console.log('🆕 About to update button visibility for fresh project');
+    updateAutoGenerateButtonVisibility();
+    
+    // Force ensure autogenerate button is visible for fresh project
+    const autoGenerateBtn = document.getElementById('autoGenerateBtn');
+    if (autoGenerateBtn) {
+        autoGenerateBtn.style.display = 'inline-block';
+        console.log('🆕 Forced autogenerate button visible');
+    }
+    
     showToast('Ready to create your new project!', 'success');
+    
+    // Clear the flag after a short delay to allow UI updates
+    setTimeout(() => {
+        window.startingFreshProject = false;
+        console.log('🆕 Fresh project flag cleared');
+    }, 1000);
 }
 
 // Loading functions
@@ -7318,6 +7435,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     if (showToastMessage) {
         showToast(`Project "${projectData.storyInput.title}" loaded successfully!`, 'success');
     }
+    
+    // Update autogenerate button visibility (should hide for loaded projects)
+    updateAutoGenerateButtonVisibility();
 }
 
 // Show scene prompt modal
