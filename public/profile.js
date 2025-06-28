@@ -666,11 +666,11 @@ function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) 
     // Create prompt context help text based on type
     let promptHelpText = '';
     if (type === 'director') {
-        promptHelpText = `This will appear in prompts as: "In the directorial style of <em>[what you enter]</em>, ..."`;
+        promptHelpText = `This will appear in prompts as: "With direction reminiscent of <em>[what you enter]</em>, ..."`;
     } else if (type === 'screenwriter') {
-        promptHelpText = `This will appear in prompts as: "with screenplay influences from <em>[what you enter]</em>, ..."`;
+        promptHelpText = `This will appear in prompts as: "with prose style that invokes <em>[what you enter]</em>, ..."`;
     } else if (type === 'film') {
-        promptHelpText = `This will appear in prompts as: "drawing inspiration from films like <em>[what you enter]</em>, ..."`;
+        promptHelpText = `This will appear in prompts as: "channeling the essence of <em>[what you enter]</em>, ..."`;
     } else if (type === 'character') {
         promptHelpText = `Characters use both name and description in prompts for detailed character development.`;
     } else if (type === 'tone') {
