@@ -5189,6 +5189,13 @@ async function generateAllScenes() {
                 
                 appState.generatedScenes[structureKey] = allScenes;
                 
+                // Update preview with the latest scene
+                if (allScenes && allScenes.length > 0) {
+                    const latestScene = allScenes[allScenes.length - 1];
+                    const sceneText = latestScene.scene || latestScene.description || 'Scene generated';
+                    progressTracker.updatePreview(sceneText, `Act ${actNumber} Latest Scene`);
+                }
+                
                 // Increment progress step
                 progressTracker.incrementStep(`Generated ${allScenes.length} scenes`);
             } else {
@@ -5448,6 +5455,12 @@ async function generateAllPlotPoints() {
                 
                 // Display the generated plot points immediately
                 displayElementPlotPoints(structureKey, data.plotPoints);
+                
+                // Update preview with the latest plot point
+                if (data.plotPoints && data.plotPoints.length > 0) {
+                    const latestPlotPoint = data.plotPoints[data.plotPoints.length - 1];
+                    progressTracker.updatePreview(latestPlotPoint, `Act ${actNumber} Plot Point`);
+                }
                 
                 // Increment progress step
                 progressTracker.incrementStep(`Generated ${data.plotPoints.length} plot points`);
@@ -6419,6 +6432,11 @@ async function generateAllDialogue() {
                 
                 // Store dialogue in app state
                 appState.generatedDialogues[sceneId] = data.dialogue;
+                
+                // Update preview with the latest dialogue
+                if (data.dialogue) {
+                    progressTracker.updatePreview(data.dialogue, `Scene ${sceneNumber} Dialogue`);
+                }
                 
                 // Increment progress step
                 progressTracker.incrementStep(`Generated dialogue for "${scene.title || 'Untitled'}"`);
@@ -7678,6 +7696,29 @@ const progressTracker = {
         }
     },
     
+    updatePreview(content, label = 'Latest') {
+        if (!this.isActive || !content) return;
+        
+        const previewElement = document.querySelector('.progress-preview');
+        const previewContentElement = document.querySelector('.preview-content');
+        const previewLabelElement = document.querySelector('.preview-label');
+        
+        if (previewElement && previewContentElement) {
+            // Show full content without truncation
+            previewContentElement.textContent = content;
+            
+            if (previewLabelElement) {
+                previewLabelElement.textContent = `${label}:`;
+            }
+            
+            // Show the preview area
+            previewElement.style.display = 'block';
+            
+            // Scroll to bottom if content overflows
+            previewElement.scrollTop = previewElement.scrollHeight;
+        }
+    },
+    
     showEnhancedLoading(title) {
         // Target the loading overlay container instead of the p element
         if (!elements.loadingOverlay) {
@@ -7693,6 +7734,10 @@ const progressTracker = {
                     <div class="progress-bar" style="width: 0%"></div>
                 </div>
                 <div class="progress-details">0/${this.totalSteps} ${this.unitName} completed</div>
+                <div class="progress-preview" style="margin-top: 12px; padding: 12px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.4; color: rgba(255, 255, 255, 0.95); display: none; white-space: pre-wrap; word-wrap: break-word;">
+                    <div class="preview-label" style="font-weight: 600; margin-bottom: 4px; color: rgba(255, 255, 255, 0.7);">Latest:</div>
+                    <div class="preview-content"></div>
+                </div>
                 <div class="progress-actions" style="margin-top: 16px; display: flex; justify-content: center;">
                     <button onclick="progressTracker.cancel()" style="background: rgba(239, 68, 68, 0.9) !important; color: white !important; border: none !important; padding: 8px 16px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: 500 !important; cursor: pointer !important; transition: all 0.2s ease !important;">Cancel Generation</button>
                 </div>
