@@ -39,7 +39,7 @@ CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
 7. Character development should be evident through their changing behavior and choices across acts
 
 🆕 HANDLING USER CREATIVE DIRECTIONS:
-8. When an act has "✨ User Creative Direction" in the template structure, you MUST incorporate those specific creative elements into your generated description for that act
+8. When an act has "User Creative Direction" in the template structure, you MUST incorporate those specific creative elements into your generated description for that act
 9. These directions are mandatory creative constraints (like "Blue switch up: the world transforms to a blue hue")
 10. Blend these user directions seamlessly with the template's structural purpose - don't just append them
 11. The user direction should influence HOW the act's events unfold, not replace the act's structural function
