@@ -6591,8 +6591,27 @@ async function exportScript(format = 'text') {
             const data = await response.json();
             downloadFile(JSON.stringify(data, null, 2), `${appState.storyInput.title || 'script'}.json`, 'application/json');
         } else {
-            const scriptText = await response.text();
-            downloadFile(scriptText, `${appState.storyInput.title || 'script'}.txt`, 'text/plain');
+            // Let the browser handle the download using server's headers (preserves correct filename and content-type)
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            
+            // Extract filename from server response headers if available
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = `${appState.storyInput.title || 'script'}.txt`; // fallback
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
         
         // Mark as exported and update step indicators

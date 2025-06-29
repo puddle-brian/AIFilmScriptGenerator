@@ -4413,11 +4413,10 @@ app.post('/api/export', async (req, res) => {
       fountain += `Draft date: ${new Date().toLocaleDateString()}\n\n`;
       fountain += 'FADE IN:\n\n';
       
-      if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach(dialogueData => {
-          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
-          fountain += convertToFountain(dialogueText) + '\n\n';
-        });
+      // Use the same content generation as other formats for v2.0 database format
+      const scriptContent = generateContentFromV2Format(data);
+      if (scriptContent && scriptContent.trim()) {
+        fountain += convertToFountain(scriptContent) + '\n\n';
       }
       
       fountain += 'FADE OUT.\n\nTHE END';
@@ -4463,11 +4462,10 @@ app.post('/api/export', async (req, res) => {
         </Paragraph>
 `;
       
-      if (data.dialogueContent && data.dialogueContent.length > 0) {
-        data.dialogueContent.forEach(dialogueData => {
-          const dialogueText = typeof dialogueData === 'string' ? dialogueData : dialogueData.content;
-          fdx += convertToFinalDraft(dialogueText);
-        });
+      // Use the same content generation as other formats for v2.0 database format
+      const scriptContent = generateContentFromV2Format(data);
+      if (scriptContent && scriptContent.trim()) {
+        fdx += convertToFinalDraft(scriptContent);
       }
       
       fdx += `    </Content>
