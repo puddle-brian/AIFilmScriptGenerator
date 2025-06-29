@@ -3376,7 +3376,8 @@ async function generateStructureWithCustomPrompt() {
                 storyInput: storyInputForServer,
                 template: appState.selectedTemplate,
                 customPrompt: appState.customPrompt,
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                existingProjectPath: appState.projectPath || null // 🔧 Send existing project path if regenerating
             })
         });
         
@@ -3482,7 +3483,8 @@ async function generateStructure() {
                 storyInput: storyInputForServer,
                 template: appState.selectedTemplate,
                 customTemplateData: customTemplateData, // 🔧 Send order-corrected template data
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                existingProjectPath: appState.projectPath || null // 🔧 Send existing project path if regenerating
             })
         });
         

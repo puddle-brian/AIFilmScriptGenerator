@@ -1585,7 +1585,7 @@ app.post('/api/preview-prompt', authenticateApiKey, async (req, res) => {
 app.post('/api/generate-structure-custom', async (req, res) => {
   try {
     console.log('Received custom structure generation request:', req.body);
-    const { storyInput, template, customPrompt, model = "claude-sonnet-4-20250514" } = req.body;
+    const { storyInput, template, customPrompt, model = "claude-sonnet-4-20250514", existingProjectPath } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -1627,11 +1627,48 @@ app.post('/api/generate-structure-custom', async (req, res) => {
       };
     }
 
-    // Auto-save the generated structure locally
-    const customProjectId = uuidv4();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
-    const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+    // 🔧 Use existing project path if regenerating, otherwise create new one
+    let customProjectId, projectFolderName;
+    
+    if (existingProjectPath) {
+      // Regenerating: use existing project path and extract project ID from database
+      projectFolderName = existingProjectPath;
+      console.log('🔄 Regenerating custom structure for existing project:', projectFolderName);
+      
+      // Try to get existing project ID from database
+      try {
+        const username = req.user.username;
+        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (userResult.rows.length > 0) {
+          const userId = userResult.rows[0].id;
+          const projectResult = await dbClient.query(
+            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+            [userId, projectFolderName]
+          );
+          if (projectResult.rows.length > 0) {
+            const existingContext = JSON.parse(projectResult.rows[0].project_context);
+            customProjectId = existingContext.projectId;
+            console.log('✅ Found existing custom project ID:', customProjectId);
+          } else {
+            // Fallback: generate new ID if project not found
+            customProjectId = uuidv4();
+            console.log('⚠️ Custom project not found in database, generating new ID:', customProjectId);
+          }
+        } else {
+          customProjectId = uuidv4();
+        }
+      } catch (error) {
+        console.error('Error retrieving existing custom project ID:', error);
+        customProjectId = uuidv4();
+      }
+    } else {
+      // New project: generate new ID and path
+      customProjectId = uuidv4();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
+      projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+      console.log('🆕 Creating new custom project:', projectFolderName);
+    }
     
     const projectDir = path.join(__dirname, 'generated', projectFolderName);
     await fs.mkdir(projectDir, { recursive: true });
@@ -1768,7 +1805,7 @@ Project ID: ${customProjectId}
       structure: structureData,
       template: templateData,
       storyInput,
-      projectId: structureProjectId,
+      projectId: customProjectId,
       projectPath: projectFolderName,
       savedLocally: true,
       customPromptUsed: true
@@ -1788,7 +1825,7 @@ Project ID: ${customProjectId}
 app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async (req, res) => {
   try {
     console.log('Received structure generation request:', req.body);
-    const { storyInput, template, customTemplateData, model = "claude-sonnet-4-20250514" } = req.body;
+    const { storyInput, template, customTemplateData, model = "claude-sonnet-4-20250514", existingProjectPath } = req.body;
     
     if (!process.env.ANTHROPIC_API_KEY) {
       console.error('ANTHROPIC_API_KEY not found in environment variables');
@@ -1810,11 +1847,48 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     // Use our new prompt builder system
     const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
 
-    // Auto-save the generated structure locally
-    const structureProjectId = uuidv4();
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
-    const projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+    // 🔧 Use existing project path if regenerating, otherwise create new one
+    let structureProjectId, projectFolderName;
+    
+    if (existingProjectPath) {
+      // Regenerating: use existing project path and extract project ID from database
+      projectFolderName = existingProjectPath;
+      console.log('🔄 Regenerating structure for existing project:', projectFolderName);
+      
+      // Try to get existing project ID from database
+      try {
+        const username = req.user.username;
+        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (userResult.rows.length > 0) {
+          const userId = userResult.rows[0].id;
+          const projectResult = await dbClient.query(
+            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+            [userId, projectFolderName]
+          );
+          if (projectResult.rows.length > 0) {
+            const existingContext = JSON.parse(projectResult.rows[0].project_context);
+            structureProjectId = existingContext.projectId;
+            console.log('✅ Found existing project ID:', structureProjectId);
+          } else {
+            // Fallback: generate new ID if project not found
+            structureProjectId = uuidv4();
+            console.log('⚠️ Project not found in database, generating new ID:', structureProjectId);
+          }
+        } else {
+          structureProjectId = uuidv4();
+        }
+      } catch (error) {
+        console.error('Error retrieving existing project ID:', error);
+        structureProjectId = uuidv4();
+      }
+    } else {
+      // New project: generate new ID and path
+      structureProjectId = uuidv4();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
+      projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
+      console.log('🆕 Creating new project:', projectFolderName);
+    }
 
     // Get appropriate max_tokens for the model
     function getMaxTokensForModel(modelName) {
@@ -1856,23 +1930,54 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
       console.error('JSON parse error:', parseError);
       console.log('Raw response that failed to parse:', completion.content[0].text);
       
-      // Try to fix common JSON issues like nested quotes
+      // Try to fix common JSON issues like nested quotes and control characters
       try {
         let fixedText = completion.content[0].text;
+        
+        // Fix control characters that break JSON parsing
+        fixedText = fixedText.replace(/[\x00-\x1F\x7F]/g, '');
+        
         // Fix nested quotes in descriptions
         fixedText = fixedText.replace(/"([^"]*)"([^"]*)"([^"]*)"/g, '"$1\\"$2\\"$3"');
+        
         // Fix trailing spaces and newlines in property values
         fixedText = fixedText.replace(/:\s*"([^"]+)"\s*([,}])/g, ': "$1"$2');
         
+        // Fix line breaks in JSON strings
+        fixedText = fixedText.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+        
+        // Fix common JSON structure issues
+        fixedText = fixedText.replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
+        
         structureData = JSON.parse(fixedText);
-        console.log('✅ Fixed JSON parsing with quote correction');
+        console.log('✅ Fixed JSON parsing with enhanced cleanup');
       } catch (secondParseError) {
         console.error('Second JSON parse attempt failed:', secondParseError);
-        // Fallback if AI doesn't return valid JSON
-        structureData = {
-          error: "Failed to parse AI response",
-          rawResponse: completion.content[0].text
-        };
+        console.log('Attempted to parse:', completion.content[0].text.substring(0, 500) + '...');
+        
+        // Final fallback: try to extract just the structure part
+        try {
+          const structureMatch = completion.content[0].text.match(/\{[\s\S]*\}/);
+          if (structureMatch) {
+            let extractedJson = structureMatch[0];
+            // Apply same fixes
+            extractedJson = extractedJson.replace(/[\x00-\x1F\x7F]/g, '');
+            extractedJson = extractedJson.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
+            extractedJson = extractedJson.replace(/,(\s*[}\]])/g, '$1');
+            
+            structureData = JSON.parse(extractedJson);
+            console.log('✅ Fixed JSON parsing with structure extraction');
+          } else {
+            throw new Error('No valid JSON structure found');
+          }
+        } catch (finalParseError) {
+          console.error('Final JSON parse attempt failed:', finalParseError);
+          // Fallback if AI doesn't return valid JSON
+          structureData = {
+            error: "Failed to parse AI response",
+            rawResponse: completion.content[0].text
+          };
+        }
       }
     }
 
