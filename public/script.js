@@ -5191,15 +5191,25 @@ async function generateAllScenes() {
                 
                 // Update preview with ALL scenes for this act
                 if (allScenes && allScenes.length > 0) {
-                    // Combine all scenes into one preview entry for this act
-                    const allScenesText = allScenes.map((scene, index) => {
-                        const sceneText = scene.scene || scene.description || scene.title || 'Scene generated';
-                        const sceneNumber = allScenes.length === 1 ? '' : ` ${index + 1}`;
-                        return `SCENE${sceneNumber}:\n${sceneText}`;
-                    }).join('\n\n');
+                    // Group scenes by plot point to get proper numbering
+                    const scenesByPlotPoint = {};
+                    allScenes.forEach(scene => {
+                        const plotPointIndex = scene.plotPointIndex || 0;
+                        if (!scenesByPlotPoint[plotPointIndex]) {
+                            scenesByPlotPoint[plotPointIndex] = [];
+                        }
+                        scenesByPlotPoint[plotPointIndex].push(scene);
+                    });
                     
-                    const label = `Act ${actNumber} - ${allScenes.length} Scene${allScenes.length === 1 ? '' : 's'}`;
-                    progressTracker.updatePreview(allScenesText, label);
+                    // Display scenes with proper hierarchical numbering
+                    Object.keys(scenesByPlotPoint).forEach(plotPointIndex => {
+                        const plotPointScenes = scenesByPlotPoint[plotPointIndex];
+                        plotPointScenes.forEach((scene, sceneIndex) => {
+                            const sceneText = scene.scene || scene.description || scene.title || 'Scene generated';
+                            const hierarchicalNumber = `${actNumber}.${parseInt(plotPointIndex) + 1}.${sceneIndex + 1}`;
+                            progressTracker.updatePreview(sceneText, hierarchicalNumber);
+                        });
+                    });
                 }
                 
                 // Increment progress step
@@ -5464,14 +5474,10 @@ async function generateAllPlotPoints() {
                 
                 // Update preview with ALL plot points for this act
                 if (data.plotPoints && data.plotPoints.length > 0) {
-                    // Combine all plot points into one preview entry for this act
-                    const allPlotPointsText = data.plotPoints.map((plotPoint, index) => {
-                        const pointNumber = data.plotPoints.length === 1 ? '' : ` ${index + 1}`;
-                        return `PLOT POINT${pointNumber}:\n${plotPoint}`;
-                    }).join('\n\n');
-                    
-                    const label = `Act ${actNumber} - ${data.plotPoints.length} Plot Point${data.plotPoints.length === 1 ? '' : 's'}`;
-                    progressTracker.updatePreview(allPlotPointsText, label);
+                    data.plotPoints.forEach((plotPoint, index) => {
+                        const hierarchicalNumber = `${actNumber}.${index + 1}`;
+                        progressTracker.updatePreview(plotPoint, hierarchicalNumber);
+                    });
                 }
                 
                 // Increment progress step
@@ -6410,11 +6416,44 @@ async function generateAllDialogue() {
         // Start hierarchical progress tracking
         progressTracker.start(allScenes.length, 'Generating Dialogue', 'scenes');
         
+        // Create scene numbering map to track hierarchical position
+        const sceneNumberingMap = {};
+        Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
+            if (Array.isArray(sceneGroup)) {
+                // Get act number
+                const actKeys = Object.keys(appState.generatedStructure);
+                const actNumber = actKeys.indexOf(structureKey) + 1;
+                
+                // Group scenes by plot point to get proper numbering
+                const scenesByPlotPoint = {};
+                sceneGroup.forEach((scene, index) => {
+                    const plotPointIndex = scene.plotPointIndex || 0;
+                    if (!scenesByPlotPoint[plotPointIndex]) {
+                        scenesByPlotPoint[plotPointIndex] = [];
+                    }
+                    scenesByPlotPoint[plotPointIndex].push({ scene, originalIndex: index });
+                });
+                
+                // Create hierarchical numbering for each scene
+                Object.keys(scenesByPlotPoint).forEach(plotPointIndex => {
+                    const plotPointScenes = scenesByPlotPoint[plotPointIndex];
+                    plotPointScenes.forEach(({ originalIndex }, sceneIndex) => {
+                        const sceneId = `${structureKey}-${originalIndex}`;
+                        const hierarchicalNumber = `${actNumber}.${parseInt(plotPointIndex) + 1}.${sceneIndex + 1}`;
+                        sceneNumberingMap[sceneId] = hierarchicalNumber;
+                    });
+                });
+            }
+        });
+        
         // Generate dialogue for each scene sequentially
         for (let i = 0; i < allScenes.length; i++) {
             const sceneData = allScenes[i];
             const { structureKey, sceneIndex, scene, sceneId } = sceneData;
             const sceneNumber = i + 1;
+            
+            // Get hierarchical number for this scene
+            const hierarchicalNumber = sceneNumberingMap[sceneId] || sceneNumber.toString();
             
             console.log(`Generating dialogue for scene: ${scene.title || 'Untitled'} (${sceneId})`);
             
@@ -6445,10 +6484,9 @@ async function generateAllDialogue() {
                 // Store dialogue in app state
                 appState.generatedDialogues[sceneId] = data.dialogue;
                 
-                // Update preview with the dialogue for this scene
+                // Update preview with the dialogue for this scene using hierarchical numbering
                 if (data.dialogue) {
-                    const sceneTitle = scene.title || `Scene ${sceneNumber}`;
-                    progressTracker.updatePreview(data.dialogue, `${sceneTitle} - Dialogue`);
+                    progressTracker.updatePreview(data.dialogue, hierarchicalNumber);
                 }
                 
                 // Increment progress step
