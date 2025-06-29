@@ -2871,8 +2871,8 @@ async function populateDropdowns() {
             console.log(`PopulateDropdowns: Adding ${allStoryConcepts.length} story concepts`);
             allStoryConcepts.forEach(concept => {
                 const option = document.createElement('option');
-                option.value = concept;
-                option.textContent = concept;
+                option.value = concept.name;
+                option.textContent = concept.name;
                 storyConceptSelect.appendChild(option);
             });
         }
@@ -2891,12 +2891,12 @@ async function loadUserLibraries() {
     
     // Skip user libraries for guest users (not authenticated)
     if (!appState.isAuthenticated) {
-        return { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
+        return { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
     }
     
     try {
-        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters'];
-        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
+        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters', 'storyconcepts'];
+        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
         
         // Load each library type from the API with timeout
         for (const type of libraryTypes) {
@@ -2912,8 +2912,10 @@ async function loadUserLibraries() {
                 
                 if (response.ok) {
                     const libraries = await response.json();
-                    // For characters, preserve full data structure; for others, just get name
+                    // For characters and story concepts, preserve full data structure; for others, just get name
                     if (type === 'characters') {
+                        userLibraries[type] = libraries.map(lib => lib.entry_data);
+                    } else if (type === 'storyconcepts') {
                         userLibraries[type] = libraries.map(lib => lib.entry_data);
                     } else {
                         userLibraries[type] = libraries.map(lib => lib.entry_data.name);
@@ -2927,7 +2929,7 @@ async function loadUserLibraries() {
         return userLibraries;
     } catch (error) {
         console.error('LoadUserLibraries: Error occurred:', error);
-        return { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
+        return { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
     }
 }
 
