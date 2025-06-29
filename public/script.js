@@ -5133,15 +5133,22 @@ async function generateAllScenes() {
     }
     
     try {
-        showLoading(`Generating scenes for ${actsWithPlotPoints.length} acts with plot points...`);
+        // Start hierarchical progress tracking
+        progressTracker.start(actsWithPlotPoints.length, 'Generating Scenes', 'acts');
         
         // Generate scenes for each structural element that has plot points sequentially
         // Get current totalScenes value from calculator widget
         const totalScenesInput = document.getElementById('totalScenes');
         const currentTotalScenes = totalScenesInput ? parseInt(totalScenesInput.value) || 70 : 70;
         
-        for (const structureKey of actsWithPlotPoints) {
+        for (let i = 0; i < actsWithPlotPoints.length; i++) {
+            const structureKey = actsWithPlotPoints[i];
+            const actNumber = i + 1;
+            
             console.log(`Generating scenes for: ${structureKey}`);
+            
+            // Update hierarchy display
+            progressTracker.updateHierarchy(actNumber, actsWithPlotPoints.length);
             
             const response = await fetch(`/api/generate-all-scenes-for-act/${appState.projectPath}/${structureKey}`, {
                 method: 'POST',
@@ -5152,7 +5159,8 @@ async function generateAllScenes() {
                 body: JSON.stringify({
                     model: getSelectedModel(),
                     totalScenes: currentTotalScenes
-                })
+                }),
+                signal: progressTracker.abortController?.signal
             });
             
             const data = await response.json();
@@ -5180,6 +5188,9 @@ async function generateAllScenes() {
                 }
                 
                 appState.generatedScenes[structureKey] = allScenes;
+                
+                // Increment progress step
+                progressTracker.incrementStep(`Generated ${allScenes.length} scenes`);
             } else {
                 throw new Error(`Failed to generate scenes for ${structureKey}: ${data.error}`);
             }
@@ -5196,15 +5207,20 @@ async function generateAllScenes() {
         updateUniversalNavigation();
         updateBreadcrumbNavigation();
         
-        hideLoading();
+        progressTracker.finish();
         showToast(`Successfully generated scenes for ${actsWithPlotPoints.length} acts!`, 'success');
         
         saveToLocalStorage();
         
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Scenes generation cancelled by user');
+            return; // Don't show error toast for cancellation
+        }
+        
         console.error('Error generating all scenes:', error);
         showToast(`Error generating scenes: ${error.message}`, 'error');
-        hideLoading();
+        progressTracker.finish();
     }
 }
 
@@ -5389,11 +5405,18 @@ async function generateAllPlotPoints() {
     }
     
     try {
-        showLoading(`Generating plot points for all ${structureKeys.length} structural elements...`);
+        // Start hierarchical progress tracking
+        progressTracker.start(structureKeys.length, 'Generating Plot Points', 'acts');
         
         // Generate plot points for each structural element sequentially
-        for (const structureKey of structureKeys) {
+        for (let i = 0; i < structureKeys.length; i++) {
+            const structureKey = structureKeys[i];
+            const actNumber = i + 1;
+            
             console.log(`Generating plot points for: ${structureKey}`);
+            
+            // Update hierarchy display - show current act being processed
+            progressTracker.updateHierarchy(actNumber, structureKeys.length);
             
             // Get the desired plot point count from the dropdown (or use default)
             const plotPointsCountSelect = document.getElementById(`plotPointsCount-${structureKey}`);
@@ -5408,7 +5431,8 @@ async function generateAllPlotPoints() {
                 body: JSON.stringify({
                     desiredSceneCount: desiredSceneCount,
                     model: getSelectedModel()
-                })
+                }),
+                signal: progressTracker.abortController?.signal
             });
             
             const data = await response.json();
@@ -5424,12 +5448,15 @@ async function generateAllPlotPoints() {
                 
                 // Display the generated plot points immediately
                 displayElementPlotPoints(structureKey, data.plotPoints);
+                
+                // Increment progress step
+                progressTracker.incrementStep(`Generated ${data.plotPoints.length} plot points`);
             } else {
                 throw new Error(`Failed to generate plot points for ${structureKey}: ${data.error}`);
             }
         }
         
-        hideLoading();
+        progressTracker.finish();
         showToast(`Successfully generated plot points for all ${structureKeys.length} structural elements!`, 'success');
         
         // Update the completion check
@@ -5437,9 +5464,14 @@ async function generateAllPlotPoints() {
         saveToLocalStorage();
         
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Plot points generation cancelled by user');
+            return; // Don't show error toast for cancellation
+        }
+        
         console.error('Error generating all plot points:', error);
         showToast(`Error generating plot points: ${error.message}`, 'error');
-        hideLoading();
+        progressTracker.finish();
     }
 }
 
@@ -6350,13 +6382,19 @@ async function generateAllDialogue() {
     }
     
     try {
-        showLoading(`Generating dialogue for ${allScenes.length} scenes...`);
+        // Start hierarchical progress tracking
+        progressTracker.start(allScenes.length, 'Generating Dialogue', 'scenes');
         
         // Generate dialogue for each scene sequentially
-        for (const sceneData of allScenes) {
+        for (let i = 0; i < allScenes.length; i++) {
+            const sceneData = allScenes[i];
             const { structureKey, sceneIndex, scene, sceneId } = sceneData;
+            const sceneNumber = i + 1;
             
             console.log(`Generating dialogue for scene: ${scene.title || 'Untitled'} (${sceneId})`);
+            
+            // Update hierarchy display
+            progressTracker.updateHierarchy(sceneNumber, allScenes.length);
             
             const response = await fetch('/api/generate-dialogue', {
                 method: 'POST',
@@ -6370,7 +6408,8 @@ async function generateAllDialogue() {
                     context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                     projectPath: appState.projectPath,
                     model: getSelectedModel()
-                })
+                }),
+                signal: progressTracker.abortController?.signal
             });
             
             const data = await response.json();
@@ -6380,6 +6419,9 @@ async function generateAllDialogue() {
                 
                 // Store dialogue in app state
                 appState.generatedDialogues[sceneId] = data.dialogue;
+                
+                // Increment progress step
+                progressTracker.incrementStep(`Generated dialogue for "${scene.title || 'Untitled'}"`);
             } else {
                 throw new Error(`Failed to generate dialogue for scene "${scene.title || 'Untitled'}": ${data.error}`);
             }
@@ -6416,15 +6458,20 @@ async function generateAllDialogue() {
         updateUniversalNavigation();
         updateBreadcrumbNavigation();
         
-        hideLoading();
+        progressTracker.finish();
         showToast(`Successfully generated dialogue for ${allScenes.length} scenes!`, 'success');
         
         saveToLocalStorage();
         
     } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Dialogue generation cancelled by user');
+            return; // Don't show error toast for cancellation
+        }
+        
         console.error('Error generating all dialogue:', error);
         showToast(`Error generating dialogue: ${error.message}`, 'error');
-        hideLoading();
+        progressTracker.finish();
     }
 }
 
@@ -7560,6 +7607,118 @@ function startFreshProject() {
         console.log('🆕 Fresh project flag cleared');
     }, 1000);
 }
+
+// Enhanced hierarchical progress tracking system
+const progressTracker = {
+    isActive: false,
+    totalSteps: 0,
+    currentStep: 0,
+    hierarchy: {},
+    abortController: null,
+    
+    start(totalSteps, title = 'Generating...', unitName = 'operations') {
+        this.isActive = true;
+        this.totalSteps = totalSteps;
+        this.currentStep = 0;
+        this.hierarchy = {};
+        this.unitName = unitName;
+        this.abortController = new AbortController();
+        this.showEnhancedLoading(title);
+    },
+    
+    updateHierarchy(level1, level1Total, level2 = null, level2Total = null, level3 = null, level3Total = null) {
+        this.hierarchy = {
+            level1: { current: level1, total: level1Total },
+            level2: level2 !== null ? { current: level2, total: level2Total } : null,
+            level3: level3 !== null ? { current: level3, total: level3Total } : null
+        };
+        this.updateProgressDisplay();
+    },
+    
+    incrementStep(description = '') {
+        this.currentStep++;
+        this.updateProgressDisplay(description);
+    },
+    
+    updateProgressDisplay(description = '') {
+        if (!this.isActive) return;
+        
+        // Build hierarchical progress string
+        let hierarchyText = '';
+        if (this.hierarchy.level1) {
+            hierarchyText += `Processing Act ${this.hierarchy.level1.current} of ${this.hierarchy.level1.total}`;
+            
+            if (this.hierarchy.level2) {
+                hierarchyText += ` - Plot Point ${this.hierarchy.level2.current}/${this.hierarchy.level2.total}`;
+                
+                if (this.hierarchy.level3) {
+                    hierarchyText += ` - Scene ${this.hierarchy.level3.current}/${this.hierarchy.level3.total}`;
+                }
+            }
+        }
+        
+        const progressText = hierarchyText || `Step ${this.currentStep}/${this.totalSteps}`;
+        const fullMessage = description ? `${progressText}: ${description}` : progressText;
+        
+        // Update the progress display - target the correct elements in the loadingOverlay
+        const progressTextElement = document.querySelector('.hierarchical-progress .progress-text');
+        const progressBarElement = document.querySelector('.hierarchical-progress .progress-bar');
+        const progressDetailsElement = document.querySelector('.hierarchical-progress .progress-details');
+        
+        if (progressTextElement) {
+            progressTextElement.textContent = fullMessage;
+        }
+        
+        if (progressBarElement) {
+            progressBarElement.style.width = `${(this.currentStep / this.totalSteps) * 100}%`;
+        }
+        
+        if (progressDetailsElement) {
+            progressDetailsElement.textContent = `${this.currentStep}/${this.totalSteps} ${this.unitName} completed`;
+        }
+    },
+    
+    showEnhancedLoading(title) {
+        // Target the loading overlay container instead of the p element
+        if (!elements.loadingOverlay) {
+            console.error('loadingOverlay element not found');
+            return;
+        }
+        
+        elements.loadingOverlay.innerHTML = `
+            <div class="loading-spinner"></div>
+            <div class="hierarchical-progress">
+                <div class="progress-text">${title}</div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" style="width: 0%"></div>
+                </div>
+                <div class="progress-details">0/${this.totalSteps} ${this.unitName} completed</div>
+                <div class="progress-actions" style="margin-top: 16px; display: flex; justify-content: center;">
+                    <button onclick="progressTracker.cancel()" style="background: rgba(239, 68, 68, 0.9) !important; color: white !important; border: none !important; padding: 8px 16px !important; border-radius: 6px !important; font-size: 13px !important; font-weight: 500 !important; cursor: pointer !important; transition: all 0.2s ease !important;">Cancel Generation</button>
+                </div>
+            </div>
+        `;
+        elements.loadingOverlay.classList.add('active');
+    },
+    
+    cancel() {
+        if (this.abortController) {
+            this.abortController.abort();
+        }
+        this.isActive = false;
+        this.hierarchy = {};
+        this.abortController = null;
+        hideLoading();
+        showToast('Generation cancelled by user', 'info');
+    },
+    
+    finish() {
+        this.isActive = false;
+        this.hierarchy = {};
+        this.abortController = null;
+        hideLoading();
+    }
+};
 
 // Loading functions
 function showLoading(message = 'Loading...') {

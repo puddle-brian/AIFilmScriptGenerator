@@ -1581,6 +1581,71 @@ h2 .progress-meter {
     font-weight: 500;
 }
 
+/* Hierarchical progress display */
+.hierarchical-progress {
+    text-align: center;
+    min-width: 300px;
+}
+
+.hierarchical-progress .progress-text {
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+.hierarchical-progress .progress-bar-container {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    height: 8px;
+    margin: 12px 0;
+    overflow: hidden;
+}
+
+.hierarchical-progress .progress-bar {
+    background: linear-gradient(90deg, #4f46e5, #7c3aed);
+    height: 100%;
+    border-radius: 8px;
+    transition: width 0.3s ease;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.5);
+}
+
+.hierarchical-progress .progress-details {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 8px;
+}
+
+.hierarchical-progress .progress-actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+}
+
+.hierarchical-progress .cancel-generation-btn {
+    background: rgba(239, 68, 68, 0.9) !important;
+    color: white !important;
+    border: none !important;
+    padding: 8px 16px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    backdrop-filter: blur(8px) !important;
+    display: inline-block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 9999 !important;
+}
+
+.hierarchical-progress .cancel-generation-btn:hover {
+    background: rgba(239, 68, 68, 1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 /* Toast Notifications */
 .toast {
     position: fixed;
