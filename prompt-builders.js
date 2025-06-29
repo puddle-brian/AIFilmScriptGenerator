@@ -110,10 +110,10 @@ function generateStructureDescription(templateData) {
         const element = templateData.structure[key];
         description += `${index + 1}. ${element.name || key}: ${element.description || 'A key structural element'}\n`;
         
-        // 🆕 Step 3: Include userDirections if they exist
+                // 🆕 Step 3: Include userDirections if they exist
         if (element.userDirections && element.userDirections.trim()) {
-            description += `   ✨ User Creative Direction: ${element.userDirections}\n`;
-            hasUserDirections = true;
+          description += `   User Creative Direction: ${element.userDirections}\n`;
+          hasUserDirections = true;
         }
     });
     

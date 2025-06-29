@@ -1124,7 +1124,7 @@ class HierarchicalContext {
         
         // Include userDirections if available
         if (currentAct.userDirections && currentAct.userDirections.trim()) {
-          prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+          prompt += `User Creative Direction: ${currentAct.userDirections}\n`;
           prompt += `⚠️  MANDATORY: Incorporate this creative direction into all plot points for this act.\n`;
         }
         
@@ -1143,7 +1143,7 @@ class HierarchicalContext {
         
         // Include userDirections if available
         if (currentAct.userDirections && currentAct.userDirections.trim()) {
-          prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+          prompt += `User Creative Direction: ${currentAct.userDirections}\n`;
         }
         
         prompt += '\n';
