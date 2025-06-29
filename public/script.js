@@ -8251,6 +8251,11 @@ async function displayTemplateStructurePreview() {
                         <div class="template-description">
                             <strong>Template Guide:</strong> ${act.description || 'No description available'}
                         </div>
+                        ${act.userDirections && act.userDirections.trim() ? `
+                        <div class="creative-directions">
+                            <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
+                        </div>
+                        ` : ''}
                         <div class="content-placeholder">
                             <div class="placeholder-content">
                                 <span class="placeholder-icon">📝</span>
@@ -8358,25 +8363,34 @@ function createFullTemplatePreview(templateData, structureContainer) {
             const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             const actNumber = `${index + 1}/${totalActs}`;
             
-            actElement.innerHTML = `
-                <div class="structure-element-header">
-                    <h3><span class="act-progress">${actNumber}</span> ${actName}</h3>
-                    <div class="structure-element-meta">
-                        <span class="preview-status">Ready for generation</span>
+                            // Check if there are creative directions
+                const hasCreativeDirections = act.userDirections && act.userDirections.trim();
+                const creativeDirectionsHtml = hasCreativeDirections ? `
+                    <div class="creative-directions">
+                        <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
                     </div>
-                </div>
-                <div class="structure-element-content">
-                    <div class="template-description">
-                        <strong>Template Guide:</strong> ${act.description || 'No description available'}
-                    </div>
-                    <div class="content-placeholder">
-                        <div class="placeholder-content">
-                            <span class="placeholder-icon">📝</span>
-                            <span class="placeholder-text">Your generated content will appear here</span>
+                ` : '';
+                
+                actElement.innerHTML = `
+                    <div class="structure-element-header">
+                        <h3><span class="act-progress">${actNumber}</span> ${actName}</h3>
+                        <div class="structure-element-meta">
+                            <span class="preview-status">Ready for generation</span>
                         </div>
                     </div>
-                </div>
-            `;
+                    <div class="structure-element-content">
+                        <div class="template-description">
+                            <strong>Template Guide:</strong> ${act.description || 'No description available'}
+                        </div>
+                        ${creativeDirectionsHtml}
+                        <div class="content-placeholder">
+                            <div class="placeholder-content">
+                                <span class="placeholder-icon">📝</span>
+                                <span class="placeholder-text">Your generated content will appear here</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
             
             structureContainer.appendChild(actElement);
         });

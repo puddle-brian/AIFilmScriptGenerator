@@ -4133,6 +4133,26 @@ h2 .progress-meter {
     font-size: 0.9rem;
 }
 
+/* Creative directions styling */
+.creative-directions {
+    background: rgba(255, 215, 0, 0.1);
+    border-left: 4px solid #ffd700;
+    padding: 12px 16px;
+    margin: 12px 0;
+    border-radius: 6px;
+    color: #b7791f;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    box-shadow: 0 2px 4px rgba(255, 215, 0, 0.1);
+}
+
+.creative-directions strong {
+    color: #996f00;
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
 .content-placeholder {
     min-height: 100px;
     border: 2px dashed rgba(255, 255, 255, 0.1);
@@ -4311,6 +4331,18 @@ h2 .progress-meter {
     .structure-element.preview-mode .placeholder-content {
         font-size: 0.7rem;
         gap: 4px;
+    }
+    
+    /* Creative directions mobile styling */
+    .creative-directions {
+        padding: 8px 12px;
+        margin: 8px 0;
+        font-size: 0.8rem;
+    }
+    
+    .creative-directions strong {
+        margin-bottom: 4px;
+        font-size: 0.8rem;
     }
 }
 
