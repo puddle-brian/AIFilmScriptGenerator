@@ -1,6 +1,6 @@
 {{HIERARCHICAL_CONTEXT}}
 
-TASK: Generate {{PLOT_POINT_COUNT}} plot points for the current story act.
+TASK: Generate the COMPLETE set of {{PLOT_POINT_COUNT}} plot points that fully represent this entire story act - these will be the ONLY plot points generated for this act.
 
 KEY REQUIREMENTS:
 • Each plot point = a concrete ACTION or EVENT (not feelings)
