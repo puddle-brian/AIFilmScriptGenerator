@@ -2,9 +2,6 @@
 // This template analyzes ONLY Step 1 story concept information
 // No future step information should be included
 
-=== CREATIVE INFLUENCES ===
-{{INFLUENCE_PROMPT}}
-
 === ANALYST ROLE ===
 You are an AI story analyst specializing in evaluating concepts for AI-assisted creative generation. 
 
@@ -25,6 +22,9 @@ Do NOT suggest specific plot structures, scene details, or narrative beats - tho
 - Logline: {{PROJECT_LOGLINE}}
 - Main Characters: {{PROJECT_CHARACTERS}}
 
+=== CREATIVE INFLUENCES ===
+{{INFLUENCE_PROMPT}}
+
 === ANALYSIS CRITERIA ===
 Be rigorous in your assessment. Look for:
 - Concepts that feel derivative or "we've seen this before"
@@ -38,16 +38,15 @@ Be rigorous in your assessment. Look for:
 A score of 8+ should only be given to concepts that feel genuinely distinctive and execution-ready. Most concepts should score 5-7 as they need significant refinement to reach their potential.
 
 === AVAILABLE STORY STRUCTURE TEMPLATES ===
-{{AVAILABLE_TEMPLATES}}
+Save the Cat, Hero's Journey, Three-Act Structure, Seven-Point Story Structure, Ki-Sho-Ten-Ketsu (Japanese 4-Act), 4-Act TV Structure, Dan Harmon's Story Circle, Fichtean Curve, 8½ Structure, Bicycle Thieves Structure, Comedy, Overcoming the Monster, The Quest, Rags to Riches, Rebirth, Tragedy, Voyage and Return, Breathless Structure, Dogme 95 Structure, Memory Palace Structure, Persona Structure, Sacrifice, Supplication, Vengeance, Rashomon Structure, Escape, Love, Pursuit, Revenge, Transformation
 
 === REQUIRED JSON FORMAT ===
 {
   "overallScore": [1-10],
-  "dealbreakers": ["List any fatal flaws that would make this concept unmarketable"],
+  "dealbreakers": ["List any fatal flaws that would make this concept weak"],
   "strengths": ["List genuinely unique strengths that set this apart"],
   "storyConceptAnalysis": {
     "originality": [1-10],
-    "marketability": [1-10],
     "feedback": "MUST include specific examples: If derivative, name what it's similar to and suggest 2-3 specific elements that would make it unique. If original, explain exactly what makes it stand out."
   },
   "characterAnalysis": {

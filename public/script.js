@@ -1785,23 +1785,12 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
         <div class="analysis-section">
             <div class="analysis-section-header">
                 <h4>📖 Story Concept</h4>
-                <div class="analysis-score-double">
-                    <div class="score-item">
-                        <span class="score-label">Originality</span>
-                        <div class="score-bar">
-                            <div class="score-fill ${getScoreClass(analysis.storyConceptAnalysis.originality)}" 
-                                 style="width: ${analysis.storyConceptAnalysis.originality * 10}%"></div>
-                        </div>
-                        <span class="score-number">${analysis.storyConceptAnalysis.originality}/10</span>
+                <div class="analysis-score">
+                    <div class="score-bar">
+                        <div class="score-fill ${getScoreClass(analysis.storyConceptAnalysis.originality)}" 
+                             style="width: ${analysis.storyConceptAnalysis.originality * 10}%"></div>
                     </div>
-                    <div class="score-item">
-                        <span class="score-label">Marketability</span>
-                        <div class="score-bar">
-                            <div class="score-fill ${getScoreClass(analysis.storyConceptAnalysis.marketability)}" 
-                                 style="width: ${analysis.storyConceptAnalysis.marketability * 10}%"></div>
-                        </div>
-                        <span class="score-number">${analysis.storyConceptAnalysis.marketability}/10</span>
-                    </div>
+                    <span class="score-number">${analysis.storyConceptAnalysis.originality}/10</span>
                 </div>
             </div>
             <div class="analysis-feedback">${analysis.storyConceptAnalysis.feedback}</div>
@@ -1927,11 +1916,6 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
                     </ul>
                 </div>
                 ` : ''}
-                <div class="template-action">
-                    <button class="btn btn-primary" onclick="applyRecommendedTemplate('${analysis.templateRecommendation.recommendedTemplate}')">
-                        🎯 Use This Template (Continue to Step 2)
-                    </button>
-                </div>
             </div>
         </div>
         ` : ''}
