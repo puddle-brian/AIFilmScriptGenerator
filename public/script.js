@@ -3620,6 +3620,34 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             
             console.log(`🔧 displayStructure: Creating act ${actProgress} - ${actTitle} (${key})`);
             
+            // Create compact reference header with template context
+            const templateAct = appState.templateData?.structure?.[key];
+            if (templateAct) {
+                const referenceHeader = document.createElement('div');
+                referenceHeader.className = 'act-reference-header';
+                
+                // Get template description (truncated for compactness)
+                const templateDesc = templateAct.description || 'No template description';
+                const truncatedDesc = templateDesc.length > 120 ? templateDesc.substring(0, 117) + '...' : templateDesc;
+                
+                // Get creative directions if any
+                const creativeDirections = templateAct.userDirections?.trim();
+                const directionsHtml = creativeDirections ? `
+                    <div class="compact-creative-directions">
+                        <span class="directions-label">✨ Your Directions:</span> ${creativeDirections.length > 100 ? creativeDirections.substring(0, 97) + '...' : creativeDirections}
+                    </div>
+                ` : '';
+                
+                referenceHeader.innerHTML = `
+                    <div class="template-context">
+                        <span class="template-label">📋 Template:</span> ${truncatedDesc}
+                    </div>
+                    ${directionsHtml}
+                `;
+                
+                container.appendChild(referenceHeader);
+            }
+            
             createEditableContentBlock({
                 id: `act-${key}`,
                 type: 'acts',
