@@ -8031,6 +8031,53 @@ async function deleteProject(projectPath, projectTitle) {
     }
 }
 
+async function duplicateProject(projectPath, projectTitle) {
+    try {
+        showLoading('Duplicating project...');
+        
+        // Get current user info from app state
+        const user = appState.user;
+        if (!user || !user.id) {
+            throw new Error('User not authenticated');
+        }
+        
+        const response = await fetch(`/api/users/${user.id}/projects/duplicate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': localStorage.getItem('apiKey')
+            },
+            body: JSON.stringify({
+                project_name: projectPath
+            })
+        });
+        
+        if (!response.ok) {
+            let errorMessage = 'Failed to duplicate project';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (parseError) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        
+        hideLoading();
+        showToast(`Project duplicated! New project: "${result.new_project_title}"`, 'success');
+        
+        // Refresh the projects list to show the new duplicate
+        showLoadProjectModal();
+        
+    } catch (error) {
+        console.error('Error duplicating project:', error);
+        showToast(`Error duplicating project: ${error.message}`, 'error');
+        hideLoading();
+    }
+}
+
 // Error handling
 window.addEventListener('error', function(e) {
     console.error('Global error:', e.error);
@@ -9156,12 +9203,18 @@ function generateProjectCard(project, context = 'modal') {
         <button class="load-project-btn" onclick="event.stopPropagation(); openProject('${project.path}')">
             📁 Open Project
         </button>
+        <button class="duplicate-project-btn" onclick="event.stopPropagation(); duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            📄 Duplicate
+        </button>
         <button class="delete-project-btn" onclick="event.stopPropagation(); deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
             🗑️ Delete
         </button>
     ` : `
         <button class="load-project-btn" onclick="loadProject('${project.path}')">
             📁 Load Project
+        </button>
+        <button class="duplicate-project-btn" onclick="duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            📄 Duplicate
         </button>
         <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
             🗑️ Delete

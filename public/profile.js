@@ -304,12 +304,18 @@ function generateProjectCard(project, context = 'modal') {
         <button class="load-project-btn" onclick="event.stopPropagation(); openProject('${project.path}')">
             📁 Open Project
         </button>
+        <button class="duplicate-project-btn" onclick="event.stopPropagation(); duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            📄 Duplicate
+        </button>
         <button class="delete-project-btn" onclick="event.stopPropagation(); deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
             🗑️ Delete
         </button>
     ` : `
         <button class="load-project-btn" onclick="loadProject('${project.path}')">
             📁 Load Project
+        </button>
+        <button class="duplicate-project-btn" onclick="duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            📄 Duplicate
         </button>
         <button class="delete-project-btn" onclick="deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
             🗑️ Delete
@@ -487,6 +493,30 @@ async function deleteProject(projectName) {
     } catch (error) {
         console.error('Error deleting project:', error);
         showNotification('Error deleting project: ' + error.message, 'error');
+    }
+}
+
+async function duplicateProject(projectName, projectTitle) {
+    try {
+        const response = await fetch(`/api/users/${currentUserId}/projects/duplicate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ project_name: projectName })
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showNotification(`Project duplicated! New project: "${result.new_project_title}"`);
+            loadUserProjects(); // Refresh the projects list
+        } else {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to duplicate project');
+        }
+    } catch (error) {
+        console.error('Error duplicating project:', error);
+        showNotification('Error duplicating project: ' + error.message, 'error');
     }
 }
 

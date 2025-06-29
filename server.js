@@ -5199,6 +5199,135 @@ app.delete('/api/users/:userId/projects', async (req, res) => {
   }
 });
 
+// Duplicate project endpoint
+app.post('/api/users/:userId/projects/duplicate', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { project_name } = req.body;
+    
+    if (!project_name) {
+      return res.status(400).json({ error: 'Project name is required' });
+    }
+    
+    // Load original project from database
+    const originalResult = await dbClient.query(
+      'SELECT project_name, project_context, thumbnail_data FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, project_name]
+    );
+    
+    if (originalResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Original project not found' });
+    }
+    
+    const originalProject = originalResult.rows[0];
+    
+    // Generate new versioned project name
+    const newProjectName = await generateVersionedProjectName(userId, project_name);
+    
+    // Parse and modify project context for the duplicate
+    const originalContext = parseProjectContext(originalProject.project_context);
+    const newProjectId = require('crypto').randomUUID();
+    
+    // Extract version number from new project name
+    const versionMatch = newProjectName.match(/V(\d+)$/);
+    const versionNumber = versionMatch ? versionMatch[1] : '02';
+    
+    // Create versioned title
+    const originalTitle = originalContext.storyInput?.title || 'Untitled Project';
+    const versionedTitle = `${originalTitle} V${versionNumber}`;
+    
+    // Create new project context with updated IDs, name, and versioned title
+    const newProjectContext = {
+      ...originalContext,
+      projectId: newProjectId,
+      projectPath: newProjectName,
+      generatedAt: new Date().toISOString(),
+      // Update the storyInput title to include version
+      storyInput: {
+        ...originalContext.storyInput,
+        title: versionedTitle
+      }
+    };
+    
+    // Update thumbnail data for the duplicate with consistent versioned title
+    const newThumbnailData = {
+      ...originalProject.thumbnail_data,
+      title: versionedTitle
+    };
+    
+    // Insert duplicate project into database
+    const duplicateResult = await dbClient.query(
+      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
+       VALUES ($1, $2, $3, $4) 
+       RETURNING *`,
+      [userId, newProjectName, JSON.stringify(newProjectContext), JSON.stringify(newThumbnailData)]
+    );
+    
+    // Optionally duplicate filesystem project directory
+    const originalDir = path.join(__dirname, 'generated', project_name);
+    const newDir = path.join(__dirname, 'generated', newProjectName);
+    
+    try {
+      await fs.access(originalDir);
+      await fs.cp(originalDir, newDir, { recursive: true });
+      console.log(`✅ Filesystem project duplicated: ${originalDir} -> ${newDir}`);
+    } catch (error) {
+      console.log('⚠️ Filesystem project not found or could not be duplicated:', error.message);
+      // This is okay - we rely on database storage primarily
+    }
+    
+    console.log(`✅ Project duplicated: "${originalProject.project_name}" -> "${newProjectName}"`);
+    
+    res.json({ 
+      message: 'Project duplicated successfully',
+      original_project: originalProject.project_name,
+      new_project: newProjectName,
+      new_project_title: newThumbnailData.title
+    });
+    
+  } catch (error) {
+    console.error('Failed to duplicate project:', error);
+    res.status(500).json({ error: 'Failed to duplicate project' });
+  }
+});
+
+// Helper function to generate versioned project names
+async function generateVersionedProjectName(userId, originalProjectName) {
+  // Check if project name already has version suffix
+  const versionMatch = originalProjectName.match(/^(.+?)_V(\d+)$/);
+  const baseProjectName = versionMatch ? versionMatch[1] : originalProjectName;
+  
+  let versionNumber = 2; // Start with V02
+  
+  // If it already has a version, increment it
+  if (versionMatch) {
+    versionNumber = parseInt(versionMatch[2]) + 1;
+  }
+  
+  // Find the next available version number
+  while (true) {
+    const versionString = versionNumber.toString().padStart(2, '0');
+    const candidateName = `${baseProjectName}_V${versionString}`;
+    
+    // Check if this version already exists
+    const existingResult = await dbClient.query(
+      'SELECT project_name FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, candidateName]
+    );
+    
+    if (existingResult.rows.length === 0) {
+      return candidateName;
+    }
+    
+    versionNumber++;
+    
+    // Safety check to prevent infinite loop
+    if (versionNumber > 99) {
+      return `${baseProjectName}_V${Date.now()}`;
+    }
+  }
+}
+
 // Server startup moved to bottom of file for proper Vercel export handling
 
 // Generate plot points for a specific story act (Level 4 generation)

@@ -1864,6 +1864,29 @@ h2 .progress-meter {
     transform: translateY(-1px);
 }
 
+.duplicate-project-btn {
+    background: #10b981;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    flex: 0 0 auto;
+}
+
+.duplicate-project-btn:hover {
+    background: #059669;
+    transform: translateY(-1px);
+}
+
+.duplicate-project-btn:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
+    transform: none;
+}
+
 .delete-project-btn {
     background: #ef4444;
     color: white;
