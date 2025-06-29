@@ -2153,6 +2153,101 @@ function showImprovementPreviewModal(improvements, originalStory) {
                 </div>
             </div>
             
+            ${improvements.improvedInfluences ? `
+            <div class="improvement-section">
+                <h4>🎨 Improved Influences</h4>
+                <div class="comparison-box">
+                    <div class="improvement-content">
+                        ${improvements.improvedInfluences.directors && improvements.improvedInfluences.directors.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Directors:</label>
+                            <ul>${improvements.improvedInfluences.directors.map(dir => `<li>${dir}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        ${improvements.improvedInfluences.screenwriters && improvements.improvedInfluences.screenwriters.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Screenwriters:</label>
+                            <ul>${improvements.improvedInfluences.screenwriters.map(sw => `<li>${sw}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        ${improvements.improvedInfluences.films && improvements.improvedInfluences.films.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Films:</label>
+                            <ul>${improvements.improvedInfluences.films.map(film => `<li>${film}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        <div class="reasoning">
+                            <strong>Why:</strong> ${improvements.improvedInfluences.reasoning}
+                        </div>
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="improvedInfluences">
+                            Apply these refinements
+                        </label>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+            
+            ${improvements.suggestedNewCharacters && improvements.suggestedNewCharacters.length > 0 ? `
+            <div class="improvement-section">
+                <h4>👤 Suggested New Characters</h4>
+                <div class="comparison-box">
+                    <div class="improvement-content">
+                        ${improvements.suggestedNewCharacters.map(char => `
+                        <div class="character-suggestion">
+                            <strong>${char.name}</strong>: ${char.description}
+                        </div>
+                        `).join('')}
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="suggestedNewCharacters">
+                            Add these characters
+                        </label>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+            
+            ${improvements.suggestedNewInfluences ? `
+            <div class="improvement-section">
+                <h4>✨ Suggested New Influences</h4>
+                <div class="comparison-box">
+                    <div class="improvement-content">
+                        ${improvements.suggestedNewInfluences.directors && improvements.suggestedNewInfluences.directors.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Directors:</label>
+                            <ul>${improvements.suggestedNewInfluences.directors.map(dir => `<li>${dir}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        ${improvements.suggestedNewInfluences.screenwriters && improvements.suggestedNewInfluences.screenwriters.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Screenwriters:</label>
+                            <ul>${improvements.suggestedNewInfluences.screenwriters.map(sw => `<li>${sw}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        ${improvements.suggestedNewInfluences.films && improvements.suggestedNewInfluences.films.length > 0 ? `
+                        <div class="influence-group">
+                            <label>Films:</label>
+                            <ul>${improvements.suggestedNewInfluences.films.map(film => `<li>${film}</li>`).join('')}</ul>
+                        </div>
+                        ` : ''}
+                        <div class="reasoning">
+                            <strong>Why:</strong> ${improvements.suggestedNewInfluences.reasoning}
+                        </div>
+                    </div>
+                    <div class="change-controls">
+                        <label>
+                            <input type="checkbox" checked data-field="suggestedNewInfluences">
+                            Add these influences
+                        </label>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+            
             ${improvements.changesSummary && improvements.changesSummary.length > 0 ? `
             <div class="changes-summary">
                 <h4>🎯 What Changed</h4>
@@ -2234,6 +2329,86 @@ function applySelectedImprovements() {
                         
                         // Update the influence prompt and display
                         buildInfluencePrompt();
+                    }
+                    break;
+                case 'improvedInfluences':
+                    if (improvements.improvedInfluences) {
+                        // Replace existing influences with improved versions
+                        if (!appState.influences) appState.influences = {};
+                        
+                        if (improvements.improvedInfluences.directors) {
+                            appState.influences.directors = improvements.improvedInfluences.directors;
+                        }
+                        if (improvements.improvedInfluences.screenwriters) {
+                            appState.influences.screenwriters = improvements.improvedInfluences.screenwriters;
+                        }
+                        if (improvements.improvedInfluences.films) {
+                            appState.influences.films = improvements.improvedInfluences.films;
+                        }
+                        
+                        // Update story input and influence prompt
+                        if (appState.storyInput) {
+                            appState.storyInput.influences = appState.influences;
+                            appState.storyInput.influencePrompt = buildInfluencePrompt();
+                        }
+                        
+                        // Update UI displays
+                        updateInfluenceTags('director');
+                        updateInfluenceTags('screenwriter');
+                        updateInfluenceTags('film');
+                    }
+                    break;
+                case 'suggestedNewCharacters':
+                    if (improvements.suggestedNewCharacters && improvements.suggestedNewCharacters.length > 0) {
+                        // Add new characters to the character list
+                        if (!appState.projectCharacters) appState.projectCharacters = [];
+                        
+                        improvements.suggestedNewCharacters.forEach(char => {
+                            appState.projectCharacters.push({
+                                name: char.name,
+                                description: char.description
+                            });
+                        });
+                        
+                        // Update displays
+                        displayCharacters();
+                        updateCharacterTags();
+                        
+                        // Update story input
+                        if (appState.storyInput) {
+                            appState.storyInput.characters = getCharactersForPrompt();
+                            appState.storyInput.charactersData = appState.projectCharacters;
+                        }
+                    }
+                    break;
+                case 'suggestedNewInfluences':
+                    if (improvements.suggestedNewInfluences) {
+                        // Add new influences to existing lists
+                        if (!appState.influences) appState.influences = {};
+                        
+                        if (improvements.suggestedNewInfluences.directors) {
+                            if (!appState.influences.directors) appState.influences.directors = [];
+                            appState.influences.directors.push(...improvements.suggestedNewInfluences.directors);
+                        }
+                        if (improvements.suggestedNewInfluences.screenwriters) {
+                            if (!appState.influences.screenwriters) appState.influences.screenwriters = [];
+                            appState.influences.screenwriters.push(...improvements.suggestedNewInfluences.screenwriters);
+                        }
+                        if (improvements.suggestedNewInfluences.films) {
+                            if (!appState.influences.films) appState.influences.films = [];
+                            appState.influences.films.push(...improvements.suggestedNewInfluences.films);
+                        }
+                        
+                        // Update story input and influence prompt
+                        if (appState.storyInput) {
+                            appState.storyInput.influences = appState.influences;
+                            appState.storyInput.influencePrompt = buildInfluencePrompt();
+                        }
+                        
+                        // Update UI displays
+                        updateInfluenceTags('director');
+                        updateInfluenceTags('screenwriter');
+                        updateInfluenceTags('film');
                     }
                     break;
             }
@@ -8691,6 +8866,12 @@ function hideCharacterModal() {
 function displayCharacters() {
     const container = document.getElementById('charactersList');
     const emptyState = document.getElementById('charactersEmpty');
+    
+    // Check if elements exist (they might not if we're not on the character management step)
+    if (!container || !emptyState) {
+        console.log('📋 displayCharacters: DOM elements not found, skipping display update');
+        return;
+    }
     
     if (appState.projectCharacters.length === 0) {
         emptyState.style.display = 'block';

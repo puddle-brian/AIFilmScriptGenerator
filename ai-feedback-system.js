@@ -234,19 +234,35 @@ CURRENT STORY:
 - Title: ${storyInput.title}
 - Logline: ${storyInput.logline}
 - Characters: ${storyInput.characters || 'No characters specified'}
+- Current Influences: ${storyInput.influencePrompt || 'No influences specified'}
 
 AI FEEDBACK TO ADDRESS:
 Suggestions: ${suggestions.join('; ')}
 Critical Weaknesses: ${criticalWeaknesses.join('; ')}
 Character Issues: ${characterIssues}
 
-TASK: Provide specific improvements to the story fields. Preserve the user's creative voice while addressing the feedback. Focus on concrete additions and clarifications, not complete rewrites.
+TASK: Provide specific improvements to existing story elements AND suggest new elements that would strengthen the concept. Preserve the user's creative voice while addressing the feedback. Focus on concrete additions and clarifications, not complete rewrites.
 
 Return ONLY valid JSON in this exact format:
 {
   "improvedTitle": "enhanced title if needed, or original title",
   "improvedLogline": "enhanced logline with specific improvements",
   "improvedCharacters": "enhanced character descriptions with specific traits and backstories",
+  "improvedInfluences": {
+    "directors": ["More specific/better integrated versions of current directors"],
+    "screenwriters": ["Enhanced descriptions of current screenwriters"], 
+    "films": ["More precise film references"],
+    "reasoning": "Why these refinements help the story"
+  },
+  "suggestedNewCharacters": [
+    {"name": "Character Name", "description": "Character details and why they're needed"}
+  ],
+  "suggestedNewInfluences": {
+    "directors": ["New directors that would strengthen the concept with reasoning"],
+    "screenwriters": ["New screenwriters that complement the story with reasoning"],
+    "films": ["New film references that add depth with reasoning"],
+    "reasoning": "Why these additions would enhance the story"
+  },
   "changesSummary": [
     "Specific change 1 and why it helps AI generation",
     "Specific change 2 and why it helps AI generation"
