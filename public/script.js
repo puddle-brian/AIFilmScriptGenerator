@@ -7518,6 +7518,15 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.selectedTemplate = projectData.selectedTemplate || projectData.template?.id;
     appState.templateData = projectData.templateData || projectData.template;
     
+    // 🆕 Step 1: Initialize userDirections for loaded projects if not present (backwards compatibility)
+    if (appState.templateData && appState.templateData.structure) {
+        Object.keys(appState.templateData.structure).forEach(actKey => {
+            if (!appState.templateData.structure[actKey].hasOwnProperty('userDirections')) {
+                appState.templateData.structure[actKey].userDirections = '';
+            }
+        });
+    }
+    
     // 🔍 DEBUG: Log restored template data
     console.log('🔍 DEBUG: Template data restoration:', {
         selectedTemplate: appState.selectedTemplate,
@@ -7528,7 +7537,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
             name: appState.templateData.name,
             hasStructure: !!appState.templateData.structure,
             structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : [],
-            hasOriginalOrder: !!appState.templateData.originalOrder
+            hasOriginalOrder: !!appState.templateData.originalOrder,
+            hasUserDirections: appState.templateData.structure ? Object.keys(appState.templateData.structure).some(key => 
+                appState.templateData.structure[key].hasOwnProperty('userDirections')) : false
         } : null
     });
     appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
@@ -9716,6 +9727,16 @@ async function loadTemplateStructureForActCards(templateData) {
                 ...fullTemplateData,
                 id: templateData.id // Ensure ID is preserved for future comparisons
             };
+            
+            // 🆕 Step 1: Initialize userDirections for all acts if not present (backwards compatibility)
+            if (appState.templateData.structure) {
+                Object.keys(appState.templateData.structure).forEach(actKey => {
+                    if (!appState.templateData.structure[actKey].hasOwnProperty('userDirections')) {
+                        appState.templateData.structure[actKey].userDirections = '';
+                    }
+                });
+            }
+            
             console.log('🎭 Template data stored in appState for editing');
             
             // Update the header with template name and act count
@@ -9788,7 +9809,8 @@ async function createActCards(templateStructure) {
                             name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                             description: act.description || 'No description available',
                             elements: act.elements || [],
-                            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
+                            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4,
+                            userDirections: act.userDirections || '' // 🆕 Step 1: Include userDirections
                         };
                     }
                 }).filter(Boolean);
@@ -9804,7 +9826,8 @@ async function createActCards(templateStructure) {
                 name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                 description: act.description || 'No description available',
                 elements: act.elements || [],
-                plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
+                plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4,
+                userDirections: act.userDirections || '' // 🆕 Step 1: Include userDirections
             }));
         }
     } else {
@@ -9815,7 +9838,8 @@ async function createActCards(templateStructure) {
             name: act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
             description: act.description || 'No description available',
             elements: act.elements || [],
-            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4
+            plotPoints: act.plotPoints || (act.distribution && act.distribution.plotPoints) || 4,
+            userDirections: act.userDirections || '' // 🆕 Step 1: Include userDirections
         }));
     }
     
@@ -9833,6 +9857,8 @@ function createActCard(act, totalActs) {
     const card = document.createElement('div');
     card.className = 'act-card';
     card.setAttribute('data-act-key', act.key);
+    // 🆕 Step 1: Store userDirections in data attribute for future UI use
+    card.setAttribute('data-user-directions', act.userDirections || '');
     
     // Truncate title for display (keep full title for tooltip)
     const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
@@ -9877,29 +9903,11 @@ function createActCard(act, totalActs) {
     editIcon.addEventListener('click', (e) => {
         e.stopPropagation();
         
-        // Toggle editing mode
-        if (card.classList.contains('editing')) {
-            // If already editing, cancel
-            cancelActCardEditing(card, act);
-        } else {
-            // Start editing
-            startEditingActCard(card, act);
-        }
+        // 🆕 Step 2: Open modal instead of inline editing
+        showActDetailsModal(act);
     });
     
-    // Add button event listeners
-    const saveBtn = card.querySelector('.act-card-edit-btn.save');
-    const cancelBtn = card.querySelector('.act-card-edit-btn.cancel');
-    
-    saveBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        saveActCardChanges(card, act);
-    });
-    
-    cancelBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        cancelActCardEditing(card, act);
-    });
+    // 🆕 Step 2: Removed old button event listeners - now using modal
     
     return card;
 }
@@ -10076,8 +10084,8 @@ function exitEditingMode(card, act, silent = false) {
     }
 }
 
-function updateTemplateStructureInAppState(actKey, newTitle, newDescription, newPlotPoints) {
-    console.log('🔍 DEBUG: updateTemplateStructureInAppState called:', { actKey, newTitle, newDescription, newPlotPoints });
+function updateTemplateStructureInAppState(actKey, newTitle, newDescription, newPlotPoints, userDirections = null) {
+    console.log('🔍 DEBUG: updateTemplateStructureInAppState called:', { actKey, newTitle, newDescription, newPlotPoints, userDirections });
     console.log('🔍 DEBUG: Current appState.templateData exists:', !!appState.templateData);
     console.log('🔍 DEBUG: Current structure exists:', !!(appState.templateData && appState.templateData.structure));
     console.log('🔍 DEBUG: Available structure keys:', appState.templateData && appState.templateData.structure ? Object.keys(appState.templateData.structure) : 'none');
@@ -10087,16 +10095,26 @@ function updateTemplateStructureInAppState(actKey, newTitle, newDescription, new
     if (appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]) {
         console.log('🔍 DEBUG: Before update:', {
             name: appState.templateData.structure[actKey].name,
-            description: appState.templateData.structure[actKey].description
+            description: appState.templateData.structure[actKey].description,
+            userDirections: appState.templateData.structure[actKey].userDirections
         });
         
         appState.templateData.structure[actKey].name = newTitle;
         appState.templateData.structure[actKey].description = newDescription;
         appState.templateData.structure[actKey].plotPoints = newPlotPoints;
         
+        // 🆕 Step 1: Add userDirections support - preserve existing or update if provided
+        if (userDirections !== null) {
+            appState.templateData.structure[actKey].userDirections = userDirections;
+        } else if (!appState.templateData.structure[actKey].hasOwnProperty('userDirections')) {
+            // Initialize userDirections field for backwards compatibility
+            appState.templateData.structure[actKey].userDirections = '';
+        }
+        
         console.log('🔍 DEBUG: After update:', {
             name: appState.templateData.structure[actKey].name,
-            description: appState.templateData.structure[actKey].description
+            description: appState.templateData.structure[actKey].description,
+            userDirections: appState.templateData.structure[actKey].userDirections
         });
         
         // Trigger auto-save if available
@@ -10224,3 +10242,210 @@ function closeAllEditingCards() {
         }
     });
 }
+
+// 🆕 Step 2: Act Details Modal Functions
+let currentEditingAct = null; // Track which act is being edited
+
+function showActDetailsModal(act) {
+    console.log('🎭 Opening act details modal for:', act.name, 'act object:', act);
+    
+    // Store the act being edited
+    currentEditingAct = act;
+    console.log('🎭 Set currentEditingAct to:', currentEditingAct);
+    
+    // Get current data from appState.templateData (most up-to-date)
+    const actData = appState.templateData?.structure?.[act.key];
+    if (!actData) {
+        console.error('Could not find act data in appState.templateData');
+        return;
+    }
+    
+    // Populate modal fields
+    document.getElementById('actDetailsModalTitle').textContent = `Edit Details: ${act.name}`;
+    document.getElementById('actDetailsName').value = actData.name || act.name;
+    document.getElementById('actDetailsDescription').value = actData.description || act.description;
+    document.getElementById('actDetailsDirections').value = actData.userDirections || '';
+    document.getElementById('actDetailsPlotPoints').value = actData.plotPoints || act.plotPoints || 4;
+    
+    // Show modal
+    const modal = document.getElementById('actDetailsModal');
+    modal.style.display = 'block';
+    
+    // 🔧 Re-enable save button in case it was disabled from previous save
+    const saveButton = modal.querySelector('.btn-primary');
+    if (saveButton) {
+        saveButton.disabled = false;
+        saveButton.textContent = 'Save Changes';
+    }
+}
+
+function hideActDetailsModal() {
+    console.log('🎭 Closing act details modal, currentEditingAct was:', currentEditingAct);
+    
+    // Clear the editing state
+    currentEditingAct = null;
+    console.log('🎭 Cleared currentEditingAct to null');
+    
+    // Hide modal
+    const modal = document.getElementById('actDetailsModal');
+    modal.style.display = 'none';
+    console.log('🎭 Modal hidden');
+}
+
+function saveActDetails() {
+    console.log('🎭 saveActDetails called, currentEditingAct:', currentEditingAct);
+    
+    if (!currentEditingAct) {
+        console.error('❌ No act being edited - currentEditingAct is null/undefined');
+        console.log('❌ This appears to be a duplicate call - ignoring');
+        return;
+    }
+    
+    // 🔧 Prevent duplicate calls by temporarily storing reference
+    const actToSave = currentEditingAct;
+    console.log('🎭 Saving act details for:', actToSave.name);
+    
+    // 🔧 Disable save button to prevent double-clicks
+    const modal = document.getElementById('actDetailsModal');
+    const saveButton = modal.querySelector('.btn-primary');
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+    }
+    
+    // Get values from modal
+    const newName = document.getElementById('actDetailsName').value.trim();
+    const newDescription = document.getElementById('actDetailsDescription').value.trim();
+    const newDirections = document.getElementById('actDetailsDirections').value.trim();
+    const newPlotPoints = parseInt(document.getElementById('actDetailsPlotPoints').value) || 4;
+    
+    // Validate inputs
+    if (!newName) {
+        alert('Act name cannot be empty');
+        document.getElementById('actDetailsName').focus();
+        // Re-enable save button on validation error
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+        return;
+    }
+    
+    if (!newDescription) {
+        alert('Template description cannot be empty');
+        document.getElementById('actDetailsDescription').focus();
+        // Re-enable save button on validation error
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+        return;
+    }
+    
+    if (newPlotPoints < 1 || newPlotPoints > 20) {
+        alert('Plot points must be between 1 and 20');
+        document.getElementById('actDetailsPlotPoints').focus();
+        // Re-enable save button on validation error
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Changes';
+        }
+        return;
+    }
+    
+    // Update the act object with new values
+    actToSave.name = newName;
+    actToSave.description = newDescription;
+    actToSave.plotPoints = newPlotPoints;
+    actToSave.userDirections = newDirections; // 🆕 Add userDirections
+    
+    // Update template data in app state (including userDirections)
+    updateTemplateStructureInAppState(
+        actToSave.key, 
+        newName, 
+        newDescription, 
+        newPlotPoints, 
+        newDirections  // 🆕 Pass userDirections
+    );
+    
+    // Update the act card display
+    updateActCardDisplay(actToSave);
+    
+    // Hide modal
+    hideActDetailsModal();
+    
+    // Show success feedback
+    showToast('Act details saved successfully!', 'success');
+    
+    // 🔧 Save to database immediately
+    if (window.autoSaveManager) {
+        autoSaveManager.saveImmediately();
+    }
+    
+    console.log('🎭 Act updated:', { 
+        key: actToSave.key, 
+        name: newName, 
+        description: newDescription,
+        userDirections: newDirections
+    });
+}
+
+function updateActCardDisplay(act) {
+    // Find the act card and update its display
+    const card = document.querySelector(`[data-act-key="${act.key}"]`);
+    if (!card) {
+        console.error('Could not find act card to update');
+        return;
+    }
+    
+    // Update title
+    const titleElement = card.querySelector('.act-card-title');
+    if (titleElement) {
+        titleElement.setAttribute('data-original', act.name);
+        const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
+        titleElement.textContent = truncatedTitle;
+    }
+    
+    // Update description
+    const descriptionElement = card.querySelector('.act-card-description');
+    if (descriptionElement) {
+        descriptionElement.setAttribute('data-original', act.description);
+        const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
+        descriptionElement.textContent = truncatedDescription;
+    }
+    
+    // Update plot points
+    const plotPointsElement = card.querySelector('.act-card-plot-points');
+    if (plotPointsElement) {
+        plotPointsElement.setAttribute('data-original', act.plotPoints);
+        plotPointsElement.textContent = `${act.plotPoints} pts`;
+    }
+    
+    // Update userDirections data attribute
+    card.setAttribute('data-user-directions', act.userDirections || '');
+    
+    // Update tooltip
+    const tooltip = card.querySelector('.act-card-tooltip');
+    if (tooltip) {
+        tooltip.innerHTML = `
+            <strong>${act.name}</strong><br>
+            ${act.description}
+            ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
+            <br><br><strong>Plot Points:</strong> ${act.plotPoints}
+            ${act.userDirections ? `<br><br><strong>✨ Your Directions:</strong> ${act.userDirections}` : ''}
+        `;
+    }
+    
+    console.log('🎭 Act card display updated');
+}
+
+// Close modal when clicking outside - improved race condition protection
+window.addEventListener('click', (e) => {
+    const modal = document.getElementById('actDetailsModal');
+    // Only close if clicking on the modal backdrop (not the content)
+    // and the modal is actually visible
+    if (e.target === modal && modal.style.display === 'block') {
+        console.log('🎭 Closing modal due to outside click');
+        hideActDetailsModal();
+    }
+});

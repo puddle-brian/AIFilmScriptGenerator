@@ -90,6 +90,7 @@ function replacePlaceholders(template, placeholders) {
 /**
  * GENERATE STRUCTURE DESCRIPTION
  * Creates a detailed description of the template structure for AI generation
+ * 🆕 Step 3: Now includes userDirections for creative input
  */
 function generateStructureDescription(templateData) {
     if (!templateData || !templateData.structure) {
@@ -102,10 +103,24 @@ function generateStructureDescription(templateData) {
     const structureKeys = Object.keys(templateData.structure);
     description += `This template consists of ${structureKeys.length} major structural elements:\n`;
     
+    // 🆕 Step 3: Check if any acts have userDirections
+    let hasUserDirections = false;
+    
     structureKeys.forEach((key, index) => {
         const element = templateData.structure[key];
         description += `${index + 1}. ${element.name || key}: ${element.description || 'A key structural element'}\n`;
+        
+        // 🆕 Step 3: Include userDirections if they exist
+        if (element.userDirections && element.userDirections.trim()) {
+            description += `   ✨ User Creative Direction: ${element.userDirections}\n`;
+            hasUserDirections = true;
+        }
     });
+    
+    // 🆕 Step 3: Add instructions for handling user directions
+    if (hasUserDirections) {
+        description += `\n⚠️ IMPORTANT: Some acts have "✨ User Creative Direction" - these are specific creative requirements that must be incorporated into your generated content for those acts. Treat these as mandatory creative constraints, not optional suggestions.\n`;
+    }
     
     return description;
 }

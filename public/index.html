@@ -899,6 +899,54 @@
             </div>
         </div>
 
+        <!-- Act Details Modal -->
+        <div class="modal" id="actDetailsModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="actDetailsModalTitle">Edit Act Details</h3>
+                    <button class="modal-close" onclick="hideActDetailsModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="actDetailsName">Act Name</label>
+                        <input type="text" id="actDetailsName" class="form-control" 
+                               placeholder="e.g., Call to Adventure">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="actDetailsDescription">Template Description</label>
+                        <textarea id="actDetailsDescription" class="form-control" rows="3" 
+                                  placeholder="Template description from the story structure..."></textarea>
+                        <div class="form-help">
+                            This is the original template description. Changes here modify the template structure.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="actDetailsDirections">✨ Your Creative Directions</label>
+                        <textarea id="actDetailsDirections" class="form-control" rows="4" 
+                                  placeholder="Add your creative directions for this act...&#10;&#10;Examples:&#10;• Blue switch up: the world transforms to a blue hue&#10;• Emphasize the emotional weight of the decision&#10;• Make this more action-oriented than usual"></textarea>
+                        <div class="form-help">
+                            <strong>✨ This is where you add your creative input!</strong> These directions will guide the AI to incorporate your specific vision while following the template structure.
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="actDetailsPlotPoints">Plot Points</label>
+                        <input type="number" id="actDetailsPlotPoints" class="form-control" 
+                               min="1" max="20" value="4">
+                        <div class="form-help">
+                            Number of plot points to generate for this act.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideActDetailsModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveActDetails()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Notification Toast -->
         <div class="toast" id="toast">
             <div class="toast-content">

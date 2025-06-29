@@ -1047,6 +1047,12 @@ class HierarchicalContext {
         prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
       }
       
+      // 🆕 Step 3: Include userDirections if available
+      if (currentAct.userDirections && currentAct.userDirections.trim()) {
+        prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+        prompt += `⚠️  MANDATORY: Incorporate this creative direction into all plot points for this act.\n`;
+      }
+      
       // Add explicit instruction for plot point generation
       prompt += `\n⚠️  IMPORTANT: Generate plot points that match THIS CURRENT ACT's description above, not the general story details below.\n\n`;
     }
@@ -1133,6 +1139,12 @@ class HierarchicalContext {
       if (currentAct.characterDevelopment) {
         prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
       }
+      
+      // 🆕 Step 3: Include userDirections if available
+      if (currentAct.userDirections && currentAct.userDirections.trim()) {
+        prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+      }
+      
       prompt += '\n';
     }
 
@@ -1552,51 +1564,8 @@ app.post('/api/preview-prompt', authenticateApiKey, async (req, res) => {
     
     const influencePrompt = storyInput.influencePrompt || '';
 
-    // Generate a detailed description of the template structure
-    const structureDescription = await generateStructureDescription(templateData);
-    
-    const prompt = `${influencePrompt}Based on the following story concept, generate a detailed plot structure using the ${templateData.name} format that embodies these artistic sensibilities:
-
-Story Details:
-- Title: ${storyInput.title}
-- Logline: ${storyInput.logline}
-- Main Characters: ${storyInput.characters}
-
-STRUCTURE OVERVIEW:
-${structureDescription}
-
-Template Structure Elements: ${JSON.stringify(templateData.structure, null, 2)}
-
-CRITICAL GUIDELINES FOR EVENT-DRIVEN STORYTELLING:
-1. Each act description must focus on CONCRETE ACTIONS and EVENTS that happen - not internal feelings or character psychology
-2. Describe what the audience will SEE happening on screen - external, visual story beats
-3. Show character development through ACTIONS and CHOICES, not internal monologue or emotional states
-4. Focus on plot events that connect causally - what happens BECAUSE of previous events
-5. Each act should describe key incidents, confrontations, discoveries, or turning points
-6. Avoid describing what characters "feel," "realize," or "understand" - instead describe what they DO
-7. Character development should be evident through their changing behavior and choices across acts
-
-Generate a detailed breakdown for each structural element. Each element should have:
-- A clear title
-- A 2-3 sentence description of the KEY EVENTS and ACTIONS that occur in this act
-- Key character developments (shown through actions, not feelings)
-- Important plot points (concrete incidents that advance the story)
-
-Return the response as a valid JSON object with each structural element as a property. 
-
-IMPORTANT: Your response must be ONLY valid JSON, with no additional text, markdown formatting, or explanations. Start with { and end with }.
-
-Example format:
-{
-  "act1_setup": {
-    "name": "Act 1: Setup",
-    "description": "Character performs specific actions that establish their world and routine. Key events occur that set up the story's central conflict."
-  },
-  "act1_inciting_incident": {
-    "name": "Inciting Incident", 
-    "description": "A specific event disrupts the character's normal world and forces them into the main story conflict."
-  }
-}`;
+    // 🔧 Step 3 Fix: Use unified prompt builder that includes userDirections support
+    const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
 
     res.json({
       prompt: prompt,
