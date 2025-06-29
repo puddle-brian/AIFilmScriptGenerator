@@ -10,7 +10,7 @@ KEY REQUIREMENTS:
 • CRITICAL: Use strict "BUT/THEREFORE" logic for dramatic flow
 
 CAUSAL FLOW RULES:
-• First plot point: IF there's a 🔗 connection above, use "But" or "Therefore" to continue from that moment. OTHERWISE, establish the situation for this act.
+• First plot point: IF there's a 🔗 connection above, use "But" or "Therefore" to continue from that moment. OTHERWISE, create a plot point that directly serves this act's specific purpose and description.
 • Subsequent plot points: MUST start with "But" (conflict/complication) or "Therefore" (consequence/progress)
 • "But" = introduces conflict, obstacles, or unexpected complications
 • "Therefore" = shows consequences, progress, or logical results

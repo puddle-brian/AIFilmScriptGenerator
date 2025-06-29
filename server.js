@@ -1032,30 +1032,8 @@ class HierarchicalContext {
     
     let prompt = '';
     
-    // CRITICAL FIX: Put CURRENT STORY ACT first when generating plot points to ensure edited acts take precedence
+    // Track if this is plot point generation for later use
     const isPlotPointGeneration = targetLevel === 4;
-    
-    // Current act focus - Show FIRST for plot point generation to give it precedence
-    if (this.contexts.act && targetLevel >= 3 && isPlotPointGeneration) {
-      const currentAct = this.contexts.act.data;
-      prompt += `CURRENT STORY ACT (TAKES PRECEDENCE):\n`;
-      prompt += `${currentAct.name}\n`;
-      prompt += `Purpose: ${currentAct.description}\n`;
-      
-      // Include character development if available
-      if (currentAct.characterDevelopment) {
-        prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
-      }
-      
-      // 🆕 Step 3: Include userDirections if available
-      if (currentAct.userDirections && currentAct.userDirections.trim()) {
-        prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
-        prompt += `⚠️  MANDATORY: Incorporate this creative direction into all plot points for this act.\n`;
-      }
-      
-      // Add explicit instruction for plot point generation
-      prompt += `\n⚠️  IMPORTANT: Generate plot points that match THIS CURRENT ACT's description above, not the general story details below.\n\n`;
-    }
     
     // Level 1: Story Foundation with Full Creative Context
     // Story context is built properly below - no need to dump raw object
@@ -1128,24 +1106,48 @@ class HierarchicalContext {
       }
     }
     
-    // Current act focus - Show at normal position for non-plot-point generation
-    if (this.contexts.act && targetLevel >= 3 && !isPlotPointGeneration) {
+    // CRITICAL: Current act focus - Show AFTER story details for plot point generation (maximum recency & prominence)
+    // Show at normal position for non-plot-point generation  
+    if (this.contexts.act && targetLevel >= 3) {
       const currentAct = this.contexts.act.data;
-      prompt += `CURRENT STORY ACT:\n`;
-      prompt += `${currentAct.name}\n`;
-      prompt += `Purpose: ${currentAct.description}\n`;
       
-      // Include character development if available
-      if (currentAct.characterDevelopment) {
-        prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
+      if (isPlotPointGeneration) {
+        // For plot point generation: Place AFTER story details for maximum AI focus
+        prompt += `CURRENT STORY ACT (TAKES PRECEDENCE):\n`;
+        prompt += `${currentAct.name}\n`;
+        prompt += `Purpose: ${currentAct.description}\n`;
+        
+        // Include character development if available
+        if (currentAct.characterDevelopment) {
+          prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
+        }
+        
+        // Include userDirections if available
+        if (currentAct.userDirections && currentAct.userDirections.trim()) {
+          prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+          prompt += `⚠️  MANDATORY: Incorporate this creative direction into all plot points for this act.\n`;
+        }
+        
+        // Add explicit instruction for plot point generation
+        prompt += `\n⚠️  IMPORTANT: Generate plot points that match THIS CURRENT ACT's description above, not the general story details.\n\n`;
+      } else {
+        // For non-plot-point generation: Normal position
+        prompt += `CURRENT STORY ACT:\n`;
+        prompt += `${currentAct.name}\n`;
+        prompt += `Purpose: ${currentAct.description}\n`;
+        
+        // Include character development if available
+        if (currentAct.characterDevelopment) {
+          prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
+        }
+        
+        // Include userDirections if available
+        if (currentAct.userDirections && currentAct.userDirections.trim()) {
+          prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
+        }
+        
+        prompt += '\n';
       }
-      
-      // 🆕 Step 3: Include userDirections if available
-      if (currentAct.userDirections && currentAct.userDirections.trim()) {
-        prompt += `✨ User Creative Direction: ${currentAct.userDirections}\n`;
-      }
-      
-      prompt += '\n';
     }
 
     // Level 5: Scene Context
