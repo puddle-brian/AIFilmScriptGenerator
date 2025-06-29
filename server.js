@@ -1819,11 +1819,16 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     // Get appropriate max_tokens for the model
     function getMaxTokensForModel(modelName) {
       if (modelName.includes('haiku')) {
-        return 8192; // Claude 3.5 Haiku limit
+        // Check for older Claude 3 Haiku vs newer Claude 3.5 Haiku
+        if (modelName.includes('claude-3-haiku-20240307')) {
+          return 4096; // Claude 3 Haiku limit
+        } else {
+          return 8192; // Claude 3.5 Haiku limit
+        }
       } else if (modelName.includes('sonnet')) {
         return 12000; // Claude 3.5 Sonnet can handle more
       } else {
-        return 8192; // Safe default
+        return 4096; // Safe default for older models
       }
     }
 
@@ -1850,11 +1855,25 @@ app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async 
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       console.log('Raw response that failed to parse:', completion.content[0].text);
-      // Fallback if AI doesn't return valid JSON
-      structureData = {
-        error: "Failed to parse AI response",
-        rawResponse: completion.content[0].text
-      };
+      
+      // Try to fix common JSON issues like nested quotes
+      try {
+        let fixedText = completion.content[0].text;
+        // Fix nested quotes in descriptions
+        fixedText = fixedText.replace(/"([^"]*)"([^"]*)"([^"]*)"/g, '"$1\\"$2\\"$3"');
+        // Fix trailing spaces and newlines in property values
+        fixedText = fixedText.replace(/:\s*"([^"]+)"\s*([,}])/g, ': "$1"$2');
+        
+        structureData = JSON.parse(fixedText);
+        console.log('✅ Fixed JSON parsing with quote correction');
+      } catch (secondParseError) {
+        console.error('Second JSON parse attempt failed:', secondParseError);
+        // Fallback if AI doesn't return valid JSON
+        structureData = {
+          error: "Failed to parse AI response",
+          rawResponse: completion.content[0].text
+        };
+      }
     }
 
     // 🔧 CRITICAL FIX: Preserve plot points from template in generated structure
