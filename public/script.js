@@ -5189,11 +5189,17 @@ async function generateAllScenes() {
                 
                 appState.generatedScenes[structureKey] = allScenes;
                 
-                // Update preview with the latest scene
+                // Update preview with ALL scenes for this act
                 if (allScenes && allScenes.length > 0) {
-                    const latestScene = allScenes[allScenes.length - 1];
-                    const sceneText = latestScene.scene || latestScene.description || 'Scene generated';
-                    progressTracker.updatePreview(sceneText, `Act ${actNumber} Latest Scene`);
+                    // Combine all scenes into one preview entry for this act
+                    const allScenesText = allScenes.map((scene, index) => {
+                        const sceneText = scene.scene || scene.description || scene.title || 'Scene generated';
+                        const sceneNumber = allScenes.length === 1 ? '' : ` ${index + 1}`;
+                        return `SCENE${sceneNumber}:\n${sceneText}`;
+                    }).join('\n\n');
+                    
+                    const label = `Act ${actNumber} - ${allScenes.length} Scene${allScenes.length === 1 ? '' : 's'}`;
+                    progressTracker.updatePreview(allScenesText, label);
                 }
                 
                 // Increment progress step
@@ -5456,10 +5462,16 @@ async function generateAllPlotPoints() {
                 // Display the generated plot points immediately
                 displayElementPlotPoints(structureKey, data.plotPoints);
                 
-                // Update preview with the latest plot point
+                // Update preview with ALL plot points for this act
                 if (data.plotPoints && data.plotPoints.length > 0) {
-                    const latestPlotPoint = data.plotPoints[data.plotPoints.length - 1];
-                    progressTracker.updatePreview(latestPlotPoint, `Act ${actNumber} Plot Point`);
+                    // Combine all plot points into one preview entry for this act
+                    const allPlotPointsText = data.plotPoints.map((plotPoint, index) => {
+                        const pointNumber = data.plotPoints.length === 1 ? '' : ` ${index + 1}`;
+                        return `PLOT POINT${pointNumber}:\n${plotPoint}`;
+                    }).join('\n\n');
+                    
+                    const label = `Act ${actNumber} - ${data.plotPoints.length} Plot Point${data.plotPoints.length === 1 ? '' : 's'}`;
+                    progressTracker.updatePreview(allPlotPointsText, label);
                 }
                 
                 // Increment progress step
@@ -6433,9 +6445,10 @@ async function generateAllDialogue() {
                 // Store dialogue in app state
                 appState.generatedDialogues[sceneId] = data.dialogue;
                 
-                // Update preview with the latest dialogue
+                // Update preview with the dialogue for this scene
                 if (data.dialogue) {
-                    progressTracker.updatePreview(data.dialogue, `Scene ${sceneNumber} Dialogue`);
+                    const sceneTitle = scene.title || `Scene ${sceneNumber}`;
+                    progressTracker.updatePreview(data.dialogue, `${sceneTitle} - Dialogue`);
                 }
                 
                 // Increment progress step
@@ -7704,17 +7717,33 @@ const progressTracker = {
         const previewLabelElement = document.querySelector('.preview-label');
         
         if (previewElement && previewContentElement) {
-            // Show full content without truncation
-            previewContentElement.textContent = content;
-            
-            if (previewLabelElement) {
-                previewLabelElement.textContent = `${label}:`;
+            // First time setup
+            if (previewContentElement.textContent === '') {
+                if (previewLabelElement) {
+                    previewLabelElement.textContent = 'Generated Content:';
+                }
+                previewElement.style.display = 'block';
             }
             
-            // Show the preview area
-            previewElement.style.display = 'block';
+            // Create a new entry with separator
+            const newEntry = document.createElement('div');
+            newEntry.style.cssText = 'margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.2);';
             
-            // Scroll to bottom if content overflows
+            const entryLabel = document.createElement('div');
+            entryLabel.style.cssText = 'font-weight: 600; font-size: 10px; color: rgba(255, 255, 255, 0.6); margin-bottom: 4px; text-transform: uppercase;';
+            entryLabel.textContent = label;
+            
+            const entryContent = document.createElement('div');
+            entryContent.style.cssText = 'white-space: pre-wrap; word-wrap: break-word;';
+            entryContent.textContent = content;
+            
+            newEntry.appendChild(entryLabel);
+            newEntry.appendChild(entryContent);
+            
+            // Append to the content area
+            previewContentElement.appendChild(newEntry);
+            
+            // Auto-scroll to bottom to show latest content
             previewElement.scrollTop = previewElement.scrollHeight;
         }
     },
@@ -7735,7 +7764,7 @@ const progressTracker = {
                 </div>
                 <div class="progress-details">0/${this.totalSteps} ${this.unitName} completed</div>
                 <div class="progress-preview" style="margin-top: 12px; padding: 12px 16px; background: rgba(255, 255, 255, 0.1); border-radius: 6px; max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.4; color: rgba(255, 255, 255, 0.95); display: none; white-space: pre-wrap; word-wrap: break-word;">
-                    <div class="preview-label" style="font-weight: 600; margin-bottom: 4px; color: rgba(255, 255, 255, 0.7);">Latest:</div>
+                    <div class="preview-label" style="font-weight: 600; margin-bottom: 8px; color: rgba(255, 255, 255, 0.7);">Generated Content:</div>
                     <div class="preview-content"></div>
                 </div>
                 <div class="progress-actions" style="margin-top: 16px; display: flex; justify-content: center;">
@@ -7753,6 +7782,13 @@ const progressTracker = {
         this.isActive = false;
         this.hierarchy = {};
         this.abortController = null;
+        
+        // Clear preview content when cancelling
+        const previewContentElement = document.querySelector('.preview-content');
+        if (previewContentElement) {
+            previewContentElement.innerHTML = '';
+        }
+        
         hideLoading();
         showToast('Generation cancelled by user', 'info');
     },
@@ -7761,6 +7797,13 @@ const progressTracker = {
         this.isActive = false;
         this.hierarchy = {};
         this.abortController = null;
+        
+        // Clear preview content for next generation
+        const previewContentElement = document.querySelector('.preview-content');
+        if (previewContentElement) {
+            previewContentElement.innerHTML = '';
+        }
+        
         hideLoading();
     }
 };
