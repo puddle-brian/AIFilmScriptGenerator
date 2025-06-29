@@ -2153,7 +2153,75 @@ app.post('/api/generate-dialogue', async (req, res) => {
     const sceneId = scene.id || uuidv4();
     const dialogueText = completion.content[0].text;
 
-    // Dialogue generation now saves to database only (v2.0 unified format)
+    // 🔥 FIX: Add proper database saving for dialogue generation
+    if (projectPath) {
+      try {
+        // Get user from API key (this endpoint isn't using authenticateApiKey middleware yet)
+        // For now, use guest as fallback - this should be updated to use proper auth
+        const username = 'guest'; // TODO: Add authenticateApiKey middleware to this endpoint
+        
+        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        if (userResult.rows.length > 0) {
+          const userId = userResult.rows[0].id;
+          
+          // Load existing project context
+          const projectResult = await dbClient.query(
+            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
+            [userId, projectPath]
+          );
+          
+          if (projectResult.rows.length > 0) {
+            const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+            
+            // Initialize generatedDialogues if it doesn't exist
+            if (!projectContext.generatedDialogues) {
+              projectContext.generatedDialogues = {};
+            }
+            
+            // Save dialogue with scene ID
+            projectContext.generatedDialogues[sceneId] = {
+              dialogue: dialogueText,
+              sceneId: sceneId,
+              scene: scene,
+              generatedAt: new Date().toISOString()
+            };
+            
+            // 🔥 FIX: Update currentStep to 6 when dialogue is first generated
+            if (projectContext.currentStep < 6) {
+              projectContext.currentStep = 6;
+              console.log(`📈 Updated currentStep to 6 (dialogue generated)`);
+            }
+            
+            // Save back to database
+            await dbClient.query(
+              'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
+              [JSON.stringify(projectContext), userId, projectPath]
+            );
+            
+            // 🔥 FIX: Also update thumbnail_data.currentStep for project card consistency
+            try {
+              await dbClient.query(
+                'UPDATE user_projects SET thumbnail_data = jsonb_set(thumbnail_data, \'{currentStep}\', $1::jsonb) WHERE user_id = $2 AND project_name = $3',
+                [projectContext.currentStep, userId, projectPath]
+              );
+              console.log(`📈 Updated thumbnail_data.currentStep to ${projectContext.currentStep}`);
+            } catch (thumbnailError) {
+              console.log('Warning: Could not update thumbnail_data.currentStep:', thumbnailError.message);
+            }
+            
+            console.log(`✅ Dialogue saved to database for scene: ${sceneId}`);
+          } else {
+            console.log('Warning: Project not found in database for dialogue saving');
+          }
+        } else {
+          console.log('Warning: User not found for dialogue saving');
+        }
+      } catch (dbError) {
+        console.error('Error saving dialogue to database:', dbError);
+        // Don't fail the request if database save fails
+      }
+    }
+
     console.log('✅ Dialogue generation completed - database-only storage');
 
     res.json({ 
@@ -5918,11 +5986,28 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
       generatedAt: new Date().toISOString()
     };
     
+    // Update currentStep to 5 when scenes are first generated
+    if (projectContext.currentStep < 5) {
+      projectContext.currentStep = 5;
+      console.log(`📈 Updated currentStep to 5 (scenes generated)`);
+    }
+    
     // Update database with new scenes
         await dbClient.query(
       'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
       [JSON.stringify(projectContext), userId, projectPath]
     );
+    
+    // Also update thumbnail_data.currentStep for project card consistency
+    try {
+      await dbClient.query(
+        'UPDATE user_projects SET thumbnail_data = jsonb_set(thumbnail_data, \'{currentStep}\', $1::jsonb) WHERE user_id = $2 AND project_name = $3',
+        [projectContext.currentStep, userId, projectPath]
+      );
+      console.log(`📈 Updated thumbnail_data.currentStep to ${projectContext.currentStep}`);
+    } catch (thumbnailError) {
+      console.log('Warning: Could not update thumbnail_data.currentStep:', thumbnailError.message);
+    }
     
     console.log(`\n✅ Act ${actKey} complete: Generated ${totalScenesGenerated} scenes across ${allGeneratedScenes.length} plot points`);
     
