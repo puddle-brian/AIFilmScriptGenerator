@@ -7299,8 +7299,56 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         // Step 2: Template Selection - Show selected template or template options
         console.log('Step 2 - Template Selection');
         if (appState.selectedTemplate) {
-            // Template already selected - hide template options
-            collapseTemplateOptions();
+            // Template already selected - show the selected template
+            console.log('🔧 Template already selected, displaying:', appState.selectedTemplate);
+            
+            // Ensure templates are loaded first
+            try {
+                await loadTemplates();
+                
+                // Find the selected template data
+                let selectedTemplateData = null;
+                if (appState.availableTemplates) {
+                    Object.values(appState.availableTemplates).forEach(category => {
+                        if (category.templates) {
+                            const found = category.templates.find(template => template.id === appState.selectedTemplate);
+                            if (found) {
+                                selectedTemplateData = found;
+                            }
+                        }
+                    });
+                }
+                
+                if (selectedTemplateData) {
+                    // Use existing templateData if available (with user customizations), otherwise use fresh data
+                    const templateDataToDisplay = appState.templateData || selectedTemplateData;
+                    console.log('🔧 Displaying template:', templateDataToDisplay.name);
+                    
+                    // Mark the template as selected in the UI
+                    const templateElements = document.querySelectorAll('.template-option');
+                    templateElements.forEach(element => {
+                        const templateIdAttr = element.getAttribute('data-template-id');
+                        if (templateIdAttr === appState.selectedTemplate) {
+                            element.classList.add('selected');
+                        } else {
+                            element.classList.remove('selected');
+                        }
+                    });
+                    
+                    // Display the selected template
+                    displaySelectedTemplate(templateDataToDisplay);
+                    collapseTemplateOptions();
+                    updateTemplatePageForSelection();
+                    
+                    console.log('✅ Template display completed for step 2 navigation');
+                } else {
+                    console.warn('🚨 Selected template data not found, expanding options');
+                    expandTemplateOptions();
+                }
+            } catch (error) {
+                console.error('🚨 Error loading templates for step 2:', error);
+                expandTemplateOptions();
+            }
         } else {
             // No template selected - show template options
             expandTemplateOptions();
