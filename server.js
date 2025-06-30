@@ -2234,6 +2234,158 @@ app.post('/api/generate-dialogue', async (req, res) => {
   }
 });
 
+// 🧞‍♂️ Genie Suggestions API Endpoint
+app.post('/api/genie-suggestion', authenticateApiKey, checkCredits(2), async (req, res) => {
+  try {
+    const { suggestionType, prompt, context, temperature = 0.8 } = req.body;
+    
+    if (!suggestionType || !prompt) {
+      return res.status(400).json({ error: 'Missing required fields: suggestionType and prompt' });
+    }
+
+    console.log(`🧞‍♂️ Generating Genie suggestion for type: ${suggestionType}`);
+
+    // Build system message based on suggestion type
+    const systemMessages = {
+      'director': 'You are a film expert with deep knowledge of directors and their distinctive styles. Suggest directors whose approaches would enhance the given story.',
+      'screenwriter': 'You are a screenwriting expert with knowledge of different prose styles and approaches. Suggest screenwriters whose styles would enhance the given story.',
+      'film': 'You are a cinema expert with knowledge of influential films. Suggest films whose essence and approach would enhance the given story.',
+      'tone': 'You are a storytelling expert who understands mood and atmosphere. Suggest tones that would enhance the given story.',
+      'character': 'You are a character development expert. Suggest compelling characters that would enhance the given story.',
+      'storyconcept': 'You are a story development expert who specializes in creating diverse, original concepts. Avoid overused tropes like memory manipulation, time travel, or dystopian themes. Focus on fresh human stories across different genres and real-world conflicts.'
+    };
+
+    const systemMessage = systemMessages[suggestionType] || 'You are a creative writing expert. Provide helpful suggestions to enhance the given story.';
+
+    // Create appropriate response format instructions
+    const responseFormat = getSuggestionResponseFormat(suggestionType);
+    const fullPrompt = `${prompt}\n\n${responseFormat}`;
+
+    // Use tracked API for credit deduction and logging
+    const completion = await trackedAnthropic.messages({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 300,
+      temperature: temperature, // Use provided temperature for variation
+      system: systemMessage,
+      messages: [
+        {
+          role: "user",
+          content: fullPrompt
+        }
+      ]
+    }, req.user, `/api/genie-suggestion`, null);
+
+    let suggestion;
+    const text = completion.content[0].text.trim();
+    
+    if (suggestionType === 'storyconcept') {
+      // Parse the new Title/Logline format for story concepts
+      const titleMatch = text.match(/Title:\s*(.+)/i);
+      const loglineMatch = text.match(/Logline:\s*(.+)/i);
+      
+      suggestion = {
+        title: titleMatch ? titleMatch[1].trim() : text.substring(0, 50),
+        logline: loglineMatch ? loglineMatch[1].trim() : text
+      };
+    } else if (suggestionType === 'character') {
+      // Try to parse as JSON first for characters
+      try {
+        suggestion = JSON.parse(text);
+      } catch (parseError) {
+        // If not JSON, create a simple structure from plain text
+        const lines = text.split('\n').filter(line => line.trim());
+        suggestion = {
+          name: lines[0]?.replace(/^(Name|Character):\s*/, '').trim() || text.substring(0, 50),
+          description: lines.slice(1).join('\n').trim() || text
+        };
+      }
+    } else {
+      // For simple types, use the entire text as content
+      suggestion = {
+        content: text
+      };
+    }
+
+    console.log(`✅ Genie suggestion generated for type: ${suggestionType}`);
+    
+    res.json({
+      suggestion: suggestion,
+      suggestionType: suggestionType,
+      context: context,
+      generatedAt: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error generating Genie suggestion:', error);
+    res.status(500).json({ 
+      error: 'Failed to generate suggestion',
+      details: error.message
+    });
+  }
+});
+
+// Helper function to get response format instructions for each suggestion type
+function getSuggestionResponseFormat(suggestionType) {
+  switch (suggestionType) {
+    case 'director':
+      return `This suggestion will be inserted into prompts as: "With direction reminiscent of [YOUR SUGGESTION], "
+
+Provide ONLY a concise directorial influence phrase that fits this format. 
+
+Examples of good responses:
+- "Christopher Nolan's layered storytelling and practical effects"
+- "Denis Villeneuve's atmospheric visual poetry"
+- "The Wachowskis' kinetic action choreography"
+
+Respond with just the influence phrase, no quotes, no extra text.`;
+    
+    case 'screenwriter':
+      return `This suggestion will be inserted into prompts as: "with prose style that invokes [YOUR SUGGESTION], "
+
+Provide ONLY a concise prose style influence phrase that fits this format.
+
+Examples of good responses:  
+- "Tony Gilroy's procedural descriptions"
+- "Aaron Sorkin's rapid-fire dialogue"
+- "Charlie Kaufman's surreal introspection"
+
+Respond with just the influence phrase, no quotes, no extra text.`;
+    
+    case 'film':
+      return `This suggestion will be inserted into prompts as: "channeling the essence of [YOUR SUGGESTION], "
+
+Provide ONLY a concise film essence phrase that fits this format.
+
+Examples of good responses:
+- "Blade Runner's neo-noir atmosphere"  
+- "The Godfather's family dynamics"
+- "Heat's procedural tension"
+
+Respond with just the influence phrase, no quotes, no extra text.`;
+    
+    case 'tone':
+      return `This suggestion will be inserted into prompts as: "with tone and atmosphere inspired by [YOUR SUGGESTION], "
+
+Provide ONLY a concise tone description that fits this format.
+
+Examples of good responses:
+- "dark comedy with underlying melancholy"
+- "tense psychological thriller atmosphere"
+- "elegant period drama sophistication"
+
+Respond with just the tone phrase, no quotes, no extra text.`;
+    
+    case 'character':
+      return 'Respond with JSON in this exact format: {"name": "Character Name", "description": "Brief but compelling character description"}. The character should add depth, conflict, or enhancement to the existing story elements.';
+    
+    case 'storyconcept':
+      return 'You must respond in this EXACT format:\n\nTitle: [Your Story Title]\nLogline: [One sentence premise describing the story]\n\nCreate something completely different from your previous suggestions. Avoid memory, time, dystopian, or supernatural themes. Focus on realistic human conflicts and relationships. Be creative and unexpected.\n\nDo not include any other text, explanations, or commentary. Just the title and logline as specified.';
+    
+    default:
+      return 'Provide a helpful suggestion to enhance the story. Be specific and creative.';
+  }
+}
+
 // Preview dialogue generation prompt
 app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) => {
   console.log('Dialogue prompt preview endpoint called!');

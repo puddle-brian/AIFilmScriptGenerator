@@ -5992,3 +5992,112 @@ h2 .progress-meter {
     }
 }
 
+/* Genie Suggestions System - Modal Footer Button */
+.btn-genie {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    color: white;
+    border: none;
+    padding: 10px 8px 10px 20px;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(13, 110, 253, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    order: 1;
+}
+
+.btn-genie:hover {
+    background: linear-gradient(135deg, #0b5ed7 0%, #0a58ca 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    color: white;
+}
+
+.btn-genie:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Genie button with branded icon */
+.genie-icon-button {
+    width: 48px;
+    height: 48px;
+    margin-left: 2px;
+    vertical-align: middle;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+    order: 2;
+}
+
+.modal-footer-left:hover .genie-icon-button {
+    opacity: 1;
+}
+
+.modal-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0;
+}
+
+.genie-highlight {
+    animation: genieHighlight 1s ease-in-out;
+    border-color: #0d6efd !important;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+}
+
+@keyframes genieHighlight {
+    0% {
+        background-color: rgba(13, 110, 253, 0.1);
+    }
+    50% {
+        background-color: rgba(13, 110, 253, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* Enhanced modal footer for Genie button positioning */
+.universal-library-modal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-top: 1px solid #dee2e6;
+}
+
+.modal-footer-left {
+    display: flex;
+    gap: 0;
+}
+
+.modal-footer-right {
+    display: flex;
+    gap: 10px;
+}
+
+/* Responsive adjustments for Genie system */
+@media (max-width: 768px) {
+    .universal-library-modal .modal-footer {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .modal-footer-left,
+    .modal-footer-right {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .genie-icon-button {
+        width: 40px;
+        height: 40px;
+        margin-left: 2px;
+    }
+}
+
