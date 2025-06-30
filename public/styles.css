@@ -2254,14 +2254,14 @@ h2 .progress-meter {
 }
 
 .btn-success {
-    background: #48bb78;
+    background: #28a745;
     color: white;
-    border: 2px solid #48bb78;
+    border: 1px solid #28a745;
 }
 
 .btn-success:hover {
-    background: #38a169;
-    border-color: #38a169;
+    background: #218838;
+    border-color: #1e7e34;
 }
 
 /* Prompt Editor Styles */
@@ -5796,6 +5796,154 @@ h2 .progress-meter {
     
     .modal-actions .btn {
         width: 100%;
+    }
+}
+
+/* Genie Button - Magical themed button for AI feedback */
+.btn-genie {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: 1px solid #667eea;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+}
+
+.btn-genie:hover {
+    background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+    border-color: #5a67d8;
+    box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-genie:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+/* Genie Button Container - Icon next to button layout */
+.genie-button-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.genie-icon-large {
+    width: 64px;
+    height: 64px;
+    opacity: 0.9;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
+}
+
+.genie-button-container:hover .genie-icon-large {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+/* Loading state for genie button container */
+.btn-genie.analyze-btn-loading + .genie-icon-large,
+.genie-button-container .btn-genie.analyze-btn-loading ~ .genie-icon-large {
+    animation: spin 1.5s linear infinite;
+}
+
+/* Keep old genie icon styles for backward compatibility */
+.genie-icon {
+    width: 28px;
+    height: 28px;
+    opacity: 0.9;
+    transition: opacity 0.3s ease;
+}
+
+.btn-genie:hover .genie-icon {
+    opacity: 1;
+}
+
+/* Loading state for genie button */
+.btn-genie.analyze-btn-loading {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    opacity: 0.8;
+    cursor: not-allowed;
+}
+
+.btn-genie.analyze-btn-loading .genie-icon {
+    animation: spin 1s linear infinite;
+}
+
+/* Genie Header Icons - For "The Genie's Verdict" and "Improvements" */
+.analysis-title-container,
+.genie-improvements-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.genie-icon-header {
+    width: 64px;
+    height: 64px;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.analysis-title-container:hover .genie-icon-header,
+.genie-improvements-header:hover .genie-icon-header {
+    opacity: 1;
+}
+
+/* Genie Wisdom Container - For "Apply the Genie's Wisdom" */
+.genie-wisdom-container {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    justify-content: center;
+    margin-bottom: 0.5rem;
+}
+
+.genie-icon-medium {
+    width: 64px;
+    height: 64px;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.genie-wisdom-container:hover .genie-icon-medium {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+/* Responsive design for genie container */
+@media (max-width: 768px) {
+    .genie-button-container {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .genie-icon-large {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .genie-wisdom-container {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .genie-icon-header {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .genie-icon-medium {
+        width: 48px;
+        height: 48px;
     }
 }
 

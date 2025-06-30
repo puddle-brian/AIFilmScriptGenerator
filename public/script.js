@@ -1681,7 +1681,7 @@ async function analyzeStoryConcept() {
     
     // Validation - need at least a story concept
     if (!appState.currentStoryConcept || !appState.currentStoryConcept.title) {
-        showToast('Please create a story concept first before getting AI feedback', 'error');
+        showToast('Please create a story concept first before getting a story critique', 'error');
         return;
     }
     
@@ -1690,7 +1690,13 @@ async function analyzeStoryConcept() {
     // Show loading state
     analyzeBtn.classList.add('analyze-btn-loading');
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = '🔍 Analyzing...';
+    analyzeBtn.textContent = 'The Genie is analyzing your story...';
+    
+    // Add loading animation to the icon
+    const genieIcon = document.querySelector('.genie-icon-large');
+    if (genieIcon) {
+        genieIcon.style.animation = 'spin 1.5s linear infinite';
+    }
     
     try {
         // Build the full story input with influence prompt (same as structure generation)
@@ -1734,7 +1740,7 @@ async function analyzeStoryConcept() {
         window.lastAnalysis = data.analysis;
         
         displayStoryAnalysis(data.analysis, data.promptAnalyzed);
-        showToast('Story analysis completed! Click "View Analyzed Prompt" to see exactly what was reviewed.', 'success');
+        showToast('Story critique complete! Click "View Analyzed Prompt" to see exactly what was reviewed.', 'success');
         
     } catch (error) {
         console.error('Error analyzing story concept:', error);
@@ -1743,7 +1749,13 @@ async function analyzeStoryConcept() {
         // Reset button state
         analyzeBtn.classList.remove('analyze-btn-loading');
         analyzeBtn.disabled = false;
-        analyzeBtn.textContent = '🔍 Get AI Feedback on My Story';
+        analyzeBtn.textContent = 'Story Critique by The Genie';
+        
+        // Remove loading animation from the icon
+        const genieIcon = document.querySelector('.genie-icon-large');
+        if (genieIcon) {
+            genieIcon.style.animation = '';
+        }
     }
 }
 
@@ -1886,10 +1898,13 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
         
         ${analysis.suggestions && analysis.suggestions.length > 0 ? `
         <div class="apply-suggestions-section">
-            <button class="btn btn-primary" onclick="applySuggestions()" id="applySuggestionsBtn">
-                🔄 Apply AI Suggestions to My Story
-            </button>
-            <p class="apply-note">AI will improve your story concept based on the feedback above</p>
+            <div class="genie-wisdom-container">
+                <img src="/askthegenie_black.png" alt="The Genie" class="genie-icon-medium">
+                <button class="btn btn-primary" onclick="applySuggestions()" id="applySuggestionsBtn">
+                    Apply the Genie's Wisdom
+                </button>
+            </div>
+            <p class="apply-note">The Genie will enhance your story concept based on the feedback above</p>
         </div>
         ` : ''}
         
@@ -2030,7 +2045,7 @@ async function applySuggestions() {
     try {
         // Update button state
         btn.disabled = true;
-        btn.textContent = '🔄 Applying Suggestions...';
+        btn.textContent = 'Genie at Work...';
         btn.classList.add('loading');
 
         // Call the backend API
@@ -2071,7 +2086,7 @@ async function applySuggestions() {
     } finally {
         // Reset button state
         btn.disabled = false;
-        btn.textContent = '🔄 Apply AI Suggestions to My Story';
+        btn.textContent = 'Apply the Genie\'s Wisdom';
         btn.classList.remove('loading');
     }
 }
@@ -2609,13 +2624,14 @@ function updateAutoGenerateButtonVisibility() {
     }
     
     // AI feedback button: show only when there's a story concept to analyze
-    if (analyzeBtn) {
+    const genieContainer = document.getElementById('genieContainer');
+    if (genieContainer) {
         if (hasStoryConcept) {
-            analyzeBtn.style.display = 'inline-block';
-            console.log('🔧 Showing AI feedback button (has story concept)');
+            genieContainer.style.display = 'flex';
+            console.log('🔧 Showing story critique button (has story concept)');
         } else {
-            analyzeBtn.style.display = 'none';
-            console.log('🔧 Hiding AI feedback button (no story concept)');
+            genieContainer.style.display = 'none';
+            console.log('🔧 Hiding story critique button (no story concept)');
         }
     }
 }

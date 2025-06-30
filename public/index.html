@@ -245,16 +245,22 @@
                     
                     <div class="form-actions">
                         <button type="button" class="btn btn-outline" onclick="autoGenerate()" id="autoGenerateBtn" style="display: none;">🎲 Auto Generate (Debug)</button>
-                        <button type="button" class="btn btn-success" onclick="analyzeStoryConcept()" id="analyzeBtn" style="display: none;">
-                            🔍 Get AI Feedback on My Story
-                        </button>
+                        <div class="genie-button-container" style="display: none;" id="genieContainer">
+                            <img src="/askthegenie_black.png" alt="Story Critique by The Genie" class="genie-icon-large">
+                            <button type="button" class="btn btn-genie" onclick="analyzeStoryConcept()" id="analyzeBtn">
+                                Story Critique by The Genie
+                            </button>
+                        </div>
                     </div>
                 </form>
                 
-                <!-- AI Feedback Display -->
+                <!-- Story Critique Display -->
                 <div id="storyAnalysisResults" class="story-analysis-results" style="display: none;">
                     <div class="analysis-header">
-                        <h3>📊 AI Story Analysis</h3>
+                        <div class="analysis-title-container">
+                            <img src="/askthegenie_black.png" alt="The Genie" class="genie-icon-header">
+                            <h3>The Genie's Verdict</h3>
+                        </div>
                         <button type="button" class="close-analysis-btn" onclick="hideStoryAnalysis()">×</button>
                     </div>
                     <div id="analysisContent" class="analysis-content">
@@ -866,7 +872,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="prompt-info">
-                        <p><strong>This is the exact prompt that was analyzed by the AI feedback system.</strong></p>
+                        <p><strong>This is the exact prompt that was analyzed by The Genie for your story critique.</strong></p>
                         <p>It's identical to what would be sent for structure generation, ensuring perfect alignment between analysis and generation.</p>
                     </div>
                     <div class="prompt-content">
@@ -888,7 +894,10 @@
         <div id="improvementPreviewModal" class="modal" style="display: none;">
             <div class="modal-content large-modal">
                 <div class="modal-header">
-                    <h3>🔄 Apply AI Suggestions Preview</h3>
+                    <div class="genie-improvements-header">
+                    <img src="/askthegenie_black.png" alt="The Genie" class="genie-icon-header">
+                    <h3>The Genie's Improvements</h3>
+                </div>
                     <span class="close" onclick="hideImprovementPreviewModal()">&times;</span>
                 </div>
                 <div class="modal-body">
