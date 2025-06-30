@@ -8161,6 +8161,133 @@ app.post('/api/v2/auth/register', async (req, res) => {
   }
 });
 
+// Progress tracking repair endpoint
+app.post('/api/repair-progress-tracking', async (req, res) => {
+  try {
+    const { action, username, projectName, correctStep } = req.body;
+    
+    if (action === 'analyze') {
+      // Analyze all projects for progress inconsistencies
+      const projectsResult = await dbClient.query(`
+        SELECT u.username, p.project_name, p.thumbnail_data, p.project_context
+        FROM users u 
+        JOIN user_projects p ON u.id = p.user_id 
+        ORDER BY u.username, p.project_name
+      `);
+      
+      const issues = [];
+      
+      for (const project of projectsResult.rows) {
+        try {
+          const currentStep = project.thumbnail_data?.currentStep || 1;
+          const projectContext = parseProjectContext(project.project_context);
+          
+          // Calculate what the step should be based on actual content
+          let actualStep = 1;
+          
+          if (projectContext.storyInput?.title && projectContext.storyInput?.logline) {
+            actualStep = Math.max(actualStep, 1);
+          }
+          
+          if (projectContext.selectedTemplate && projectContext.templateData) {
+            actualStep = Math.max(actualStep, 2);
+          }
+          
+          if (projectContext.generatedStructure && Object.keys(projectContext.generatedStructure).length > 0) {
+            actualStep = Math.max(actualStep, 3);
+          }
+          
+          if (projectContext.plotPoints && Object.keys(projectContext.plotPoints).length > 0) {
+            actualStep = Math.max(actualStep, 4);
+          }
+          
+          if (projectContext.generatedScenes && Object.keys(projectContext.generatedScenes).length > 0) {
+            actualStep = Math.max(actualStep, 5);
+          }
+          
+          if (projectContext.generatedDialogues && Object.keys(projectContext.generatedDialogues).length > 0) {
+            actualStep = Math.max(actualStep, 6);
+          }
+          
+          // Check for inconsistencies
+          if (currentStep !== actualStep) {
+            issues.push({
+              username: project.username,
+              projectName: project.project_name,
+              currentStep,
+              actualStep,
+              status: 'inconsistent'
+            });
+          }
+        } catch (error) {
+          console.error(`Error analyzing project ${project.project_name}:`, error);
+        }
+      }
+      
+      res.json({
+        status: 'analysis_complete',
+        totalProjects: projectsResult.rows.length,
+        issuesFound: issues.length,
+        issues
+      });
+      
+    } else if (action === 'fix') {
+      // Fix a specific project
+      if (!username || !projectName || !correctStep) {
+        return res.status(400).json({ error: 'username, projectName, and correctStep are required' });
+      }
+      
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      
+      const userId = userResult.rows[0].id;
+      
+      // Update the project's currentStep
+      const updateResult = await dbClient.query(`
+        UPDATE user_projects 
+        SET thumbnail_data = jsonb_set(
+          COALESCE(thumbnail_data, '{}'), 
+          '{currentStep}', 
+          $1::jsonb
+        ),
+        project_context = jsonb_set(
+          COALESCE(project_context, '{}'),
+          '{currentStep}',
+          $1::jsonb
+        )
+        WHERE user_id = $2 AND project_name = $3
+        RETURNING project_name, thumbnail_data
+      `, [correctStep, userId, projectName]);
+      
+      if (updateResult.rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      console.log(`✅ Fixed progress tracking for ${username}/${projectName}: Step ${correctStep}`);
+      
+      res.json({
+        status: 'fixed',
+        username,
+        projectName,
+        updatedStep: correctStep,
+        result: updateResult.rows[0]
+      });
+      
+    } else {
+      res.status(400).json({ error: 'Invalid action. Use "analyze" or "fix"' });
+    }
+    
+  } catch (error) {
+    console.error('Progress tracking repair error:', error);
+    res.status(500).json({
+      error: 'Repair failed',
+      details: error.message
+    });
+  }
+});
+
 // Debug endpoint to test database connection
 app.get('/api/debug/db-test', async (req, res) => {
   try {
