@@ -5190,11 +5190,12 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
       
       // Insert characters (characters have a different structure with name and description)
       for (const character of charactersData) {
+        const entryKey = starterPack.generateEntryKey(character.name);
         await dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'characters', character.name, JSON.stringify({ name: character.name, description: character.description })]
+          [userId, 'characters', entryKey, JSON.stringify({ name: character.name, description: character.description })]
         );
         totalInserted++;
       }
@@ -5301,12 +5302,13 @@ async function populateUserStarterPack(userId, username) {
     
     // Insert characters
     charactersData.forEach(character => {
+      const entryKey = starterPack.generateEntryKey(character.name);
       insertPromises.push(
         dbClient.query(
           `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
            VALUES ($1, $2, $3, $4, NOW()) 
            ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'characters', character.name, JSON.stringify({ name: character.name, description: character.description })]
+          [userId, 'characters', entryKey, JSON.stringify({ name: character.name, description: character.description })]
         )
       );
     });
