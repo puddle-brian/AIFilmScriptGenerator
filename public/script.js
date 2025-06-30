@@ -1776,6 +1776,16 @@ function displayStoryAnalysis(analysis, promptAnalyzed = null) {
             <div class="readiness-badge ${readinessClass}">${analysis.readinessForGeneration} Readiness</div>
         </div>
         
+        ${analysis.genieCommentary ? `
+        <div class="genie-commentary">
+            <div class="genie-commentary-header">
+                <img src="/askthegenie_black.png" alt="The Genie" class="genie-icon-medium">
+                <h4>The Genie Speaks</h4>
+            </div>
+            <div class="genie-commentary-text">${analysis.genieCommentary}</div>
+        </div>
+        ` : ''}
+        
         ${analysis.dealbreakers && analysis.dealbreakers.length > 0 ? `
         <div class="analysis-dealbreakers">
             <h4>🚨 Critical Issues</h4>

@@ -77,7 +77,7 @@ class AIFeedbackSystem {
         const trimmed = line.trim();
         return trimmed && 
                !trimmed.startsWith('//') && 
-               !trimmed.startsWith('*') &&
+               !(trimmed.startsWith('*') && !trimmed.startsWith('**')) &&
                trimmed !== '';
       })
       .join('\n')
@@ -146,7 +146,21 @@ class AIFeedbackSystem {
     try {
       const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsedJson = JSON.parse(jsonMatch[0]);
+        
+        // Extract any genie commentary that appears outside the JSON
+        const beforeJson = analysisText.substring(0, analysisText.indexOf(jsonMatch[0])).trim();
+        const afterJson = analysisText.substring(analysisText.indexOf(jsonMatch[0]) + jsonMatch[0].length).trim();
+        
+        // Combine any commentary found before or after the JSON
+        const genieCommentary = [beforeJson, afterJson].filter(text => text.length > 0).join('\n\n');
+        
+        // Add genie commentary to the response if it exists
+        if (genieCommentary) {
+          parsedJson.genieCommentary = genieCommentary;
+        }
+        
+        return parsedJson;
       } else {
         throw new Error('No JSON found in response');
       }
