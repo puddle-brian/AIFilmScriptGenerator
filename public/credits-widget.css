@@ -228,9 +228,9 @@
 }
 
 .modal-close {
-  background: #f1f5f9;
-  color: #64748b;
-  border: none;
+  background: rgba(71, 85, 105, 0.1);
+  border: 1px solid rgba(71, 85, 105, 0.2);
+  color: #475569;
   padding: 12px 24px;
   border-radius: 8px;
   cursor: pointer;
@@ -238,11 +238,15 @@
   font-weight: 500;
   transition: all 0.2s ease;
   min-width: 100px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .modal-close:hover {
-  background: #e2e8f0;
-  color: #475569;
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 /* Responsive */
