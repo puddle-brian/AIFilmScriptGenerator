@@ -87,7 +87,10 @@ class GenieSuggestions {
         genieButton.type = 'button';
         genieButton.className = 'btn btn-genie';
         genieButton.id = 'genieSuggestBtn';
-        genieButton.innerHTML = 'Genie Suggests';
+        
+        // Check if modal has existing content to determine button text
+        const hasExistingContent = this.checkForExistingContent();
+        genieButton.innerHTML = hasExistingContent ? 'Replace' : 'Genie Suggests';
         genieButton.onclick = () => this.generateSuggestion(suggestionType);
 
         // Create Genie icon
@@ -111,6 +114,15 @@ class GenieSuggestions {
         if (!config) {
             console.error('Unknown suggestion type:', suggestionType);
             return;
+        }
+
+        // Check if there's existing content and warn user
+        const hasExistingContent = this.checkForExistingContent();
+        if (hasExistingContent) {
+            const confirmed = confirm('This will replace your current entry. Are you sure you want to continue?');
+            if (!confirmed) {
+                return;
+            }
         }
 
         try {
@@ -309,7 +321,7 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
         // Update Genie button text
         const genieBtn = document.getElementById('genieSuggestBtn');
         if (genieBtn) {
-            genieBtn.innerHTML = 'New Suggestion';
+            genieBtn.innerHTML = 'Replace';
         }
 
         // Highlight the fields briefly
@@ -332,15 +344,30 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
             // Restore appropriate text after thinking
             const currentText = btn.innerHTML;
             if (currentText.includes('thinking')) {
-                // Keep "New Suggestion" if we've already made a suggestion
+                // Keep "Replace" if we've already made a suggestion
                 if (currentText.includes('thinking') && this.lastSuggestion) {
-                    btn.innerHTML = 'New Suggestion';
+                    btn.innerHTML = 'Replace';
                 } else {
-                    btn.innerHTML = 'Genie Suggests';
+                    // Check if there's existing content to determine text
+                    const hasExistingContent = this.checkForExistingContent();
+                    btn.innerHTML = hasExistingContent ? 'Replace' : 'Genie Suggests';
                 }
             }
             btn.disabled = false;
         }
+    }
+
+    /**
+     * Check if modal has existing content
+     */
+    checkForExistingContent() {
+        const nameField = document.getElementById('universalLibraryEntryName');
+        const descField = document.getElementById('universalLibraryEntryDescription');
+        
+        const hasName = nameField && nameField.value.trim().length > 0;
+        const hasDesc = descField && descField.value.trim().length > 0;
+        
+        return hasName || hasDesc;
     }
 
     /**
