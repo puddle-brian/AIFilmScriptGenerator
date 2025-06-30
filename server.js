@@ -2536,7 +2536,7 @@ app.get('/api/list-projects', async (req, res) => {
         const userId = userResult.rows[0].id;
         
         const projectsResult = await dbClient.query(
-          'SELECT project_name, project_context, thumbnail_data, created_at FROM user_projects WHERE user_id = $1 ORDER BY created_at DESC',
+          'SELECT project_name, project_context, thumbnail_data, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
           [userId]
         );
         
@@ -2551,6 +2551,7 @@ app.get('/api/list-projects', async (req, res) => {
                 tone: projectContext.storyInput.tone,
                 totalScenes: projectContext.storyInput.totalScenes,
                 createdAt: row.created_at,
+                updatedAt: row.updated_at,
                 logline: projectContext.storyInput.logline,
                 source: 'database',
                 thumbnail_data: row.thumbnail_data // Include thumbnail data for progress calculation
@@ -2594,8 +2595,8 @@ app.get('/api/list-projects', async (req, res) => {
           }
         }
         
-        // Sort by creation date, newest first
-        projects.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Sort by last updated date, newest first
+        projects.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
         
         console.log(`📁 Loaded ${projects.length} projects from file system as fallback`);
       } catch (fsError) {
