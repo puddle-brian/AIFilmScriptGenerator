@@ -4929,19 +4929,7 @@ function displayElementPlotPoints(structureKey, plotPoints) {
         }
     });
     
-    // Add regeneration actions below the editable block
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'plot-points-actions';
-    actionsDiv.style.marginTop = '15px';
-    actionsDiv.innerHTML = `
-        <button class="btn btn-outline btn-sm" onclick="regenerateAllPlotPointsForElement('${structureKey}')" title="Regenerate all plot points for this act">
-            🔄 Regenerate All Plot Points
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for generating plot points">
-            🔍 Preview Prompt
-        </button>
-    `;
-    container.appendChild(actionsDiv);
+    // Redundant plot point actions removed - use main "Generate Plot Points" and "Preview Prompt" buttons instead
 }
 
 // Save plot points content function
