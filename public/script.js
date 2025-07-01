@@ -5690,7 +5690,7 @@ function displayScenes(scenes) {
                     <h3>${titleWithProgress}</h3>
                     <div class="scene-group-actions">
                         <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateScenes ? '' : 'disabled'}>
-                            🎬 Generate Scenes
+                            🎬 Generate Scenes for Act ${actProgress}
                         </button>
                         <button class="btn btn-outline" onclick="previewElementScenesPrompt('${structureKey}')" title="Preview the prompt for scene generation">
                             🔍 Preview Prompt
