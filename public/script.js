@@ -3866,6 +3866,97 @@ function updateActsGenerationButton() {
     }
 }
 
+// Update the "Generate All Plot Points" button text based on whether ALL acts have plot points
+function updateGenerateAllPlotPointsButton() {
+    const button = document.getElementById('generateAllPlotPointsBtn');
+    if (!button) return;
+    
+    // Check if ALL acts have plot points (not just any acts)
+    const structureKeys = appState.generatedStructure ? Object.keys(appState.generatedStructure) : [];
+    const allActsHavePlotPoints = structureKeys.length > 0 && structureKeys.every(key =>
+        hasPlotPointsForElement(key) // Use existing helper function for consistency
+    );
+    
+    if (allActsHavePlotPoints) {
+        button.innerHTML = '🔄 Regenerate All Plot Points';
+        button.title = 'Regenerate connected plot points for all acts';
+    } else {
+        button.innerHTML = '📋 Generate All Plot Points';
+        button.title = 'Generate connected plot points for all acts';
+    }
+}
+
+// Update the "Generate All Scenes" button text based on whether ALL acts with plot points have scenes
+function updateGenerateAllScenesButton() {
+    const button = document.getElementById('generateAllScenesBtn');
+    if (!button) return;
+    
+    // Get acts that have plot points using the correct helper function
+    const actsWithPlotPoints = [];
+    if (appState.generatedStructure) {
+        Object.keys(appState.generatedStructure).forEach(key => {
+            if (hasPlotPointsForElement(key)) {
+                actsWithPlotPoints.push(key);
+            }
+        });
+    }
+    
+    // Check if ALL acts with plot points also have scenes
+    const allActsWithPlotPointsHaveScenes = actsWithPlotPoints.length > 0 && actsWithPlotPoints.every(key => {
+        return appState.generatedScenes &&
+               appState.generatedScenes[key] && 
+               Array.isArray(appState.generatedScenes[key]) &&
+               appState.generatedScenes[key].length > 0;
+    });
+    
+    if (allActsWithPlotPointsHaveScenes) {
+        button.innerHTML = '🔄 Regenerate All Scenes';
+        button.title = 'Regenerate scenes for all acts that have plot points';
+    } else {
+        button.innerHTML = '🎬 Generate All Scenes';
+        button.title = 'Generate scenes for all acts that have plot points';
+    }
+}
+
+// Update the "Generate All Dialogue" button text based on whether ALL scenes have dialogue
+function updateGenerateAllDialogueButton() {
+    const button = document.getElementById('generateAllDialogueBtn');
+    if (!button) return;
+    
+    // Get all scenes that exist
+    const allScenes = [];
+    if (appState.generatedScenes) {
+        Object.values(appState.generatedScenes).forEach(actScenes => {
+            if (Array.isArray(actScenes)) {
+                allScenes.push(...actScenes);
+            }
+        });
+    }
+    
+    // Check if ALL scenes have dialogue
+    const allScenesHaveDialogue = allScenes.length > 0 && allScenes.every(scene =>
+        appState.generatedDialogues &&
+        appState.generatedDialogues[scene.id] &&
+        appState.generatedDialogues[scene.id].length > 0
+    );
+    
+    if (allScenesHaveDialogue) {
+        button.innerHTML = '🔄 Regenerate All Dialogue';
+        button.title = 'Regenerate dialogue for all scenes that exist';
+    } else {
+        button.innerHTML = '💬 Generate All Dialogue';
+        button.title = 'Generate dialogue for all scenes that exist';
+    }
+}
+
+// Update all generation buttons
+function updateAllGenerationButtons() {
+    updateActsGenerationButton();
+    updateGenerateAllPlotPointsButton();
+    updateGenerateAllScenesButton();
+    updateGenerateAllDialogueButton();
+}
+
 // Generate structure
 async function generateStructure() {
     if (!appState.selectedTemplate || !appState.storyInput) {
@@ -4873,6 +4964,9 @@ async function generateElementPlotPoints(structureKey) {
             // Refresh the plot points display to update button states for subsequent acts
             displayPlotPointsGeneration();
             
+            // Update the "Generate All Plot Points" button in case this was the first/last act to get plot points
+            updateGenerateAllPlotPointsButton();
+            
             showToast(`Generated ${data.totalPlotPoints} plot points for ${structureKey}!`, 'success');
             saveToLocalStorage();
         } else {
@@ -5577,6 +5671,7 @@ async function generateAllScenes() {
         progressTracker.finish();
         showToast(`Successfully generated scenes for ${actsWithPlotPoints.length} acts!`, 'success');
         
+        updateGenerateAllScenesButton(); // Update button to show "Regenerate All Scenes"
         saveToLocalStorage();
         
     } catch (error) {
@@ -5842,6 +5937,7 @@ async function generateAllPlotPoints() {
         
         // Update the completion check
         checkPlotPointsCompletion();
+        updateGenerateAllPlotPointsButton(); // Update button to show "Regenerate All Plot Points"
         saveToLocalStorage();
         
     } catch (error) {
@@ -6806,6 +6902,9 @@ async function generateDialogue(structureKey, sceneIndex) {
             updateUniversalNavigation();
             updateBreadcrumbNavigation();
             
+            // Update the "Generate All Dialogue" button in case this was the first/last scene to get dialogue
+            updateGenerateAllDialogueButton();
+            
             showToast('Dialogue generated successfully!', 'success');
         } else {
             throw new Error(data.error || 'Failed to generate dialogue');
@@ -6984,6 +7083,7 @@ async function generateAllDialogue() {
         progressTracker.finish();
         showToast(`Successfully generated dialogue for ${allScenes.length} scenes!`, 'success');
         
+        updateGenerateAllDialogueButton(); // Update button to show "Regenerate All Dialogue"
         saveToLocalStorage();
         
     } catch (error) {
@@ -7561,6 +7661,7 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         if (appState.generatedStructure) {
             await displayPlotPointsGeneration();
         }
+        updateGenerateAllPlotPointsButton(); // Update button to show Generate/Regenerate
     } else if (stepNumber === 5) {
         // Step 5: Scene Generation
         console.log('Step 5 - Scene Generation');
@@ -7589,6 +7690,8 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
             
             updateCompactEstimates();
         }, 100);
+        
+        updateGenerateAllScenesButton(); // Update button to show Generate/Regenerate
     } else if (stepNumber === 6 && appState.generatedScenes) {
         // Step 6: Dialogue Generation
         displayDialogueGeneration();
@@ -7596,6 +7699,7 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         setTimeout(() => {
             initializeDialogueEstimates();
         }, 100);
+        updateGenerateAllDialogueButton(); // Update button to show Generate/Regenerate
     } else if (stepNumber === 7) {
         // Step 7: Final Script - Auto-assemble script with whatever dialogue we have
         if (Object.keys(appState.generatedDialogues || {}).length > 0) {
@@ -8805,6 +8909,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Update autogenerate button visibility (should hide for loaded projects)
     updateAutoGenerateButtonVisibility();
+    
+    // Update all generation buttons to show Generate/Regenerate appropriately
+    updateAllGenerationButtons();
 }
 
 // Show scene prompt modal
@@ -10316,6 +10423,9 @@ async function generateScenesForElement(structureKey) {
             updateStepIndicators();
             updateUniversalNavigation();
             updateBreadcrumbNavigation();
+            
+            // Update the "Generate All Scenes" button in case this was the first/last act to get scenes
+            updateGenerateAllScenesButton();
             
             showToast(`Generated ${data.totalScenesGenerated} scenes for ${structureKey} across ${data.plotPointScenes?.length || 0} plot points!`, 'success');
             saveToLocalStorage();

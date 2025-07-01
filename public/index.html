@@ -409,7 +409,7 @@
                 <!-- Plot Points Generation Options -->
                 <div class="plot-generation-options" id="plotGenerationOptions" style="margin-bottom: 20px;">
                     <div class="plot-generation-section" style="margin-bottom: 15px;">
-                        <button class="btn btn-generate-all" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
+                        <button class="btn btn-generate-all" id="generateAllPlotPointsBtn" onclick="generateAllPlotPoints()" title="Generate connected plot points for all scenes">
                             📋 Generate All Plot Points
                         </button>
                         <button class="btn btn-outline" onclick="previewAllPlotPointsPrompt()" title="Preview the prompt used to generate all plot points">
@@ -473,7 +473,7 @@
                 <!-- Scenes Generation Options -->
                 <div class="scenes-generation-options" id="scenesGenerationOptions" style="margin-bottom: 20px;">
                     <div class="scenes-generation-section" style="margin-bottom: 15px;">
-                        <button class="btn btn-generate-all" onclick="generateAllScenes()" title="Generate scenes for all acts that have plot points">
+                        <button class="btn btn-generate-all" id="generateAllScenesBtn" onclick="generateAllScenes()" title="Generate scenes for all acts that have plot points">
                             🎬 Generate All Scenes
                         </button>
                         <button class="btn btn-outline" onclick="previewAllScenesPrompt()" title="Preview the prompts used to generate all scenes">
@@ -537,7 +537,7 @@
                 <!-- Dialogue Generation Options -->
                 <div class="dialogue-generation-options" id="dialogueGenerationOptions" style="margin-bottom: 20px;">
                     <div class="dialogue-generation-section" style="margin-bottom: 15px;">
-                        <button class="btn btn-generate-all" onclick="generateAllDialogue()" title="Generate dialogue for all scenes that exist">
+                        <button class="btn btn-generate-all" id="generateAllDialogueBtn" onclick="generateAllDialogue()" title="Generate dialogue for all scenes that exist">
                             💬 Generate All Dialogue
                         </button>
                         <button class="btn btn-outline" onclick="previewAllDialoguePrompts()" title="Preview the prompts used to generate all dialogue">
