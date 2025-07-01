@@ -6476,7 +6476,7 @@ function displayDialogueGeneration() {
             
             // Generate appropriate buttons and warnings based on what's available
             const canGenerateDialogue = hasScenes;
-            const generateButtonClass = canGenerateDialogue ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+            const generateButtonClass = canGenerateDialogue ? 'btn btn-primary btn-sm' : 'btn btn-primary btn-sm btn-disabled';
             const generateButtonTitle = canGenerateDialogue ? 
                 'Generate dialogue for all scenes in this act' : 
                 'No scenes available for dialogue generation';
@@ -6489,7 +6489,7 @@ function displayDialogueGeneration() {
                     <h4 class="dialogue-act-title">${titleWithProgress}</h4>
                     <div class="dialogue-group-actions">
                         <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateDialogue ? '' : 'disabled'}>
-                            💬 Generate All
+                            💬 Generate Dialogue for Act ${actProgress}
                         </button>
                         <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act" ${canGenerateDialogue ? '' : 'disabled'}>
                             🔍 Preview All
