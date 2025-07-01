@@ -6314,8 +6314,8 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                         <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
                     </h6>
                     <div class="dialogue-scene-actions">
-                        <button class="btn btn-primary btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
-                            ${hasExistingDialogue ? '🔄 Regenerate' : '💬 Generate'}
+                        <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
+                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue for Scene ${sceneNumber}` : `💬 Generate Dialogue for Scene ${sceneNumber}`}
                         </button>
                         <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
                             🔍 Preview

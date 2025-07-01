@@ -1139,6 +1139,19 @@ h2 .progress-meter {
     transform: translateY(-2px);
 }
 
+.btn-dialogue {
+    background: #8b5cf6 !important;
+    border-color: #8b5cf6 !important;
+    color: white !important;
+}
+
+.btn-dialogue:hover {
+    background: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: white !important;
+    transform: translateY(-2px);
+}
+
 /* Template Grid */
 .template-grid {
     display: grid;
