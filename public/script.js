@@ -10244,6 +10244,10 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         // Plot point header
         const plotPointHeader = document.createElement('div');
         plotPointHeader.className = 'plot-point-header';
+        
+        // Determine if we should show the generate button
+        const showGenerateButton = plotPointScenes.length === 0;
+        
         plotPointHeader.innerHTML = `
             <h4 class="plot-point-title">
                 <span class="plot-point-number">${plotPointNumber}</span>
@@ -10251,6 +10255,11 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
             </h4>
             <div class="plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
+                ${showGenerateButton ? `
+                    <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
+                        🎬 Generate Scenes for Plot Point ${plotPointNumber}
+                    </button>
+                ` : ''}
             </div>
         `;
         
@@ -10327,9 +10336,6 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
             scenesContainer.innerHTML = `
                 <div class="no-scenes-for-plot-point">
                     <p class="placeholder-text">No scenes generated for this plot point yet.</p>
-                    <button class="btn btn-outline btn-sm" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
-                        🎬 Generate Scenes for Plot Point ${plotPointNumber}
-                    </button>
                 </div>
             `;
         }

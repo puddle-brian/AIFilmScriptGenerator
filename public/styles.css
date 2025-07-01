@@ -4551,6 +4551,21 @@ h2 .progress-meter {
     margin-left: 1rem;
 }
 
+.generate-scenes-btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+    background: #3b82f6 !important;
+    border-color: #3b82f6 !important;
+    color: white !important;
+}
+
+.generate-scenes-btn:hover {
+    background: #2563eb !important;
+    border-color: #2563eb !important;
+    color: white !important;
+}
+
 .scene-count {
     background: #e0e7ff;
     color: #3730a3;
