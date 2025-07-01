@@ -4683,7 +4683,7 @@ async function displayPlotPointsGeneration() {
                                 const canGenerate = canGeneratePlotPointsForElement(structureKey);
                                 const buttonClass = canGenerate ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
                                 
-                                let buttonTitle = 'Generate plot points for this act';
+                                let buttonTitle = `Generate plot points for Act ${actProgress}`;
                                 if (!canGenerate) {
                                     const structureKeys = Object.keys(appState.generatedStructure);
                                     const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
@@ -4709,7 +4709,7 @@ async function displayPlotPointsGeneration() {
                                     `showToast('Please generate plot points for previous acts first to maintain causal narrative flow.', 'error')`;
                                 
                                 return `<button class="${buttonClass}" onclick="${buttonOnClick}" title="${escapedTitle}">
-                                    📋 Generate Plot Points for This Act
+                                    📋 Generate Plot Points for Act ${actProgress}
                                 </button>`;
                             })()}
                         </div>
