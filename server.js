@@ -2533,11 +2533,32 @@ app.post('/api/auto-save-project', async (req, res) => {
     const projectData = req.body;
     const username = projectData.username || 'guest';
     
-    // Generate project name from path or title
-    const projectPath = projectData.projectPath || 
-      (projectData.storyInput?.title ? 
-        `${projectData.storyInput.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}` :
-        `untitled_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)}`);
+    // 🚨 BUG DETECTION: Auto-save should NEVER be called without a projectPath
+    if (!projectData.projectPath) {
+      console.error('🚨 BUG: Auto-save called without projectPath!');
+      console.error('🔍 Debug info:', {
+        hasStoryInput: !!projectData.storyInput,
+        storyTitle: projectData.storyInput?.title,
+        hasProjectId: !!projectData.projectId,
+        projectId: projectData.projectId,
+        currentStep: projectData.currentStep,
+        username: username,
+        requestKeys: Object.keys(projectData)
+      });
+      
+      return res.status(400).json({ 
+        error: 'Auto-save failed: No project path provided', 
+        message: 'This indicates a bug in the frontend state management. Please reload the page and try again.',
+        action: 'reload_required',
+        debug: {
+          hasStoryInput: !!projectData.storyInput,
+          currentStep: projectData.currentStep
+        }
+      });
+    }
+    
+    const projectPath = projectData.projectPath;
+    console.log(`♻️ Auto-saving existing project: ${projectPath}`);
     
     // Create unified project context in v2.0 format
     const projectContext = {

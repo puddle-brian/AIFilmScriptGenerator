@@ -7226,6 +7226,17 @@ async function saveProject() {
             appState.projectPath = data.projectPath;
             showToast(`Project saved! (${data.projectPath})`, 'success');
         } else {
+            // Check for specific bug detection error
+            if (data.action === 'reload_required') {
+                showToast(`⚠️ ${data.message}`, 'error');
+                console.error('🚨 Auto-save bug detected:', data);
+                
+                // Ask user if they want to reload
+                if (confirm('There was an issue with the project state. Would you like to reload the page to fix this? (Your progress should be preserved)')) {
+                    window.location.reload();
+                }
+                return;
+            }
             throw new Error(data.error || 'Failed to save project');
         }
         
@@ -7838,6 +7849,17 @@ async function newProject() {
                 startFreshProject();
             }, 1000); // Give user time to see the success message
         } else {
+            // Check for specific bug detection error
+            if (data.action === 'reload_required') {
+                showToast(`⚠️ ${data.message}`, 'error');
+                console.error('🚨 Auto-save bug detected during new project:', data);
+                
+                // Ask user if they want to reload
+                if (confirm('There was an issue with the project state. Would you like to reload the page to fix this? (Your current project may need to be reloaded)')) {
+                    window.location.reload();
+                }
+                return;
+            }
             throw new Error(data.error || 'Failed to save current project');
         }
         
@@ -9844,6 +9866,25 @@ const autoSaveManager = {
         
         if (!response.ok) {
             const error = await response.json();
+            
+            // Check for specific bug detection error
+            if (error.action === 'reload_required') {
+                console.error('🚨 Auto-save bug detected:', error);
+                this.updateSaveStatus(`⚠️ ${error.message}`, 'error');
+                
+                // Show user-friendly notification
+                showToast('Auto-save failed due to a technical issue. Please reload the page to continue.', 'error');
+                
+                // Ask user if they want to reload automatically
+                setTimeout(() => {
+                    if (confirm('There was an issue with auto-save. Would you like to reload the page to fix this? (Your progress should be preserved)')) {
+                        window.location.reload();
+                    }
+                }, 2000);
+                
+                return { error: error.message };
+            }
+            
             throw new Error(error.error || 'Failed to save project');
         }
         
