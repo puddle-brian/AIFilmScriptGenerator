@@ -4682,14 +4682,33 @@ async function displayPlotPointsGeneration() {
                             ${(() => {
                                 const canGenerate = canGeneratePlotPointsForElement(structureKey);
                                 const buttonClass = canGenerate ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
-                                const buttonTitle = canGenerate ? 
-                                    'Generate plot points for this act' : 
-                                    'Generate plot points for previous acts first to enable causal flow';
+                                
+                                let buttonTitle = 'Generate plot points for this act';
+                                if (!canGenerate) {
+                                    const structureKeys = Object.keys(appState.generatedStructure);
+                                    const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+                                    const currentActIndex = chronologicalKeys.indexOf(structureKey);
+                                    const missingPreviousActs = [];
+                                    
+                                    for (let i = 0; i < currentActIndex; i++) {
+                                        const previousActKey = chronologicalKeys[i];
+                                        if (!hasPlotPointsForElement(previousActKey)) {
+                                            const previousAct = appState.generatedStructure[previousActKey];
+                                            missingPreviousActs.push(previousAct.name || previousActKey);
+                                        }
+                                    }
+                                    
+                                    buttonTitle = `Complete previous acts first: ${missingPreviousActs.join(', ')}`;
+                                }
+                                
+                                // Escape HTML attributes to prevent syntax errors
+                                const escapedTitle = buttonTitle.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                                
                                 const buttonOnClick = canGenerate ? 
                                     `generateElementPlotPoints('${structureKey}')` : 
-                                    'showToast("Please generate plot points for previous acts first to maintain causal narrative flow.", "error")';
+                                    `showToast('Please generate plot points for previous acts first to maintain causal narrative flow.', 'error')`;
                                 
-                                return `<button class="${buttonClass}" onclick="${buttonOnClick}" title="${buttonTitle}">
+                                return `<button class="${buttonClass}" onclick="${buttonOnClick}" title="${escapedTitle}">
                                     📋 Generate Plot Points for This Act
                                 </button>`;
                             })()}
@@ -4697,29 +4716,6 @@ async function displayPlotPointsGeneration() {
                         <button class="btn btn-outline" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for plot points generation">
                             🔍 Preview Prompt
                         </button>
-                    </div>
-                    ${(() => {
-                        const canGenerate = canGeneratePlotPointsForElement(structureKey);
-                        if (!canGenerate) {
-                            const structureKeys = Object.keys(appState.generatedStructure);
-                            const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
-                            const currentActIndex = chronologicalKeys.indexOf(structureKey);
-                            const missingPreviousActs = [];
-                            
-                            for (let i = 0; i < currentActIndex; i++) {
-                                const previousActKey = chronologicalKeys[i];
-                                if (!hasPlotPointsForElement(previousActKey)) {
-                                    const previousAct = appState.generatedStructure[previousActKey];
-                                    missingPreviousActs.push(previousAct.name || previousActKey);
-                                }
-                            }
-                            
-                            return `<div class="prerequisite-warning" style="margin-top: 10px; padding: 10px; background: #fef3cd; border: 1px solid #faebcd; border-radius: 6px; color: #664d03; font-size: 0.9em;">
-                                <strong>⚠️ Prerequisites needed:</strong> Generate plot points for ${missingPreviousActs.join(', ')} first to maintain causal narrative flow.
-                            </div>`;
-                        }
-                        return '';
-                    })()}
                     </div>
                 </div>
                 <div class="element-description">
