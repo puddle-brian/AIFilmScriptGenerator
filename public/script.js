@@ -8920,20 +8920,7 @@ function displayScenesForElement(structureKey, sceneGroup, customContainer = nul
                 }
             });
             
-            // Add regeneration actions for this scene
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'scene-actions';
-            actionsDiv.style.marginTop = '10px';
-            actionsDiv.style.marginBottom = '20px';
-            actionsDiv.innerHTML = `
-                <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
-                    🔄 Regenerate Scene
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate this scene">
-                    🔍 Scene Prompt
-                </button>
-            `;
-            container.appendChild(actionsDiv);
+            // Individual scene actions removed - use plot point level generation instead
         });
     }
 }
@@ -10191,14 +10178,6 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                         <span class="scene-number">${sceneNumber}</span>
                         <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
                     </h5>
-                    <div class="scene-actions">
-                        <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${globalSceneIndex})" title="Regenerate this specific scene">
-                            🔄 Regenerate
-                        </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${globalSceneIndex})" title="Preview scene prompt">
-                            🔍 Preview
-                        </button>
-                    </div>
                 `;
                 
                 sceneElement.appendChild(sceneHeader);
