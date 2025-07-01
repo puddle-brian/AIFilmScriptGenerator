@@ -4679,13 +4679,47 @@ async function displayPlotPointsGeneration() {
                                     createOption(value, `${value} Plot Point${value > 1 ? 's' : ''}`)
                                 ).join('')}
                             </select>
-                            <button class="btn btn-primary" onclick="generateElementPlotPoints('${structureKey}')" title="Generate plot points for this act">
-                                📋 Generate Plot Points
-                            </button>
+                            ${(() => {
+                                const canGenerate = canGeneratePlotPointsForElement(structureKey);
+                                const buttonClass = canGenerate ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
+                                const buttonTitle = canGenerate ? 
+                                    'Generate plot points for this act' : 
+                                    'Generate plot points for previous acts first to enable causal flow';
+                                const buttonOnClick = canGenerate ? 
+                                    `generateElementPlotPoints('${structureKey}')` : 
+                                    'showToast("Please generate plot points for previous acts first to maintain causal narrative flow.", "error")';
+                                
+                                return `<button class="${buttonClass}" onclick="${buttonOnClick}" title="${buttonTitle}">
+                                    📋 Generate Plot Points for This Act
+                                </button>`;
+                            })()}
                         </div>
                         <button class="btn btn-outline" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for plot points generation">
                             🔍 Preview Prompt
                         </button>
+                    </div>
+                    ${(() => {
+                        const canGenerate = canGeneratePlotPointsForElement(structureKey);
+                        if (!canGenerate) {
+                            const structureKeys = Object.keys(appState.generatedStructure);
+                            const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+                            const currentActIndex = chronologicalKeys.indexOf(structureKey);
+                            const missingPreviousActs = [];
+                            
+                            for (let i = 0; i < currentActIndex; i++) {
+                                const previousActKey = chronologicalKeys[i];
+                                if (!hasPlotPointsForElement(previousActKey)) {
+                                    const previousAct = appState.generatedStructure[previousActKey];
+                                    missingPreviousActs.push(previousAct.name || previousActKey);
+                                }
+                            }
+                            
+                            return `<div class="prerequisite-warning" style="margin-top: 10px; padding: 10px; background: #fef3cd; border: 1px solid #faebcd; border-radius: 6px; color: #664d03; font-size: 0.9em;">
+                                <strong>⚠️ Prerequisites needed:</strong> Generate plot points for ${missingPreviousActs.join(', ')} first to maintain causal narrative flow.
+                            </div>`;
+                        }
+                        return '';
+                    })()}
                     </div>
                 </div>
                 <div class="element-description">
@@ -4813,6 +4847,9 @@ async function generateElementPlotPoints(structureKey) {
             updateUniversalNavigation();
             updateBreadcrumbNavigation();
             
+            // Refresh the plot points display to update button states for subsequent acts
+            displayPlotPointsGeneration();
+            
             showToast(`Generated ${data.totalPlotPoints} plot points for ${structureKey}!`, 'success');
             saveToLocalStorage();
         } else {
@@ -4929,6 +4966,9 @@ function displayElementPlotPoints(structureKey, plotPoints) {
             
             // Save to local storage
             saveToLocalStorage();
+            
+            // Refresh the plot points display to update button states for subsequent acts
+            displayPlotPointsGeneration();
         }
     });
     
@@ -5344,6 +5384,28 @@ function hasPlotPointsForElement(structureKey) {
            appState.plotPoints[structureKey] && 
            Array.isArray(appState.plotPoints[structureKey]) && 
            appState.plotPoints[structureKey].length > 0;
+}
+
+// Check if all previous acts have plot points generated (prerequisite for current act)
+function canGeneratePlotPointsForElement(structureKey) {
+    if (!appState.generatedStructure) return false;
+    
+    const structureKeys = Object.keys(appState.generatedStructure);
+    const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+    const currentActIndex = chronologicalKeys.indexOf(structureKey);
+    
+    // First act can always generate plot points
+    if (currentActIndex === 0) return true;
+    
+    // Check if all previous acts have plot points
+    for (let i = 0; i < currentActIndex; i++) {
+        const previousActKey = chronologicalKeys[i];
+        if (!hasPlotPointsForElement(previousActKey)) {
+            return false;
+        }
+    }
+    
+    return true;
 }
 
 // This function has been replaced with proper hierarchical implementation
