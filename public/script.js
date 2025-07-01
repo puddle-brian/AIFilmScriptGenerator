@@ -10245,9 +10245,6 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         const plotPointHeader = document.createElement('div');
         plotPointHeader.className = 'plot-point-header';
         
-        // Determine if we should show the generate button
-        const showGenerateButton = plotPointScenes.length === 0;
-        
         plotPointHeader.innerHTML = `
             <h4 class="plot-point-title">
                 <span class="plot-point-number">${plotPointNumber}</span>
@@ -10255,11 +10252,9 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
             </h4>
             <div class="plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
-                ${showGenerateButton ? `
-                    <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
-                        🎬 Generate Scenes for Plot Point ${plotPointNumber}
-                    </button>
-                ` : ''}
+                <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
+                    🎬 Generate Scenes for Plot Point ${plotPointNumber}
+                </button>
             </div>
         `;
         
@@ -10396,6 +10391,11 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
             if (!appState.generatedScenes[structureKey]) {
                 appState.generatedScenes[structureKey] = [];
             }
+            
+            // Remove any existing scenes for this specific plot point (for regeneration)
+            appState.generatedScenes[structureKey] = appState.generatedScenes[structureKey].filter(scene => 
+                scene.plotPointIndex !== plotPointIndex
+            );
             
             // Add the new scenes to the existing act scenes
             data.scenes.forEach(scene => {
