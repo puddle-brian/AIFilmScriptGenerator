@@ -2812,130 +2812,6 @@ function getSelectedModel() {
     return appState.selectedModel;
 }
 
-// Validate and sync project state - fix "no project loaded" issues
-function validateProjectState() {
-    console.log('🔍 VALIDATING PROJECT STATE:');
-    console.log('appState.projectPath:', appState.projectPath);
-    console.log('appState.isLoadedProject:', appState.isLoadedProject);
-    console.log('appState.storyInput.title:', appState.storyInput?.title);
-    console.log('appState.generatedStructure keys:', Object.keys(appState.generatedStructure || {}));
-    
-    // If we have story data but no projectPath, this indicates a sync issue
-    if (!appState.projectPath && (appState.storyInput?.title || Object.keys(appState.generatedStructure || {}).length > 0)) {
-        console.log('⚠️ PROJECT STATE SYNC ISSUE DETECTED');
-        console.log('Project has data but no projectPath - attempting to fix...');
-        
-        // Try to generate a project path from the story title
-        if (appState.storyInput?.title) {
-            const projectPath = generateProjectPath(appState.storyInput.title);
-            console.log('🔧 Setting projectPath to:', projectPath);
-            appState.projectPath = projectPath;
-            appState.isLoadedProject = true;
-            saveToLocalStorage();
-        }
-    }
-    
-    // Check if we have project data but API calls are failing due to path mismatch
-    if (appState.projectPath && appState.storyInput?.title) {
-        console.log('🔍 CHECKING PROJECT PATH VALIDITY');
-        console.log('Current projectPath:', appState.projectPath);
-        console.log('Story title:', appState.storyInput.title);
-        
-        // If we detect API failures, try to refresh the correct project path from server
-        setTimeout(() => checkProjectPathValidity(), 1000); // Run after 1 second delay
-    }
-    
-    // Update UI elements that depend on project state
-    updateProjectStatusUI();
-}
-
-// Update UI elements based on project state
-function updateProjectStatusUI() {
-    const hasProject = !!(appState.projectPath && (appState.storyInput?.title || appState.isLoadedProject));
-    console.log('🎯 Project status UI update - hasProject:', hasProject);
-    
-    // Update any "no project loaded" messages
-    const noProjectMessages = document.querySelectorAll('.no-project-message');
-    noProjectMessages.forEach(msg => {
-        msg.style.display = hasProject ? 'none' : 'block';
-    });
-}
-
-// Helper function to generate project path from title
-function generateProjectPath(title) {
-    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
-    const safeName = title.toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '')
-        .replace(/\s+/g, '_')
-        .slice(0, 30);
-    return `${safeName}_${timestamp}`;
-}
-
-// Check if the current project path is valid by testing server connection
-async function checkProjectPathValidity() {
-    if (!appState.projectPath || !appState.storyInput?.title) {
-        return;
-    }
-    
-    try {
-        const username = appState.user?.username || 'guest';
-        const response = await fetch(`/api/load-project/${encodeURIComponent(appState.projectPath)}?username=${encodeURIComponent(username)}`);
-        
-        if (!response.ok) {
-            console.log('⚠️ PROJECT PATH INVALID - trying to find correct project...');
-            
-            // If current path fails, try to find the correct project by searching for the title
-            await syncProjectPathFromServer();
-        } else {
-            console.log('✅ Project path is valid');
-        }
-    } catch (error) {
-        console.log('⚠️ Project path validation failed:', error.message);
-        await syncProjectPathFromServer();
-    }
-}
-
-// Sync the correct project path from server for the current story
-async function syncProjectPathFromServer() {
-    if (!appState.storyInput?.title) {
-        return;
-    }
-    
-    try {
-        console.log('🔄 SYNCING PROJECT PATH FROM SERVER');
-        const username = appState.user?.username || 'guest';
-        
-        // Try to load user's projects to find the one matching our story title
-        const response = await fetch(`/api/user-projects/${encodeURIComponent(username)}`);
-        
-        if (response.ok) {
-            const projects = await response.json();
-            console.log('📋 Found projects:', projects.length);
-            
-            // Find project matching our story title
-            const matchingProject = projects.find(project => 
-                project.storyInput?.title === appState.storyInput.title
-            );
-            
-            if (matchingProject) {
-                console.log('🎯 FOUND MATCHING PROJECT - syncing path');
-                console.log('Old path:', appState.projectPath);
-                console.log('New path:', matchingProject.projectPath);
-                
-                appState.projectPath = matchingProject.projectPath;
-                appState.isLoadedProject = true;
-                saveToLocalStorage();
-                
-                showToast('✅ Project path synced successfully!', 'success');
-            } else {
-                console.log('❌ No matching project found for title:', appState.storyInput.title);
-            }
-        }
-    } catch (error) {
-        console.log('❌ Error syncing project path:', error.message);
-    }
-}
-
 // Check if project has any existing content (check for actual content, not just empty objects)
 function hasExistingContent() {
     // Check for actual content in generated objects
@@ -3303,9 +3179,6 @@ async function initializeApp() {
     if (typeof updateStepIndicators === 'function') {
         updateStepIndicators();
     }
-    
-    // Validate project state to fix any sync issues
-    validateProjectState();
     
     // Force refresh credit widget after everything is loaded
     if (appState.isAuthenticated && appState.apiKey && window.creditWidget) {
@@ -5617,9 +5490,6 @@ async function generateAllScenes() {
         // Refresh the scenes display after all scenes are generated
         displayScenes(appState.generatedScenes);
         
-        // Validate project state after scene generation
-        validateProjectState();
-        
         // 🔥 Refresh credits after successful generation
         window.creditWidget.refreshAfterOperation();
         
@@ -5956,7 +5826,57 @@ async function generatePlotPoint(structureKey, sceneIndex) {
     }
 }
 
-// Individual scene regeneration removed - use plot point level generation instead
+// Generate a single scene for a specific structural element and scene index
+async function generateIndividualScene(structureKey, sceneIndex) {
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+    
+    try {
+        showLoading(`Regenerating Scene ${sceneIndex + 1}...`);
+        
+        const response = await fetch(`/api/generate-individual-scene/${appState.projectPath}/${structureKey}/${sceneIndex}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            // Update the specific scene in the app state
+            if (!appState.generatedScenes) {
+                appState.generatedScenes = {};
+            }
+            if (!appState.generatedScenes[structureKey]) {
+                appState.generatedScenes[structureKey] = [];
+            }
+            
+            // Replace the specific scene
+            appState.generatedScenes[structureKey][sceneIndex] = data.scene;
+            
+            // Refresh the display for this structural element
+            displayScenesForElement(structureKey, appState.generatedScenes[structureKey]);
+            
+            showToast(`Scene ${sceneIndex + 1} regenerated successfully!`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate scene');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating individual scene:', error);
+        showToast('Error regenerating scene. Please try again.', 'error');
+        hideLoading();
+    }
+}
 
 // Preview scene generation prompt
 async function previewScenePrompt(structureKey, sceneIndex) {
@@ -8656,9 +8576,6 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     saveToLocalStorage();
     console.log('=== END populateFormWithProject ===');
     
-    // Validate project state after loading
-    validateProjectState();
-    
     // Show project header with loaded project data
     showProjectHeader({
         title: projectData.storyInput.title,
@@ -9003,7 +8920,20 @@ function displayScenesForElement(structureKey, sceneGroup, customContainer = nul
                 }
             });
             
-            // Individual scene buttons removed - they are pointless at the scene level
+            // Add regeneration actions for this scene
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'scene-actions';
+            actionsDiv.style.marginTop = '10px';
+            actionsDiv.style.marginBottom = '20px';
+            actionsDiv.innerHTML = `
+                <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
+                    🔄 Regenerate Scene
+                </button>
+                <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate this scene">
+                    🔍 Scene Prompt
+                </button>
+            `;
+            container.appendChild(actionsDiv);
         });
     }
 }
@@ -10261,7 +10191,14 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                         <span class="scene-number">${sceneNumber}</span>
                         <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
                     </h5>
-                    <!-- Individual scene buttons removed -->
+                    <div class="scene-actions">
+                        <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${globalSceneIndex})" title="Regenerate this specific scene">
+                            🔄 Regenerate
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${globalSceneIndex})" title="Preview scene prompt">
+                            🔍 Preview
+                        </button>
+                    </div>
                 `;
                 
                 sceneElement.appendChild(sceneHeader);
@@ -10322,12 +10259,9 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
     });
 }
 
-// Generate scenes for a specific plot point - redirects to act-level generation
+// Generate scenes for a specific plot point (optional future enhancement)
 async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
-    console.log(`Plot point ${plotPointIndex} generation requested for ${structureKey} - using act-level generation`);
-    
-    // Use the working act-level scene generation instead of plot point level
-    await generateScenesForElement(structureKey);
+    showToast('Individual plot point scene generation coming soon! Use "Generate Scenes" for the full act for now.', 'info');
 }
 
 // Compact Screenplay Calculator - Simple, encapsulated functionality
