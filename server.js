@@ -1076,7 +1076,8 @@ class HierarchicalContext {
     // Level 2: Streamlined Structure Context - Just show template name
     if (this.contexts.structure && targetLevel >= 2) {
       const structure = this.contexts.structure.data;
-      prompt += `STRUCTURE: ${structure.template.name}\n\n`;
+      const templateName = structure.template?.name || structure.templateData?.name || 'Unknown Template';
+      prompt += `STRUCTURE: ${templateName}\n\n`;
     }
 
 
@@ -2829,18 +2830,30 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     console.log(`🔍 Loading project "${projectPath}" for user "${username}"`);
     
     // Load from database (unified v2.0 format)
+    // First try to find the user, but if not found, try to find the project by name alone
+    let userId = null;
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    if (userResult.rows.length > 0) {
+      userId = userResult.rows[0].id;
+    } else {
+      console.log(`⚠️ User "${username}" not found, searching for project by name only`);
     }
     
-    const userId = userResult.rows[0].id;
-    
     // Look for project in database by project_name
-    const projectResult = await dbClient.query(
-      'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    let projectResult;
+    if (userId) {
+      // User found, search by user_id and project_name
+      projectResult = await dbClient.query(
+        'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+        [userId, projectPath]
+      );
+    } else {
+      // User not found, search by project_name only (fallback)
+      projectResult = await dbClient.query(
+        'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE project_name = $1',
+        [projectPath]
+      );
+    }
     
     if (projectResult.rows.length > 0) {
       const dbProject = projectResult.rows[0];
@@ -3832,165 +3845,7 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-// Generate a single scene for a specific structural element and scene index
-app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex', authenticateApiKey, async (req, res) => {
-  try {
-    const { projectPath, structureKey, sceneIndex } = req.params;
-    const { model = "claude-sonnet-4-20250514" } = req.body;
-    const sceneIndexNum = parseInt(sceneIndex);
-    
-    // Load project data from database instead of file system
-    const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const userId = userResult.rows[0].id;
-    
-    // Get project context from database
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
-    
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found in database' });
-    }
-    
-    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-    const structure = projectContext.generatedStructure;
-    const storyInput = projectContext.storyInput;
-    
-    if (!structure || !storyInput) {
-      return res.status(400).json({ error: 'Project structure or story input not found in database' });
-    }
-    
-    if (!structure[structureKey]) {
-      return res.status(400).json({ error: 'Invalid structure key' });
-    }
-    
-    // Load existing scenes from database
-    const existingScenes = projectContext.generatedScenes || {};
-    
-    const structureElement = structure[structureKey];
-    const elementScenes = existingScenes[structureKey]?.scenes || [];
-    const existingScene = elementScenes[sceneIndexNum];
-    
-    console.log(`Regenerating scene ${sceneIndexNum + 1} for ${structureKey} in project: ${projectPath}`);
-    
-    // Initialize and load hierarchical context for this project
-    const context = new HierarchicalContext();
-    await context.loadFromProject(projectPath);
-    
-    // If context doesn't exist, rebuild it from project data
-    if (!context.contexts.story) {
-      console.log('Rebuilding context from project data...');
-      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
-      context.buildStructureContext(structure, projectContext.template);
-    }
-    
-    // Build act context for this specific structural element
-    const elementPosition = Object.keys(structure).indexOf(structureKey) + 1;
-    context.buildActContext(structureKey, structureElement, elementPosition);
-    
-    // First, we need plot points for this element (if they don't exist, we'll need to generate them)
-    // For now, let's create a placeholder plot points context
-    const existingPlotPoints = ['Placeholder plot point for this scene']; // This should come from actual plot points generation
-    await context.buildPlotPointsContext(existingPlotPoints, elementScenes.length, projectPath, req.user.username);
-    
-    // Build scene context with assigned plot point
-    const plotPointIndex = sceneIndexNum; // Assuming 1:1 mapping for now
-    context.buildSceneContext(sceneIndexNum, plotPointIndex, existingScene, elementScenes.length);
-    
-    // Generate hierarchical prompt using context system
-    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
-SCENE GENERATION REQUIREMENTS:
-1. This scene must serve the OVERALL STORY STRUCTURE and advance the narrative
-2. It must fulfill the specific PURPOSE of its structural element
-3. It must advance any CHARACTER DEVELOPMENT noted for this element
-4. It must deliver the ASSIGNED PLOT POINT specified above
-5. Make it cinematic and specific, not just a plot summary
-6. Include: title, location, time_of_day, description (2-3 sentences), characters, emotional_beats
-
-The scene you generate should feel like an organic part of the complete story structure, not an isolated fragment.`);
-    
-    // Use hierarchical prompt directly for individual scene generation
-    const prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "title": "Scene Title",
-  "location": "Specific location", 
-  "time_of_day": "Morning/Afternoon/Evening/Night",
-  "description": "What happens in this scene - be specific and visual",
-  "characters": ["Character1", "Character2"],
-  "emotional_beats": ["primary emotion", "secondary emotion"]
-}`;
-
-    // Save updated context to project
-    await context.saveToProject(projectPath);
-
-    const completion = await anthropic.messages.create({
-      model: model,
-      max_tokens: 1000,
-      temperature: 0.7,
-      system: "You are a professional screenwriter generating scenes within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-    });
-
-    let sceneData;
-    try {
-      sceneData = JSON.parse(completion.content[0].text);
-      console.log(`Generated individual scene: ${sceneData.title}`);
-    } catch (error) {
-      console.log('Failed to parse AI response:', error);
-      return res.status(500).json({ 
-        error: "Failed to parse AI response", 
-        details: error.message,
-        rawResponse: completion.content[0].text.substring(0, 500) + "..."
-      });
-    }
-
-    // Update scene in database
-    if (!projectContext.generatedScenes) {
-      projectContext.generatedScenes = {};
-    }
-    
-    if (!projectContext.generatedScenes[structureKey]) {
-      projectContext.generatedScenes[structureKey] = { scenes: [] };
-    }
-
-    // Update the specific scene
-    projectContext.generatedScenes[structureKey].scenes[sceneIndexNum] = sceneData;
-    projectContext.generatedScenes[structureKey].lastUpdated = new Date().toISOString();
-
-    // Save updated project context back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1 WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
-    
-    console.log(`Individual scene ${sceneIndexNum + 1} for ${structureKey} saved to database`);
-
-    res.json({ 
-      scene: sceneData,
-      structureKey,
-      sceneIndex: sceneIndexNum,
-      projectPath,
-      message: `Scene ${sceneIndexNum + 1} regenerated successfully`
-    });
-  } catch (error) {
-    console.error('Error generating individual scene:', error);
-    res.status(500).json({ error: 'Failed to generate individual scene', details: error.message });
-  }
-});
+// Individual scene regeneration endpoint removed - use plot point level generation instead
 
 // Generate plot points for all scenes with causal connections
 app.post('/api/generate-plot-points/:projectPath', authenticateApiKey, async (req, res) => {
@@ -4147,151 +4002,7 @@ Focus on creating a strong narrative spine where each scene leads logically to t
   }
 });
 
-// Generate a single plot point for a specific scene
-app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', async (req, res) => {
-  try {
-    const { projectPath, structureKey, sceneIndex } = req.params;
-    const { model = "claude-sonnet-4-20250514" } = req.body;
-    const sceneIndexNum = parseInt(sceneIndex);
-    
-    // Load project data from database
-    const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
-    
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found in database' });
-    }
-    
-    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-    const structure = projectContext.generatedStructure;
-    const storyInput = projectContext.storyInput;
-    
-    // Load existing scenes from database
-    const rawScenesData = projectContext.generatedScenes || {};
-    
-    // Extract the actual scenes data (handle nested structure)
-    const scenesData = rawScenesData.scenes || rawScenesData;
-    
-    // Handle both formats: direct array or nested object with scenes property
-    let scenes = Array.isArray(scenesData[structureKey]) ? scenesData[structureKey] : scenesData[structureKey]?.scenes;
-    
-    if (!scenes || !Array.isArray(scenes) || !scenes[sceneIndexNum]) {
-      return res.status(400).json({ error: 'Scene not found' });
-    }
-    
-    const targetScene = scenes[sceneIndexNum];
-    const structureElement = structure[structureKey];
-    
-    // Get context from surrounding scenes
-    const allScenes = [];
-    Object.entries(scenesData).forEach(([key, sceneGroup]) => {
-      // Handle both formats: direct array or nested object with scenes property
-      let scenes = Array.isArray(sceneGroup) ? sceneGroup : sceneGroup.scenes;
-      
-      if (scenes && Array.isArray(scenes)) {
-        scenes.forEach((scene, index) => {
-          allScenes.push({
-            title: scene.title || scene.name || 'Untitled Scene',
-            description: scene.description || '',
-            isTarget: key === structureKey && index === sceneIndexNum,
-            structureElement: structure[key]?.name || key
-          });
-        });
-      }
-    });
-    
-    const targetSceneIndex = allScenes.findIndex(scene => scene.isTarget);
-    const previousScene = targetSceneIndex > 0 ? allScenes[targetSceneIndex - 1] : null;
-    const nextScene = targetSceneIndex < allScenes.length - 1 ? allScenes[targetSceneIndex + 1] : null;
-    
-    const prompt = `You are a master screenwriter creating a plot point that connects scenes with clear causal relationships.
-
-STORY CONTEXT:
-Title: ${storyInput.title}
-Logline: ${storyInput.logline}
-Characters: ${storyInput.characters}
-Genre: ${storyInput.genre || storyInput.tone}
-
-STRUCTURAL CONTEXT:
-This scene belongs to: ${structureElement.name}
-Purpose: ${structureElement.description}
-
-TARGET SCENE:
-Title: ${targetScene.title || targetScene.name}
-Description: ${targetScene.description}
-Location: ${targetScene.location || 'Not specified'}
-
-CONTEXT:
-${previousScene ? `Previous Scene: ${previousScene.title} - ${previousScene.description}` : 'This is the first scene'}
-${nextScene ? `Next Scene: ${nextScene.title} - ${nextScene.description}` : 'This is the final scene'}
-
-TASK: Generate a single plot point for the target scene that:
-
-1. Is a clear, concise sentence capturing the scene's key story beat
-2. ${previousScene ? 'Connects causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")' : 'Establishes the initial situation clearly'}
-3. ${nextScene ? 'Sets up the next scene logically' : 'Provides satisfying closure'}
-4. Maintains narrative momentum and character development
-5. Is specific to this scene's content and purpose
-
-Return ONLY a JSON object:
-{
-  "plotPoint": "Your single plot point sentence here"
-}`;
-
-    console.log(`Generating individual plot point for ${structureKey} scene ${sceneIndexNum}`);
-    const response = await anthropic.messages.create({
-      model: model,
-      max_tokens: 1000,
-      messages: [{ role: 'user', content: prompt }]
-    });
-
-    const rawResponse = response.content[0].text;
-    console.log('Raw plot point response:', rawResponse.substring(0, 200) + '...');
-    
-    let plotPointData;
-    try {
-      // Try to extract JSON from the response
-      let jsonString = rawResponse;
-      
-      // Look for JSON object in the response
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[0];
-      }
-      
-      plotPointData = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('Failed to parse plot point response:', parseError);
-      console.error('Raw response was:', rawResponse);
-      throw new Error('Invalid response format from AI');
-    }
-    
-    if (!plotPointData.plotPoint) {
-      throw new Error('No plot point received from AI');
-    }
-    
-    console.log(`Generated plot point: ${plotPointData.plotPoint}`);
-    res.json({
-      success: true,
-      message: `Plot point generated for scene`,
-      plotPoint: plotPointData.plotPoint
-    });
-    
-  } catch (error) {
-    console.error('Error generating individual plot point:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate plot point' });
-  }
-});
+// Individual scene endpoints removed - use plot point level generation instead
 
 // Regenerate scenes from existing project (simple approach - generate fewer scenes)
 app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
