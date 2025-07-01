@@ -336,18 +336,29 @@ body {
 }
 
 .modal-overlay .modal-close {
-    background: none;
-    border: none;
+    background: rgba(71, 85, 105, 0.1);
+    border: 1px solid rgba(71, 85, 105, 0.2);
     font-size: 1.5rem;
-    color: #718096;
+    color: #475569;
     cursor: pointer;
     padding: 0.25rem;
-    border-radius: 0.25rem;
-    transition: color 0.2s;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .modal-overlay .modal-close:hover {
-    color: #2d3748;
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .modal-overlay .modal-body {
@@ -1848,23 +1859,28 @@ h2 .progress-meter {
 }
 
 .modal-close {
-    background: none;
-    border: none;
+    background: rgba(71, 85, 105, 0.1);
+    border: 1px solid rgba(71, 85, 105, 0.2);
     font-size: 1.5rem;
     cursor: pointer;
-    color: #718096;
-    width: 30px;
-    height: 30px;
+    color: #475569;
+    width: 32px;
+    height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
     transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .modal-close:hover {
-    background: #f7fafc;
-    color: #2d3748;
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .modal-body {
@@ -3664,12 +3680,21 @@ h2 .progress-meter {
 }
 
 .universal-library-modal .modal-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
-    opacity: 0.8;
+    opacity: 0.9;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .universal-library-modal .modal-close:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
     opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 .universal-library-modal .modal-body {
@@ -4970,7 +4995,9 @@ h2 .progress-meter {
     margin-bottom: 1rem;
 }
 
-.dialogue-plot-points-warning {
+.dialogue-plot-points-warning,
+.dialogue-scenes-warning,
+.dialogue-prerequisites-warning {
     background: #fef3c7;
     border: 1px solid #f59e0b;
     border-radius: 0.375rem;
@@ -4978,10 +5005,21 @@ h2 .progress-meter {
     margin-bottom: 1rem;
 }
 
-.dialogue-plot-points-warning p {
+.dialogue-plot-points-warning p,
+.dialogue-scenes-warning p,
+.dialogue-prerequisites-warning p {
     color: #b45309;
     font-size: 0.9rem;
     margin: 0;
+}
+
+.dialogue-prerequisites-warning {
+    background: #fee2e2;
+    border-color: #f87171;
+}
+
+.dialogue-prerequisites-warning p {
+    color: #dc2626;
 }
 
 /* Responsive adjustments for dialogue hierarchy */
@@ -6099,5 +6137,33 @@ h2 .progress-meter {
         height: 40px;
         margin-left: 2px;
     }
+}
+
+/* Close button styling for modals using class="close" */
+.close {
+    background: rgba(71, 85, 105, 0.1);
+    border: 1px solid rgba(71, 85, 105, 0.2);
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #475569;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    line-height: 1;
+    text-decoration: none;
+}
+
+.close:hover {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 

@@ -140,12 +140,15 @@ function getStarterPackCounts() {
 
 /**
  * Generate a safe entry key from a name string
+ * This matches the frontend key generation logic exactly
  */
 function generateEntryKey(name) {
   return name
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
     .replace(/\s+/g, '-')         // Replace spaces with hyphens
+    .replace(/-+/g, '-')          // Remove multiple consecutive hyphens
+    .replace(/^-+|-+$/g, '')      // Remove leading/trailing hyphens
     .substring(0, 50);            // Limit length
 }
 

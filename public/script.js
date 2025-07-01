@@ -843,11 +843,14 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
         let url, method;
         
         if (isEditing && !isEditing.isNewCharacterEntry) {
-            // Editing existing entry
+            // Editing existing entry - ALWAYS use the original key, ignore name changes
             method = 'PUT';
-            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${isEditing.key}`;
+            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${encodeURIComponent(isEditing.key)}`;
+            console.log(`🔧 EDIT: Using original key "${isEditing.key}" for editing, regardless of name changes`);
+            console.log(`   - Original name: "${isEditing.data?.name}""`);
+            console.log(`   - New name: "${name}"`);
         } else {
-            // Creating new entry
+            // Creating new entry - generate new key from current name
             method = 'POST';
             // Generate safe entry key (same logic as server-side)
             let entryKey = name.toLowerCase()
@@ -862,6 +865,7 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
             }
             
             url = `/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`;
+            console.log(`🆕 NEW: Generated key "${entryKey}" from name "${name}"`);
         }
         
         // For characters and story concepts, store both name and description
@@ -975,10 +979,32 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                     
                     showToast(`Story concept "${name}" created and project initialized!`, 'success');
                 } else {
-                    // Add to influence tags
-                    if (!appState.influences[config.plural].includes(name)) {
+                    // Handle influence editing vs new additions
+                    let actionTaken = false;
+                    
+                    if (window.editingLibraryEntry && window.editingLibraryEntry.originalName) {
+                        // We're editing an existing influence - replace the original entry
+                        const originalName = window.editingLibraryEntry.originalName;
+                        const originalIndex = appState.influences[config.plural].indexOf(originalName);
+                        
+                        if (originalIndex > -1) {
+                            // Replace the original entry with the new name
+                            appState.influences[config.plural][originalIndex] = name;
+                            console.log(`🔄 INFLUENCE EDIT: Replaced "${originalName}" with "${name}"`);
+                            actionTaken = true;
+                        } else {
+                            console.log(`⚠️ INFLUENCE EDIT: Original "${originalName}" not found in influences, adding as new`);
+                        }
+                    }
+                    
+                    // If not editing or original not found, add as new (but check for duplicates)
+                    if (!actionTaken && !appState.influences[config.plural].includes(name)) {
                         appState.influences[config.plural].push(name);
                         console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${name}" to appState.influences`);
+                        actionTaken = true;
+                    }
+                    
+                    if (actionTaken) {
                         console.log('  - Current influences:', appState.influences);
                         
                         // 🔧 SYNC FIX: Keep storyInput.influences synchronized
@@ -997,6 +1023,8 @@ async function saveToLibraryAndContinue(type, isNewEntry = false) {
                             autoSaveManager.markDirty();
                         }
                         console.log('  - Marked as dirty for auto-save');
+                    } else {
+                        console.log(`ℹ️ INFLUENCE: "${name}" already exists, no action taken`);
                     }
                 }
             }
@@ -1507,27 +1535,122 @@ async function editInfluenceEntry(type, influenceName) {
     const libraryType = type + 's'; // Convert to plural (directors, screenwriters, etc.)
     const libraryEntries = userLibraries[libraryType] || [];
     
-    // Find the entry data - library entries can be strings or objects
-    const entryData = libraryEntries.find(entry => {
-        // Handle different possible data structures
+    // Find the entry data - try multiple strategies to handle name changes
+    let entryData = null;
+    
+    // Strategy 1: Exact name match (handles most cases)
+    console.log(`🔍 STRATEGY 1: Looking for exact name match for "${influenceName}" in ${libraryEntries.length} entries`);
+    
+    entryData = libraryEntries.find(entry => {
+        const entryName = typeof entry === 'string' ? entry : 
+                         (entry.entry_data && entry.entry_data.name ? entry.entry_data.name : 
+                         (entry.name ? entry.name : 'unknown'));
+        
+        console.log(`🔍 Checking entry: "${entryName}" against "${influenceName}"`);
+        
         if (typeof entry === 'string') {
-            return entry === influenceName;
+            const match = entry === influenceName;
+            if (match) console.log(`✅ String match found: "${entry}"`);
+            return match;
         } else if (entry.entry_data && entry.entry_data.name) {
-            return entry.entry_data.name === influenceName;
+            const match = entry.entry_data.name === influenceName;
+            if (match) console.log(`✅ Entry data name match found: "${entry.entry_data.name}"`);
+            return match;
         } else if (entry.name) {
-            return entry.name === influenceName;
+            const match = entry.name === influenceName;
+            if (match) console.log(`✅ Entry name match found: "${entry.name}"`);
+            return match;
         }
         return false;
     });
+    
+    if (entryData) {
+        console.log(`✅ STRATEGY 1 SUCCESS: Found exact match`, {
+            type: typeof entryData,
+            name: typeof entryData === 'string' ? entryData : (entryData.entry_data?.name || entryData.name),
+            key: entryData.entry_key || entryData.key || 'no-key'
+        });
+    } else {
+        console.log(`❌ STRATEGY 1 FAILED: No exact name match found for "${influenceName}"`);
+    }
+    
+    // Strategy 2: If not found, try to find by generated key match
+    if (!entryData) {
+        const searchKey = influenceName.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+            
+        console.log(`🔍 FALLBACK SEARCH: Looking for key "${searchKey}" in ${libraryEntries.length} entries`);
+        console.log(`📋 Available entries:`, libraryEntries.map(e => ({
+            name: e.entry_data?.name || e.name || (typeof e === 'string' ? e : 'unknown'),
+            key: e.entry_key || e.key || 'no-key'
+        })));
+        
+        entryData = libraryEntries.find(entry => {
+            const entryKey = entry.entry_key || entry.key || '';
+            const entryName = entry.entry_data?.name || entry.name || (typeof entry === 'string' ? entry : '');
+            
+            console.log(`🔍 Checking entry: name="${entryName}", key="${entryKey}" against search="${searchKey}"`);
+            
+            // Direct key match
+            if (entry.entry_key === searchKey || entry.key === searchKey) {
+                console.log(`✅ Direct key match found!`);
+                return true;
+            }
+            
+            // Check if search key starts with entry key (handles "cosmic-horror-edit1" -> "cosmic-horror")
+            if (entryKey && searchKey.startsWith(entryKey + '-')) {
+                console.log(`✅ Search key starts with entry key: "${searchKey}" starts with "${entryKey}"`);
+                return true;
+            }
+            
+            // Check if entry key starts with search key (reverse case)
+            if (entryKey && entryKey.startsWith(searchKey + '-')) {
+                console.log(`✅ Entry key starts with search key: "${entryKey}" starts with "${searchKey}"`);
+                return true;
+            }
+            
+            // Try removing edit suffixes and comparing base names
+            const baseSearchKey = searchKey.replace(/-edit\d*$/g, '');
+            const baseEntryKey = entryKey.replace(/-edit\d*$/g, '');
+            if (baseSearchKey && baseEntryKey && baseSearchKey === baseEntryKey) {
+                console.log(`✅ Base key match: "${baseSearchKey}" matches "${baseEntryKey}"`);
+                return true;
+            }
+            
+            return false;
+        });
+        
+        if (entryData) {
+            console.log(`✅ Found by fallback search:`, {
+                name: entryData.entry_data?.name || entryData.name || 'string-entry',
+                key: entryData.entry_key || entryData.key || 'no-key'
+            });
+        } else {
+            console.log(`❌ No entry found for "${searchKey}"`);
+        }
+    }
     
     if (entryData) {
         // Extract the actual data based on the structure found
         let actualData, actualKey;
         
         if (typeof entryData === 'string') {
-            // Simple string entry
+            // Simple string entry - we need to derive the original key
             actualData = { name: entryData, description: '' };
-            actualKey = entryData.toLowerCase().replace(/\s+/g, '_');
+            
+            // For string entries, we need to find the original base name and key
+            // Strip edit suffixes to get the original base name
+            const originalName = entryData.replace(/\s*\(edit\d*\)\s*/g, '');
+            actualKey = originalName.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                .replace(/\s+/g, '-')         // Replace spaces with hyphens
+                .replace(/-+/g, '-')          // Remove multiple hyphens
+                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+                
+            console.log(`🔧 STRING ENTRY KEY DERIVATION: "${entryData}" -> original: "${originalName}" -> key: "${actualKey}"`);
         } else if (entryData.entry_data && entryData.entry_data.name) {
             actualData = entryData.entry_data;
             actualKey = entryData.entry_key;
@@ -1536,7 +1659,15 @@ async function editInfluenceEntry(type, influenceName) {
             actualKey = entryData.entry_key || entryData.key;
         } else {
             actualData = { name: influenceName, description: '' };
-            actualKey = influenceName.toLowerCase().replace(/\s+/g, '_');
+            // Strip edit suffixes to get original key for fallback case too
+            const originalName = influenceName.replace(/\s*\(edit\d*\)\s*/g, '');
+            actualKey = originalName.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                .replace(/\s+/g, '-')         // Replace spaces with hyphens
+                .replace(/-+/g, '-')          // Remove multiple hyphens
+                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+                
+            console.log(`🔧 FALLBACK KEY DERIVATION: "${influenceName}" -> original: "${originalName}" -> key: "${actualKey}"`);
         }
         
         // Store editing state for the universal modal
@@ -1544,8 +1675,14 @@ async function editInfluenceEntry(type, influenceName) {
             type: libraryType,
             key: actualKey,
             data: actualData,
+            originalName: actualData.name, // Store original name for influence replacement
             isFromStep1: true // Flag to know this came from step 1
         };
+        
+        console.log(`🎯 SETUP EDIT: Setting up edit for "${influenceName}"`);
+        console.log(`   - Library Type: ${libraryType}`);
+        console.log(`   - Generated Key: "${actualKey}"`);
+        console.log(`   - Entry Data:`, actualData);
         
         // Show universal modal with pre-filled data
         showUniversalLibrarySaveModal(type, actualData.name, config, false);
@@ -1581,27 +1718,122 @@ async function editCharacterEntry(characterIndex) {
     const userLibraries = await loadUserLibraries();
     const characterEntries = userLibraries.characters || [];
     
-    // Find the entry data - library entries can be strings or objects
-    const entryData = characterEntries.find(entry => {
-        // Handle different possible data structures
+    // Find the entry data - try multiple strategies to handle name changes
+    let entryData = null;
+    
+    // Strategy 1: Exact name match (handles most cases)
+    console.log(`🔍 CHARACTER STRATEGY 1: Looking for exact name match for "${character.name}" in ${characterEntries.length} entries`);
+    
+    entryData = characterEntries.find(entry => {
+        const entryName = typeof entry === 'string' ? entry : 
+                         (entry.entry_data && entry.entry_data.name ? entry.entry_data.name : 
+                         (entry.name ? entry.name : 'unknown'));
+        
+        console.log(`🔍 Checking character entry: "${entryName}" against "${character.name}"`);
+        
         if (typeof entry === 'string') {
-            return entry === character.name;
+            const match = entry === character.name;
+            if (match) console.log(`✅ Character string match found: "${entry}"`);
+            return match;
         } else if (entry.entry_data && entry.entry_data.name) {
-            return entry.entry_data.name === character.name;
+            const match = entry.entry_data.name === character.name;
+            if (match) console.log(`✅ Character entry data name match found: "${entry.entry_data.name}"`);
+            return match;
         } else if (entry.name) {
-            return entry.name === character.name;
+            const match = entry.name === character.name;
+            if (match) console.log(`✅ Character entry name match found: "${entry.name}"`);
+            return match;
         }
         return false;
     });
+    
+    if (entryData) {
+        console.log(`✅ CHARACTER STRATEGY 1 SUCCESS: Found exact match`, {
+            type: typeof entryData,
+            name: typeof entryData === 'string' ? entryData : (entryData.entry_data?.name || entryData.name),
+            key: entryData.entry_key || entryData.key || 'no-key'
+        });
+    } else {
+        console.log(`❌ CHARACTER STRATEGY 1 FAILED: No exact name match found for "${character.name}"`);
+    }
+    
+    // Strategy 2: If not found, try to find by generated key match  
+    if (!entryData) {
+        const searchKey = character.name.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+            
+        console.log(`🔍 CHARACTER FALLBACK SEARCH: Looking for key "${searchKey}" in ${characterEntries.length} entries`);
+        console.log(`📋 Available character entries:`, characterEntries.map(e => ({
+            name: e.entry_data?.name || e.name || (typeof e === 'string' ? e : 'unknown'),
+            key: e.entry_key || e.key || 'no-key'
+        })));
+        
+        entryData = characterEntries.find(entry => {
+            const entryKey = entry.entry_key || entry.key || '';
+            const entryName = entry.entry_data?.name || entry.name || (typeof entry === 'string' ? entry : '');
+            
+            console.log(`🔍 Checking character entry: name="${entryName}", key="${entryKey}" against search="${searchKey}"`);
+            
+            // Direct key match
+            if (entry.entry_key === searchKey || entry.key === searchKey) {
+                console.log(`✅ Direct character key match found!`);
+                return true;
+            }
+            
+            // Check if search key starts with entry key
+            if (entryKey && searchKey.startsWith(entryKey + '-')) {
+                console.log(`✅ Character search key starts with entry key: "${searchKey}" starts with "${entryKey}"`);
+                return true;
+            }
+            
+            // Check if entry key starts with search key
+            if (entryKey && entryKey.startsWith(searchKey + '-')) {
+                console.log(`✅ Character entry key starts with search key: "${entryKey}" starts with "${searchKey}"`);
+                return true;
+            }
+            
+            // Try removing edit suffixes and comparing base names
+            const baseSearchKey = searchKey.replace(/-edit\d*$/g, '');
+            const baseEntryKey = entryKey.replace(/-edit\d*$/g, '');  
+            if (baseSearchKey && baseEntryKey && baseSearchKey === baseEntryKey) {
+                console.log(`✅ Character base key match: "${baseSearchKey}" matches "${baseEntryKey}"`);
+                return true;
+            }
+            
+            return false;
+        });
+        
+        if (entryData) {
+            console.log(`✅ Found character by fallback search:`, {
+                name: entryData.entry_data?.name || entryData.name || 'string-entry',
+                key: entryData.entry_key || entryData.key || 'no-key'
+            });
+        } else {
+            console.log(`❌ No character entry found for "${searchKey}"`);
+        }
+    }
     
     if (entryData) {
         // Extract the actual data based on the structure found
         let actualData, actualKey;
         
         if (typeof entryData === 'string') {
-            // Simple string entry
+            // Simple string entry - we need to derive the original key
             actualData = { name: entryData, description: character.description || '' };
-            actualKey = entryData.toLowerCase().replace(/\s+/g, '_');
+            
+            // For string entries, we need to find the original base name and key
+            // Strip edit suffixes to get the original base name
+            const originalName = entryData.replace(/\s*\(edit\d*\)\s*/g, '');
+            actualKey = originalName.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                .replace(/\s+/g, '-')         // Replace spaces with hyphens
+                .replace(/-+/g, '-')          // Remove multiple hyphens
+                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+                
+            console.log(`🔧 CHARACTER STRING ENTRY KEY DERIVATION: "${entryData}" -> original: "${originalName}" -> key: "${actualKey}"`);
         } else if (entryData.entry_data && entryData.entry_data.name) {
             actualData = entryData.entry_data;
             actualKey = entryData.entry_key;
@@ -1610,7 +1842,15 @@ async function editCharacterEntry(characterIndex) {
             actualKey = entryData.entry_key || entryData.key;
         } else {
             actualData = { name: character.name, description: character.description || '' };
-            actualKey = character.name.toLowerCase().replace(/\s+/g, '_');
+            // Strip edit suffixes to get original key for fallback case too
+            const originalName = character.name.replace(/\s*\(edit\d*\)\s*/g, '');
+            actualKey = originalName.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+                .replace(/\s+/g, '-')         // Replace spaces with hyphens
+                .replace(/-+/g, '-')          // Remove multiple hyphens
+                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+                
+            console.log(`🔧 CHARACTER FALLBACK KEY DERIVATION: "${character.name}" -> original: "${originalName}" -> key: "${actualKey}"`);
         }
         
         // Store editing state for the universal modal
@@ -1618,6 +1858,7 @@ async function editCharacterEntry(characterIndex) {
             type: 'characters',
             key: actualKey,
             data: actualData,
+            originalName: actualData.name, // Store original name for reference
             isFromStep1: true,
             characterIndex: characterIndex // Store the index for project character updates
         };
@@ -1635,6 +1876,7 @@ async function editCharacterEntry(characterIndex) {
     } else {
         // Character not found in library, create a new library entry
         window.editingLibraryEntry = {
+            originalName: character.name, // Store original name for reference
             isFromStep1: true,
             characterIndex: characterIndex,
             isNewCharacterEntry: true
@@ -4687,19 +4929,7 @@ function displayElementPlotPoints(structureKey, plotPoints) {
         }
     });
     
-    // Add regeneration actions below the editable block
-    const actionsDiv = document.createElement('div');
-    actionsDiv.className = 'plot-points-actions';
-    actionsDiv.style.marginTop = '15px';
-    actionsDiv.innerHTML = `
-        <button class="btn btn-outline btn-sm" onclick="regenerateAllPlotPointsForElement('${structureKey}')" title="Regenerate all plot points for this act">
-            🔄 Regenerate All Plot Points
-        </button>
-        <button class="btn btn-outline btn-sm" onclick="previewElementPlotPointsPrompt('${structureKey}')" title="Preview the prompt for generating plot points">
-            🔍 Preview Prompt
-        </button>
-    `;
-    container.appendChild(actionsDiv);
+    // Redundant plot point actions removed - use main "Generate Plot Points" and "Preview Prompt" buttons instead
 }
 
 // Save plot points content function
@@ -6170,38 +6400,37 @@ function displayDialogueGeneration() {
             
             console.log(`Processing dialogue for ${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}, hasPlotPoints=${hasPlotPoints}`);
             
-            // Only show acts that have scenes
-            if (!hasScenes) {
-                console.log(`Skipping ${structureKey} - no scenes available for dialogue`);
-                return;
-            }
+            // Show all acts in hierarchy - even those without scenes/plot points
             
             const groupElement = document.createElement('div');
             groupElement.className = 'dialogue-group';
             groupElement.id = `dialogue-group-${structureKey}`;
             
-            // Get act progress notation (X/Y format) - same as other steps but more compact
-            const totalActs = chronologicalKeys.filter(key => {
-                const scenes = appState.generatedScenes[key];
-                return scenes && Array.isArray(scenes) && scenes.length > 0;
-            }).length;
-            const actsWithScenes = chronologicalKeys.filter(key => {
-                const scenes = appState.generatedScenes[key];
-                return scenes && Array.isArray(scenes) && scenes.length > 0;
-            });
-            const currentActIndex = actsWithScenes.indexOf(structureKey);
+            // Get act progress notation (X/Y format) - show all acts now, not just those with scenes
+            const totalActs = chronologicalKeys.length;
+            const currentActIndex = chronologicalKeys.indexOf(structureKey);
             const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
             const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
             const titleWithProgress = actProgress ? `${actProgress} ${actName}` : actName;
+            
+            // Generate appropriate buttons and warnings based on what's available
+            const canGenerateDialogue = hasScenes;
+            const generateButtonClass = canGenerateDialogue ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+            const generateButtonTitle = canGenerateDialogue ? 
+                'Generate dialogue for all scenes in this act' : 
+                'No scenes available for dialogue generation';
+            const generateButtonOnClick = canGenerateDialogue ? 
+                `generateAllDialogueForAct('${structureKey}')` : 
+                'showToast("Generate scenes first in Step 5", "error")';
             
             groupElement.innerHTML = `
                 <div class="dialogue-group-header compact">
                     <h4 class="dialogue-act-title">${titleWithProgress}</h4>
                     <div class="dialogue-group-actions">
-                        <button class="btn btn-primary btn-sm" onclick="generateAllDialogueForAct('${structureKey}')" title="Generate dialogue for all scenes in this act">
+                        <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateDialogue ? '' : 'disabled'}>
                             💬 Generate All
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act">
+                        <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act" ${canGenerateDialogue ? '' : 'disabled'}>
                             🔍 Preview All
                         </button>
                     </div>
@@ -6210,22 +6439,30 @@ function displayDialogueGeneration() {
                     <p class="act-description-text">${storyAct.description}</p>
                 </div>
                 <div id="hierarchical-dialogue-content-${structureKey}" class="hierarchical-dialogue-content">
-                    ${hasPlotPoints ? '' : `
+                    ${!hasPlotPoints && !hasScenes ? `
+                        <div class="dialogue-prerequisites-warning">
+                            <p><strong>⚠️ No plot points or scenes found.</strong> Please generate plot points in Step 4 and scenes in Step 5 first.</p>
+                            <p><em>Dialogue generation will be disabled until scenes are created.</em></p>
+                        </div>
+                    ` : !hasPlotPoints && hasScenes ? `
                         <div class="dialogue-plot-points-warning">
                             <p><strong>⚠️ Limited structure:</strong> These scenes were generated without plot points.</p>
                         </div>
-                    `}
+                    ` : !hasScenes ? `
+                        <div class="dialogue-scenes-warning">
+                            <p><strong>⚠️ No scenes found.</strong> Please generate scenes in Step 5 first.</p>
+                            <p><em>Dialogue generation will be disabled until scenes are created.</em></p>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             
             console.log(`Appending dialogue group element for ${structureKey} to container`);
             container.appendChild(groupElement);
             
-            // Display hierarchical dialogue content
-            if (hasPlotPoints || hasScenes) {
-                console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
-                displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
-            }
+            // Always display hierarchical dialogue content (even if empty)
+            console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
+            displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
         });
         
         console.log('Finished creating all dialogue groups');
@@ -7057,8 +7294,56 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         // Step 2: Template Selection - Show selected template or template options
         console.log('Step 2 - Template Selection');
         if (appState.selectedTemplate) {
-            // Template already selected - hide template options
-            collapseTemplateOptions();
+            // Template already selected - show the selected template
+            console.log('🔧 Template already selected, displaying:', appState.selectedTemplate);
+            
+            // Ensure templates are loaded first
+            try {
+                await loadTemplates();
+                
+                // Find the selected template data
+                let selectedTemplateData = null;
+                if (appState.availableTemplates) {
+                    Object.values(appState.availableTemplates).forEach(category => {
+                        if (category.templates) {
+                            const found = category.templates.find(template => template.id === appState.selectedTemplate);
+                            if (found) {
+                                selectedTemplateData = found;
+                            }
+                        }
+                    });
+                }
+                
+                if (selectedTemplateData) {
+                    // Use existing templateData if available (with user customizations), otherwise use fresh data
+                    const templateDataToDisplay = appState.templateData || selectedTemplateData;
+                    console.log('🔧 Displaying template:', templateDataToDisplay.name);
+                    
+                    // Mark the template as selected in the UI
+                    const templateElements = document.querySelectorAll('.template-option');
+                    templateElements.forEach(element => {
+                        const templateIdAttr = element.getAttribute('data-template-id');
+                        if (templateIdAttr === appState.selectedTemplate) {
+                            element.classList.add('selected');
+                        } else {
+                            element.classList.remove('selected');
+                        }
+                    });
+                    
+                    // Display the selected template
+                    displaySelectedTemplate(templateDataToDisplay);
+                    collapseTemplateOptions();
+                    updateTemplatePageForSelection();
+                    
+                    console.log('✅ Template display completed for step 2 navigation');
+                } else {
+                    console.warn('🚨 Selected template data not found, expanding options');
+                    expandTemplateOptions();
+                }
+            } catch (error) {
+                console.error('🚨 Error loading templates for step 2:', error);
+                expandTemplateOptions();
+            }
         } else {
             // No template selected - show template options
             expandTemplateOptions();
@@ -7292,8 +7577,8 @@ function isStepFullyComplete(stepNumber) {
             });
             break;
         case 6:
-            // Dialogue fully complete if generated for all scenes
-            if (!appState.generatedDialogues || !appState.generatedScenes) {
+            // Dialogue fully complete if generated for all scenes in ALL STRUCTURE ACTS
+            if (!appState.generatedDialogues || !appState.generatedScenes || !appState.generatedStructure) {
                 result = false;
                 break;
             }
@@ -7308,9 +7593,17 @@ function isStepFullyComplete(stepNumber) {
             let allScenesHaveDialogue = true;
             let totalScenes = 0;
             let dialogueCount = 0;
+            let allActsHaveScenes = true;
             
-            for (const structureKey of Object.keys(appState.generatedScenes)) {
+            // Check all structure acts, not just acts with scenes
+            for (const structureKey of Object.keys(appState.generatedStructure)) {
                 const scenes = appState.generatedScenes[structureKey] || [];
+                
+                // If this act has no scenes at all, the dialogue step is not complete
+                if (scenes.length === 0) {
+                    allActsHaveScenes = false;
+                }
+                
                 totalScenes += scenes.length;
                 for (let i = 0; i < scenes.length; i++) {
                     if (appState.generatedDialogues[`${structureKey}-${i}`]) {
@@ -7325,14 +7618,18 @@ function isStepFullyComplete(stepNumber) {
             console.log('Step 6 (Dialogue) completion check:', {
                 hasGeneratedDialogues: !!appState.generatedDialogues,
                 hasGeneratedScenes: !!appState.generatedScenes,
+                hasGeneratedStructure: !!appState.generatedStructure,
+                structureKeys: Object.keys(appState.generatedStructure),
                 totalScenes,
                 dialogueCount,
                 dialogueKeys: dialogueKeys.length,
                 allScenesHaveDialogue,
+                allActsHaveScenes,
                 completionPercentage: totalScenes > 0 ? Math.round((dialogueCount / totalScenes) * 100) : 0
             });
             
-            result = allScenesHaveDialogue;
+            // Only complete if all acts have scenes AND all scenes have dialogue
+            result = allActsHaveScenes && allScenesHaveDialogue;
             break;
         case 7:
             // Export is complete only after actually exporting
@@ -8611,20 +8908,7 @@ function displayScenesForElement(structureKey, sceneGroup, customContainer = nul
                 }
             });
             
-            // Add regeneration actions for this scene
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'scene-actions';
-            actionsDiv.style.marginTop = '10px';
-            actionsDiv.style.marginBottom = '20px';
-            actionsDiv.innerHTML = `
-                <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${index})" title="Regenerate this specific scene">
-                    🔄 Regenerate Scene
-                </button>
-                <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate this scene">
-                    🔍 Scene Prompt
-                </button>
-            `;
-            container.appendChild(actionsDiv);
+            // Individual scene actions removed - use plot point level generation instead
         });
     }
 }
@@ -9882,14 +10166,6 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                         <span class="scene-number">${sceneNumber}</span>
                         <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
                     </h5>
-                    <div class="scene-actions">
-                        <button class="btn btn-primary btn-sm" onclick="generateIndividualScene('${structureKey}', ${globalSceneIndex})" title="Regenerate this specific scene">
-                            🔄 Regenerate
-                        </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewScenePrompt('${structureKey}', ${globalSceneIndex})" title="Preview scene prompt">
-                            🔍 Preview
-                        </button>
-                    </div>
                 `;
                 
                 sceneElement.appendChild(sceneHeader);

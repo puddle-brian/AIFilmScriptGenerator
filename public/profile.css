@@ -343,19 +343,29 @@
 }
 
 .modal-close {
-    background: none;
-    border: none;
+    background: rgba(71, 85, 105, 0.1);
+    border: 1px solid rgba(71, 85, 105, 0.2);
     font-size: 1.5rem;
-    color: #6b7280;
+    color: #475569;
     cursor: pointer;
     padding: 0.25rem;
-    border-radius: 0.25rem;
-    transition: all 0.2s;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .modal-close:hover {
-    color: #374151;
-    background: #f3f4f6;
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .form-group {
