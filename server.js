@@ -3348,13 +3348,25 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
 });
 
 // Generate multiple scenes for a specific plot point
-app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointIndex', async (req, res) => {
+app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointIndex', authenticateApiKey, checkCredits(10), async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
     
+    console.log(`🎬 SCENE GENERATION DEBUG: Starting for ${projectPath}/${actKey}/${plotPointIndex}`);
+    
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
+    console.log(`👤 User: ${username}`);
+    
+    // Ensure database connection is healthy
+    try {
+      await dbClient.query('SELECT 1');
+    } catch (connectionError) {
+      console.error('Database connection error, attempting to reconnect:', connectionError);
+      await connectToDatabase();
+    }
+    
     const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
     
     if (userResult.rows.length === 0) {
@@ -3372,54 +3384,80 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     }
     
     const projectContext = parseProjectContext(projectResult.rows[0].project_context);
+    console.log(`📊 Project context loaded. Keys: ${Object.keys(projectContext).join(', ')}`);
+    console.log(`📋 Available plot point acts: ${projectContext.plotPoints ? Object.keys(projectContext.plotPoints).join(', ') : 'NONE'}`);
     
     // Load plot points data with scene distribution from database
     let plotPointsData;
+    let plotPointsArray;
     try {
       if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
         return res.status(400).json({ error: 'Plot points not found. Please generate plot points for this act first.' });
       }
       plotPointsData = projectContext.plotPoints[actKey];
+      
+      // Handle both data structures: direct array or object with plotPoints property
+      if (Array.isArray(plotPointsData)) {
+        // Direct array format
+        plotPointsArray = plotPointsData;
+        console.log(`📋 Using direct array format: ${plotPointsArray.length} plot points`);
+      } else if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+        // Object with plotPoints property
+        plotPointsArray = plotPointsData.plotPoints;
+        console.log(`📋 Using object format: ${plotPointsArray.length} plot points`);
+      } else {
+        console.log(`❌ Invalid plot points data structure for act ${actKey}:`, JSON.stringify(plotPointsData, null, 2));
+        return res.status(400).json({ error: 'Plot points data is corrupted. Please regenerate plot points for this act.' });
+      }
+      
     } catch (error) {
       return res.status(400).json({ error: 'Plot points data not found. Please generate plot points for this act first.' });
     }
     
     const plotPointIndexNum = parseInt(plotPointIndex);
-    if (plotPointIndexNum < 0 || plotPointIndexNum >= plotPointsData.plotPoints.length) {
+    
+    if (plotPointIndexNum < 0 || plotPointIndexNum >= plotPointsArray.length) {
       return res.status(400).json({ error: 'Invalid plot point index' });
     }
     
-    const sceneDistribution = plotPointsData.sceneDistribution || [];
+    // Handle scene distribution - only available in object format
+    const sceneDistribution = (plotPointsData.sceneDistribution) ? plotPointsData.sceneDistribution : [];
     const plotPointInfo = sceneDistribution[plotPointIndexNum];
     
+    // If no scene distribution, create a simple 1:1 mapping
+    let sceneCount, plotPoint;
     if (!plotPointInfo) {
-      return res.status(400).json({ error: 'Scene distribution not found. Please regenerate plot points.' });
+      console.log(`No scene distribution found for plot point ${plotPointIndexNum}, using fallback`);
+      sceneCount = 2; // Default 2 scenes per plot point
+      plotPoint = plotPointsArray[plotPointIndexNum];
+      
+      if (!plotPoint) {
+        return res.status(400).json({ error: `Plot point ${plotPointIndexNum} not found in act ${actKey}` });
+      }
+    } else {
+      sceneCount = plotPointInfo.sceneCount;
+      plotPoint = plotPointInfo.plotPoint;
     }
-    
-    const sceneCount = plotPointInfo.sceneCount;
-    const plotPoint = plotPointInfo.plotPoint;
     
     console.log(`Generating ${sceneCount} scenes for plot point ${plotPointIndexNum + 1}: "${plotPoint}"`);
     
-    // Initialize and load hierarchical context
+    // Initialize hierarchical context (don't load from file system - we have database data)
     const context = new HierarchicalContext();
-    await context.loadFromProject(projectPath);
     
     const structure = projectContext.generatedStructure;
     const storyInput = projectContext.storyInput;
     
-    // Rebuild context if needed
-    if (!context.contexts.story) {
-      context.buildStoryContext(storyInput, storyInput.influencePrompt, projectContext.lastUsedSystemMessage, projectContext);
-      context.buildStructureContext(structure, projectContext.templateData);
-    }
+    // Build context from database data
+    context.buildStoryContext(storyInput, storyInput.influencePrompt || storyInput.originalPrompt, projectContext.lastUsedSystemMessage, projectContext);
+    context.buildStructureContext(structure, projectContext.templateData);
     
     // Build act context
     const actPosition = Object.keys(structure).indexOf(actKey) + 1;
     context.buildActContext(actKey, structure[actKey], actPosition);
     
     // Build plot points context
-    await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.totalScenesForAct, projectPath, req.user.username);
+    const totalScenesForAct = plotPointsData.totalScenesForAct || plotPointsArray.length * 2; // Fallback
+    await context.buildPlotPointsContext(plotPointsArray, totalScenesForAct, projectPath, req.user.username);
     
     // Build scene context for this specific plot point
     context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
@@ -3504,7 +3542,7 @@ Return ONLY valid JSON in this exact format:
       plotPoint: plotPoint,
       sceneCount: sceneCount,
       scenes: scenesData.scenes,
-      isKeyPlot: plotPointInfo.isKeyPlot,
+      isKeyPlot: plotPointInfo?.isKeyPlot || false,
       generatedAt: new Date().toISOString()
     };
     
@@ -3527,7 +3565,13 @@ Return ONLY valid JSON in this exact format:
     });
 
   } catch (error) {
-    console.error('Error generating scenes for plot point:', error);
+    console.error('❌ SCENE GENERATION ERROR:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      message: error.message,
+      name: error.name,
+      code: error.code
+    });
     res.status(500).json({ error: 'Failed to generate scenes for plot point', details: error.message });
   }
 });

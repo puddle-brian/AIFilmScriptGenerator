@@ -10339,9 +10339,90 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
     });
 }
 
-// Generate scenes for a specific plot point (optional future enhancement)
+// Generate scenes for a specific plot point
 async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
-    showToast('Individual plot point scene generation coming soon! Use "Generate Scenes" for the full act for now.', 'info');
+    if (!appState.projectPath) {
+        showToast('No project loaded. Please create or load a project first.', 'error');
+        return;
+    }
+
+    if (!hasPlotPointsForElement(structureKey)) {
+        showToast('No plot points found for this element. Please generate plot points first.', 'error');
+        return;
+    }
+
+    // Check authentication first
+    if (!appState.isAuthenticated) {
+        authManager.showRegistrationModal();
+        return;
+    }
+
+    // Credit check before generation (estimate ~10 credits per plot point)
+    if (!await window.creditWidget.canAfford(10)) {
+        showToast('Insufficient credits for scene generation (10 credits required)', 'error');
+        return;
+    }
+
+    try {
+        const plotPoint = appState.plotPoints[structureKey][plotPointIndex];
+        showLoading(`Generating scenes for plot point: ${plotPoint}...`);
+        
+        const response = await fetch(`/api/generate-scenes-for-plot-point/${appState.projectPath}/${structureKey}/${plotPointIndex}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': appState.apiKey
+            },
+            body: JSON.stringify({
+                model: getSelectedModel()
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Plot point scenes generated:', data);
+            
+            // Store/update scenes in app state
+            if (!appState.generatedScenes) {
+                appState.generatedScenes = {};
+            }
+            if (!appState.generatedScenes[structureKey]) {
+                appState.generatedScenes[structureKey] = [];
+            }
+            
+            // Add the new scenes to the existing act scenes
+            data.scenes.forEach(scene => {
+                // Add metadata about which plot point this scene came from
+                scene.plotPointIndex = plotPointIndex;
+                scene.plotPoint = data.plotPoint;
+                scene.isKeyPlot = data.isKeyPlot;
+                appState.generatedScenes[structureKey].push(scene);
+            });
+            
+            // Refresh the scenes display to show the new scenes
+            displayScenes(appState.generatedScenes);
+            
+            // Refresh credits after successful generation
+            window.creditWidget.refreshAfterOperation();
+            
+            // Update navigation system
+            updateStepIndicators();
+            updateUniversalNavigation();
+            updateBreadcrumbNavigation();
+            
+            showToast(`Generated ${data.scenes.length} scenes for plot point: "${plotPoint}"`, 'success');
+            saveToLocalStorage();
+        } else {
+            throw new Error(data.error || 'Failed to generate scenes for plot point');
+        }
+        
+        hideLoading();
+    } catch (error) {
+        console.error('Error generating scenes for plot point:', error);
+        showToast('Error generating scenes for plot point. Please try again.', 'error');
+        hideLoading();
+    }
 }
 
 // Compact Screenplay Calculator - Simple, encapsulated functionality
