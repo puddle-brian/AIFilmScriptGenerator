@@ -6412,38 +6412,37 @@ function displayDialogueGeneration() {
             
             console.log(`Processing dialogue for ${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}, hasPlotPoints=${hasPlotPoints}`);
             
-            // Only show acts that have scenes
-            if (!hasScenes) {
-                console.log(`Skipping ${structureKey} - no scenes available for dialogue`);
-                return;
-            }
+            // Show all acts in hierarchy - even those without scenes/plot points
             
             const groupElement = document.createElement('div');
             groupElement.className = 'dialogue-group';
             groupElement.id = `dialogue-group-${structureKey}`;
             
-            // Get act progress notation (X/Y format) - same as other steps but more compact
-            const totalActs = chronologicalKeys.filter(key => {
-                const scenes = appState.generatedScenes[key];
-                return scenes && Array.isArray(scenes) && scenes.length > 0;
-            }).length;
-            const actsWithScenes = chronologicalKeys.filter(key => {
-                const scenes = appState.generatedScenes[key];
-                return scenes && Array.isArray(scenes) && scenes.length > 0;
-            });
-            const currentActIndex = actsWithScenes.indexOf(structureKey);
+            // Get act progress notation (X/Y format) - show all acts now, not just those with scenes
+            const totalActs = chronologicalKeys.length;
+            const currentActIndex = chronologicalKeys.indexOf(structureKey);
             const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
             const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
             const titleWithProgress = actProgress ? `${actProgress} ${actName}` : actName;
+            
+            // Generate appropriate buttons and warnings based on what's available
+            const canGenerateDialogue = hasScenes;
+            const generateButtonClass = canGenerateDialogue ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+            const generateButtonTitle = canGenerateDialogue ? 
+                'Generate dialogue for all scenes in this act' : 
+                'No scenes available for dialogue generation';
+            const generateButtonOnClick = canGenerateDialogue ? 
+                `generateAllDialogueForAct('${structureKey}')` : 
+                'showToast("Generate scenes first in Step 5", "error")';
             
             groupElement.innerHTML = `
                 <div class="dialogue-group-header compact">
                     <h4 class="dialogue-act-title">${titleWithProgress}</h4>
                     <div class="dialogue-group-actions">
-                        <button class="btn btn-primary btn-sm" onclick="generateAllDialogueForAct('${structureKey}')" title="Generate dialogue for all scenes in this act">
+                        <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateDialogue ? '' : 'disabled'}>
                             💬 Generate All
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act">
+                        <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act" ${canGenerateDialogue ? '' : 'disabled'}>
                             🔍 Preview All
                         </button>
                     </div>
@@ -6452,22 +6451,30 @@ function displayDialogueGeneration() {
                     <p class="act-description-text">${storyAct.description}</p>
                 </div>
                 <div id="hierarchical-dialogue-content-${structureKey}" class="hierarchical-dialogue-content">
-                    ${hasPlotPoints ? '' : `
+                    ${!hasPlotPoints && !hasScenes ? `
+                        <div class="dialogue-prerequisites-warning">
+                            <p><strong>⚠️ No plot points or scenes found.</strong> Please generate plot points in Step 4 and scenes in Step 5 first.</p>
+                            <p><em>Dialogue generation will be disabled until scenes are created.</em></p>
+                        </div>
+                    ` : !hasPlotPoints && hasScenes ? `
                         <div class="dialogue-plot-points-warning">
                             <p><strong>⚠️ Limited structure:</strong> These scenes were generated without plot points.</p>
                         </div>
-                    `}
+                    ` : !hasScenes ? `
+                        <div class="dialogue-scenes-warning">
+                            <p><strong>⚠️ No scenes found.</strong> Please generate scenes in Step 5 first.</p>
+                            <p><em>Dialogue generation will be disabled until scenes are created.</em></p>
+                        </div>
+                    ` : ''}
                 </div>
             `;
             
             console.log(`Appending dialogue group element for ${structureKey} to container`);
             container.appendChild(groupElement);
             
-            // Display hierarchical dialogue content
-            if (hasPlotPoints || hasScenes) {
-                console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
-                displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
-            }
+            // Always display hierarchical dialogue content (even if empty)
+            console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
+            displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
         });
         
         console.log('Finished creating all dialogue groups');
@@ -7582,8 +7589,8 @@ function isStepFullyComplete(stepNumber) {
             });
             break;
         case 6:
-            // Dialogue fully complete if generated for all scenes
-            if (!appState.generatedDialogues || !appState.generatedScenes) {
+            // Dialogue fully complete if generated for all scenes in ALL STRUCTURE ACTS
+            if (!appState.generatedDialogues || !appState.generatedScenes || !appState.generatedStructure) {
                 result = false;
                 break;
             }
@@ -7598,9 +7605,17 @@ function isStepFullyComplete(stepNumber) {
             let allScenesHaveDialogue = true;
             let totalScenes = 0;
             let dialogueCount = 0;
+            let allActsHaveScenes = true;
             
-            for (const structureKey of Object.keys(appState.generatedScenes)) {
+            // Check all structure acts, not just acts with scenes
+            for (const structureKey of Object.keys(appState.generatedStructure)) {
                 const scenes = appState.generatedScenes[structureKey] || [];
+                
+                // If this act has no scenes at all, the dialogue step is not complete
+                if (scenes.length === 0) {
+                    allActsHaveScenes = false;
+                }
+                
                 totalScenes += scenes.length;
                 for (let i = 0; i < scenes.length; i++) {
                     if (appState.generatedDialogues[`${structureKey}-${i}`]) {
@@ -7615,14 +7630,18 @@ function isStepFullyComplete(stepNumber) {
             console.log('Step 6 (Dialogue) completion check:', {
                 hasGeneratedDialogues: !!appState.generatedDialogues,
                 hasGeneratedScenes: !!appState.generatedScenes,
+                hasGeneratedStructure: !!appState.generatedStructure,
+                structureKeys: Object.keys(appState.generatedStructure),
                 totalScenes,
                 dialogueCount,
                 dialogueKeys: dialogueKeys.length,
                 allScenesHaveDialogue,
+                allActsHaveScenes,
                 completionPercentage: totalScenes > 0 ? Math.round((dialogueCount / totalScenes) * 100) : 0
             });
             
-            result = allScenesHaveDialogue;
+            // Only complete if all acts have scenes AND all scenes have dialogue
+            result = allActsHaveScenes && allScenesHaveDialogue;
             break;
         case 7:
             // Export is complete only after actually exporting
