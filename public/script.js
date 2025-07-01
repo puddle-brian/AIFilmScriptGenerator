@@ -4622,8 +4622,14 @@ async function displayPlotPointsGeneration() {
     // 🔧 DEBUG: Show current state before processing
     console.log(`📊 DEBUG: appState.currentActPlotPoints:`, appState.currentActPlotPoints);
     
-    chronologicalKeys.forEach((structureKey) => {
+    chronologicalKeys.forEach((structureKey, index) => {
         const storyAct = appState.generatedStructure[structureKey];
+        
+        // Get act progress notation (X/Y format) 
+        const totalActs = chronologicalKeys.length;
+        const actProgress = `${index + 1}/${totalActs}`;
+        const actName = storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase();
+        
         // 🔧 CRITICAL FIX: Priority order for plot point values
         let recommendedPlotPoints = 4; // Default fallback
         
@@ -4664,7 +4670,7 @@ async function displayPlotPointsGeneration() {
         html += `
             <div class="structure-element-card" id="plotPoints-${structureKey}">
                 <div class="element-header">
-                    <h3>${storyAct.name || structureKey.replace(/_/g, ' ').toUpperCase()}</h3>
+                    <h3>${actProgress} ${actName}</h3>
                     <div class="element-actions">
                         <div class="plot-points-controls">
                             <select class="plot-points-count-select" id="plotPointsCount-${structureKey}" 
@@ -4886,20 +4892,17 @@ function displayElementPlotPoints(structureKey, plotPoints) {
     
     // Create editable content block for plot points  
     const plotPointsContent = normalizedPlotPoints;
-    const actName = appState.generatedStructure[structureKey]?.name || structureKey.replace(/_/g, ' ').toUpperCase();
     
-    // Get act progress notation (X/Y format)
+    // Calculate act index for metadata (needed for act numbering)
     const structureKeys = Object.keys(appState.generatedStructure || {});
     const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
-    const totalActs = chronologicalKeys.length;
     const currentActIndex = chronologicalKeys.indexOf(structureKey);
-    const actProgress = currentActIndex !== -1 ? `${currentActIndex + 1}/${totalActs}` : '';
-    const titleWithProgress = actProgress ? `${actProgress} ${actName} - Plot Points` : `Plot Points - ${actName}`;
     
+    // Removed redundant title - main act header already shows the act name
     createEditableContentBlock({
         id: `plot-points-${structureKey}`,
         type: 'plot-points',
-        title: titleWithProgress,
+        title: '', // No title needed - already shown in main act header
         content: plotPointsContent,
         container: container,
         metadata: { 
@@ -8366,6 +8369,17 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.generatedDialogues = projectData.generatedDialogues || projectData.dialogue || {};
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
+    
+    // 🔧 FIX: Load plot points from database if not already present
+    if (appState.projectPath && (!appState.plotPoints || Object.keys(appState.plotPoints).length === 0)) {
+        try {
+            console.log('🔄 Loading plot points from database...');
+            await loadExistingPlotPoints();
+            console.log('✅ Plot points loaded:', Object.keys(appState.plotPoints || {}).length, 'acts');
+        } catch (error) {
+            console.log('⚠️ Could not load plot points:', error.message);
+        }
+    }
     
     // Update UI
     updateStoryConceptDisplay();
