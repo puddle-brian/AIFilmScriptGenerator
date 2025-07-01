@@ -3845,6 +3845,27 @@ async function generateStructureWithCustomPrompt() {
     }
 }
 
+// Update the acts generation button text based on whether acts exist
+function updateActsGenerationButton() {
+    const button = document.getElementById('generateActsBtn');
+    if (!button) return;
+    
+    const hasExistingActs = appState.generatedStructure && 
+                           Object.keys(appState.generatedStructure).length > 0 &&
+                           Object.keys(appState.generatedStructure).some(key =>
+                               appState.generatedStructure[key] &&
+                               appState.generatedStructure[key].description
+                           );
+    
+    if (hasExistingActs) {
+        button.innerHTML = '🔄 Regenerate Acts';
+        button.title = 'Regenerate story acts using the selected template';
+    } else {
+        button.innerHTML = '📋 Generate Acts';
+        button.title = 'Generate story acts using the selected template';
+    }
+}
+
 // Generate structure
 async function generateStructure() {
     if (!appState.selectedTemplate || !appState.storyInput) {
@@ -3939,6 +3960,7 @@ async function generateStructure() {
             });
             
             displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
+            updateActsGenerationButton(); // Update button to show "Regenerate Acts"
             updateUniversalNavigation(); // Update navigation after structure generation
             goToStep(3);
             showToast('Plot structure generated successfully!', 'success');
@@ -4683,7 +4705,12 @@ async function displayPlotPointsGeneration() {
                                 const canGenerate = canGeneratePlotPointsForElement(structureKey);
                                 const buttonClass = canGenerate ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
                                 
-                                let buttonTitle = `Generate plot points for Act ${actProgress}`;
+                                // Check if plot points already exist for this act
+                                const hasExistingPlotPoints = hasPlotPointsForElement(structureKey);
+                                const actionText = hasExistingPlotPoints ? 'Regenerate' : 'Generate';
+                                const actionIcon = hasExistingPlotPoints ? '🔄' : '📋';
+                                
+                                let buttonTitle = `${actionText} plot points for Act ${actProgress}`;
                                 if (!canGenerate) {
                                     const structureKeys = Object.keys(appState.generatedStructure);
                                     const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
@@ -4709,7 +4736,7 @@ async function displayPlotPointsGeneration() {
                                     `showToast('Please generate plot points for previous acts first to maintain causal narrative flow.', 'error')`;
                                 
                                 return `<button class="${buttonClass}" onclick="${buttonOnClick}" title="${escapedTitle}">
-                                    📋 Generate Plot Points for Act ${actProgress}
+                                    ${actionIcon} ${actionText} Plot Points for Act ${actProgress}
                                 </button>`;
                             })()}
                         </div>
@@ -5677,9 +5704,15 @@ function displayScenes(scenes) {
             
             // Check if this element has plot points for scene generation
             const canGenerateScenes = hasPlotPointsForElement(structureKey);
+            
+            // Check if scenes already exist for this act
+            const hasExistingScenes = hasScenes && sceneGroup && sceneGroup.length > 0;
+            const sceneActionText = hasExistingScenes ? 'Regenerate' : 'Generate';
+            const sceneActionIcon = hasExistingScenes ? '🔄' : '🎬';
+            
             const generateButtonClass = canGenerateScenes ? 'btn btn-primary' : 'btn btn-primary btn-disabled';
             const generateButtonTitle = canGenerateScenes ? 
-                'Generate scenes for this act' : 
+                `${sceneActionText} scenes for Act ${actProgress}` : 
                 'Generate plot points first in Step 4 to enable scene generation';
             const generateButtonOnClick = canGenerateScenes ? 
                 `generateScenesForElement('${structureKey}')` : 
@@ -5690,7 +5723,7 @@ function displayScenes(scenes) {
                     <h3>${titleWithProgress}</h3>
                     <div class="scene-group-actions">
                         <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateScenes ? '' : 'disabled'}>
-                            🎬 Generate Scenes for Act ${actProgress}
+                            ${sceneActionIcon} ${sceneActionText} Scenes for Act ${actProgress}
                         </button>
                         <button class="btn btn-outline" onclick="previewElementScenesPrompt('${structureKey}')" title="Preview the prompt for scene generation">
                             🔍 Preview Prompt
@@ -6243,9 +6276,19 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
         
         // Determine if we should show the generate button
         const hasScenesForButton = plotPointScenes.length > 0;
+        
+        // Check if dialogue already exists for any scenes in this plot point
+        const hasExistingDialogueForPlotPoint = hasScenesForButton && plotPointScenes.some(scene => {
+            const globalSceneIndex = hasScenes ? sceneGroup.indexOf(scene) : -1;
+            const sceneId = `${structureKey}-${globalSceneIndex}`;
+            return appState.generatedDialogues && appState.generatedDialogues[sceneId];
+        });
+        const plotPointDialogueActionText = hasExistingDialogueForPlotPoint ? 'Regenerate' : 'Generate';
+        const plotPointDialogueActionIcon = hasExistingDialogueForPlotPoint ? '🔄' : '💬';
+        
         const generateButtonClass = hasScenesForButton ? 'btn btn-primary btn-sm' : 'btn btn-primary btn-sm btn-disabled';
         const generateButtonTitle = hasScenesForButton ? 
-            `Generate dialogue for all ${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''} in this plot point` : 
+            `${plotPointDialogueActionText} dialogue for all ${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''} in this plot point` : 
             'No scenes available for dialogue generation';
         const generateButtonOnClick = hasScenesForButton ? 
             `generateDialogueForPlotPoint('${structureKey}', ${plotPointIndex})` : 
@@ -6259,7 +6302,7 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
             <div class="dialogue-plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
                 <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${hasScenesForButton ? '' : 'disabled'}>
-                    💬 Generate Dialogue for Plot Point ${plotPointNumber}
+                    ${plotPointDialogueActionIcon} ${plotPointDialogueActionText} Dialogue for Plot Point ${plotPointNumber}
                 </button>
             </div>
         `;
@@ -6490,9 +6533,18 @@ function displayDialogueGeneration() {
             
             // Generate appropriate buttons and warnings based on what's available
             const canGenerateDialogue = hasScenes;
+            
+            // Check if dialogue already exists for any scenes in this act
+            const hasExistingDialogue = hasScenes && sceneGroup.some(scene => {
+                const sceneId = `${structureKey}-${sceneGroup.indexOf(scene)}`;
+                return appState.generatedDialogues && appState.generatedDialogues[sceneId];
+            });
+            const dialogueActionText = hasExistingDialogue ? 'Regenerate' : 'Generate';
+            const dialogueActionIcon = hasExistingDialogue ? '🔄' : '💬';
+            
             const generateButtonClass = canGenerateDialogue ? 'btn btn-primary btn-sm' : 'btn btn-primary btn-sm btn-disabled';
             const generateButtonTitle = canGenerateDialogue ? 
-                'Generate dialogue for all scenes in this act' : 
+                `${dialogueActionText} dialogue for all scenes in Act ${actProgress}` : 
                 'No scenes available for dialogue generation';
             const generateButtonOnClick = canGenerateDialogue ? 
                 `generateAllDialogueForAct('${structureKey}')` : 
@@ -6503,7 +6555,7 @@ function displayDialogueGeneration() {
                     <h4 class="dialogue-act-title">${titleWithProgress}</h4>
                     <div class="dialogue-group-actions">
                         <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${canGenerateDialogue ? '' : 'disabled'}>
-                            💬 Generate Dialogue for Act ${actProgress}
+                            ${dialogueActionIcon} ${dialogueActionText} Dialogue for Act ${actProgress}
                         </button>
                         <button class="btn btn-outline btn-sm" onclick="previewAllDialoguePromptsForAct('${structureKey}')" title="Preview dialogue prompts for this act" ${canGenerateDialogue ? '' : 'disabled'}>
                             🔍 Preview All
@@ -7502,6 +7554,7 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
         // Step 3: Acts Generation - Show template structure preview
         console.log('Step 3 - Acts Generation');
         await displayTemplateStructurePreview();
+        updateActsGenerationButton(); // Update button to show Generate/Regenerate Acts
     } else if (stepNumber === 4) {
         // Step 4: Plot Points Generation
         console.log('Step 4 - Plot Points Generation');
@@ -8706,6 +8759,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
         console.log('Displaying structure:', appState.generatedStructure);
         displayStructure(appState.generatedStructure);
+        updateActsGenerationButton(); // Update button to show "Regenerate Acts"
         console.log('Structure display completed');
     }
     
@@ -9184,6 +9238,7 @@ async function displayTemplateStructurePreview() {
     if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
         console.log('Generated structure already exists, displaying actual structure');
         displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
+        updateActsGenerationButton(); // Update button to show "Regenerate Acts"
         return;
     }
 
@@ -10330,9 +10385,9 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
             </h4>
             <div class="plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
-                <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="Generate scenes for this specific plot point">
-                    🎬 Generate Scenes for Plot Point ${plotPointNumber}
-                </button>
+                                        <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
+                            ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
+                        </button>
             </div>
         `;
         
