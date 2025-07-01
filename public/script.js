@@ -6240,6 +6240,17 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
         // Compact plot point header
         const plotPointHeader = document.createElement('div');
         plotPointHeader.className = 'dialogue-plot-point-header compact';
+        
+        // Determine if we should show the generate button
+        const hasScenesForButton = plotPointScenes.length > 0;
+        const generateButtonClass = hasScenesForButton ? 'btn btn-primary btn-sm' : 'btn btn-primary btn-sm btn-disabled';
+        const generateButtonTitle = hasScenesForButton ? 
+            `Generate dialogue for all ${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''} in this plot point` : 
+            'No scenes available for dialogue generation';
+        const generateButtonOnClick = hasScenesForButton ? 
+            `generateDialogueForPlotPoint('${structureKey}', ${plotPointIndex})` : 
+            'showToast("Generate scenes first in Step 5", "error")';
+        
         plotPointHeader.innerHTML = `
             <h5 class="dialogue-plot-point-title">
                 <span class="plot-point-number">${plotPointNumber}</span>
@@ -6247,6 +6258,9 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
             </h5>
             <div class="dialogue-plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
+                <button class="${generateButtonClass}" onclick="${generateButtonOnClick}" title="${generateButtonTitle}" ${hasScenesForButton ? '' : 'disabled'}>
+                    💬 Generate Dialogue for Plot Point ${plotPointNumber}
+                </button>
             </div>
         `;
         
@@ -6557,6 +6571,70 @@ function displayDialogueGeneration() {
 }
 
 // Helper function to generate dialogue for all scenes in a specific act
+async function generateDialogueForPlotPoint(structureKey, plotPointIndex) {
+    try {
+        const sceneGroup = appState.generatedScenes[structureKey];
+        if (!sceneGroup || !Array.isArray(sceneGroup)) {
+            showToast('No scenes found for dialogue generation', 'error');
+            return;
+        }
+
+        // Find scenes that belong to this plot point
+        const plotPointScenes = sceneGroup.filter(scene => 
+            scene.plotPointIndex === plotPointIndex
+        );
+
+        if (plotPointScenes.length === 0) {
+            showToast('No scenes found for this plot point', 'error');
+            return;
+        }
+
+        // Get plot point info for display
+        const plotPoints = appState.plotPoints ? appState.plotPoints[structureKey] : null;
+        const plotPoint = plotPoints && plotPoints[plotPointIndex] ? plotPoints[plotPointIndex] : `Plot Point ${plotPointIndex + 1}`;
+        
+        // Calculate act number for display
+        const structureKeys = Object.keys(appState.generatedStructure);
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        const actNumber = chronologicalKeys.indexOf(structureKey) + 1;
+        const plotPointNumber = `${actNumber}.${plotPointIndex + 1}`;
+
+        showToast(`Generating dialogue for ${plotPointScenes.length} scenes in Plot Point ${plotPointNumber}...`, 'info');
+
+        // Generate dialogue for each scene in the plot point
+        let successCount = 0;
+        const errors = [];
+
+        for (const scene of plotPointScenes) {
+            try {
+                const globalSceneIndex = sceneGroup.indexOf(scene);
+                await generateDialogue(structureKey, globalSceneIndex);
+                successCount++;
+            } catch (error) {
+                console.error(`Error generating dialogue for scene ${scene.title || 'Untitled'}:`, error);
+                errors.push(`Scene "${scene.title || 'Untitled'}": ${error.message}`);
+            }
+        }
+
+        // Show completion message
+        if (successCount === plotPointScenes.length) {
+            showToast(`✅ Generated dialogue for all ${successCount} scenes in Plot Point ${plotPointNumber}`, 'success');
+        } else if (successCount > 0) {
+            showToast(`⚠️ Generated dialogue for ${successCount}/${plotPointScenes.length} scenes in Plot Point ${plotPointNumber}`, 'warning');
+        } else {
+            showToast(`❌ Failed to generate dialogue for Plot Point ${plotPointNumber}`, 'error');
+        }
+
+        if (errors.length > 0) {
+            console.error('Dialogue generation errors:', errors);
+        }
+
+    } catch (error) {
+        console.error('Error in generateDialogueForPlotPoint:', error);
+        showToast('Error generating dialogue for plot point', 'error');
+    }
+}
+
 async function generateAllDialogueForAct(structureKey) {
     const sceneGroup = appState.generatedScenes[structureKey];
     if (!sceneGroup || !Array.isArray(sceneGroup) || sceneGroup.length === 0) {
