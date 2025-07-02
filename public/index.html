@@ -1046,6 +1046,40 @@
             </div>
         </div>
 
+        <!-- Dialogue Creative Direction Modal -->
+        <div class="modal" id="dialogueCreativeDirectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="dialogueCreativeDirectionModalTitle">Creative Direction for Dialogue</h3>
+                    <button class="modal-close" onclick="hideDialogueCreativeDirectionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="dialogueActName">Act</label>
+                        <input type="text" id="dialogueActName" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dialogueSceneTitle">Scene</label>
+                        <input type="text" id="dialogueSceneTitle" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="dialogueCreativeDirections">✨ Your Creative Directions for Dialogue</label>
+                        <textarea id="dialogueCreativeDirections" class="form-control" rows="5" 
+                                  placeholder="Add your creative directions for dialogue in this scene...&#10;&#10;Examples:&#10;• Focus on specific character voices or speech patterns&#10;• Include particular emotional tones (tension, humor, sadness)&#10;• Add subtext - what characters really mean vs. what they say&#10;• Emphasize conflict or resolution between characters&#10;• Include specific information that needs to be revealed&#10;• Set the dialogue pace (rapid-fire vs. contemplative)&#10;• Add action lines between dialogue for visual storytelling"></textarea>
+                        <div class="form-help">
+                            <strong>✨ Guide the dialogue generation!</strong> These directions will influence how the AI writes the screenplay dialogue for this specific scene.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideDialogueCreativeDirectionModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveDialogueCreativeDirection()">Save Creative Direction</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Notification Toast -->
         <div class="toast" id="toast">
             <div class="toast-content">

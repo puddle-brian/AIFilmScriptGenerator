@@ -2158,10 +2158,24 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
 // Generate dialogue for approved scenes
 app.post('/api/generate-dialogue', async (req, res) => {
   try {
-    const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514" } = req.body;
+    const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514", creativeDirections = null } = req.body;
+    
+    console.log(`🎬 Generating dialogue for scene: ${scene.title || 'Untitled'}`);
+    
+    // Process creative directions if provided
+    const sceneIndex = scene.sceneIndex || 0;
+    const actKey = scene.structureKey || 'unknown';
+    const dialogueKey = `${actKey}_${sceneIndex}`;
     
     // Use our new prompt builder system for simple dialogue generation
-    const prompt = promptBuilders.buildSimpleDialoguePrompt(storyInput, scene, context);
+    let prompt = promptBuilders.buildSimpleDialoguePrompt(storyInput, scene, context);
+    
+    // Add creative directions if provided
+    if (creativeDirections?.dialogue?.[dialogueKey]) {
+      const direction = creativeDirections.dialogue[dialogueKey];
+      console.log(`✨ Adding creative direction for dialogue: "${direction}"`);
+      prompt = `${prompt}\n\nUser Creative Direction for Dialogue: ${direction}\n⚠️ IMPORTANT: Incorporate this creative direction into the dialogue for this scene.\n\nGenerate the screenplay formatted dialogue and action for this scene:`;
+    }
 
     const completion = await anthropic.messages.create({
       model: model,

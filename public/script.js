@@ -6478,6 +6478,10 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                     });
                 }
                 
+                // Get dialogue creative direction for this scene
+                const dialogueKey = `${structureKey}_${globalSceneIndex}`;
+                const dialogueDirection = appState.creativeDirections?.dialogue?.[dialogueKey] || '';
+                
                 // Scene header with actions
                 const sceneHeader = document.createElement('div');
                 sceneHeader.className = 'dialogue-scene-header';
@@ -6486,6 +6490,27 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                         <span class="scene-number">${sceneNumber}</span>
                         <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
                     </h6>
+                    
+                    <!-- Creative Direction Section (dedicated row) -->
+                    <div class="creative-direction-section">
+                        <div class="creative-direction-controls">
+                            <button class="btn btn-outline btn-sm" 
+                                    onclick="showDialogueCreativeDirectionModal('${structureKey}', ${globalSceneIndex})"
+                                    title="Set creative direction for dialogue in this scene"
+                                    style="font-size: 0.8rem;">
+                                🎨 Dialogue Direction
+                            </button>
+                            ${dialogueDirection ? `
+                                <div class="creative-directions-preview">
+                                    <strong>✨ Your Dialogue Direction:</strong> ${dialogueDirection}
+                                </div>
+                            ` : `
+                                <span class="creative-direction-placeholder">Add creative direction to guide dialogue generation for this scene</span>
+                            `}
+                        </div>
+                    </div>
+                    
+                    <!-- Scene Actions (separate row) -->
                     <div class="dialogue-scene-actions">
                         <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
                             ${hasExistingDialogue ? `🔄 Regenerate Dialogue for Scene ${sceneNumber}` : `💬 Generate Dialogue for Scene ${sceneNumber}`}
@@ -6884,6 +6909,8 @@ async function generateDialogue(structureKey, sceneIndex) {
     try {
         showLoading('Generating dialogue...');
         
+        // Send creative directions for dialogue
+        
         const response = await fetch('/api/generate-dialogue', {
             method: 'POST',
             headers: {
@@ -6891,11 +6918,16 @@ async function generateDialogue(structureKey, sceneIndex) {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                scene: scene,
+                scene: {
+                    ...scene,
+                    sceneIndex: sceneIndex,
+                    structureKey: structureKey
+                },
                 storyInput: appState.storyInput,
                 context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                 projectPath: appState.projectPath,
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
             })
         });
         
@@ -7040,11 +7072,16 @@ async function generateAllDialogue() {
                     'X-API-Key': appState.apiKey
                 },
                 body: JSON.stringify({
-                    scene: scene,
+                    scene: {
+                        ...scene,
+                        sceneIndex: sceneIndex,
+                        structureKey: structureKey
+                    },
                     storyInput: appState.storyInput,
                     context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                     projectPath: appState.projectPath,
-                    model: getSelectedModel()
+                    model: getSelectedModel(),
+                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -11990,3 +12027,70 @@ window.addEventListener('click', (e) => {
         hideActDetailsModal();
     }
 });
+
+// 🎬 Dialogue Creative Direction Modal Functions
+let currentDialogueAct = null;
+let currentDialogueScene = null;
+
+function showDialogueCreativeDirectionModal(actKey, sceneIndex) {
+    currentDialogueAct = actKey;
+    currentDialogueScene = sceneIndex;
+    
+    // Get scene information
+    const sceneGroup = appState.generatedScenes[actKey];
+    const scene = sceneGroup && sceneGroup[sceneIndex] ? sceneGroup[sceneIndex] : null;
+    const actData = appState.generatedStructure[actKey];
+    
+    if (!scene) {
+        showToast('Scene not found', 'error');
+        return;
+    }
+    
+    // Populate modal
+    document.getElementById('dialogueActName').value = actData?.name || actKey;
+    document.getElementById('dialogueSceneTitle').value = scene.title || scene.name || `Scene ${sceneIndex + 1}`;
+    
+    // Get existing creative direction
+    const dialogueKey = `${actKey}_${sceneIndex}`;
+    const existingDirection = appState.creativeDirections?.dialogue?.[dialogueKey] || '';
+    document.getElementById('dialogueCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('dialogueCreativeDirectionModal').style.display = 'block';
+}
+
+function hideDialogueCreativeDirectionModal() {
+    document.getElementById('dialogueCreativeDirectionModal').style.display = 'none';
+    currentDialogueAct = null;
+    currentDialogueScene = null;
+}
+
+function saveDialogueCreativeDirection() {
+    if (!currentDialogueAct || currentDialogueScene === null) return;
+    
+    const direction = document.getElementById('dialogueCreativeDirections').value.trim();
+    const dialogueKey = `${currentDialogueAct}_${currentDialogueScene}`;
+    
+    // Initialize creative directions structure if needed
+    if (!appState.creativeDirections) appState.creativeDirections = {};
+    if (!appState.creativeDirections.dialogue) appState.creativeDirections.dialogue = {};
+    
+    // Save direction
+    if (direction) {
+        appState.creativeDirections.dialogue[dialogueKey] = direction;
+    } else {
+        delete appState.creativeDirections.dialogue[dialogueKey];
+    }
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Dialogue creative direction saved!', 'success');
+    
+    // Hide modal
+    hideDialogueCreativeDirectionModal();
+    
+    // Refresh display to show creative direction
+    displayDialogueGeneration();
+}
