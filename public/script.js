@@ -10514,23 +10514,41 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         const scenesDirection = appState.creativeDirections?.scenes?.[scenesKey];
         
         plotPointHeader.innerHTML = `
-            <h4 class="plot-point-title">
-                <span class="plot-point-number">${plotPointNumber}</span>
-                <span class="plot-point-text">${plotPoint}</span>
-            </h4>
-            ${scenesDirection ? `
-                <div class="creative-directions">
-                    <strong>✨ Your Scenes Direction:</strong> ${scenesDirection}
+            <!-- Plot Point Number (compact header) -->
+            <div class="plot-point-number-header">
+                <span class="plot-point-number-badge">${plotPointNumber}</span>
+                <span class="plot-point-label">Plot Point</span>
+            </div>
+            
+            <!-- Plot Point Description (own line, truncated if too long) -->
+            <div class="plot-point-description-section">
+                <div class="plot-point-text" title="${plotPoint}">
+                    ${plotPoint.length > 250 ? plotPoint.substring(0, 250) + '...' : plotPoint}
                 </div>
-            ` : ''}
+            </div>
+            
+            <!-- Creative Direction Section (dedicated row) -->
+            <div class="creative-direction-section">
+                <div class="creative-direction-controls">
+                    <button class="btn btn-outline btn-sm" 
+                            onclick="showScenesCreativeDirectionModal('${structureKey}', ${plotPointIndex})"
+                            title="Set creative direction for scenes in this plot point"
+                            style="font-size: 0.8rem;">
+                        🎨 Scenes Direction
+                    </button>
+                    ${scenesDirection ? `
+                        <div class="creative-directions-preview">
+                            <strong>✨ Your Scenes Direction:</strong> ${scenesDirection}
+                        </div>
+                    ` : `
+                        <span class="creative-direction-placeholder">Add creative direction to guide scene generation for this plot point</span>
+                    `}
+                </div>
+            </div>
+            
+            <!-- Scene Controls (separate row) -->
             <div class="plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
-                <button class="btn btn-outline btn-sm" 
-                        onclick="showScenesCreativeDirectionModal('${structureKey}', ${plotPointIndex})"
-                        title="Set creative direction for scenes in this plot point"
-                        style="margin-right: 8px; font-size: 0.8rem;">
-                    🎨 Scenes Direction
-                </button>
                 <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
                     ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
                 </button>
@@ -10647,14 +10665,7 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
         const plotPoint = appState.plotPoints[structureKey][plotPointIndex];
         showLoading(`Generating scenes for plot point: ${plotPoint}...`);
         
-        // 🎨 DEBUG: Log creative directions being sent
-        const scenesKey = `${structureKey}_${plotPointIndex}`;
-        console.log('🎨 SCENES DEBUG: Sending creative directions:', {
-            scenesKey,
-            hasCreativeDirections: !!appState.creativeDirections,
-            creativeDirections: appState.creativeDirections,
-            specificDirection: appState.creativeDirections?.scenes?.[scenesKey]
-        });
+        // Send creative directions for scenes
         
         const response = await fetch(`/api/generate-scenes-for-plot-point/${appState.projectPath}/${structureKey}/${plotPointIndex}`, {
             method: 'POST',

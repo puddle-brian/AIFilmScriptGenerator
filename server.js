@@ -3381,14 +3381,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     
     console.log(`🎬 SCENE GENERATION DEBUG: Starting for ${projectPath}/${actKey}/${plotPointIndex}`);
     
-    // 🎨 DEBUG: Log creative directions received
-    const debugScenesKey = `${actKey}_${plotPointIndex}`;
-    console.log('🎨 SCENES DEBUG: Creative directions received:', {
-      hasCreativeDirections: !!creativeDirections,
-      creativeDirections: creativeDirections ? JSON.stringify(creativeDirections, null, 2) : null,
-      debugScenesKey,
-      specificDirection: creativeDirections?.scenes?.[debugScenesKey]
-    });
+    // Process creative directions if provided
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
@@ -3541,8 +3534,7 @@ Return ONLY valid JSON in this exact format:
     const scenesKey = `${actKey}_${plotPointIndexNum}`;
     if (creativeDirections?.scenes?.[scenesKey]) {
       const direction = creativeDirections.scenes[scenesKey];
-      console.log(`🎨 ADDING creative direction for ${scenesKey}: "${direction}"`);
-      console.log('🎨 Creative direction added to prompt');
+      console.log(`✨ Adding creative direction for scenes: "${direction}"`);
       prompt = `${hierarchicalPrompt}
 
 User Creative Direction for Scenes: ${direction}
@@ -3563,8 +3555,6 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
-    } else {
-      console.log(`🎨 No creative direction found for ${scenesKey}`);
     }
 
     console.log(`Calling Anthropic API for ${sceneCount} scenes from plot point...`);
