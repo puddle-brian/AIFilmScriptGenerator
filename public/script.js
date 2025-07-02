@@ -6482,14 +6482,35 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                 const dialogueKey = `${structureKey}_${globalSceneIndex}`;
                 const dialogueDirection = appState.creativeDirections?.dialogue?.[dialogueKey] || '';
                 
-                // Scene header with actions
+                // Format scene description for display
+                let displayDescription = '';
+                if (scene.location && scene.time_of_day) {
+                    displayDescription = `${scene.location} • ${scene.time_of_day}`;
+                } else if (scene.location) {
+                    displayDescription = scene.location;
+                }
+                if (scene.description) {
+                    const fullDescription = displayDescription ? `${displayDescription} - ${scene.description}` : scene.description;
+                    displayDescription = fullDescription.length > 120 ? fullDescription.substring(0, 120) + '...' : fullDescription;
+                } else if (displayDescription) {
+                    displayDescription = displayDescription.length > 120 ? displayDescription.substring(0, 120) + '...' : displayDescription;
+                }
+                
+                // Scene header with clean vertical layout
                 const sceneHeader = document.createElement('div');
                 sceneHeader.className = 'dialogue-scene-header';
                 sceneHeader.innerHTML = `
-                    <h6 class="dialogue-scene-title">
-                        <span class="scene-number">${sceneNumber}</span>
-                        <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
-                    </h6>
+                    <!-- Scene Number Header (clean badge style) -->
+                    <div class="scene-number-header">
+                        <span class="scene-number-badge">${sceneNumber}</span>
+                        <span class="scene-label">Scene</span>
+                    </div>
+                    
+                    <!-- Scene Title and Description (own section) -->
+                    <div class="scene-description-section">
+                        <h6 class="scene-title">${scene.title || scene.name || 'Untitled Scene'}</h6>
+                        ${displayDescription ? `<p class="scene-description" title="${scene.description || ''}">${displayDescription}</p>` : ''}
+                    </div>
                     
                     <!-- Creative Direction Section (dedicated row) -->
                     <div class="creative-direction-section">
@@ -6510,10 +6531,10 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                         </div>
                     </div>
                     
-                    <!-- Scene Actions (separate row) -->
-                    <div class="dialogue-scene-actions">
+                    <!-- Dialogue Actions (separate row) -->
+                    <div class="dialogue-actions-section">
                         <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
-                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue for Scene ${sceneNumber}` : `💬 Generate Dialogue for Scene ${sceneNumber}`}
+                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue` : `💬 Generate Dialogue`}
                         </button>
                         <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
                             🔍 Preview
