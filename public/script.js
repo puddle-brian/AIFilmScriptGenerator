@@ -4174,19 +4174,10 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
                 const templateDesc = templateAct.description || 'No template description';
                 const truncatedDesc = templateDesc.length > 120 ? templateDesc.substring(0, 117) + '...' : templateDesc;
                 
-                // Get creative directions if any
-                const creativeDirections = templateAct.userDirections?.trim();
-                const directionsHtml = creativeDirections ? `
-                    <div class="compact-creative-directions">
-                        <span class="directions-label">✨ Your Directions:</span> ${creativeDirections.length > 100 ? creativeDirections.substring(0, 97) + '...' : creativeDirections}
-                    </div>
-                ` : '';
-                
                 referenceHeader.innerHTML = `
                     <div class="template-context">
                         <span class="template-label">📋 Template:</span> ${truncatedDesc}
                     </div>
-                    ${directionsHtml}
                 `;
                 
                 container.appendChild(referenceHeader);
