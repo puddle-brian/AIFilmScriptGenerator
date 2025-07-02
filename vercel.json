@@ -60,11 +60,11 @@
       "destination": "/public/robots.txt"
     },
     {
-      "source": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|xml|txt))",
+      "source": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))",
       "destination": "/public/$1"
     },
     {
-      "source": "/(index\\.html|login\\.html|register\\.html|profile\\.html|regenerate\\.html|.*\\.html)",
+      "source": "/(.*\\.html)",
       "destination": "/public/$1"
     },
     {
