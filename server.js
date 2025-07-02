@@ -287,13 +287,18 @@ const corsOptions = {
     
     if (isProduction) {
       const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-        'https://yourdomain.com',
-        'https://www.yourdomain.com'
+        'https://screenplaygenie.com',
+        'https://www.screenplaygenie.com',
+        'http://localhost:3000',
+        'http://localhost:8080',
+        'http://127.0.0.1:3000'
       ];
       
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        // Log blocked requests for debugging
+        console.log('🚫 CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'), false);
       }
     } else {
@@ -8608,7 +8613,43 @@ app.post('/api/v2/auth/login', async (req, res) => {
     
   } catch (error) {
     console.error('Login error:', error);
+    console.error('Login error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail
+    });
     res.status(500).json({ error: 'Login failed. Please try again.' });
+  }
+});
+
+// Debug endpoint to test database connection
+app.get('/api/debug/db-test', async (req, res) => {
+  try {
+    const result = await dbClient.query('SELECT NOW() as current_time, version() as postgres_version');
+    res.json({
+      success: true,
+      message: 'Database connection successful',
+      data: {
+        current_time: result.rows[0].current_time,
+        postgres_version: result.rows[0].postgres_version.substring(0, 50) + '...',
+        env_check: {
+          has_database_url: !!process.env.DATABASE_URL,
+          database_url_starts_with: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 20) + '...' : 'MISSING',
+          is_vercel: !!process.env.VERCEL
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Database test error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Database connection failed',
+      details: {
+        message: error.message,
+        code: error.code,
+        detail: error.detail
+      }
+    });
   }
 });
 
