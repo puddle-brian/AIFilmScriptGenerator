@@ -10647,6 +10647,15 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
         const plotPoint = appState.plotPoints[structureKey][plotPointIndex];
         showLoading(`Generating scenes for plot point: ${plotPoint}...`);
         
+        // 🎨 DEBUG: Log creative directions being sent
+        const scenesKey = `${structureKey}_${plotPointIndex}`;
+        console.log('🎨 SCENES DEBUG: Sending creative directions:', {
+            scenesKey,
+            hasCreativeDirections: !!appState.creativeDirections,
+            creativeDirections: appState.creativeDirections,
+            specificDirection: appState.creativeDirections?.scenes?.[scenesKey]
+        });
+        
         const response = await fetch(`/api/generate-scenes-for-plot-point/${appState.projectPath}/${structureKey}/${plotPointIndex}`, {
             method: 'POST',
             headers: {
