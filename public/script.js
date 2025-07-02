@@ -4939,14 +4939,7 @@ async function generateElementPlotPoints(structureKey) {
             }
         }
 
-        // 🐛 DEBUG: Log what we're sending
-        console.log('🎨 DEBUG: Sending plot points request with creative directions:', {
-            structureKey,
-            hasCreativeDirections: !!appState.creativeDirections,
-            creativeDirections: appState.creativeDirections,
-            plotPointsDirections: appState.creativeDirections?.plotPoints,
-            thisActDirection: appState.creativeDirections?.plotPoints?.[structureKey]
-        });
+
         
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
@@ -5621,7 +5614,8 @@ async function generateAllScenes() {
                 },
                 body: JSON.stringify({
                     model: getSelectedModel(),
-                    totalScenes: currentTotalScenes
+                    totalScenes: currentTotalScenes,
+                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -10515,16 +10509,31 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         const plotPointHeader = document.createElement('div');
         plotPointHeader.className = 'plot-point-header';
         
+        // Check for creative directions for this plot point
+        const scenesKey = `${structureKey}_${plotPointIndex}`;
+        const scenesDirection = appState.creativeDirections?.scenes?.[scenesKey];
+        
         plotPointHeader.innerHTML = `
             <h4 class="plot-point-title">
                 <span class="plot-point-number">${plotPointNumber}</span>
                 <span class="plot-point-text">${plotPoint}</span>
             </h4>
+            ${scenesDirection ? `
+                <div class="creative-directions">
+                    <strong>✨ Your Scenes Direction:</strong> ${scenesDirection}
+                </div>
+            ` : ''}
             <div class="plot-point-meta">
                 <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
-                                        <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
-                            ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
-                        </button>
+                <button class="btn btn-outline btn-sm" 
+                        onclick="showScenesCreativeDirectionModal('${structureKey}', ${plotPointIndex})"
+                        title="Set creative direction for scenes in this plot point"
+                        style="margin-right: 8px; font-size: 0.8rem;">
+                    🎨 Scenes Direction
+                </button>
+                <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
+                    ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
+                </button>
             </div>
         `;
         
@@ -10645,7 +10654,8 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
                 'X-API-Key': appState.apiKey
             },
             body: JSON.stringify({
-                model: getSelectedModel()
+                model: getSelectedModel(),
+                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
             })
         });
         
@@ -11637,6 +11647,67 @@ function saveActsCreativeDirection() {
     displayStructure(appState.generatedStructure);
 }
 
+// Scenes Creative Direction Modal Functions
+let currentScenesAct = null;
+let currentScenesPlotPoint = null;
+
+function showScenesCreativeDirectionModal(actKey, plotPointIndex) {
+    currentScenesAct = actKey;
+    currentScenesPlotPoint = plotPointIndex;
+    
+    // Populate modal
+    const actData = appState.generatedStructure[actKey];
+    const plotPoints = appState.plotPoints[actKey]?.plotPoints || [];
+    const plotPointText = plotPoints[plotPointIndex] || `Plot Point ${plotPointIndex + 1}`;
+    
+    document.getElementById('scenesActName').value = actData?.name || actKey;
+    document.getElementById('scenesPlotPointText').value = plotPointText;
+    
+    // Get existing creative direction
+    const scenesKey = `${actKey}_${plotPointIndex}`;
+    const existingDirection = appState.creativeDirections?.scenes?.[scenesKey] || '';
+    document.getElementById('scenesCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('scenesCreativeDirectionModal').style.display = 'block';
+}
+
+function hideScenesCreativeDirectionModal() {
+    document.getElementById('scenesCreativeDirectionModal').style.display = 'none';
+    currentScenesAct = null;
+    currentScenesPlotPoint = null;
+}
+
+function saveScenesCreativeDirection() {
+    if (!currentScenesAct || currentScenesPlotPoint === null) return;
+    
+    const direction = document.getElementById('scenesCreativeDirections').value.trim();
+    const scenesKey = `${currentScenesAct}_${currentScenesPlotPoint}`;
+    
+    // Initialize creative directions structure if needed
+    if (!appState.creativeDirections) appState.creativeDirections = {};
+    if (!appState.creativeDirections.scenes) appState.creativeDirections.scenes = {};
+    
+    // Save direction
+    if (direction) {
+        appState.creativeDirections.scenes[scenesKey] = direction;
+    } else {
+        delete appState.creativeDirections.scenes[scenesKey];
+    }
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Scenes creative direction saved!', 'success');
+    
+    // Hide modal
+    hideScenesCreativeDirectionModal();
+    
+    // Refresh display to show creative direction
+    displayScenes(appState.generatedScenes || {});
+}
+
 // Plot Points Creative Direction Modal Functions
 let currentPlotPointsAct = null;
 
@@ -11678,12 +11749,7 @@ function savePlotPointsCreativeDirection() {
         delete appState.creativeDirections.plotPoints[currentPlotPointsAct];
     }
     
-    // 🐛 DEBUG: Log what was saved
-    console.log('🎨 DEBUG: Saved plot points creative direction:', {
-        actKey: currentPlotPointsAct,
-        direction,
-        fullCreativeDirections: appState.creativeDirections
-    });
+
     
     // Save to localStorage
     saveToLocalStorage();

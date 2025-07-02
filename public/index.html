@@ -1012,6 +1012,40 @@
             </div>
         </div>
 
+        <!-- Scenes Creative Direction Modal -->
+        <div class="modal" id="scenesCreativeDirectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="scenesCreativeDirectionModalTitle">Creative Direction for Scenes</h3>
+                    <button class="modal-close" onclick="hideScenesCreativeDirectionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="scenesActName">Act</label>
+                        <input type="text" id="scenesActName" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="scenesPlotPointText">Plot Point</label>
+                        <input type="text" id="scenesPlotPointText" class="form-control" readonly>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="scenesCreativeDirections">✨ Your Creative Directions for Scenes</label>
+                        <textarea id="scenesCreativeDirections" class="form-control" rows="5" 
+                                  placeholder="Add your creative directions for scenes in this plot point...&#10;&#10;Examples:&#10;• Set the scene in a specific location or time of day&#10;• Focus on particular character interactions or dialogue&#10;• Include specific visual elements or atmosphere&#10;• Show emotional beats or character reactions&#10;• Establish pacing - fast action vs. slow contemplation&#10;• Add sensory details (lighting, sounds, textures)"></textarea>
+                        <div class="form-help">
+                            <strong>✨ Direct the scene creation!</strong> These directions will influence how the AI crafts the individual scenes for this plot point.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideScenesCreativeDirectionModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveScenesCreativeDirection()">Save Creative Direction</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Notification Toast -->
         <div class="toast" id="toast">
             <div class="toast-content">

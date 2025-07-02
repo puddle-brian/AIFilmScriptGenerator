@@ -1202,7 +1202,7 @@ class HierarchicalContext {
   }
 
   // Helper function to generate scenes for a plot point (database version)
-  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514", projectContext = null, sceneDistribution = null, username = null) {
+  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514", projectContext = null, sceneDistribution = null, username = null, creativeDirections = null) {
     // Use provided project context or load from database as fallback
     if (!projectContext) {
       throw new Error('Project context must be provided to generateScenesForPlotPoint');
@@ -1272,7 +1272,7 @@ CINEMATIC WRITING FOUNDATION:
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
-    const prompt = `${hierarchicalPrompt}
+    let prompt = `${hierarchicalPrompt}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -1289,6 +1289,32 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
+
+    // Add creative directions if provided
+    const scenesKey = `${actKey}_${plotPointIndexNum}`;
+    if (creativeDirections?.scenes?.[scenesKey]) {
+      const direction = creativeDirections.scenes[scenesKey];
+      prompt = `${hierarchicalPrompt}
+
+User Creative Direction for Scenes: ${direction}
+⚠️ IMPORTANT: Incorporate this creative direction into the scenes for this plot point.
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+    }
 
     const completion = await anthropic.messages.create({
       model: model,
@@ -3351,7 +3377,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
 app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointIndex', authenticateApiKey, checkCredits(10), async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
-    const { model = "claude-sonnet-4-20250514" } = req.body;
+    const { model = "claude-sonnet-4-20250514", creativeDirections = null } = req.body;
     
     console.log(`🎬 SCENE GENERATION DEBUG: Starting for ${projectPath}/${actKey}/${plotPointIndex}`);
     
@@ -3484,7 +3510,7 @@ CINEMATIC WRITING FOUNDATION:
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
-    const prompt = `${hierarchicalPrompt}
+    let prompt = `${hierarchicalPrompt}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -3501,6 +3527,32 @@ Return ONLY valid JSON in this exact format:
     }
   ]
 }`;
+
+    // Add creative directions if provided
+    const scenesKey = `${actKey}_${plotPointIndexNum}`;
+    if (creativeDirections?.scenes?.[scenesKey]) {
+      const direction = creativeDirections.scenes[scenesKey];
+      prompt = `${hierarchicalPrompt}
+
+User Creative Direction for Scenes: ${direction}
+⚠️ IMPORTANT: Incorporate this creative direction into the scenes for this plot point.
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+    }
 
     console.log(`Calling Anthropic API for ${sceneCount} scenes from plot point...`);
     
@@ -5624,13 +5676,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const { projectPath, actKey } = req.params;
     const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null, creativeDirections = null } = req.body;
     
-    // 🐛 DEBUG: Log creative directions
-    console.log('🎨 DEBUG: Creative directions received:', {
-      hasCreativeDirections: !!creativeDirections,
-      creativeDirections,
-      plotPointsDirections: creativeDirections?.plotPoints,
-      actKeyDirection: creativeDirections?.plotPoints?.[actKey]
-    });
+
     
     // 🔧 CRITICAL FIX: desiredSceneCount is actually the desired PLOT POINT count from the dropdown
     const desiredPlotPointCount = desiredSceneCount || 4; // User's selected plot point count
@@ -5740,12 +5786,8 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     // Add creative directions if provided
     if (creativeDirections?.plotPoints?.[actKey]) {
       const direction = creativeDirections.plotPoints[actKey];
-      console.log(`🎨 ADDING creative direction for ${actKey}: "${direction}"`);
       prompt += `\n\nUser Creative Direction for Plot Points: ${direction}\n`;
       prompt += `⚠️ IMPORTANT: Incorporate this creative direction into the plot points for this act.\n`;
-      console.log('🎨 Creative direction added to prompt');
-    } else {
-      console.log(`🎨 NO creative direction found for ${actKey}`);
     }
 
     console.log(`Generating ${desiredPlotPointCount} plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
@@ -6116,7 +6158,7 @@ Return ONLY a JSON object with this exact structure:
 app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { model = "claude-sonnet-4-20250514", totalScenes = null } = req.body;
+    const { model = "claude-sonnet-4-20250514", totalScenes = null, creativeDirections = null } = req.body;
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
@@ -6194,7 +6236,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
       try {
         // Generate scenes for this plot point directly
         const context = new HierarchicalContext();
-        const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model, projectContext, sceneDistribution, req.user.username);
+        const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model, projectContext, sceneDistribution, req.user.username, creativeDirections);
         allGeneratedScenes.push({
           plotPointIndex: plotPointIndex,
           plotPoint: plotPoint,
