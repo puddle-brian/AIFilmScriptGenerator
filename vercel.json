@@ -10,7 +10,7 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
+    "routes": [
     {
       "src": "/api/(.*)",
       "dest": "/server.js"
@@ -20,11 +20,11 @@
       "dest": "/public/sitemap.xml"
     },
     {
-      "src": "/robots.txt",
+      "src": "/robots.txt", 
       "dest": "/public/robots.txt"
     },
     {
-      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|xml|txt))",
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot))",
       "dest": "/public/$1"
     },
     {
