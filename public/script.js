@@ -4808,14 +4808,6 @@ async function displayPlotPointsGeneration() {
                 <div class="element-header">
                     <h3>${actProgress} ${actName}</h3>
                     <div class="element-actions">
-                        <div class="creative-direction-controls" style="display: inline-block; margin-right: 10px;">
-                            <button class="btn btn-sm" 
-                                    onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
-                                    title="Set creative direction for plot points in this act"
-                                    style="font-size: 0.8rem;">
-                                Add creative direction for plot points on act ${actProgress}
-                            </button>
-                        </div>
                         <div class="plot-points-controls">
                             <select class="plot-points-count-select" id="plotPointsCount-${structureKey}" 
                                     onchange="updateIndividualActPlotPoints('${structureKey}', this.value)">
@@ -4870,14 +4862,26 @@ async function displayPlotPointsGeneration() {
                 <div class="element-description">
                     <p><strong>Purpose:</strong> ${storyAct.description}</p>
                     ${storyAct.character_development ? `<p><strong>Character Development:</strong> ${storyAct.character_development}</p>` : ''}
-                    ${(() => {
-                        const plotPointsDirection = appState.creativeDirections?.plotPoints?.[structureKey];
-                        return plotPointsDirection ? `
-                            <div class="creative-directions">
-                                <strong>✨ Your Plot Points Direction:</strong> ${plotPointsDirection}
-                            </div>
-                        ` : '';
-                    })()}
+                </div>
+                <div class="creative-direction-section">
+                    <div class="creative-direction-controls">
+                        <button class="btn btn-sm" 
+                                onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
+                                title="Set creative direction for plot points in this act"
+                                style="font-size: 0.8rem;">
+                            Add creative direction for plot points on act ${actProgress}
+                        </button>
+                        ${(() => {
+                            const plotPointsDirection = appState.creativeDirections?.plotPoints?.[structureKey];
+                            return plotPointsDirection ? `
+                                <div class="creative-directions-preview">
+                                    <strong>✨ Your Plot Points Direction:</strong> ${plotPointsDirection}
+                                </div>
+                            ` : `
+                                <span class="creative-direction-placeholder">Add creative direction to guide plot points generation for this act</span>
+                            `;
+                        })()}
+                    </div>
                 </div>
                 <div class="plot-points-container" id="plotPoints-container-${structureKey}">
                     <p class="no-plot-points">No plot points generated yet. Click "Generate Plot Points" to create causal story beats for this act.</p>

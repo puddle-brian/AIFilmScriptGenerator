@@ -2435,6 +2435,43 @@ h2 .progress-meter {
     line-height: 1.4;
 }
 
+.creative-direction-section {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    background: #fefce8;
+    border-left: 4px solid #eab308;
+}
+
+.creative-direction-section .creative-direction-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.creative-direction-section .creative-direction-controls button {
+    align-self: flex-start;
+}
+
+.creative-direction-placeholder {
+    font-size: 0.9rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.creative-directions-preview {
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 10px;
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.creative-directions-preview strong {
+    color: #92400e;
+}
+
 .plot-points-container {
     padding: 20px;
     background: white;
