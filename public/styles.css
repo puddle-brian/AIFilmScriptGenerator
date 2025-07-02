@@ -2477,6 +2477,74 @@ h2 .progress-meter {
     background: white;
 }
 
+/* Scene Layout - Plot Point Header Row */
+.plot-point-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.plot-point-number-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.plot-point-number-badge {
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.plot-point-label {
+    font-weight: 600;
+    color: #374151;
+}
+
+.scene-count {
+    font-size: 0.85rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+.plot-point-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.plot-point-description-section {
+    margin-bottom: 15px;
+}
+
+.plot-point-text {
+    color: #4b5563;
+    line-height: 1.5;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .plot-point-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .plot-point-controls {
+        width: 100%;
+    }
+    
+    .plot-point-controls button {
+        width: 100%;
+    }
+}
+
 .no-plot-points {
     color: #64748b;
     font-style: italic;

@@ -4192,6 +4192,29 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
                 container.appendChild(referenceHeader);
             }
             
+            // Add creative direction section for this act (BEFORE the editable content block)
+            const hasActCreativeDirections = appState.templateData?.structure?.[key]?.userDirections && appState.templateData.structure[key].userDirections.trim();
+            const actCreativeDirectionSection = document.createElement('div');
+            actCreativeDirectionSection.className = 'creative-direction-section';
+            actCreativeDirectionSection.innerHTML = `
+                <div class="creative-direction-controls">
+                    <button class="btn btn-sm" 
+                            onclick="showActsCreativeDirectionModal('${key}')" 
+                            title="Add/edit creative direction for this act" 
+                            style="font-size: 0.8rem;">
+                        Add creative direction for act ${index + 1}/${totalActs}
+                    </button>
+                    ${hasActCreativeDirections ? `
+                        <div class="creative-directions-preview">
+                            <strong>✨ Your Creative Directions:</strong> ${appState.templateData.structure[key].userDirections}
+                        </div>
+                    ` : `
+                        <span class="creative-direction-placeholder">Add creative direction to guide act generation</span>
+                    `}
+                </div>
+            `;
+            container.appendChild(actCreativeDirectionSection);
+            
             createEditableContentBlock({
                 id: `act-${key}`,
                 type: 'acts',
@@ -4218,29 +4241,6 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
                     saveToLocalStorage();
                 }
             });
-            
-            // Add creative direction section for this act (after the editable content block)
-            const hasActCreativeDirections = appState.templateData?.structure?.[key]?.userDirections && appState.templateData.structure[key].userDirections.trim();
-            const actCreativeDirectionSection = document.createElement('div');
-            actCreativeDirectionSection.className = 'creative-direction-section';
-            actCreativeDirectionSection.innerHTML = `
-                <div class="creative-direction-controls">
-                    <button class="btn btn-sm" 
-                            onclick="showActsCreativeDirectionModal('${key}')" 
-                            title="Add/edit creative direction for this act" 
-                            style="font-size: 0.8rem;">
-                        Add creative direction for act ${index + 1}/${totalActs}
-                    </button>
-                    ${hasActCreativeDirections ? `
-                        <div class="creative-directions-preview">
-                            <strong>✨ Your Creative Directions:</strong> ${appState.templateData.structure[key].userDirections}
-                        </div>
-                    ` : `
-                        <span class="creative-direction-placeholder">Add creative direction to guide act generation</span>
-                    `}
-                </div>
-            `;
-            container.appendChild(actCreativeDirectionSection);
         } else {
             console.log(`🔧 displayStructure: Skipping invalid element for key ${key}:`, element);
         }
@@ -9668,10 +9668,10 @@ function createFullTemplatePreview(templateData, structureContainer) {
                         </div>
                     </div>
                     <div class="structure-element-content">
+                        ${creativeDirectionsHtml}
                         <div class="template-description">
                             <strong>Template Guide:</strong> ${act.description || 'No description available'}
                         </div>
-                        ${creativeDirectionsHtml}
                         <div class="content-placeholder">
                             <div class="placeholder-content">
                                 <span class="placeholder-icon">📝</span>
@@ -10615,10 +10615,18 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         const scenesDirection = appState.creativeDirections?.scenes?.[scenesKey];
         
         plotPointHeader.innerHTML = `
-            <!-- Plot Point Number (compact header) -->
-            <div class="plot-point-number-header">
-                <span class="plot-point-number-badge">${plotPointNumber}</span>
-                <span class="plot-point-label">Plot Point</span>
+            <!-- Plot Point Number Header with Generation Controls -->
+            <div class="plot-point-header-row">
+                <div class="plot-point-number-section">
+                    <span class="plot-point-number-badge">${plotPointNumber}</span>
+                    <span class="plot-point-label">Plot Point</span>
+                    <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
+                </div>
+                <div class="plot-point-controls">
+                    <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
+                        ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
+                    </button>
+                </div>
             </div>
             
             <!-- Plot Point Description (own line, truncated if too long) -->
@@ -10645,14 +10653,6 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                         <span class="creative-direction-placeholder">Add creative direction to guide scene generation for this plot point</span>
                     `}
                 </div>
-            </div>
-            
-            <!-- Scene Controls (separate row) -->
-            <div class="plot-point-meta">
-                <span class="scene-count">${plotPointScenes.length} scene${plotPointScenes.length !== 1 ? 's' : ''}</span>
-                <button class="btn btn-primary btn-sm generate-scenes-btn" onclick="generateScenesForPlotPoint('${structureKey}', ${plotPointIndex})" title="${plotPointScenes.length > 0 ? 'Regenerate' : 'Generate'} scenes for this specific plot point">
-                    ${plotPointScenes.length > 0 ? '🔄 Regenerate' : '🎬 Generate'} Scenes for Plot Point ${plotPointNumber}
-                </button>
             </div>
         `;
         
