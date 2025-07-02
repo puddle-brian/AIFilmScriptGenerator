@@ -58,6 +58,26 @@
     {
       "source": "/robots.txt",
       "destination": "/public/robots.txt"
+    },
+    {
+      "source": "/(.*\\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|xml|txt))",
+      "destination": "/public/$1"
+    },
+    {
+      "source": "/(index\\.html|login\\.html|register\\.html|profile\\.html|regenerate\\.html|.*\\.html)",
+      "destination": "/public/$1"
+    },
+    {
+      "source": "/data/(.*)",
+      "destination": "/public/data/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/public/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/server.js"
     }
   ],
   "cleanUrls": true,
