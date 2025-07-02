@@ -4785,6 +4785,12 @@ async function displayPlotPointsGeneration() {
                 <div class="element-header">
                     <h3>${actProgress} ${actName}</h3>
                     <div class="element-actions">
+                        <button class="btn btn-outline btn-sm" 
+                                onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
+                                title="Set creative direction for plot points in this act"
+                                style="margin-right: 10px; font-size: 0.8rem;">
+                            🎨 Plot Points Direction
+                        </button>
                         <div class="plot-points-controls">
                             <select class="plot-points-count-select" id="plotPointsCount-${structureKey}" 
                                     onchange="updateIndividualActPlotPoints('${structureKey}', this.value)">
@@ -4839,6 +4845,14 @@ async function displayPlotPointsGeneration() {
                 <div class="element-description">
                     <p><strong>Purpose:</strong> ${storyAct.description}</p>
                     ${storyAct.character_development ? `<p><strong>Character Development:</strong> ${storyAct.character_development}</p>` : ''}
+                    ${(() => {
+                        const plotPointsDirection = appState.creativeDirections?.plotPoints?.[structureKey];
+                        return plotPointsDirection ? `
+                            <div class="creative-directions">
+                                <strong>✨ Your Plot Points Direction:</strong> ${plotPointsDirection}
+                            </div>
+                        ` : '';
+                    })()}
                 </div>
                 <div class="plot-points-container" id="plotPoints-container-${structureKey}">
                     <p class="no-plot-points">No plot points generated yet. Click "Generate Plot Points" to create causal story beats for this act.</p>
@@ -4925,6 +4939,15 @@ async function generateElementPlotPoints(structureKey) {
             }
         }
 
+        // 🐛 DEBUG: Log what we're sending
+        console.log('🎨 DEBUG: Sending plot points request with creative directions:', {
+            structureKey,
+            hasCreativeDirections: !!appState.creativeDirections,
+            creativeDirections: appState.creativeDirections,
+            plotPointsDirections: appState.creativeDirections?.plotPoints,
+            thisActDirection: appState.creativeDirections?.plotPoints?.[structureKey]
+        });
+        
         const response = await fetch(`/api/generate-plot-points-for-act/${appState.projectPath}/${structureKey}`, {
             method: 'POST',
             headers: {
@@ -4934,7 +4957,8 @@ async function generateElementPlotPoints(structureKey) {
             body: JSON.stringify({
                 desiredSceneCount: desiredSceneCount,
                 model: getSelectedModel(),
-                customTemplateData: customTemplateData // 🔧 Send customized template data
+                customTemplateData: customTemplateData, // 🔧 Send customized template data
+                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
             })
         });
         
@@ -5156,7 +5180,8 @@ async function regenerateAllPlotPointsForElement(structureKey) {
             body: JSON.stringify({
                 desiredSceneCount: 4, // Default value
                 model: getSelectedModel(),
-                customTemplateData: customTemplateData // 🔧 Send customized template data
+                customTemplateData: customTemplateData, // 🔧 Send customized template data
+                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
             })
         });
         
@@ -5898,7 +5923,8 @@ async function generateAllPlotPoints() {
                 },
                 body: JSON.stringify({
                     desiredSceneCount: desiredSceneCount,
-                    model: getSelectedModel()
+                    model: getSelectedModel(),
+                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -8684,6 +8710,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.generatedDialogues = projectData.generatedDialogues || projectData.dialogue || {};
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
+    appState.creativeDirections = projectData.creativeDirections || {}; // 🆕 Load creative directions
     
     // 🔧 FIX: Load plot points from database if not already present
     if (appState.projectPath && (!appState.plotPoints || Object.keys(appState.plotPoints).length === 0)) {
@@ -11608,6 +11635,67 @@ function saveActsCreativeDirection() {
     
     // Refresh display to show updated creative direction
     displayStructure(appState.generatedStructure);
+}
+
+// Plot Points Creative Direction Modal Functions
+let currentPlotPointsAct = null;
+
+function showPlotPointsCreativeDirectionModal(actKey) {
+    const actData = appState.generatedStructure[actKey];
+    if (!actData) return;
+    
+    currentPlotPointsAct = actKey;
+    
+    // Populate modal
+    document.getElementById('plotPointsActName').value = actData.name || actKey;
+    
+    // Get existing creative direction
+    const existingDirection = appState.creativeDirections?.plotPoints?.[actKey] || '';
+    document.getElementById('plotPointsCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('plotPointsCreativeDirectionModal').style.display = 'block';
+}
+
+function hidePlotPointsCreativeDirectionModal() {
+    document.getElementById('plotPointsCreativeDirectionModal').style.display = 'none';
+    currentPlotPointsAct = null;
+}
+
+function savePlotPointsCreativeDirection() {
+    if (!currentPlotPointsAct) return;
+    
+    const direction = document.getElementById('plotPointsCreativeDirections').value.trim();
+    
+    // Initialize creative directions structure if needed
+    if (!appState.creativeDirections) appState.creativeDirections = {};
+    if (!appState.creativeDirections.plotPoints) appState.creativeDirections.plotPoints = {};
+    
+    // Save direction
+    if (direction) {
+        appState.creativeDirections.plotPoints[currentPlotPointsAct] = direction;
+    } else {
+        delete appState.creativeDirections.plotPoints[currentPlotPointsAct];
+    }
+    
+    // 🐛 DEBUG: Log what was saved
+    console.log('🎨 DEBUG: Saved plot points creative direction:', {
+        actKey: currentPlotPointsAct,
+        direction,
+        fullCreativeDirections: appState.creativeDirections
+    });
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Plot points creative direction saved!', 'success');
+    
+    // Hide modal
+    hidePlotPointsCreativeDirectionModal();
+    
+    // Refresh display to show creative direction
+    displayPlotPointsGeneration();
 }
 
 // 🆕 Step 2: Act Details Modal Functions

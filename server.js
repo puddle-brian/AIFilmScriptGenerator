@@ -5622,7 +5622,15 @@ async function generateVersionedProjectName(userId, originalProjectName) {
 app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey } = req.params;
-    const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null } = req.body;
+    const { desiredSceneCount = null, model = "claude-sonnet-4-20250514", customTemplateData = null, creativeDirections = null } = req.body;
+    
+    // 🐛 DEBUG: Log creative directions
+    console.log('🎨 DEBUG: Creative directions received:', {
+      hasCreativeDirections: !!creativeDirections,
+      creativeDirections,
+      plotPointsDirections: creativeDirections?.plotPoints,
+      actKeyDirection: creativeDirections?.plotPoints?.[actKey]
+    });
     
     // 🔧 CRITICAL FIX: desiredSceneCount is actually the desired PLOT POINT count from the dropdown
     const desiredPlotPointCount = desiredSceneCount || 4; // User's selected plot point count
@@ -5727,7 +5735,18 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const hierarchicalPrompt = await context.generateHierarchicalPrompt(4);
     
     // Use our new prompt builder system
-    const prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, finalSceneCount);
+    let prompt = promptBuilders.buildPlotPointsPrompt(hierarchicalPrompt, desiredPlotPointCount, finalSceneCount);
+    
+    // Add creative directions if provided
+    if (creativeDirections?.plotPoints?.[actKey]) {
+      const direction = creativeDirections.plotPoints[actKey];
+      console.log(`🎨 ADDING creative direction for ${actKey}: "${direction}"`);
+      prompt += `\n\nUser Creative Direction for Plot Points: ${direction}\n`;
+      prompt += `⚠️ IMPORTANT: Incorporate this creative direction into the plot points for this act.\n`;
+      console.log('🎨 Creative direction added to prompt');
+    } else {
+      console.log(`🎨 NO creative direction found for ${actKey}`);
+    }
 
     console.log(`Generating ${desiredPlotPointCount} plot points for ${actKey} (expanding to ${finalSceneCount} scenes)`);
     
