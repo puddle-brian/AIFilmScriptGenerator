@@ -4229,7 +4229,7 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
                             onclick="showActsCreativeDirectionModal('${key}')" 
                             title="Add/edit creative direction for this act" 
                             style="font-size: 0.8rem;">
-                        Direction
+                        Add creative direction for act ${index + 1}/${totalActs}
                     </button>
                     ${hasActCreativeDirections ? `
                         <div class="creative-directions-preview">
@@ -4813,7 +4813,7 @@ async function displayPlotPointsGeneration() {
                                     onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
                                     title="Set creative direction for plot points in this act"
                                     style="font-size: 0.8rem;">
-                                Direction
+                                Add creative direction for plot points on act ${actProgress}
                             </button>
                         </div>
                         <div class="plot-points-controls">
@@ -6544,7 +6544,7 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                                     onclick="showDialogueCreativeDirectionModal('${structureKey}', ${globalSceneIndex})"
                                     title="Set creative direction for dialogue in this scene"
                                     style="font-size: 0.8rem;">
-                                Direction
+                                Add creative direction for dialogue on scene ${sceneNumber}
                             </button>
                             ${dialogueDirection ? `
                                 <div class="creative-directions-preview">
@@ -9643,7 +9643,7 @@ function createFullTemplatePreview(templateData, structureContainer) {
                                     onclick="showActsCreativeDirectionModal('${key}')" 
                                     title="Add/edit creative direction for this act" 
                                     style="font-size: 0.8rem;">
-                                Direction
+                                Add creative direction for act ${index + 1}/${totalActs}
                             </button>
                             ${hasCreativeDirections ? `
                                 <div class="creative-directions-preview">
@@ -10631,7 +10631,7 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                             onclick="showScenesCreativeDirectionModal('${structureKey}', ${plotPointIndex})"
                             title="Set creative direction for scenes in this plot point"
                             style="font-size: 0.8rem;">
-                        Direction
+                        Add creative direction for scenes on plot point ${plotPointNumber}
                     </button>
                     ${scenesDirection ? `
                         <div class="creative-directions-preview">
