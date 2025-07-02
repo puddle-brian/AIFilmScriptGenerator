@@ -415,6 +415,9 @@
                         <button class="btn btn-outline" onclick="previewAllPlotPointsPrompt()" title="Preview the prompt used to generate all plot points">
                             🔍 Preview Plot Points Prompt
                         </button>
+                        <button class="btn btn-sm" onclick="showGlobalPlotPointsCreativeDirectionModal()" title="Add creative direction for all acts" style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; border: none; font-weight: 600; margin-left: 10px;">
+                            🎨 Add creative direction for all acts
+                        </button>
                         <span class="plot-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
                             Creates causal connections between scenes using "but" / "therefore" logic
                         </span>
@@ -479,6 +482,9 @@
                         <button class="btn btn-outline" onclick="previewAllScenesPrompt()" title="Preview the prompts used to generate all scenes">
                             🔍 Preview All Scenes Prompts
                         </button>
+                        <button class="btn btn-sm" onclick="showGlobalScenesCreativeDirectionModal()" title="Add creative direction for all plot points" style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; border: none; font-weight: 600; margin-left: 10px;">
+                            🎨 Add creative direction for all plot points
+                        </button>
                         <span class="scenes-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
                             Creates scenes based on the plot points from each story act
                         </span>
@@ -542,6 +548,9 @@
                         </button>
                         <button class="btn btn-outline" onclick="previewAllDialoguePrompts()" title="Preview the prompts used to generate all dialogue">
                             🔍 Preview All Dialogue Prompts
+                        </button>
+                        <button class="btn btn-sm" onclick="showGlobalDialogueCreativeDirectionModal()" title="Add creative direction for all scenes" style="background: linear-gradient(135deg, #ffd700, #ffed4e); color: #333; border: none; font-weight: 600; margin-left: 10px;">
+                            🎨 Add creative direction for all scenes
                         </button>
                         <span class="dialogue-info" style="margin-left: 10px; font-size: 0.9em; color: #666;">
                             Creates professional dialogue for all generated scenes
@@ -1076,6 +1085,92 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" onclick="hideDialogueCreativeDirectionModal()">Cancel</button>
                     <button class="btn btn-primary" onclick="saveDialogueCreativeDirection()">Save Creative Direction</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Creative Direction Modals -->
+        
+        <!-- Global Plot Points Creative Direction Modal -->
+        <div class="modal" id="globalPlotPointsCreativeDirectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Global Creative Direction - Plot Points Generation</h3>
+                    <button class="modal-close" onclick="hideGlobalPlotPointsCreativeDirectionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-description">
+                        <p><strong>This direction will apply to plot point generation for ALL acts in this story.</strong> You can still add specific directions for individual acts.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="globalPlotPointsCreativeDirections">✨ Global Creative Direction for Plot Points</label>
+                        <textarea id="globalPlotPointsCreativeDirections" class="form-control" rows="5" 
+                                  placeholder="Add global creative direction for all plot points...&#10;&#10;Examples:&#10;• Maintain a slow-burn thriller pace with gradual revelation of mysteries&#10;• Focus on building tension and suspense throughout&#10;• Emphasize character development over action sequences&#10;• Include themes of redemption and second chances&#10;• Show the psychological impact of decisions on characters"></textarea>
+                        <div class="form-help">
+                            <strong>✨ Set the overall tone!</strong> This direction will be applied to all plot point generation, combined with any specific act directions.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideGlobalPlotPointsCreativeDirectionModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveGlobalPlotPointsCreativeDirection()">Save Global Direction</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Scenes Creative Direction Modal -->
+        <div class="modal" id="globalScenesCreativeDirectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Global Creative Direction - Scene Generation</h3>
+                    <button class="modal-close" onclick="hideGlobalScenesCreativeDirectionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-description">
+                        <p><strong>This direction will apply to scene generation for ALL plot points.</strong> You can still add specific directions for individual plot points.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="globalScenesCreativeDirections">✨ Global Creative Direction for Scenes</label>
+                        <textarea id="globalScenesCreativeDirections" class="form-control" rows="5" 
+                                  placeholder="Add global creative direction for all scenes...&#10;&#10;Examples:&#10;• Focus on showing character emotions through actions rather than exposition&#10;• Emphasize visual storytelling with detailed location descriptions&#10;• Include sensory details in every scene (sounds, lighting, atmosphere)&#10;• Show character relationships through subtle interactions&#10;• Maintain consistent pacing and rhythm across scenes"></textarea>
+                        <div class="form-help">
+                            <strong>✨ Set the scene style!</strong> This direction will be applied to all scene generation, combined with any specific plot point directions.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideGlobalScenesCreativeDirectionModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveGlobalScenesCreativeDirection()">Save Global Direction</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Dialogue Creative Direction Modal -->
+        <div class="modal" id="globalDialogueCreativeDirectionModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Global Creative Direction - Dialogue Generation</h3>
+                    <button class="modal-close" onclick="hideGlobalDialogueCreativeDirectionModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-description">
+                        <p><strong>This direction will apply to dialogue generation for ALL scenes.</strong> You can still add specific directions for individual scenes.</p>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="globalDialogueCreativeDirections">✨ Global Creative Direction for Dialogue</label>
+                        <textarea id="globalDialogueCreativeDirections" class="form-control" rows="5" 
+                                  placeholder="Add global creative direction for all dialogue...&#10;&#10;Examples:&#10;• Write dialogue in a film noir style with sharp, witty exchanges&#10;• Use subtext - characters rarely say what they really mean&#10;• Include period-appropriate language and speech patterns&#10;• Focus on conflict and tension in every conversation&#10;• Show character personality through unique speech patterns"></textarea>
+                        <div class="form-help">
+                            <strong>✨ Set the dialogue voice!</strong> This direction will be applied to all dialogue generation, combined with any specific scene directions.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="hideGlobalDialogueCreativeDirectionModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveGlobalDialogueCreativeDirection()">Save Global Direction</button>
                 </div>
             </div>
         </div>

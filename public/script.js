@@ -23,6 +23,12 @@ const appState = {
     isEditMode: false,
     plotPoints: {},
     selectedModel: 'claude-sonnet-4-20250514', // Default to latest model
+    // Global Creative Directions - NEW FEATURE
+    globalCreativeDirections: {
+        plotPoints: "",    // Global direction for Step 4
+        scenes: "",        // Global direction for Step 5  
+        dialogue: ""       // Global direction for Step 6
+    },
     // Authentication state
     isAuthenticated: false,
     user: null,
@@ -203,7 +209,12 @@ const authManager = {
             customPrompt: null,
             originalPrompt: null,
             isEditMode: false,
-            plotPoints: {}
+            plotPoints: {},
+            globalCreativeDirections: {
+                plotPoints: "",
+                scenes: "",
+                dialogue: ""
+            }
         });
         
         // Update UI elements
@@ -4052,9 +4063,10 @@ async function generateStructure() {
             
             displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
             updateActsGenerationButton(); // Update button to show "Regenerate Acts"
-            updateUniversalNavigation(); // Update navigation after structure generation
-            goToStep(3);
-            showToast('Plot structure generated successfully!', 'success');
+                    updateUniversalNavigation(); // Update navigation after structure generation
+        updateGlobalDirectionIndicators(); // Update global direction UI indicators
+        goToStep(3);
+        showToast('Plot structure generated successfully!', 'success');
         } else {
             throw new Error(data.error || 'Failed to generate structure');
         }
@@ -4863,7 +4875,7 @@ async function displayPlotPointsGeneration() {
                             Add creative direction for plot points on act ${actProgress}
                         </button>
                         ${(() => {
-                            const plotPointsDirection = appState.creativeDirections?.plotPoints?.[structureKey];
+                            const plotPointsDirection = getEffectiveCreativeDirection('plotPoints', structureKey);
                             return plotPointsDirection ? `
                                 <div class="creative-directions-preview">
                                     <strong>✨ Your Plot Points Direction:</strong> ${plotPointsDirection}
@@ -4971,7 +4983,7 @@ async function generateElementPlotPoints(structureKey) {
                 desiredSceneCount: desiredSceneCount,
                 model: getSelectedModel(),
                 customTemplateData: customTemplateData, // 🔧 Send customized template data
-                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
             })
         });
         
@@ -5194,7 +5206,7 @@ async function regenerateAllPlotPointsForElement(structureKey) {
                 desiredSceneCount: 4, // Default value
                 model: getSelectedModel(),
                 customTemplateData: customTemplateData, // 🔧 Send customized template data
-                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
             })
         });
         
@@ -5635,7 +5647,7 @@ async function generateAllScenes() {
                 body: JSON.stringify({
                     model: getSelectedModel(),
                     totalScenes: currentTotalScenes,
-                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -5938,7 +5950,7 @@ async function generateAllPlotPoints() {
                 body: JSON.stringify({
                     desiredSceneCount: desiredSceneCount,
                     model: getSelectedModel(),
-                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -6500,7 +6512,7 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                 
                 // Get dialogue creative direction for this scene
                 const dialogueKey = `${structureKey}_${globalSceneIndex}`;
-                const dialogueDirection = appState.creativeDirections?.dialogue?.[dialogueKey] || '';
+                const dialogueDirection = getEffectiveCreativeDirection('dialogue', dialogueKey);
                 
                 // Format scene description for display
                 let displayDescription = '';
@@ -6972,7 +6984,7 @@ async function generateDialogue(structureKey, sceneIndex) {
                 context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                 projectPath: appState.projectPath,
                 model: getSelectedModel(),
-                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
             })
         });
         
@@ -7126,7 +7138,7 @@ async function generateAllDialogue() {
                     context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                     projectPath: appState.projectPath,
                     model: getSelectedModel(),
-                    creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -8613,6 +8625,93 @@ function hideToast() {
     elements.toast.classList.remove('show');
 }
 
+// Global Creative Direction Composition Logic
+function getEffectiveCreativeDirection(stepType, elementKey) {
+    const globalDirection = appState.globalCreativeDirections?.[stepType] || '';
+    const specificDirection = appState.creativeDirections?.[stepType]?.[elementKey] || '';
+    
+    if (globalDirection && specificDirection) {
+        return `${globalDirection}\n\nAdditional specific guidance: ${specificDirection}`;
+    }
+    
+    return globalDirection || specificDirection || '';
+}
+
+// Compose all creative directions (global + individual) for sending to backend
+function getComposedCreativeDirections() {
+    const composed = {
+        plotPoints: {},
+        scenes: {},
+        dialogue: {}
+    };
+    
+    // Compose plot points directions
+    if (appState.creativeDirections?.plotPoints) {
+        Object.keys(appState.creativeDirections.plotPoints).forEach(actKey => {
+            composed.plotPoints[actKey] = getEffectiveCreativeDirection('plotPoints', actKey);
+        });
+    }
+    
+    // Also add global direction for any acts that don't have individual directions
+    const globalPlotPointsDirection = appState.globalCreativeDirections?.plotPoints || '';
+    if (globalPlotPointsDirection && appState.generatedStructure) {
+        Object.keys(appState.generatedStructure).forEach(actKey => {
+            if (!composed.plotPoints[actKey]) {
+                composed.plotPoints[actKey] = globalPlotPointsDirection;
+            }
+        });
+    }
+    
+    // Compose scenes directions
+    if (appState.creativeDirections?.scenes) {
+        Object.keys(appState.creativeDirections.scenes).forEach(sceneKey => {
+            composed.scenes[sceneKey] = getEffectiveCreativeDirection('scenes', sceneKey);
+        });
+    }
+    
+    // Also add global direction for any scenes that don't have individual directions
+    const globalScenesDirection = appState.globalCreativeDirections?.scenes || '';
+    if (globalScenesDirection && appState.plotPoints) {
+        Object.keys(appState.plotPoints).forEach(actKey => {
+            const plotPoints = appState.plotPoints[actKey];
+            if (plotPoints && Array.isArray(plotPoints.plotPoints ? plotPoints.plotPoints : plotPoints)) {
+                const plotPointsArray = plotPoints.plotPoints || plotPoints;
+                plotPointsArray.forEach((_, plotPointIndex) => {
+                    const sceneKey = `${actKey}_${plotPointIndex}`;
+                    if (!composed.scenes[sceneKey]) {
+                        composed.scenes[sceneKey] = globalScenesDirection;
+                    }
+                });
+            }
+        });
+    }
+    
+    // Compose dialogue directions
+    if (appState.creativeDirections?.dialogue) {
+        Object.keys(appState.creativeDirections.dialogue).forEach(dialogueKey => {
+            composed.dialogue[dialogueKey] = getEffectiveCreativeDirection('dialogue', dialogueKey);
+        });
+    }
+    
+    // Also add global direction for any scenes that don't have individual directions
+    const globalDialogueDirection = appState.globalCreativeDirections?.dialogue || '';
+    if (globalDialogueDirection && appState.generatedScenes) {
+        Object.keys(appState.generatedScenes).forEach(actKey => {
+            const scenes = appState.generatedScenes[actKey];
+            if (scenes && Array.isArray(scenes)) {
+                scenes.forEach((_, sceneIndex) => {
+                    const dialogueKey = `${actKey}_${sceneIndex}`;
+                    if (!composed.dialogue[dialogueKey]) {
+                        composed.dialogue[dialogueKey] = globalDialogueDirection;
+                    }
+                });
+            }
+        });
+    }
+    
+    return composed;
+}
+
 // Save to localStorage
 function saveToLocalStorage() {
     try {
@@ -8787,6 +8886,11 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
     appState.creativeDirections = projectData.creativeDirections || {}; // 🆕 Load creative directions
+    appState.globalCreativeDirections = projectData.globalCreativeDirections || {
+        plotPoints: "",
+        scenes: "",
+        dialogue: ""
+    }; // 🆕 Load global creative directions
     
     // 🔧 FIX: Load plot points from database if not already present
     if (appState.projectPath && (!appState.plotPoints || Object.keys(appState.plotPoints).length === 0)) {
@@ -9015,6 +9119,9 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Update all generation buttons to show Generate/Regenerate appropriately
     updateAllGenerationButtons();
+    
+    // Update global creative direction indicators
+    updateGlobalDirectionIndicators();
 }
 
 // Show scene prompt modal
@@ -10607,7 +10714,7 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
         
         // Check for creative directions for this plot point
         const scenesKey = `${structureKey}_${plotPointIndex}`;
-        const scenesDirection = appState.creativeDirections?.scenes?.[scenesKey];
+        const scenesDirection = getEffectiveCreativeDirection('scenes', scenesKey);
         
         plotPointHeader.innerHTML = `
             <!-- Plot Point Number Header with Generation Controls -->
@@ -10771,7 +10878,7 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
             },
             body: JSON.stringify({
                 model: getSelectedModel(),
-                creativeDirections: appState.creativeDirections // 🆕 Send creative directions
+                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
             })
         });
         
@@ -12172,4 +12279,143 @@ function saveDialogueCreativeDirection() {
     
     // Refresh display to show creative direction
     displayDialogueGeneration();
+}
+
+// ==================================================
+// GLOBAL CREATIVE DIRECTION MODAL FUNCTIONS
+// ==================================================
+
+// Global Plot Points Creative Direction Modal Functions
+function showGlobalPlotPointsCreativeDirectionModal() {
+    // Populate modal with existing global direction
+    const existingDirection = appState.globalCreativeDirections?.plotPoints || '';
+    document.getElementById('globalPlotPointsCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('globalPlotPointsCreativeDirectionModal').style.display = 'block';
+}
+
+function hideGlobalPlotPointsCreativeDirectionModal() {
+    document.getElementById('globalPlotPointsCreativeDirectionModal').style.display = 'none';
+}
+
+function saveGlobalPlotPointsCreativeDirection() {
+    const direction = document.getElementById('globalPlotPointsCreativeDirections').value.trim();
+    
+    // Initialize global directions if needed
+    if (!appState.globalCreativeDirections) appState.globalCreativeDirections = { plotPoints: "", scenes: "", dialogue: "" };
+    
+    // Save direction
+    appState.globalCreativeDirections.plotPoints = direction;
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Global plot points creative direction saved!', 'success');
+    
+    // Hide modal
+    hideGlobalPlotPointsCreativeDirectionModal();
+    
+    // Update UI to show global direction is active
+    updateGlobalDirectionIndicators();
+}
+
+// Global Scenes Creative Direction Modal Functions
+function showGlobalScenesCreativeDirectionModal() {
+    // Populate modal with existing global direction
+    const existingDirection = appState.globalCreativeDirections?.scenes || '';
+    document.getElementById('globalScenesCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('globalScenesCreativeDirectionModal').style.display = 'block';
+}
+
+function hideGlobalScenesCreativeDirectionModal() {
+    document.getElementById('globalScenesCreativeDirectionModal').style.display = 'none';
+}
+
+function saveGlobalScenesCreativeDirection() {
+    const direction = document.getElementById('globalScenesCreativeDirections').value.trim();
+    
+    // Initialize global directions if needed
+    if (!appState.globalCreativeDirections) appState.globalCreativeDirections = { plotPoints: "", scenes: "", dialogue: "" };
+    
+    // Save direction
+    appState.globalCreativeDirections.scenes = direction;
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Global scenes creative direction saved!', 'success');
+    
+    // Hide modal
+    hideGlobalScenesCreativeDirectionModal();
+    
+    // Update UI to show global direction is active
+    updateGlobalDirectionIndicators();
+}
+
+// Global Dialogue Creative Direction Modal Functions
+function showGlobalDialogueCreativeDirectionModal() {
+    // Populate modal with existing global direction
+    const existingDirection = appState.globalCreativeDirections?.dialogue || '';
+    document.getElementById('globalDialogueCreativeDirections').value = existingDirection;
+    
+    // Show modal
+    document.getElementById('globalDialogueCreativeDirectionModal').style.display = 'block';
+}
+
+function hideGlobalDialogueCreativeDirectionModal() {
+    document.getElementById('globalDialogueCreativeDirectionModal').style.display = 'none';
+}
+
+function saveGlobalDialogueCreativeDirection() {
+    const direction = document.getElementById('globalDialogueCreativeDirections').value.trim();
+    
+    // Initialize global directions if needed
+    if (!appState.globalCreativeDirections) appState.globalCreativeDirections = { plotPoints: "", scenes: "", dialogue: "" };
+    
+    // Save direction
+    appState.globalCreativeDirections.dialogue = direction;
+    
+    // Save to localStorage
+    saveToLocalStorage();
+    
+    // Show success message
+    showToast('Global dialogue creative direction saved!', 'success');
+    
+    // Hide modal
+    hideGlobalDialogueCreativeDirectionModal();
+    
+    // Update UI to show global direction is active
+    updateGlobalDirectionIndicators();
+}
+
+// Update global direction indicators in the UI
+function updateGlobalDirectionIndicators() {
+    // This function will be used to show visual indicators when global directions are active
+    // For now, we could update button text or add visual cues
+    
+    // Update plot points button text if global direction is set
+    const plotPointsBtn = document.querySelector('.plot-generation-section button[onclick="showGlobalPlotPointsCreativeDirectionModal()"]');
+    if (plotPointsBtn && appState.globalCreativeDirections?.plotPoints) {
+        plotPointsBtn.innerHTML = '🎨 Edit creative direction for all acts 📋';
+        plotPointsBtn.title = 'Global direction active - click to edit';
+    }
+    
+    // Update scenes button text if global direction is set
+    const scenesBtn = document.querySelector('.scenes-generation-section button[onclick="showGlobalScenesCreativeDirectionModal()"]');
+    if (scenesBtn && appState.globalCreativeDirections?.scenes) {
+        scenesBtn.innerHTML = '🎨 Edit creative direction for all plot points 📋';
+        scenesBtn.title = 'Global direction active - click to edit';
+    }
+    
+    // Update dialogue button text if global direction is set
+    const dialogueBtn = document.querySelector('.dialogue-generation-section button[onclick="showGlobalDialogueCreativeDirectionModal()"]');
+    if (dialogueBtn && appState.globalCreativeDirections?.dialogue) {
+        dialogueBtn.innerHTML = '🎨 Edit creative direction for all scenes 📋';
+        dialogueBtn.title = 'Global direction active - click to edit';
+    }
 }
