@@ -2545,6 +2545,122 @@ h2 .progress-meter {
     }
 }
 
+/* Dialogue Scene Layout - Scene Header Row (exactly matching plot point layout) */
+.scene-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 15px;
+}
+
+.scene-number-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.scene-number-badge {
+    background: #3b82f6;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.scene-title {
+    font-weight: 600;
+    color: #1e293b;
+    font-size: 1rem;
+}
+
+.scene-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Scene description row (used in dialogue step) */
+.scene-description-row {
+    margin: 0.5rem 0;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-left: 3px solid #dee2e6;
+    border-radius: 0 4px 4px 0;
+}
+
+.scene-description {
+    color: #495057;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    margin: 0;
+}
+
+/* Scene controls section (for dialogue step) */
+.scene-controls-section {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.scene-controls-section .scene-actions {
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.scene-controls-section .creative-direction-section {
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .scene-header-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .scene-number-section {
+        gap: 8px;
+    }
+    
+    .scene-controls {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+    
+    .scene-controls button {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .scene-description-row {
+        margin: 0.5rem 0;
+        padding: 0.5rem;
+    }
+    
+    .scene-description {
+        font-size: 0.85rem;
+    }
+    
+    .scene-controls-section {
+        margin: 0.75rem 0;
+        padding: 0.75rem;
+    }
+    
+    .scene-controls-section .scene-actions {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}
+
 .no-plot-points {
     color: #64748b;
     font-style: italic;

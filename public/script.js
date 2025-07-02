@@ -6525,23 +6525,39 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                     displayDescription = displayDescription.length > 120 ? displayDescription.substring(0, 120) + '...' : displayDescription;
                 }
                 
-                // Scene header with clean vertical layout
+                // Scene header exactly matching scenes step layout (simple and clean)
                 const sceneHeader = document.createElement('div');
-                sceneHeader.className = 'dialogue-scene-header';
+                sceneHeader.className = 'scene-header';
                 sceneHeader.innerHTML = `
-                    <!-- Scene Number Header (clean badge style) -->
-                    <div class="scene-number-header">
-                        <span class="scene-number-badge">${sceneNumber}</span>
-                        <span class="scene-label">Scene</span>
+                    <h5 class="scene-title">
+                        <span class="scene-number">${sceneNumber}</span>
+                        <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
+                    </h5>
+                `;
+                
+                sceneElement.appendChild(sceneHeader);
+                
+                // Scene description (if available)
+                if (displayDescription) {
+                    const sceneDescriptionDiv = document.createElement('div');
+                    sceneDescriptionDiv.className = 'scene-description-row';
+                    sceneDescriptionDiv.innerHTML = `<div class="scene-description">${displayDescription}</div>`;
+                    sceneElement.appendChild(sceneDescriptionDiv);
+                }
+                
+                // Generation actions and creative direction (separate from header)
+                const sceneControlsDiv = document.createElement('div');
+                sceneControlsDiv.className = 'scene-controls-section';
+                sceneControlsDiv.innerHTML = `
+                    <div class="scene-actions">
+                        <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
+                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue` : `💬 Generate Dialogue`}
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
+                            🔍 Preview
+                        </button>
                     </div>
                     
-                    <!-- Scene Title and Description (own section) -->
-                    <div class="scene-description-section">
-                        <h6 class="scene-title">${scene.title || scene.name || 'Untitled Scene'}</h6>
-                        ${displayDescription ? `<p class="scene-description" title="${scene.description || ''}">${displayDescription}</p>` : ''}
-                    </div>
-                    
-                    <!-- Creative Direction Section (dedicated row) -->
                     <div class="creative-direction-section">
                         <div class="creative-direction-controls">
                             <button class="btn btn-outline btn-sm" 
@@ -6559,19 +6575,8 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                             `}
                         </div>
                     </div>
-                    
-                    <!-- Dialogue Actions (separate row) -->
-                    <div class="dialogue-actions-section">
-                        <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
-                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue` : `💬 Generate Dialogue`}
-                        </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
-                            🔍 Preview
-                        </button>
-                    </div>
                 `;
-                
-                sceneElement.appendChild(sceneHeader);
+                sceneElement.appendChild(sceneControlsDiv);
                 
                 // Dialogue content (editable)
                 const dialogueContentContainer = document.createElement('div');
