@@ -6525,14 +6525,24 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                     displayDescription = displayDescription.length > 120 ? displayDescription.substring(0, 120) + '...' : displayDescription;
                 }
                 
-                // Scene header exactly matching scenes step layout (simple and clean)
+                // Scene header with inline controls (matching scenes step exactly)
                 const sceneHeader = document.createElement('div');
-                sceneHeader.className = 'scene-header';
+                sceneHeader.className = 'scene-header-row';
                 sceneHeader.innerHTML = `
-                    <h5 class="scene-title">
-                        <span class="scene-number">${sceneNumber}</span>
-                        <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
-                    </h5>
+                    <div class="scene-title-section">
+                        <h5 class="scene-title">
+                            <span class="scene-number">${sceneNumber}</span>
+                            <span class="scene-name">${scene.title || scene.name || 'Untitled Scene'}</span>
+                        </h5>
+                    </div>
+                    <div class="scene-controls">
+                        <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
+                            ${hasExistingDialogue ? `🔄 Regenerate` : `💬 Generate`}
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
+                            🔍 Preview
+                        </button>
+                    </div>
                 `;
                 
                 sceneElement.appendChild(sceneHeader);
@@ -6545,38 +6555,27 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                     sceneElement.appendChild(sceneDescriptionDiv);
                 }
                 
-                // Generation actions and creative direction (separate from header)
-                const sceneControlsDiv = document.createElement('div');
-                sceneControlsDiv.className = 'scene-controls-section';
-                sceneControlsDiv.innerHTML = `
-                    <div class="scene-actions">
-                        <button class="btn btn-dialogue btn-sm" onclick="generateDialogue('${structureKey}', ${globalSceneIndex})" title="${hasExistingDialogue ? 'Regenerate dialogue for this scene' : 'Generate dialogue for this scene'}">
-                            ${hasExistingDialogue ? `🔄 Regenerate Dialogue` : `💬 Generate Dialogue`}
+                // Creative direction section (now separate from generation buttons)
+                const creativeDirectionDiv = document.createElement('div');
+                creativeDirectionDiv.className = 'creative-direction-section';
+                creativeDirectionDiv.innerHTML = `
+                    <div class="creative-direction-controls">
+                        <button class="btn btn-outline btn-sm" 
+                                onclick="showDialogueCreativeDirectionModal('${structureKey}', ${globalSceneIndex})"
+                                title="Set creative direction for dialogue in this scene"
+                                style="font-size: 0.8rem;">
+                            Add creative direction for dialogue on scene ${sceneNumber}
                         </button>
-                        <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
-                            🔍 Preview
-                        </button>
-                    </div>
-                    
-                    <div class="creative-direction-section">
-                        <div class="creative-direction-controls">
-                            <button class="btn btn-outline btn-sm" 
-                                    onclick="showDialogueCreativeDirectionModal('${structureKey}', ${globalSceneIndex})"
-                                    title="Set creative direction for dialogue in this scene"
-                                    style="font-size: 0.8rem;">
-                                Add creative direction for dialogue on scene ${sceneNumber}
-                            </button>
-                            ${dialogueDirection ? `
-                                <div class="creative-directions-preview">
-                                    <strong>✨ Your Dialogue Direction:</strong> ${dialogueDirection}
-                                </div>
-                            ` : `
-                                <span class="creative-direction-placeholder">Add creative direction to guide dialogue generation for this scene</span>
-                            `}
-                        </div>
+                        ${dialogueDirection ? `
+                            <div class="creative-directions-preview">
+                                <strong>✨ Your Dialogue Direction:</strong> ${dialogueDirection}
+                            </div>
+                        ` : `
+                            <span class="creative-direction-placeholder">Add creative direction to guide dialogue generation for this scene</span>
+                        `}
                     </div>
                 `;
-                sceneElement.appendChild(sceneControlsDiv);
+                sceneElement.appendChild(creativeDirectionDiv);
                 
                 // Dialogue content (editable)
                 const dialogueContentContainer = document.createElement('div');

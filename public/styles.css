@@ -2576,6 +2576,10 @@ h2 .progress-meter {
     font-size: 1rem;
 }
 
+.scene-title-section {
+    flex: 1;
+}
+
 .scene-controls {
     display: flex;
     align-items: center;
