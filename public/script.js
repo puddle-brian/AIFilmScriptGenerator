@@ -4195,7 +4195,7 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             createEditableContentBlock({
                 id: `act-${key}`,
                 type: 'acts',
-                title: `${actProgress} ${actTitle} <button class="btn btn-outline btn-sm" onclick="showActsCreativeDirectionModal('${key}')" title="Edit creative direction for this act" style="margin-left: 10px; font-size: 0.8rem;">🎨 Edit Direction</button>`,
+                title: `${actProgress} ${actTitle}`,
                 content: actContent,
                 container: container,
                 metadata: { actKey: key },
@@ -4218,6 +4218,29 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
                     saveToLocalStorage();
                 }
             });
+            
+            // Add creative direction section for this act (after the editable content block)
+            const hasActCreativeDirections = appState.templateData?.structure?.[key]?.userDirections && appState.templateData.structure[key].userDirections.trim();
+            const actCreativeDirectionSection = document.createElement('div');
+            actCreativeDirectionSection.className = 'creative-direction-section';
+            actCreativeDirectionSection.innerHTML = `
+                <div class="creative-direction-controls">
+                    <button class="btn btn-sm" 
+                            onclick="showActsCreativeDirectionModal('${key}')" 
+                            title="Add/edit creative direction for this act" 
+                            style="font-size: 0.8rem;">
+                        Direction
+                    </button>
+                    ${hasActCreativeDirections ? `
+                        <div class="creative-directions-preview">
+                            <strong>✨ Your Creative Directions:</strong> ${appState.templateData.structure[key].userDirections}
+                        </div>
+                    ` : `
+                        <span class="creative-direction-placeholder">Add creative direction to guide act generation</span>
+                    `}
+                </div>
+            `;
+            container.appendChild(actCreativeDirectionSection);
         } else {
             console.log(`🔧 displayStructure: Skipping invalid element for key ${key}:`, element);
         }
@@ -4785,12 +4808,14 @@ async function displayPlotPointsGeneration() {
                 <div class="element-header">
                     <h3>${actProgress} ${actName}</h3>
                     <div class="element-actions">
-                        <button class="btn btn-outline btn-sm" 
-                                onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
-                                title="Set creative direction for plot points in this act"
-                                style="margin-right: 10px; font-size: 0.8rem;">
-                            🎨 Plot Points Direction
-                        </button>
+                        <div class="creative-direction-controls" style="display: inline-block; margin-right: 10px;">
+                            <button class="btn btn-sm" 
+                                    onclick="showPlotPointsCreativeDirectionModal('${structureKey}')"
+                                    title="Set creative direction for plot points in this act"
+                                    style="font-size: 0.8rem;">
+                                Direction
+                            </button>
+                        </div>
                         <div class="plot-points-controls">
                             <select class="plot-points-count-select" id="plotPointsCount-${structureKey}" 
                                     onchange="updateIndividualActPlotPoints('${structureKey}', this.value)">
@@ -6519,7 +6544,7 @@ function displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup
                                     onclick="showDialogueCreativeDirectionModal('${structureKey}', ${globalSceneIndex})"
                                     title="Set creative direction for dialogue in this scene"
                                     style="font-size: 0.8rem;">
-                                🎨 Dialogue Direction
+                                Direction
                             </button>
                             ${dialogueDirection ? `
                                 <div class="creative-directions-preview">
@@ -9611,11 +9636,25 @@ function createFullTemplatePreview(templateData, structureContainer) {
             
                             // Check if there are creative directions
                 const hasCreativeDirections = act.userDirections && act.userDirections.trim();
-                const creativeDirectionsHtml = hasCreativeDirections ? `
-                    <div class="creative-directions">
-                        <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
+                const creativeDirectionsHtml = `
+                    <div class="creative-direction-section">
+                        <div class="creative-direction-controls">
+                            <button class="btn btn-sm" 
+                                    onclick="showActsCreativeDirectionModal('${key}')" 
+                                    title="Add/edit creative direction for this act" 
+                                    style="font-size: 0.8rem;">
+                                Direction
+                            </button>
+                            ${hasCreativeDirections ? `
+                                <div class="creative-directions-preview">
+                                    <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
+                                </div>
+                            ` : `
+                                <span class="creative-direction-placeholder">Add creative direction to guide act generation</span>
+                            `}
+                        </div>
                     </div>
-                ` : '';
+                `;
                 
                 actElement.innerHTML = `
                     <div class="structure-element-header">
@@ -10592,7 +10631,7 @@ function displayHierarchicalContent(structureKey, plotPoints, sceneGroup, actNum
                             onclick="showScenesCreativeDirectionModal('${structureKey}', ${plotPointIndex})"
                             title="Set creative direction for scenes in this plot point"
                             style="font-size: 0.8rem;">
-                        🎨 Scenes Direction
+                        Direction
                     </button>
                     ${scenesDirection ? `
                         <div class="creative-directions-preview">
@@ -11675,13 +11714,24 @@ function closeAllEditingCards() {
 let currentActsKey = null;
 
 function showActsCreativeDirectionModal(actKey) {
-    const actData = appState.generatedStructure[actKey];
-    if (!actData) return;
-    
     currentActsKey = actKey;
     
+    // Get act data from either generated structure OR template data (for preview mode)
+    let actData = null;
+    if (appState.generatedStructure?.[actKey]) {
+        // Generated structure exists - use it
+        actData = appState.generatedStructure[actKey];
+    } else if (appState.templateData?.structure?.[actKey]) {
+        // Template preview mode - use template data
+        actData = appState.templateData.structure[actKey];
+    } else {
+        console.error('Act data not found for key:', actKey);
+        showToast('Act data not found', 'error');
+        return;
+    }
+    
     // Populate modal
-    document.getElementById('actsActName').value = actData.name || actKey;
+    document.getElementById('actsActName').value = actData.name || actKey.replace(/_/g, ' ').toUpperCase();
     
     // Get existing creative direction from template data (Step 2) or appState
     const existingDirection = appState.templateData?.structure?.[actKey]?.userDirections || '';
@@ -11722,7 +11772,16 @@ function saveActsCreativeDirection() {
     hideActsCreativeDirectionModal();
     
     // Refresh display to show updated creative direction
-    displayStructure(appState.generatedStructure);
+    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
+        // Generated structure exists - refresh it
+        displayStructure(appState.generatedStructure);
+    } else {
+        // Template preview mode - refresh the preview
+        const structureContainer = document.getElementById('structureContent');
+        if (structureContainer && appState.templateData) {
+            createFullTemplatePreview(appState.templateData, structureContainer);
+        }
+    }
 }
 
 // Scenes Creative Direction Modal Functions

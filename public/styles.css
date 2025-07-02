@@ -4304,6 +4304,30 @@ h2 .progress-meter {
     font-weight: 600 !important;
 }
 
+/* Ensure Acts creative direction button gets yellow styling - Maximum specificity */
+.structure-element-header .creative-direction-controls .btn.btn-sm,
+.structure-element-header .creative-direction-controls .btn,
+h3 .creative-direction-controls .btn {
+    background: linear-gradient(135deg, #ffd700, #ffed4e) !important;
+    color: #333 !important;
+    border: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    padding: 0.5rem 1rem !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+}
+
+.structure-element-header .creative-direction-controls .btn.btn-sm:hover,
+.structure-element-header .creative-direction-controls .btn:hover,
+h3 .creative-direction-controls .btn:hover {
+    background: linear-gradient(135deg, #ffed4e, #ffd700) !important;
+    color: #333 !important;
+    border: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
 .creative-directions-preview {
     background: rgba(255, 215, 0, 0.15) !important;
     border: 2px solid rgba(255, 215, 0, 0.4) !important;
@@ -4325,7 +4349,7 @@ h2 .progress-meter {
 
 .creative-direction-placeholder {
     font-size: 0.9rem !important;
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: #4a5568 !important;
     font-style: italic !important;
     margin-top: 0.5rem !important;
     padding: 0.5rem !important;
@@ -4354,6 +4378,7 @@ h2 .progress-meter {
     .creative-direction-placeholder {
         font-size: 0.85rem !important;
         padding: 0.4rem !important;
+        color: #4a5568 !important;
     }
 }
 
