@@ -4195,7 +4195,7 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             createEditableContentBlock({
                 id: `act-${key}`,
                 type: 'acts',
-                title: `${actProgress} ${actTitle} <button class="btn btn-outline btn-sm" onclick="showActsCreativeDirectionModal('${key}')" title="Edit creative direction for this act" style="margin-left: 10px; font-size: 0.8rem;">🎨 Edit Direction</button>`,
+                title: `${actProgress} ${actTitle}`,
                 content: actContent,
                 container: container,
                 metadata: { actKey: key },
@@ -11554,60 +11554,6 @@ function closeAllEditingCards() {
             }
         }
     });
-}
-
-// Acts Creative Direction Modal Functions
-let currentActsKey = null;
-
-function showActsCreativeDirectionModal(actKey) {
-    const actData = appState.generatedStructure[actKey];
-    if (!actData) return;
-    
-    currentActsKey = actKey;
-    
-    // Populate modal
-    document.getElementById('actsActName').value = actData.name || actKey;
-    
-    // Get existing creative direction from template data (Step 2) or appState
-    const existingDirection = appState.templateData?.structure?.[actKey]?.userDirections || '';
-    document.getElementById('actsCreativeDirections').value = existingDirection;
-    
-    // Show modal
-    document.getElementById('actsCreativeDirectionModal').style.display = 'block';
-}
-
-function hideActsCreativeDirectionModal() {
-    document.getElementById('actsCreativeDirectionModal').style.display = 'none';
-    currentActsKey = null;
-}
-
-function saveActsCreativeDirection() {
-    if (!currentActsKey) return;
-    
-    const direction = document.getElementById('actsCreativeDirections').value.trim();
-    
-    // Save to template data structure (same as Step 2)
-    if (!appState.templateData.structure[currentActsKey]) {
-        appState.templateData.structure[currentActsKey] = {};
-    }
-    
-    if (direction) {
-        appState.templateData.structure[currentActsKey].userDirections = direction;
-    } else {
-        delete appState.templateData.structure[currentActsKey].userDirections;
-    }
-    
-    // Save to localStorage
-    saveToLocalStorage();
-    
-    // Show success message
-    showToast('Acts creative direction saved!', 'success');
-    
-    // Hide modal
-    hideActsCreativeDirectionModal();
-    
-    // Refresh display to show updated creative direction
-    displayStructure(appState.generatedStructure);
 }
 
 // 🆕 Step 2: Act Details Modal Functions

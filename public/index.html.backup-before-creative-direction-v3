@@ -954,35 +954,6 @@
             </div>
         </div>
 
-        <!-- Acts Creative Direction Modal -->
-        <div class="modal" id="actsCreativeDirectionModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3 id="actsCreativeDirectionModalTitle">Creative Direction for Acts</h3>
-                    <button class="modal-close" onclick="hideActsCreativeDirectionModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="actsActName">Act</label>
-                        <input type="text" id="actsActName" class="form-control" readonly>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="actsCreativeDirections">✨ Your Creative Directions for This Act</label>
-                        <textarea id="actsCreativeDirections" class="form-control" rows="5" 
-                                  placeholder="Add your creative directions for this act...&#10;&#10;Examples:&#10;• Show the character making a specific choice or taking a particular action&#10;• Focus on the emotional impact this moment has on the protagonist&#10;• Include a particular event or revelation you want to happen&#10;• Emphasize specific visual elements or atmosphere"></textarea>
-                        <div class="form-help">
-                            <strong>✨ Refine your creative vision!</strong> These directions will influence how the AI regenerates this act's content.
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="hideActsCreativeDirectionModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveActsCreativeDirection()">Save Creative Direction</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Plot Points Creative Direction Modal -->
         <div class="modal" id="plotPointsCreativeDirectionModal">
             <div class="modal-content">
