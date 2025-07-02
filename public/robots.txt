@@ -1,0 +1,42 @@
+User-agent: *
+Allow: /
+
+# Main pages for indexing
+Allow: /index.html
+Allow: /register.html
+Allow: /login.html
+Allow: /buy-credits.html
+
+# Static assets
+Allow: /styles.css
+Allow: /script.js
+Allow: /*.png
+Allow: /*.jpg
+Allow: /*.jpeg
+Allow: /*.gif
+Allow: /*.svg
+Allow: /*.ico
+
+# Block admin and test pages from search engines
+Disallow: /admin.html
+Disallow: /admin/
+Disallow: /test-*
+Disallow: /debug-*
+Disallow: /smart-*
+Disallow: /library-cleaner.html
+Disallow: /auth-demo.html
+Disallow: /credits-demo.html
+Disallow: /credit-integration-demo.html
+Disallow: /production-test.html
+
+# Block API endpoints from indexing
+Disallow: /api/
+
+# Block user-specific pages (require authentication)
+Disallow: /profile.html
+
+# Important files
+Sitemap: https://screenplaygenie.com/sitemap.xml
+
+# Crawl delay (be nice to the server)
+Crawl-delay: 1 

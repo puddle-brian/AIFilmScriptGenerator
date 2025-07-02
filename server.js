@@ -2,6 +2,11 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { body, validationResult } = require('express-validator');
+const compression = require('compression');
+const winston = require('winston');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -14,15 +19,41 @@ const PaymentHandler = require('./payment-handlers');
 const starterPack = require('./starter-pack-data');
 const AIFeedbackSystem = require('./ai-feedback-system');
 
+// Configure Winston logger
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.errors({ stack: true }),
+    winston.format.json()
+  ),
+  transports: [
+    new winston.transports.File({ filename: 'error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'combined.log' })
+  ]
+});
+
+// Add console logging in development
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }));
+}
+
 // Add comprehensive error handling to prevent server crashes
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
+  logger.error('Uncaught Exception:', { error: error.message, stack: error.stack });
   console.error('Stack:', error.stack);
   // Don't exit - keep server running
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('Unhandled Rejection:', { reason, promise, stack: reason?.stack });
   console.error('Stack:', reason?.stack);
   // Don't exit - keep server running
 });
@@ -201,8 +232,232 @@ async function connectToDatabase() {
   }
 }
 
-// Middleware
-app.use(cors());
+// Security Middleware Configuration
+const isProduction = process.env.NODE_ENV === 'production';
+
+// 1. Helmet - Security headers
+app.use(helmet({
+  contentSecurityPolicy: isProduction ? undefined : false, // Disable CSP in dev for easier debugging
+  crossOriginEmbedderPolicy: false // Needed for some payment widgets
+}));
+
+// 2. Compression - Performance
+app.use(compression());
+
+// 3. Rate Limiting - DoS Protection
+const generalLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  message: {
+    error: 'Too many requests from this IP, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  skip: (req) => {
+    // Skip rate limiting for health checks and webhooks
+    return req.path === '/health' || req.path.startsWith('/api/stripe-webhook');
+  }
+});
+
+// Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // limit each IP to 5 auth requests per windowMs
+  message: {
+    error: 'Too many authentication attempts, please try again later.',
+    retryAfter: '15 minutes'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Apply general rate limiting
+app.use(generalLimiter);
+
+// Apply auth rate limiting to specific routes
+app.use('/api/auth/', authLimiter);
+app.use('/api/v2/auth/', authLimiter);
+
+// 4. CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (isProduction) {
+      const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+        'https://yourdomain.com',
+        'https://www.yourdomain.com'
+      ];
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'), false);
+      }
+    } else {
+      // Allow all origins in development
+      callback(null, true);
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-API-Key'],
+  exposedHeaders: ['X-Total-Count', 'X-Rate-Limit-Remaining']
+};
+
+app.use(cors(corsOptions));
+
+// 5. Request Logging Middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  
+  // Log request
+  logger.info('Incoming request', {
+    method: req.method,
+    url: req.url,
+    ip: clientIp,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
+  });
+  
+  // Log response
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
+    
+    logger.log(logLevel, 'Request completed', {
+      method: req.method,
+      url: req.url,
+      statusCode: res.statusCode,
+      duration,
+      ip: clientIp,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
+  next();
+});
+
+// ==================== SECURITY UTILITY FUNCTIONS ====================
+
+// Input validation helpers
+function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+function validateUsername(username) {
+  if (!username || typeof username !== 'string') return false;
+  if (username.length < 3 || username.length > 30) return false;
+  return /^[a-zA-Z0-9_-]+$/.test(username);
+}
+
+function validatePassword(password) {
+  if (!password || typeof password !== 'string') return false;
+  if (password.length < 8) return false;
+  
+  // Check for at least one number, one lowercase, one uppercase letter
+  const hasNumber = /\d/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasUpper = /[A-Z]/.test(password);
+  
+  return hasNumber && hasLower && hasUpper;
+}
+
+function sanitizeInput(input) {
+  if (typeof input !== 'string') return input;
+  
+  // Remove potential XSS patterns
+  return input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
+    .trim();
+}
+
+// Validation middleware factory
+function validateRequest(validations) {
+  return [
+    ...validations,
+    (req, res, next) => {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        logger.warn('Validation error:', { errors: errors.array(), ip: req.ip, url: req.url });
+        return res.status(400).json({
+          error: 'Validation failed',
+          details: errors.array()
+        });
+      }
+      next();
+    }
+  ];
+}
+
+// ==================== HEALTH CHECK ENDPOINT ====================
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
+  });
+});
+
+// Detailed health check for monitoring systems
+app.get('/api/health', authenticateApiKey, async (req, res) => {
+  const healthCheck = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0',
+    services: {}
+  };
+
+  try {
+    // Check database
+    const dbStart = Date.now();
+    await dbClient.query('SELECT 1');
+    healthCheck.services.database = {
+      status: 'ok',
+      responseTime: Date.now() - dbStart
+    };
+  } catch (error) {
+    healthCheck.status = 'degraded';
+    healthCheck.services.database = {
+      status: 'error',
+      error: error.message
+    };
+  }
+
+  try {
+    // Check AI service
+    const aiStart = Date.now();
+    await anthropic.messages.create({
+      model: 'claude-3-haiku-20240307',
+      max_tokens: 5,
+      messages: [{ role: 'user', content: 'ping' }]
+    });
+    healthCheck.services.ai = {
+      status: 'ok',
+      responseTime: Date.now() - aiStart
+    };
+  } catch (error) {
+    healthCheck.status = 'degraded';
+    healthCheck.services.ai = {
+      status: 'error',
+      error: error.message
+    };
+  }
+
+  const statusCode = healthCheck.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(healthCheck);
+});
 
 // ==================== STRIPE WEBHOOK ENDPOINTS (MUST BE BEFORE JSON MIDDLEWARE) ====================
 // These endpoints need raw body access, so they must be defined before express.json() middleware
