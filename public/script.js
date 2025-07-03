@@ -4983,7 +4983,7 @@ async function generateElementPlotPoints(structureKey) {
                 desiredSceneCount: desiredSceneCount,
                 model: getSelectedModel(),
                 customTemplateData: customTemplateData, // 🔧 Send customized template data
-                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                creativeDirections: getRelevantCreativeDirections('plot-points', { structureKey }) // 🚀 OPTIMIZED: Send only relevant creative directions
             })
         });
         
@@ -5206,7 +5206,7 @@ async function regenerateAllPlotPointsForElement(structureKey) {
                 desiredSceneCount: 4, // Default value
                 model: getSelectedModel(),
                 customTemplateData: customTemplateData, // 🔧 Send customized template data
-                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                creativeDirections: getRelevantCreativeDirections('plot-points', { structureKey }) // 🚀 OPTIMIZED: Send only relevant creative directions
             })
         });
         
@@ -5647,7 +5647,7 @@ async function generateAllScenes() {
                 body: JSON.stringify({
                     model: getSelectedModel(),
                     totalScenes: currentTotalScenes,
-                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                    creativeDirections: getRelevantCreativeDirections('scenes', { structureKey }) // 🚀 OPTIMIZED: Send only relevant creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -5950,7 +5950,7 @@ async function generateAllPlotPoints() {
                 body: JSON.stringify({
                     desiredSceneCount: desiredSceneCount,
                     model: getSelectedModel(),
-                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                    creativeDirections: getRelevantCreativeDirections('plot-points', { structureKey }) // 🚀 OPTIMIZED: Send only relevant creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
@@ -7138,7 +7138,7 @@ async function generateAllDialogue() {
                     context: `This scene is part of the ${structureKey.replace(/_/g, ' ')} section of the story.`,
                     projectPath: appState.projectPath,
                     model: getSelectedModel(),
-                    creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                    creativeDirections: getRelevantCreativeDirections('dialogue', { structureKey, sceneIndex }) // 🚀 OPTIMIZED: Send only relevant creative directions
                 }),
                 signal: progressTracker.abortController?.signal
             });
