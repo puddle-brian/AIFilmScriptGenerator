@@ -719,6 +719,94 @@ class TrackedAnthropicAPI {
       'claude-3-haiku-20240307': { input: 0.25, output: 1.25 },
       'claude-3-5-haiku-20241022': { input: 1.00, output: 5.00 }
     };
+    
+    // Rate limiting configuration (configurable via environment variables)
+    this.rateLimiter = {
+      requests: [],
+      maxRequestsPerMinute: parseInt(process.env.ANTHROPIC_RATE_LIMIT_PER_MINUTE) || 50, // Conservative limit
+      maxConcurrentRequests: parseInt(process.env.ANTHROPIC_CONCURRENT_REQUESTS) || 5,
+      currentRequests: 0,
+      requestQueue: []
+    };
+    
+    // Retry configuration (configurable via environment variables)
+    this.retryConfig = {
+      maxRetries: parseInt(process.env.ANTHROPIC_MAX_RETRIES) || 3,
+      baseDelay: parseInt(process.env.ANTHROPIC_BASE_DELAY) || 1000, // 1 second base delay
+      maxDelay: parseInt(process.env.ANTHROPIC_MAX_DELAY) || 30000, // 30 second max delay
+      backoffFactor: parseFloat(process.env.ANTHROPIC_BACKOFF_FACTOR) || 2
+    };
+  }
+
+  // Rate limiting helper methods
+  cleanOldRequests() {
+    const oneMinuteAgo = Date.now() - 60000;
+    this.rateLimiter.requests = this.rateLimiter.requests.filter(
+      timestamp => timestamp > oneMinuteAgo
+    );
+  }
+
+  canMakeRequest() {
+    this.cleanOldRequests();
+    return this.rateLimiter.requests.length < this.rateLimiter.maxRequestsPerMinute &&
+           this.rateLimiter.currentRequests < this.rateLimiter.maxConcurrentRequests;
+  }
+
+  async waitForRateLimit() {
+    if (this.canMakeRequest()) {
+      return;
+    }
+
+    // If we're at the concurrent limit, wait for a slot
+    if (this.rateLimiter.currentRequests >= this.rateLimiter.maxConcurrentRequests) {
+      console.log('🚦 Waiting for concurrent request slot...');
+      await this.waitForConcurrentSlot();
+    }
+
+    // If we're at the rate limit, wait for the window to refresh
+    if (this.rateLimiter.requests.length >= this.rateLimiter.maxRequestsPerMinute) {
+      this.cleanOldRequests();
+      if (this.rateLimiter.requests.length >= this.rateLimiter.maxRequestsPerMinute) {
+        const oldestRequest = Math.min(...this.rateLimiter.requests);
+        const waitTime = (oldestRequest + 60000) - Date.now();
+        console.log(`⏳ Rate limit reached, waiting ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+      }
+    }
+  }
+
+  async waitForConcurrentSlot() {
+    return new Promise((resolve) => {
+      const checkSlot = () => {
+        if (this.rateLimiter.currentRequests < this.rateLimiter.maxConcurrentRequests) {
+          resolve();
+        } else {
+          setTimeout(checkSlot, 100);
+        }
+      };
+      checkSlot();
+    });
+  }
+
+  async sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  calculateRetryDelay(attempt) {
+    const delay = Math.min(
+      this.retryConfig.baseDelay * Math.pow(this.retryConfig.backoffFactor, attempt),
+      this.retryConfig.maxDelay
+    );
+    // Add jitter to prevent thundering herd
+    return delay + Math.random() * 1000;
+  }
+
+  isRateLimitError(error) {
+    return (
+      error.status === 429 ||
+      error.message?.toLowerCase().includes('rate limit') ||
+      error.message?.toLowerCase().includes('too many requests')
+    );
   }
 
   async messages(requestData, user, endpoint, projectPath = null) {
@@ -727,49 +815,93 @@ class TrackedAnthropicAPI {
     let creditsCost = 0;
     let success = false;
     let errorMessage = null;
+    let lastError = null;
 
-    try {
-      // Make the API call
-      const response = await this.client.messages.create(requestData);
-      
-      // Calculate usage (rough estimation based on token counts)
-      const inputTokens = this.estimateTokens(requestData.messages[0].content);
-      const outputTokens = this.estimateTokens(response.content[0].text);
-      tokensUsed = inputTokens + outputTokens;
-      
-      // Calculate cost based on the specific model used
-      const modelUsed = requestData.model || 'claude-3-5-sonnet-20241022';
-      const pricing = this.modelPricing[modelUsed] || this.modelPricing['claude-3-5-sonnet-20241022'];
-      
-      const inputCost = (inputTokens / 1000000) * pricing.input;
-      const outputCost = (outputTokens / 1000000) * pricing.output;
-      creditsCost = inputCost + outputCost;
-      
-      success = true;
+    // Retry logic with exponential backoff
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        // Wait for rate limit before making request
+        await this.waitForRateLimit();
+        
+        // Track request timing
+        this.rateLimiter.requests.push(Date.now());
+        this.rateLimiter.currentRequests++;
+        
+        console.log(`🔄 Attempt ${attempt + 1}/${this.retryConfig.maxRetries + 1} for ${endpoint}`);
+        console.log(`📊 Current requests: ${this.rateLimiter.currentRequests}/${this.rateLimiter.maxConcurrentRequests}`);
+        console.log(`📈 Recent requests: ${this.rateLimiter.requests.length}/${this.rateLimiter.maxRequestsPerMinute}`);
 
-      // Deduct credits from user
-      await this.db.query(
-        'UPDATE users SET credits = credits - $1, credits_remaining = credits_remaining - $2 WHERE username = $3',
-        [creditsCost, Math.ceil(creditsCost * 100), user.username] // Convert to credit units (1 credit = 1 cent)
-      );
+        // Make the API call
+        const response = await this.client.messages.create(requestData);
+        
+        // Calculate usage (rough estimation based on token counts)
+        const inputTokens = this.estimateTokens(requestData.messages[0].content);
+        const outputTokens = this.estimateTokens(response.content[0].text);
+        tokensUsed = inputTokens + outputTokens;
+        
+        // Calculate cost based on the specific model used
+        const modelUsed = requestData.model || 'claude-3-5-sonnet-20241022';
+        const pricing = this.modelPricing[modelUsed] || this.modelPricing['claude-3-5-sonnet-20241022'];
+        
+        const inputCost = (inputTokens / 1000000) * pricing.input;
+        const outputCost = (outputTokens / 1000000) * pricing.output;
+        creditsCost = inputCost + outputCost;
+        
+        success = true;
 
-      // Log the usage with detailed pricing breakdown
-      await this.logUsage(user, endpoint, tokensUsed, creditsCost, requestData, true, null, projectPath);
-      
-      // Console log for monitoring
-      console.log(`💰 Cost calculated for ${modelUsed}:`);
-      console.log(`   Input tokens: ${inputTokens} @ $${pricing.input}/1M = $${inputCost.toFixed(4)}`);
-      console.log(`   Output tokens: ${outputTokens} @ $${pricing.output}/1M = $${outputCost.toFixed(4)}`);
-      console.log(`   Total cost: $${creditsCost.toFixed(4)} (${Math.ceil(creditsCost * 100)} credits)`);
-      console.log(`   User balance after: ${user.credits_remaining - Math.ceil(creditsCost * 100)} credits`);
+        // Deduct credits from user
+        await this.db.query(
+          'UPDATE users SET credits = credits - $1, credits_remaining = credits_remaining - $2 WHERE username = $3',
+          [creditsCost, Math.ceil(creditsCost * 100), user.username] // Convert to credit units (1 credit = 1 cent)
+        );
 
-      return response;
+        // Log the usage with detailed pricing breakdown
+        await this.logUsage(user, endpoint, tokensUsed, creditsCost, requestData, true, null, projectPath);
+        
+        // Console log for monitoring
+        console.log(`💰 Cost calculated for ${modelUsed}:`);
+        console.log(`   Input tokens: ${inputTokens} @ $${pricing.input}/1M = $${inputCost.toFixed(4)}`);
+        console.log(`   Output tokens: ${outputTokens} @ $${pricing.output}/1M = $${outputCost.toFixed(4)}`);
+        console.log(`   Total cost: $${creditsCost.toFixed(4)} (${Math.ceil(creditsCost * 100)} credits)`);
+        console.log(`   User balance after: ${user.credits_remaining - Math.ceil(creditsCost * 100)} credits`);
 
-    } catch (error) {
-      errorMessage = error.message;
-      await this.logUsage(user, endpoint, tokensUsed, creditsCost, requestData, false, errorMessage, projectPath);
-      throw error;
+        // Success! Return the response
+        return response;
+
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Attempt ${attempt + 1} failed:`, error.message);
+        
+        // Check if this is a rate limit error
+        if (this.isRateLimitError(error)) {
+          console.log(`🚦 Rate limit detected on attempt ${attempt + 1}`);
+          
+          if (attempt < this.retryConfig.maxRetries) {
+            const retryDelay = this.calculateRetryDelay(attempt);
+            console.log(`⏳ Retrying in ${retryDelay}ms...`);
+            await this.sleep(retryDelay);
+            continue; // Try again
+          }
+        } else {
+          // Non-rate-limit error, don't retry
+          console.error(`💥 Non-rate-limit error, not retrying:`, error.message);
+          break;
+        }
+      } finally {
+        // Always decrement concurrent request counter
+        this.rateLimiter.currentRequests--;
+      }
     }
+
+    // All attempts failed
+    errorMessage = lastError?.message || 'Unknown error';
+    console.error(`💥 All retry attempts failed for ${endpoint}:`, errorMessage);
+    
+    // Log the failed usage
+    await this.logUsage(user, endpoint, tokensUsed, creditsCost, requestData, false, errorMessage, projectPath);
+    
+    // Throw the last error
+    throw lastError;
   }
 
   // Create wrapper method for backward compatibility
@@ -840,6 +972,52 @@ class TrackedAnthropicAPI {
     } catch (logError) {
       console.error('Failed to log usage:', logError);
     }
+  }
+
+  // Get current rate limiting status
+  getRateLimitStatus() {
+    this.cleanOldRequests();
+    return {
+      configuration: {
+        maxRequestsPerMinute: this.rateLimiter.maxRequestsPerMinute,
+        maxConcurrentRequests: this.rateLimiter.maxConcurrentRequests,
+        maxRetries: this.retryConfig.maxRetries,
+        baseDelay: this.retryConfig.baseDelay,
+        maxDelay: this.retryConfig.maxDelay,
+        backoffFactor: this.retryConfig.backoffFactor
+      },
+      currentStatus: {
+        recentRequests: this.rateLimiter.requests.length,
+        currentRequests: this.rateLimiter.currentRequests,
+        requestsInLastMinute: this.rateLimiter.requests.length,
+        timeUntilReset: this.rateLimiter.requests.length > 0 ? 
+          Math.max(0, (Math.min(...this.rateLimiter.requests) + 60000) - Date.now()) : 0
+      }
+    };
+  }
+
+  // Update rate limiting configuration (admin only)
+  updateRateLimitConfig(newConfig) {
+    if (newConfig.maxRequestsPerMinute !== undefined) {
+      this.rateLimiter.maxRequestsPerMinute = Math.max(1, Math.min(1000, newConfig.maxRequestsPerMinute));
+    }
+    if (newConfig.maxConcurrentRequests !== undefined) {
+      this.rateLimiter.maxConcurrentRequests = Math.max(1, Math.min(50, newConfig.maxConcurrentRequests));
+    }
+    if (newConfig.maxRetries !== undefined) {
+      this.retryConfig.maxRetries = Math.max(0, Math.min(10, newConfig.maxRetries));
+    }
+    if (newConfig.baseDelay !== undefined) {
+      this.retryConfig.baseDelay = Math.max(100, Math.min(10000, newConfig.baseDelay));
+    }
+    if (newConfig.maxDelay !== undefined) {
+      this.retryConfig.maxDelay = Math.max(1000, Math.min(120000, newConfig.maxDelay));
+    }
+    if (newConfig.backoffFactor !== undefined) {
+      this.retryConfig.backoffFactor = Math.max(1, Math.min(5, newConfig.backoffFactor));
+    }
+    
+    console.log('🔧 Rate limiting configuration updated:', this.getRateLimitStatus().configuration);
   }
 }
 
@@ -7636,20 +7814,69 @@ app.post('/api/admin/test-anthropic', authenticateApiKey, async (req, res) => {
   }
 
   try {
-    const testMessage = await anthropic.messages.create({
+    const testMessage = await trackedAnthropic.messages({
       model: 'claude-3-haiku-20240307',
       max_tokens: 50,
       messages: [{ role: 'user', content: 'Test message - please respond with "API test successful"' }]
-    });
+    }, req.user, '/api/admin/test-anthropic');
 
     res.json({ 
       success: true, 
-      message: 'Anthropic API test successful',
+      message: 'Anthropic API test successful (with rate limiting)',
       response: testMessage.content[0].text
     });
   } catch (error) {
     console.error('Anthropic API test failed:', error);
     res.status(500).json({ error: 'Anthropic API test failed', message: error.message });
+  }
+});
+
+// Test rate limiting with multiple requests
+app.post('/api/admin/test-rate-limiting', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const { testCount = 3 } = req.body;
+    const maxTests = Math.min(testCount, 10); // Limit to 10 tests max
+    
+    console.log(`🧪 Starting rate limiting test with ${maxTests} concurrent requests`);
+    
+    const testPromises = [];
+    for (let i = 0; i < maxTests; i++) {
+      testPromises.push(
+        trackedAnthropic.messages({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 20,
+          messages: [{ role: 'user', content: `Test ${i + 1}` }]
+        }, req.user, '/api/admin/test-rate-limiting')
+      );
+    }
+    
+    const startTime = Date.now();
+    const results = await Promise.allSettled(testPromises);
+    const endTime = Date.now();
+    
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    
+    console.log(`🧪 Rate limiting test completed: ${successful} successful, ${failed} failed`);
+    
+    res.json({
+      success: true,
+      message: `Rate limiting test completed`,
+      results: {
+        totalTests: maxTests,
+        successful,
+        failed,
+        duration: endTime - startTime,
+        rateLimitStatus: trackedAnthropic.getRateLimitStatus()
+      }
+    });
+  } catch (error) {
+    console.error('Rate limiting test failed:', error);
+    res.status(500).json({ error: 'Rate limiting test failed', message: error.message });
   }
 });
 
@@ -7682,6 +7909,56 @@ app.post('/api/admin/health-check', authenticateApiKey, async (req, res) => {
       error: error.message,
       timestamp: new Date().toISOString()
     });
+  }
+});
+
+// Get current rate limiting status
+app.get('/api/admin/rate-limit-status', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const rateLimitStatus = trackedAnthropic.getRateLimitStatus();
+    res.json({
+      success: true,
+      ...rateLimitStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error getting rate limit status:', error);
+    res.status(500).json({ error: 'Failed to get rate limit status' });
+  }
+});
+
+// Update rate limiting configuration
+app.post('/api/admin/update-rate-limits', authenticateApiKey, async (req, res) => {
+  if (!req.user.is_admin) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
+  try {
+    const { config } = req.body;
+    
+    if (!config) {
+      return res.status(400).json({ error: 'Configuration object required' });
+    }
+
+    // Update the configuration
+    trackedAnthropic.updateRateLimitConfig(config);
+    
+    // Return the updated status
+    const updatedStatus = trackedAnthropic.getRateLimitStatus();
+    
+    res.json({
+      success: true,
+      message: 'Rate limiting configuration updated successfully',
+      ...updatedStatus,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error updating rate limits:', error);
+    res.status(500).json({ error: 'Failed to update rate limits' });
   }
 });
 

@@ -1,0 +1,92 @@
+# Anthropic API Rate Limiting Configuration
+# Add these to your .env file to customize rate limiting behavior
+
+# ===========================
+# RATE LIMITING CONFIGURATION
+# ===========================
+
+# Maximum requests per minute (1-1000)
+# Default: 50 (conservative)
+# Recommended: 50-100 for most applications
+ANTHROPIC_RATE_LIMIT_PER_MINUTE=50
+
+# Maximum concurrent requests (1-50)
+# Default: 5 (conservative)
+# Recommended: 5-10 for most applications
+ANTHROPIC_CONCURRENT_REQUESTS=5
+
+# Maximum retry attempts (0-10)
+# Default: 3
+# Recommended: 3-5 for production
+ANTHROPIC_MAX_RETRIES=3
+
+# Base delay between retries in milliseconds (100-10000)
+# Default: 1000 (1 second)
+# This delay increases exponentially with each retry
+ANTHROPIC_BASE_DELAY=1000
+
+# Maximum delay between retries in milliseconds (1000-120000)
+# Default: 30000 (30 seconds)
+# Prevents extremely long delays on many retries
+ANTHROPIC_MAX_DELAY=30000
+
+# Exponential backoff factor (1-5)
+# Default: 2
+# Each retry delay = previous_delay * backoff_factor
+ANTHROPIC_BACKOFF_FACTOR=2
+
+# ===========================
+# COMMON CONFIGURATIONS
+# ===========================
+
+# CONSERVATIVE (Default - Safe for all applications)
+# ANTHROPIC_RATE_LIMIT_PER_MINUTE=50
+# ANTHROPIC_CONCURRENT_REQUESTS=5
+# ANTHROPIC_MAX_RETRIES=3
+
+# BALANCED (Good for production applications)
+# ANTHROPIC_RATE_LIMIT_PER_MINUTE=100
+# ANTHROPIC_CONCURRENT_REQUESTS=10
+# ANTHROPIC_MAX_RETRIES=5
+
+# AGGRESSIVE (High-traffic applications with premium Anthropic plan)
+# ANTHROPIC_RATE_LIMIT_PER_MINUTE=200
+# ANTHROPIC_CONCURRENT_REQUESTS=20
+# ANTHROPIC_MAX_RETRIES=5
+
+# ===========================
+# TROUBLESHOOTING CONFIGURATIONS
+# ===========================
+
+# If you're still getting rate limit errors, try:
+# ANTHROPIC_RATE_LIMIT_PER_MINUTE=30
+# ANTHROPIC_CONCURRENT_REQUESTS=3
+# ANTHROPIC_MAX_RETRIES=5
+# ANTHROPIC_BASE_DELAY=2000
+# ANTHROPIC_MAX_DELAY=60000
+
+# If requests are taking too long, try:
+# ANTHROPIC_RATE_LIMIT_PER_MINUTE=100
+# ANTHROPIC_CONCURRENT_REQUESTS=15
+# ANTHROPIC_BASE_DELAY=500
+# ANTHROPIC_MAX_DELAY=15000
+
+# ===========================
+# MONITORING
+# ===========================
+
+# Use these admin endpoints to monitor rate limiting:
+# GET /api/admin/rate-limit-status - Check current status
+# POST /api/admin/update-rate-limits - Update configuration
+# POST /api/admin/test-rate-limiting - Test with multiple requests
+
+# ===========================
+# NOTES
+# ===========================
+
+# 1. Start with conservative settings and adjust based on usage
+# 2. Monitor your Anthropic API usage dashboard for actual limits
+# 3. Higher values may work but require careful monitoring
+# 4. Rate limiting is per-server instance, not per-user
+# 5. Changes to these values require a server restart
+# 6. Use admin endpoints for runtime configuration changes 

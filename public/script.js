@@ -8846,6 +8846,9 @@ function getEffectiveCreativeDirection(stepType, elementKey) {
 
 // Compose all creative directions (global + individual) for sending to backend
 function getComposedCreativeDirections() {
+    console.log('🎨 Building composed creative directions...');
+    const startTime = Date.now();
+    
     const composed = {
         plotPoints: {},
         scenes: {},
@@ -8916,7 +8919,65 @@ function getComposedCreativeDirections() {
         });
     }
     
+    const endTime = Date.now();
+    const totalDirections = Object.keys(composed.plotPoints).length + 
+                           Object.keys(composed.scenes).length + 
+                           Object.keys(composed.dialogue).length;
+    
+    console.log(`🎨 Composed ${totalDirections} creative directions in ${endTime - startTime}ms`);
+    console.log('🎨 Creative directions breakdown:', {
+        plotPoints: Object.keys(composed.plotPoints).length,
+        scenes: Object.keys(composed.scenes).length,
+        dialogue: Object.keys(composed.dialogue).length
+    });
+    
     return composed;
+}
+
+// Optimized version that only gets relevant creative directions for a specific context
+function getRelevantCreativeDirections(context = {}) {
+    const { type, actKey, plotPointIndex, sceneIndex } = context;
+    
+    const relevant = {
+        plotPoints: {},
+        scenes: {},
+        dialogue: {}
+    };
+    
+    switch (type) {
+        case 'plotPoints':
+            if (actKey) {
+                // Only include directions for this specific act
+                const direction = getEffectiveCreativeDirection('plotPoints', actKey);
+                if (direction) relevant.plotPoints[actKey] = direction;
+            }
+            break;
+            
+        case 'scenes':
+            if (actKey && plotPointIndex !== undefined) {
+                // Only include directions for this specific plot point
+                const sceneKey = `${actKey}_${plotPointIndex}`;
+                const direction = getEffectiveCreativeDirection('scenes', sceneKey);
+                if (direction) relevant.scenes[sceneKey] = direction;
+            }
+            break;
+            
+        case 'dialogue':
+            if (actKey && sceneIndex !== undefined) {
+                // Only include directions for this specific scene
+                const dialogueKey = `${actKey}_${sceneIndex}`;
+                const direction = getEffectiveCreativeDirection('dialogue', dialogueKey);
+                if (direction) relevant.dialogue[dialogueKey] = direction;
+            }
+            break;
+            
+        default:
+            // Fallback to full composition for backwards compatibility
+            return getComposedCreativeDirections();
+    }
+    
+    console.log(`🎯 Relevant creative directions for ${type}:`, relevant);
+    return relevant;
 }
 
 // Save to localStorage
@@ -11085,7 +11146,11 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
             },
             body: JSON.stringify({
                 model: getSelectedModel(),
-                creativeDirections: getComposedCreativeDirections() // 🆕 Send composed creative directions (global + individual)
+                creativeDirections: getRelevantCreativeDirections({ 
+                    type: 'scenes', 
+                    actKey: structureKey, 
+                    plotPointIndex: plotPointIndex 
+                }) // 🎯 Only send relevant creative directions
             })
         });
         
