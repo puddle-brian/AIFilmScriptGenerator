@@ -12432,14 +12432,41 @@ function addSceneNavigation() {
     const lines = scriptText.split('\n');
     const scenes = [];
     
-    // Find scene headers
+    // Build scene titles from appState data
+    const sceneData = [];
+    if (appState.generatedScenes) {
+        let structureKeys = Object.keys(appState.generatedScenes);
+        
+        // Use template order if available
+        if (appState.templateData && appState.templateData.structure) {
+            const templateKeys = Object.keys(appState.templateData.structure);
+            structureKeys = templateKeys.filter(key => appState.generatedScenes[key]);
+        }
+        
+        structureKeys.forEach((structureKey) => {
+            const sceneGroup = appState.generatedScenes[structureKey];
+            if (sceneGroup && Array.isArray(sceneGroup)) {
+                sceneGroup.forEach((scene, index) => {
+                    sceneData.push({
+                        title: scene.title || `Scene ${structureKey}-${index}`,
+                        location: scene.location || 'Unknown Location'
+                    });
+                });
+            }
+        });
+    }
+    
+    // Find scene headers and match with scene data
+    let sceneIndex = 0;
     lines.forEach((line, index) => {
         const trimmed = line.trim();
         if (trimmed.match(/^(INT\.|EXT\.)/i)) {
+            const sceneTitle = sceneData[sceneIndex] ? sceneData[sceneIndex].title : trimmed;
             scenes.push({
-                title: trimmed,
+                title: sceneTitle,
                 lineNumber: index
             });
+            sceneIndex++;
         }
     });
     
