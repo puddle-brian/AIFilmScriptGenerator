@@ -7397,6 +7397,9 @@ function assembleScript() {
     // Display script preview
     document.getElementById('scriptPreview').textContent = script;
     
+    // Add scene navigation
+    addSceneNavigation();
+    
     // Update statistics with better page estimation
     const estimatedPages = Math.ceil(script.split('\n').length / 55); // ~55 lines per page
     
@@ -7493,7 +7496,7 @@ function formatSceneForScreenplay(dialogue, sceneNumber) {
         
         // Scene headings (INT./EXT.)
         if (line.match(/^(INT\.|EXT\.)/i)) {
-            formatted += `\n${line.toUpperCase()}\n\n`;
+            formatted += `\nSCENE ${sceneNumber}\n\n${line.toUpperCase()}\n\n`;
         }
         // Character names (all caps, no colon)
         else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
@@ -7533,7 +7536,7 @@ function formatPlaceholderScene(scene, sceneNumber) {
         formatted += '\n\n                         [PAGE BREAK]\n\n';
     }
     
-    formatted += `${sceneHeading}\n\n`;
+    formatted += `SCENE ${sceneNumber}\n\n${sceneHeading}\n\n`;
     formatted += `${scene.description || 'Scene description not available.'}\n\n`;
     formatted += `                    [DIALOGUE NOT GENERATED]\n\n`;
     formatted += `          This scene requires dialogue generation\n`;
@@ -12418,4 +12421,58 @@ function updateGlobalDirectionIndicators() {
         dialogueBtn.innerHTML = '🎨 Edit creative direction for all scenes 📋';
         dialogueBtn.title = 'Global direction active - click to edit';
     }
+}
+
+// Simple scene navigation
+function addSceneNavigation() {
+    const scriptPreview = document.getElementById('scriptPreview');
+    if (!scriptPreview) return;
+    
+    const scriptText = scriptPreview.textContent;
+    const lines = scriptText.split('\n');
+    const scenes = [];
+    
+    // Find scene headers
+    lines.forEach((line, index) => {
+        const trimmed = line.trim();
+        if (trimmed.match(/^(INT\.|EXT\.)/i)) {
+            scenes.push({
+                title: trimmed,
+                lineNumber: index
+            });
+        }
+    });
+    
+    if (scenes.length === 0) return;
+    
+    // Add dropdown if it doesn't exist
+    let navDropdown = document.getElementById('sceneNavDropdown');
+    if (!navDropdown) {
+        const navContainer = document.createElement('div');
+        navContainer.className = 'scene-nav';
+        navContainer.innerHTML = `
+            <select id="sceneNavDropdown">
+                <option value="">Jump to scene...</option>
+                ${scenes.map((scene, index) => `
+                    <option value="${scene.lineNumber}">Scene ${index + 1}: ${scene.title}</option>
+                `).join('')}
+            </select>
+        `;
+        scriptPreview.parentNode.insertBefore(navContainer, scriptPreview);
+        navDropdown = document.getElementById('sceneNavDropdown');
+    }
+    
+    // Navigation handler
+    navDropdown.addEventListener('change', function() {
+        const lineNumber = parseInt(this.value);
+        if (!lineNumber) return;
+        
+        // Calculate approximate scroll position
+        const totalLines = lines.length;
+        const percentage = lineNumber / totalLines;
+        const scrollPosition = scriptPreview.scrollHeight * percentage;
+        
+        scriptPreview.scrollTop = scrollPosition;
+        this.value = ''; // Reset dropdown
+    });
 }

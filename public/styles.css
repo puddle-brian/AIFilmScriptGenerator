@@ -6713,3 +6713,16 @@ h3 .creative-direction-controls .btn:hover {
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
+/* Scene Navigation */
+.scene-nav {
+    margin-bottom: 10px;
+}
+
+.scene-nav select {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 300px;
+}
+
