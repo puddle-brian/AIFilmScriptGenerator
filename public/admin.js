@@ -1867,12 +1867,303 @@ async function viewErrorLogs() {
 }
 
 async function backupDatabase() {
-    if (!confirm('Are you sure you want to create a database backup?')) {
+    // Show backup options modal
+    showBackupOptionsModal();
+}
+
+function showBackupOptionsModal() {
+    const modal = document.getElementById('backupOptionsModal');
+    if (!modal) {
+        // Create modal if it doesn't exist
+        createBackupOptionsModal();
+        return showBackupOptionsModal();
+    }
+    modal.style.display = 'flex';
+}
+
+function createBackupOptionsModal() {
+    const modalHTML = `
+        <div id="backupOptionsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🗃️ Database Backup Options</h2>
+                    <span class="close" onclick="hideBackupOptionsModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="backup-options-section">
+                        <h3>Create New Backup</h3>
+                        <div class="backup-option-group">
+                            <label>
+                                <input type="checkbox" id="saveToServer" checked>
+                                Save to server backups folder
+                            </label>
+                            <label>
+                                <input type="checkbox" id="downloadBackup" checked>
+                                Download to your computer
+                            </label>
+                        </div>
+                        <button onclick="createBackupWithOptions()" class="btn-primary">
+                            <span class="icon">📦</span>
+                            Create Backup
+                        </button>
+                    </div>
+                    
+                    <div class="backup-options-section">
+                        <h3>Existing Backups</h3>
+                        <div id="backupsList" class="backups-list">
+                            <div class="loading">Loading backups...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Load existing backups
+    loadExistingBackups();
+}
+
+function hideBackupOptionsModal() {
+    const modal = document.getElementById('backupOptionsModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+async function createBackupWithOptions() {
+    const saveToServer = document.getElementById('saveToServer').checked;
+    const downloadBackup = document.getElementById('downloadBackup').checked;
+    
+    if (!saveToServer && !downloadBackup) {
+        showAdminToast('Please select at least one backup option', 'error');
         return;
     }
     
-    showAdminToast('Creating database backup...', 'warning');
-    showAdminToast('Feature coming soon', 'warning');
+    if (!confirm('Are you sure you want to create a database backup?\n\nThis will create a complete backup of your database including all users, projects, and usage data.')) {
+        return;
+    }
+    
+    const createBtn = document.querySelector('button[onclick="createBackupWithOptions()"]');
+    const originalText = createBtn ? createBtn.innerHTML : '';
+    
+    try {
+        showAdminToast('Creating database backup...', 'warning');
+        
+        // Update button to show progress
+        if (createBtn) {
+            createBtn.innerHTML = `
+                <span class="icon">⏳</span>
+                Creating Backup...
+            `;
+            createBtn.disabled = true;
+        }
+        
+        const apiKey = localStorage.getItem('apiKey');
+        if (!apiKey) {
+            throw new Error('No API key found. Please log in again.');
+        }
+        
+        const response = await fetch('/api/admin/backup-database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-Key': apiKey
+            },
+            body: JSON.stringify({
+                saveToServer: saveToServer,
+                download: downloadBackup
+            })
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        if (downloadBackup) {
+            // Handle download
+            const backupBlob = await response.blob();
+            
+            // Extract filename from Content-Disposition header
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = 'database_backup.json';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            // Create download link
+            const downloadUrl = window.URL.createObjectURL(backupBlob);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = downloadUrl;
+            downloadLink.download = filename;
+            
+            // Trigger download
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+            
+            // Clean up
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            // Calculate backup size for display
+            const backupSizeMB = (backupBlob.size / 1024 / 1024).toFixed(2);
+            
+            showAdminToast(`✅ Database backup completed successfully! Download started.\n\nBackup size: ${backupSizeMB} MB\nFilename: ${filename}`, 'success');
+        } else {
+            // Handle server-only backup
+            const data = await response.json();
+            showAdminToast(`✅ Database backup saved to server!\n\nBackup size: ${data.statistics.size}\nFilename: ${data.backupName}.json`, 'success');
+        }
+        
+        // Refresh backup list
+        loadExistingBackups();
+        
+    } catch (error) {
+        console.error('❌ Database backup failed:', error);
+        showAdminToast(`❌ Database backup failed: ${error.message}`, 'error');
+    } finally {
+        // Restore button
+        if (createBtn) {
+            createBtn.innerHTML = originalText;
+            createBtn.disabled = false;
+        }
+    }
+}
+
+async function loadExistingBackups() {
+    const backupsList = document.getElementById('backupsList');
+    if (!backupsList) return;
+    
+    try {
+        const apiKey = localStorage.getItem('apiKey');
+        if (!apiKey) {
+            throw new Error('No API key found');
+        }
+        
+        const response = await fetch('/api/admin/backups', {
+            method: 'GET',
+            headers: {
+                'X-API-Key': apiKey
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to load backups');
+        }
+        
+        const data = await response.json();
+        
+        if (data.backups.length === 0) {
+            backupsList.innerHTML = '<div class="no-backups">No backups found</div>';
+            return;
+        }
+        
+        const backupsHTML = data.backups.map(backup => `
+            <div class="backup-item">
+                <div class="backup-info">
+                    <div class="backup-name">${backup.filename}</div>
+                    <div class="backup-details">
+                        <span class="backup-size">${backup.sizeFormatted}</span>
+                        <span class="backup-date">${new Date(backup.created).toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="backup-actions">
+                    <button onclick="downloadBackup('${backup.filename}')" class="btn-secondary" title="Download">
+                        📥
+                    </button>
+                    <button onclick="deleteBackup('${backup.filename}')" class="btn-danger" title="Delete">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+        backupsList.innerHTML = `
+            <div class="backup-summary">
+                <span>${data.totalBackups} backups</span>
+                <span>${(data.totalSize / 1024 / 1024).toFixed(2)} MB total</span>
+            </div>
+            ${backupsHTML}
+        `;
+        
+    } catch (error) {
+        console.error('Error loading backups:', error);
+        backupsList.innerHTML = '<div class="error">Error loading backups</div>';
+    }
+}
+
+async function downloadBackup(filename) {
+    try {
+        const apiKey = localStorage.getItem('apiKey');
+        if (!apiKey) {
+            throw new Error('No API key found');
+        }
+        
+        const response = await fetch(`/api/admin/backups/${filename}`, {
+            method: 'GET',
+            headers: {
+                'X-API-Key': apiKey
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to download backup');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showAdminToast(`✅ Backup downloaded: ${filename}`, 'success');
+        
+    } catch (error) {
+        console.error('Error downloading backup:', error);
+        showAdminToast(`❌ Error downloading backup: ${error.message}`, 'error');
+    }
+}
+
+async function deleteBackup(filename) {
+    if (!confirm(`Are you sure you want to delete backup: ${filename}?\n\nThis action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const apiKey = localStorage.getItem('apiKey');
+        if (!apiKey) {
+            throw new Error('No API key found');
+        }
+        
+        const response = await fetch(`/api/admin/backups/${filename}`, {
+            method: 'DELETE',
+            headers: {
+                'X-API-Key': apiKey
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to delete backup');
+        }
+        
+        showAdminToast(`✅ Backup deleted: ${filename}`, 'success');
+        
+        // Refresh backup list
+        loadExistingBackups();
+        
+    } catch (error) {
+        console.error('Error deleting backup:', error);
+        showAdminToast(`❌ Error deleting backup: ${error.message}`, 'error');
+    }
 }
 
 async function maintenanceMode() {

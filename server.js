@@ -18,6 +18,7 @@ const promptBuilders = require('./prompt-builders');
 const PaymentHandler = require('./payment-handlers');
 const starterPack = require('./starter-pack-data');
 const AIFeedbackSystem = require('./ai-feedback-system');
+const BackupSystem = require('./backup-system');
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -71,6 +72,9 @@ let paymentHandler;
 
 // Initialize AI feedback system
 let aiFeedbackSystem;
+
+// Initialize backup system
+let backupSystem;
 
 // Initialize PostgreSQL client (serverless-optimized with connection pooling)
 const dbClient = process.env.VERCEL ? 
@@ -187,6 +191,11 @@ async function initializeDatabase() {
     // Initialize AI feedback system
     aiFeedbackSystem = new AIFeedbackSystem(process.env.ANTHROPIC_API_KEY, HierarchicalContext);
     console.log('✅ AI feedback system initialized');
+    
+    // Initialize backup system
+    backupSystem = new BackupSystem(dbClient, __dirname);
+    backupSystem.registerRoutes(app, authenticateApiKey);
+    console.log('✅ Backup system initialized');
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
   }
@@ -216,6 +225,15 @@ async function connectToDatabase() {
         console.log('✅ AI feedback system initialized (serverless mode)');
       } catch (error) {
         console.error('❌ Failed to initialize AI feedback system in serverless mode:', error);
+      }
+      
+      // Initialize backup system in serverless mode
+      try {
+        backupSystem = new BackupSystem(dbClient, __dirname);
+        backupSystem.registerRoutes(app, authenticateApiKey);
+        console.log('✅ Backup system initialized (serverless mode)');
+      } catch (error) {
+        console.error('❌ Failed to initialize backup system in serverless mode:', error);
       }
     } else {
       // Traditional persistent connection for local development
@@ -7580,6 +7598,8 @@ app.get('/api/admin/analytics', authenticateApiKey, async (req, res) => {
     res.status(500).json({ error: 'Failed to load analytics' });
   }
 });
+
+// Database backup endpoints handled by backup-system.js module
 
 // Testing endpoints
 app.post('/api/admin/test-database', authenticateApiKey, async (req, res) => {
