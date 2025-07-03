@@ -7576,8 +7576,12 @@ function assembleScript() {
 // Generate professional title page
 function generateTitlePage() {
     const title = appState.storyInput?.title || 'UNTITLED';
-    const author = '[Author Name]';
-    const date = new Date().toLocaleDateString();
+    
+    // Use actual username if available, otherwise generic
+    const author = appState.user?.username || 'Writer';
+    
+    // Contact info in bottom right corner (just email is sufficient for spec scripts)
+    const contactInfo = appState.user?.email || 'writer@example.com';
     
     return `
 
@@ -7587,34 +7591,34 @@ function generateTitlePage() {
                                     ${title.toUpperCase()}
 
 
-                                      by
+                                   written by
 
-                                   ${author}
-
-
-
-
-                                Based on a true story
-                                    (if applicable)
+                                    ${author}
 
 
 
 
-                                     ${date}
 
 
 
 
-                              Contact Information:
-                              [Your Name]
-                              [Your Address]
-                              [Your Phone]
-                              [Your Email]
 
 
 
 
-                                   FIRST DRAFT`;
+
+
+
+
+
+
+
+
+
+
+
+
+                                                     ${contactInfo}`;
 }
 
 // Format scene for professional screenplay layout
