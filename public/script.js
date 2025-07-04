@@ -3224,7 +3224,14 @@ async function generateStructure() {
             console.log('🔍 Generate structure response data:', data);
             
             appState.generatedStructure = data.structure;
-            appState.templateData = data.template || appState.templateData; // Keep existing if not in response
+            // Keep existing templateData object - don't replace with string from API
+            // appState.templateData = data.template || appState.templateData; // This replaces object with string
+            console.log('🔍 DEBUG: templateData preservation:', {
+                apiReturned: data.template,
+                existingTemplateData: appState.templateData,
+                existingType: typeof appState.templateData,
+                hasStructure: !!(appState.templateData && appState.templateData.structure)
+            });
             appState.projectId = data.projectId || appState.projectId; // Keep existing if not in response
             appState.projectPath = data.projectPath || appState.projectPath; // Keep existing if not in response
             appState.lastUsedPrompt = data.prompt || null;
@@ -3403,6 +3410,12 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             
             // Add creative direction section for this act (BEFORE the editable content block)
             const hasActCreativeDirections = appState.templateData?.structure?.[key]?.userDirections && appState.templateData.structure[key].userDirections.trim();
+            console.log('🔍 DEBUG: Creative direction check for', key, {
+                templateData: appState.templateData,
+                hasStructure: !!(appState.templateData && appState.templateData.structure),
+                hasActInStructure: !!(appState.templateData && appState.templateData.structure && appState.templateData.structure[key]),
+                hasUserDirections: hasActCreativeDirections
+            });
             const actCreativeDirectionSection = document.createElement('div');
             actCreativeDirectionSection.className = 'creative-direction-section';
             actCreativeDirectionSection.innerHTML = `
