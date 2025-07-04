@@ -2614,121 +2614,58 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
   }
 });
 
-// Generate dialogue for approved scenes
+// 🆕 MIGRATED: Generate dialogue using GenerationService (Phase 2A)
 app.post('/api/generate-dialogue', authenticateApiKey, async (req, res) => {
   try {
+    // Check if new services are available
+    if (!generationService || !creditService) {
+      return res.status(503).json({ 
+        error: 'Services temporarily unavailable. Please try again later.',
+        fallback: 'Server restarting...'
+      });
+    }
+
     const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514", creativeDirections = null } = req.body;
+    const username = req.user.username;
     
-    console.log(`🎬 Generating dialogue for scene: ${scene.title || 'Untitled'}`);
+    console.log(`🆕 Using GenerationService for dialogue: ${scene.title || 'Untitled'}`);
     
-    // Process creative directions if provided
-    const sceneIndex = scene.sceneIndex || 0;
-    const actKey = scene.structureKey || 'unknown';
-    const dialogueKey = `${actKey}_${sceneIndex}`;
-    
-    // Use our new prompt builder system for simple dialogue generation
-    let prompt = promptBuilders.buildSimpleDialoguePrompt(storyInput, scene, context);
-    
-    // Add creative directions if provided
-    if (creativeDirections?.dialogue?.[dialogueKey]) {
-      const direction = creativeDirections.dialogue[dialogueKey];
-      console.log(`✨ Adding creative direction for dialogue: "${direction}"`);
-      prompt = `${prompt}\n\nUser Creative Direction for Dialogue: ${direction}\n⚠️ IMPORTANT: Incorporate this creative direction into the dialogue for this scene.\n\nGenerate the screenplay formatted dialogue and action for this scene:`;
+    // Check credits using new CreditService
+    const creditCheck = await creditService.checkCredits(username, 3);
+    if (!creditCheck.hasCredits) {
+      return res.status(402).json({ error: creditCheck.message });
     }
 
-    const completion = await anthropic.messages.create({
-      model: model,
-      max_tokens: 2000,
-      temperature: 0.8,
-      system: "You are a professional screenwriter. Write engaging, properly formatted screenplay dialogue and action. Follow standard screenplay format conventions.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
+    // Generate dialogue using new GenerationService
+    const result = await generationService.generateDialogue(
+      scene, storyInput, context, projectPath, username, model, creativeDirections
+    );
+    
+    // Deduct credits using new CreditService
+    await creditService.deductCredits(username, 3, 'generate-dialogue');
+    await creditService.logUsage(username, 'generate-dialogue', 3, true);
+    
+    console.log('✅ Dialogue generation completed using GenerationService');
+    
+    res.json({
+      ...result,
+      migratedEndpoint: true,
+      generatedBy: 'GenerationService v2.0'
     });
 
-    const sceneId = scene.id || uuidv4();
-    const dialogueText = completion.content[0].text;
-
-    // 🔥 FIX: Add proper database saving for dialogue generation
-    if (projectPath) {
-      try {
-        // Get user from authenticated request
-        const username = req.user.username;
-        
-        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userResult.rows.length > 0) {
-          const userId = userResult.rows[0].id;
-          
-          // Load existing project context
-          const projectResult = await dbClient.query(
-            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-            [userId, projectPath]
-          );
-          
-          if (projectResult.rows.length > 0) {
-            const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-            
-            // Initialize generatedDialogues if it doesn't exist
-            if (!projectContext.generatedDialogues) {
-              projectContext.generatedDialogues = {};
-            }
-            
-            // Save dialogue with scene ID
-            projectContext.generatedDialogues[sceneId] = {
-              dialogue: dialogueText,
-              sceneId: sceneId,
-              scene: scene,
-              generatedAt: new Date().toISOString()
-            };
-            
-            // 🔥 FIX: Update currentStep to 6 when dialogue is first generated
-            if (projectContext.currentStep < 6) {
-              projectContext.currentStep = 6;
-              console.log(`📈 Updated currentStep to 6 (dialogue generated)`);
-            }
-            
-            // Save back to database
-            await dbClient.query(
-              'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-              [JSON.stringify(projectContext), userId, projectPath]
-            );
-            
-            // 🔥 FIX: Also update thumbnail_data.currentStep for project card consistency
-            try {
-              await dbClient.query(
-                'UPDATE user_projects SET thumbnail_data = jsonb_set(thumbnail_data, \'{currentStep}\', $1::jsonb) WHERE user_id = $2 AND project_name = $3',
-                [projectContext.currentStep, userId, projectPath]
-              );
-              console.log(`📈 Updated thumbnail_data.currentStep to ${projectContext.currentStep}`);
-            } catch (thumbnailError) {
-              console.log('Warning: Could not update thumbnail_data.currentStep:', thumbnailError.message);
-            }
-            
-            console.log(`✅ Dialogue saved to database for scene: ${sceneId}`);
-          } else {
-            console.log('Warning: Project not found in database for dialogue saving');
-          }
-        } else {
-          console.log('Warning: User not found for dialogue saving');
-        }
-      } catch (dbError) {
-        console.error('Error saving dialogue to database:', dbError);
-        // Don't fail the request if database save fails
-      }
-    }
-
-    console.log('✅ Dialogue generation completed - database-only storage');
-
-    res.json({ 
-      dialogue: dialogueText,
-      sceneId
-    });
   } catch (error) {
-    console.error('Error generating dialogue:', error);
-    res.status(500).json({ error: 'Failed to generate dialogue' });
+    console.error('Error in migrated dialogue generation:', error);
+    
+    // Log error with CreditService if available
+    if (creditService) {
+      await creditService.logUsage(req.user.username, 'generate-dialogue', 3, false, error.message);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate dialogue',
+      details: error.message,
+      migratedEndpoint: true
+    });
   }
 });
 
