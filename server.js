@@ -2326,7 +2326,7 @@ app.post('/api/generate-structure', authenticateApiKey, async (req, res) => {
 
     // Generate structure using new GenerationService
     const result = await generationService.generateStructure(
-      storyInput, template, customTemplateData, model, existingProjectPath, username
+      storyInput, customTemplateData, existingProjectPath, model, username
     );
     
     // Deduct credits using new CreditService

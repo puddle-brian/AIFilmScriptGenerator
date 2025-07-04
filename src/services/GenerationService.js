@@ -15,9 +15,17 @@ class GenerationService {
   async generateStructure(storyInput, templateData, projectPath = null, model = "claude-sonnet-4-20250514", username = null) {
     try {
       this.logger.log(`🏗️ Generating structure for: ${storyInput.title}`);
+      this.logger.log(`📋 Template: ${templateData?.name || 'Unknown'}`);
+      this.logger.log(`📋 Template structure keys: ${templateData?.structure ? Object.keys(templateData.structure) : 'No structure'}`);
       
       // Use prompt builder for structure generation
       const prompt = this.prompts.buildStructurePrompt(storyInput, templateData);
+      
+      // Log prompt length and template structure for debugging
+      this.logger.log(`📏 Prompt length: ${prompt.length} characters`);
+      if (templateData?.structure) {
+        this.logger.log(`🔍 Expected structure keys: [${Object.keys(templateData.structure).join(', ')}]`);
+      }
       
       const completion = await this.ai.messages({
         model: model,
@@ -35,6 +43,21 @@ class GenerationService {
       let structureData;
       try {
         structureData = JSON.parse(completion.content[0].text);
+        this.logger.log(`🔍 AI returned structure keys: [${Object.keys(structureData).join(', ')}]`);
+        
+        // Check if AI followed template structure
+        const expectedKeys = templateData?.structure ? Object.keys(templateData.structure) : [];
+        const returnedKeys = Object.keys(structureData);
+        const keysMatch = expectedKeys.length === returnedKeys.length && 
+                         expectedKeys.every(key => returnedKeys.includes(key));
+        
+        if (!keysMatch && expectedKeys.length > 0) {
+          this.logger.error(`❌ AI ignored template structure!`);
+          this.logger.error(`Expected: [${expectedKeys.join(', ')}]`);
+          this.logger.error(`Got: [${returnedKeys.join(', ')}]`);
+        } else if (keysMatch) {
+          this.logger.log(`✅ AI correctly used template structure`);
+        }
       } catch (parseError) {
         this.logger.error('Failed to parse structure response:', parseError);
         throw new Error('Invalid response format from AI');
