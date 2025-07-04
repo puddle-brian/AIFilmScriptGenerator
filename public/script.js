@@ -6972,6 +6972,7 @@ async function generateDialogue(structureKey, sceneIndex) {
             body: JSON.stringify({
                 scene: {
                     ...scene,
+                    id: sceneId,  // 🔥 FIX: Pass the sceneId that frontend expects
                     sceneIndex: sceneIndex,
                     structureKey: structureKey
                 },
@@ -7126,6 +7127,7 @@ async function generateAllDialogue() {
                 body: JSON.stringify({
                     scene: {
                         ...scene,
+                        id: sceneId,  // 🔥 FIX: Pass the sceneId that frontend expects
                         sceneIndex: sceneIndex,
                         structureKey: structureKey
                     },
@@ -9023,6 +9025,36 @@ function normalizeGeneratedScenes(scenesData) {
     return normalizedScenes;
 }
 
+// Normalize generated dialogues data structure
+function normalizeGeneratedDialogues(dialoguesData) {
+    if (!dialoguesData || typeof dialoguesData !== 'object') {
+        return {};
+    }
+    
+    const normalizedDialogues = {};
+    
+    Object.entries(dialoguesData).forEach(([sceneId, dialogueData]) => {
+        if (typeof dialogueData === 'string') {
+            // Already in the correct format (flat string)
+            normalizedDialogues[sceneId] = dialogueData;
+        } else if (dialogueData && typeof dialogueData === 'object') {
+            // Convert nested object structure to flat string
+            if (dialogueData.dialogue) {
+                // Server format: { dialogue: "text", sceneId: "...", scene: {...}, generatedAt: "..." }
+                normalizedDialogues[sceneId] = dialogueData.dialogue;
+            } else {
+                // Fallback: use the whole object as JSON (shouldn't happen, but just in case)
+                normalizedDialogues[sceneId] = JSON.stringify(dialogueData);
+            }
+        } else {
+            // Fallback: initialize as empty string
+            normalizedDialogues[sceneId] = '';
+        }
+    });
+    
+    return normalizedDialogues;
+}
+
 // Save to localStorage
 function saveToLocalStorage() {
     try {
@@ -9186,7 +9218,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
     appState.plotPoints = projectData.plotPoints || {};
     appState.generatedScenes = normalizeGeneratedScenes(projectData.generatedScenes || projectData.scenes || {});
-    appState.generatedDialogues = projectData.generatedDialogues || projectData.dialogue || {};
+    appState.generatedDialogues = normalizeGeneratedDialogues(projectData.generatedDialogues || projectData.dialogue || {});
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
     appState.creativeDirections = projectData.creativeDirections || {}; // 🆕 Load creative directions

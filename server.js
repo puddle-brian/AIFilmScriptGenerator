@@ -273,8 +273,11 @@ const generalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   skip: (req) => {
-    // Skip rate limiting for health checks and webhooks
-    return req.path === '/health' || req.path.startsWith('/api/stripe-webhook');
+    // Skip rate limiting for health checks, webhooks, and static files
+    return req.path === '/health' || 
+           req.path.startsWith('/api/stripe-webhook') ||
+           req.path.startsWith('/public/') ||
+           req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$/);
   }
 });
 
@@ -2612,7 +2615,7 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
 });
 
 // Generate dialogue for approved scenes
-app.post('/api/generate-dialogue', async (req, res) => {
+app.post('/api/generate-dialogue', authenticateApiKey, async (req, res) => {
   try {
     const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514", creativeDirections = null } = req.body;
     
@@ -2652,9 +2655,8 @@ app.post('/api/generate-dialogue', async (req, res) => {
     // 🔥 FIX: Add proper database saving for dialogue generation
     if (projectPath) {
       try {
-        // Get user from API key (this endpoint isn't using authenticateApiKey middleware yet)
-        // For now, use guest as fallback - this should be updated to use proper auth
-        const username = 'guest'; // TODO: Add authenticateApiKey middleware to this endpoint
+        // Get user from authenticated request
+        const username = req.user.username;
         
         const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
         if (userResult.rows.length > 0) {
