@@ -424,7 +424,9 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
       );
       
       if (projectResult.rows.length > 0) {
-        const projectContext = JSON.parse(projectResult.rows[0].project_context || '{}');
+        const rawContext = projectResult.rows[0].project_context;
+        // Handle both string and object formats
+        const projectContext = typeof rawContext === 'string' ? JSON.parse(rawContext || '{}') : (rawContext || {});
         
         // Update with structure data
         projectContext.generatedStructure = structureData;
@@ -470,7 +472,9 @@ Return as JSON with each structural element containing an array of scenes. IMPOR
       );
       
       if (projectResult.rows.length > 0) {
-        const projectContext = JSON.parse(projectResult.rows[0].project_context || '{}');
+        const rawContext = projectResult.rows[0].project_context;
+        // Handle both string and object formats
+        const projectContext = typeof rawContext === 'string' ? JSON.parse(rawContext || '{}') : (rawContext || {});
         
         // Initialize generatedDialogues if it doesn't exist
         if (!projectContext.generatedDialogues) {

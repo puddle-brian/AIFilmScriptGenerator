@@ -335,7 +335,7 @@ describe('V2 Service Endpoints - Proof of Concept', () => {
       
       const data = await response.json();
       expect(data).toBeDefined();
-      expect(data.refactoringPhase).toBe('Phase 1 - Proof of Concept');
+      expect(data.refactoringPhase).toBe('Phase 3A - Library Management Migration');
     });
   });
 

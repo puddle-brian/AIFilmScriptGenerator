@@ -25,10 +25,13 @@ class DatabaseService {
 
   // User operations
   async createUser(userData) {
-    const { username, email, apiKey, credits = 0 } = userData;
+    const { username, email, apiKey, passwordHash, credits = 0, emailUpdates = false } = userData;
     return await this.client.query(
-      'INSERT INTO users (username, email, api_key, credits) VALUES ($1, $2, $3, $4) RETURNING *',
-      [username, email, apiKey, credits]
+      `INSERT INTO users (
+        username, email, api_key, password_hash, credits_remaining, 
+        total_credits_purchased, email_updates, email_verified, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *`,
+      [username, email, apiKey, passwordHash, credits, credits, emailUpdates, false]
     );
   }
 
@@ -46,10 +49,46 @@ class DatabaseService {
     );
   }
 
+  async getUserByUsername(username) {
+    return await this.client.query(
+      'SELECT * FROM users WHERE username = $1',
+      [username]
+    );
+  }
+
+  async getUserByEmail(email) {
+    return await this.client.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
+  }
+
+  async checkUserExists(username, email) {
+    return await this.client.query(
+      'SELECT id FROM users WHERE username = $1 OR email = $2',
+      [username, email]
+    );
+  }
+
   async updateUserCredits(userId, newCredits) {
     return await this.client.query(
-      'UPDATE users SET credits = $1 WHERE id = $2 RETURNING *',
+      'UPDATE users SET credits_remaining = $1 WHERE id = $2 RETURNING *',
       [newCredits, userId]
+    );
+  }
+
+  async updateLastLogin(userId) {
+    return await this.client.query(
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
+      [userId]
+    );
+  }
+
+  async logCreditTransaction(userId, transactionType, amount, notes) {
+    return await this.client.query(
+      `INSERT INTO credit_transactions (user_id, transaction_type, credits_amount, notes, created_at) 
+       VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
+      [userId, transactionType, amount, notes]
     );
   }
 
@@ -76,6 +115,58 @@ class DatabaseService {
     return await this.client.query(
       'SELECT * FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
       [userId]
+    );
+  }
+
+  async deleteProject(userId, projectName) {
+    return await this.client.query(
+      'DELETE FROM user_projects WHERE user_id = $1 AND project_name = $2 RETURNING *',
+      [userId, projectName]
+    );
+  }
+
+  // ==================================================
+  // LIBRARY OPERATIONS
+  // ==================================================
+
+  async getUserLibraryEntries(userId, type) {
+    return await this.client.query(
+      'SELECT entry_key, entry_data, created_at FROM user_libraries WHERE user_id = $1 AND library_type = $2 ORDER BY created_at DESC',
+      [userId, type]
+    );
+  }
+
+  async createLibraryEntry(userId, type, key, entryData, allowConflicts = false) {
+    if (allowConflicts) {
+      // For starter pack population - handle conflicts gracefully
+      return await this.client.query(
+        `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data) 
+         VALUES ($1, $2, $3, $4) 
+         ON CONFLICT (user_id, library_type, entry_key) 
+         DO UPDATE SET entry_data = $4, created_at = NOW()
+         RETURNING *`,
+        [userId, type, key, JSON.stringify(entryData)]
+      );
+    } else {
+      // Normal creation - fail on conflicts
+      return await this.client.query(
+        'INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data) VALUES ($1, $2, $3, $4) RETURNING *',
+        [userId, type, key, JSON.stringify(entryData)]
+      );
+    }
+  }
+
+  async updateLibraryEntry(userId, type, key, entryData) {
+    return await this.client.query(
+      'UPDATE user_libraries SET entry_data = $1, created_at = NOW() WHERE user_id = $2 AND library_type = $3 AND entry_key = $4 RETURNING *',
+      [JSON.stringify(entryData), userId, type, key]
+    );
+  }
+
+  async deleteLibraryEntry(userId, type, key) {
+    return await this.client.query(
+      'DELETE FROM user_libraries WHERE user_id = $1 AND library_type = $2 AND entry_key = $3 RETURNING *',
+      [userId, type, key]
     );
   }
 

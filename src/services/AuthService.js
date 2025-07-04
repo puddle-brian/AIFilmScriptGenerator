@@ -24,15 +24,59 @@ class AuthService {
     return await bcrypt.compare(password, hashedPassword);
   }
 
+  // Validate user input
+  validateUserInput(userData) {
+    const { username, email, password, emailUpdates = false } = userData;
+    const errors = [];
+
+    // Required fields
+    if (!username || !email || !password) {
+      errors.push('Username, email, and password are required');
+    }
+
+    // Username validation
+    if (username && (username.length < 3 || username.length > 30)) {
+      errors.push('Username must be 3-30 characters long');
+    }
+
+    if (username && !/^[a-zA-Z0-9_-]+$/.test(username)) {
+      errors.push('Username can only contain letters, numbers, underscore, and hyphen');
+    }
+
+    // Password validation
+    if (password && password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+
+    // Email basic validation
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push('Please provide a valid email address');
+    }
+
+    return errors;
+  }
+
   // Create new user
   async createUser(userData) {
-    const { username, email, password } = userData;
+    const { username, email, password, emailUpdates = false } = userData;
+    
+    // Validate input
+    const validationErrors = this.validateUserInput(userData);
+    if (validationErrors.length > 0) {
+      throw new Error(validationErrors.join(', '));
+    }
+    
+    // Check if user already exists
+    const existingUser = await this.db.checkUserExists(username, email);
+    if (existingUser.rows.length > 0) {
+      throw new Error('Username or email already exists');
+    }
     
     // Generate API key
     const apiKey = this.generateApiKey(username);
     
-    // Hash password if provided
-    const passwordHash = password ? await this.hashPassword(password) : null;
+    // Hash password
+    const passwordHash = await this.hashPassword(password);
     
     // Create user with initial credits
     const newUser = await this.db.createUser({
@@ -40,8 +84,17 @@ class AuthService {
       email,
       apiKey,
       passwordHash,
-      credits: 100 // Free starter credits
+      credits: 100, // Free starter credits
+      emailUpdates
     });
+
+    // Log credit grant
+    await this.db.logCreditTransaction(
+      newUser.rows[0].id, 
+      'grant', 
+      100, 
+      'Welcome bonus - 100 free credits'
+    );
 
     return {
       user: newUser.rows[0],
@@ -64,12 +117,16 @@ class AuthService {
     return result.rows[0];
   }
 
-  // Login user with username/password
-  async login(username, password) {
-    const result = await this.db.getUserByUsername(username);
+  // Login user with email/password
+  async login(email, password) {
+    if (!email || !password) {
+      throw new Error('Email and password are required');
+    }
+
+    const result = await this.db.getUserByEmail(email);
     
     if (result.rows.length === 0) {
-      throw new Error('Invalid credentials');
+      throw new Error('Invalid email or password');
     }
 
     const user = result.rows[0];
@@ -81,7 +138,7 @@ class AuthService {
     const isValid = await this.verifyPassword(password, user.password_hash);
     
     if (!isValid) {
-      throw new Error('Invalid credentials');
+      throw new Error('Invalid email or password');
     }
 
     // Update last login
@@ -92,8 +149,9 @@ class AuthService {
         id: user.id,
         username: user.username,
         email: user.email,
-        credits: user.credits,
-        is_admin: user.is_admin
+        credits_remaining: user.credits_remaining,
+        is_admin: user.is_admin,
+        email_verified: user.email_verified
       },
       apiKey: user.api_key
     };
