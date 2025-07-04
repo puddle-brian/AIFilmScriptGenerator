@@ -255,6 +255,37 @@ describe('New Service Integration Tests', () => {
       }).not.toThrow();
     });
   });
+
+  describe('GenerationService', () => {
+    test('should be able to import GenerationService', () => {
+      expect(() => {
+        require('../src/services/GenerationService');
+      }).not.toThrow();
+    });
+
+    test('should be able to create GenerationService instance', () => {
+      const GenerationService = require('../src/services/GenerationService');
+      const mockAnthropic = {};
+      const mockDbService = {};
+      const mockPromptBuilders = {};
+      expect(() => {
+        new GenerationService(mockAnthropic, mockDbService, mockPromptBuilders);
+      }).not.toThrow();
+    });
+
+    test('should have all required generation methods', () => {
+      const GenerationService = require('../src/services/GenerationService');
+      const mockAnthropic = {};
+      const mockDbService = {};
+      const mockPromptBuilders = {};
+      const service = new GenerationService(mockAnthropic, mockDbService, mockPromptBuilders);
+      
+      expect(typeof service.generateStructure).toBe('function');
+      expect(typeof service.generateDialogue).toBe('function');
+      expect(typeof service.saveStructureToDatabase).toBe('function');
+      expect(typeof service.saveDialogueToDatabase).toBe('function');
+    });
+  });
 });
 
 // Export for other tests
