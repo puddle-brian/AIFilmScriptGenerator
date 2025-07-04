@@ -286,6 +286,85 @@ describe('New Service Integration Tests', () => {
       expect(typeof service.saveDialogueToDatabase).toBe('function');
     });
   });
+
+  describe('CreditService', () => {
+    test('should be able to import CreditService', () => {
+      expect(() => {
+        require('../src/services/CreditService');
+      }).not.toThrow();
+    });
+
+    test('should be able to create CreditService instance', () => {
+      const CreditService = require('../src/services/CreditService');
+      const mockDbService = {};
+      expect(() => {
+        new CreditService(mockDbService);
+      }).not.toThrow();
+    });
+
+    test('should have all required credit methods', () => {
+      const CreditService = require('../src/services/CreditService');
+      const mockDbService = {};
+      const service = new CreditService(mockDbService);
+      
+      expect(typeof service.estimateCost).toBe('function');
+      expect(typeof service.checkCredits).toBe('function');
+      expect(typeof service.deductCredits).toBe('function');
+      expect(typeof service.logUsage).toBe('function');
+    });
+  });
+});
+
+// New V2 Endpoints Tests
+describe('V2 Service Endpoints - Proof of Concept', () => {
+  let serverAvailable = false;
+
+  beforeAll(async () => {
+    serverAvailable = await testServerConnection();
+  });
+
+  describe('V2 API Status', () => {
+    test('should respond to service status endpoint', async () => {
+      if (!serverAvailable) {
+        expect(true).toBe(true); // Skip test if server not available
+        return;
+      }
+      
+      const response = await fetch(`${TEST_SERVER_URL}/api/v2/service-status`);
+      expect(response.ok).toBe(true);
+      
+      const data = await response.json();
+      expect(data).toBeDefined();
+      expect(data.refactoringPhase).toBe('Phase 1 - Proof of Concept');
+    });
+  });
+
+  describe('V2 Generation Pipeline', () => {
+    test('should handle v2 dialogue generation requests', async () => {
+      if (!serverAvailable) {
+        expect(true).toBe(true); // Skip test if server not available
+        return;
+      }
+      
+      const response = await fetch(`${TEST_SERVER_URL}/api/v2/generate-dialogue`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          scene: { title: 'Test Scene' },
+          storyInput: { title: 'Test Story' },
+          context: 'Test context'
+        })
+      });
+      
+      // Should not crash, even if it returns error for missing auth or service unavailable
+      expect(response.status).toBeDefined();
+      // Could be 401 (no auth), 402 (no credits), or 503 (service unavailable)
+      const acceptableStatuses = [401, 402, 503];
+      expect(acceptableStatuses.includes(response.status) || response.status === 200).toBe(true);
+    });
+  });
 });
 
 // Export for other tests

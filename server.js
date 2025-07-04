@@ -9212,15 +9212,102 @@ app.get('/api/debug/db-test', async (req, res) => {
   }
 });
 
+// ========================================================
+// 🧪 NEW SERVICE INTEGRATION - PROOF OF CONCEPT
+// ========================================================
+
+// Initialize new services (proof of concept)
+let generationService = null;
+let creditService = null;
+
+async function initializeServices() {
+  try {
+    const GenerationService = require('./src/services/GenerationService');
+    const CreditService = require('./src/services/CreditService');
+    
+    // Load prompt builders from existing system
+    const promptBuilders = require('./prompt-builders');
+    
+    // Initialize services
+    generationService = new GenerationService(trackedAnthropic, dbClient, promptBuilders);
+    creditService = new CreditService(dbClient);
+    
+    console.log('✅ New services initialized successfully');
+  } catch (error) {
+    console.error('⚠️  Failed to initialize new services:', error.message);
+    console.log('📝 Fallback: Using existing endpoints');
+  }
+}
+
+// 🧪 NEW DIALOGUE GENERATION ENDPOINT (Using GenerationService)
+app.post('/api/v2/generate-dialogue', authenticateApiKey, async (req, res) => {
+  try {
+    if (!generationService) {
+      return res.status(503).json({ error: 'New services not available. Use /api/generate-dialogue instead.' });
+    }
+
+    const { scene, storyInput, context, projectPath, model = "claude-sonnet-4-20250514", creativeDirections = null } = req.body;
+    const username = req.user.username;
+    
+    // Check credits using new service
+    const creditCheck = await creditService.checkCredits(username, 3);
+    if (!creditCheck.hasCredits) {
+      return res.status(402).json({ error: creditCheck.message });
+    }
+
+    console.log('🧪 Using NEW GenerationService for dialogue generation');
+    
+    // Generate dialogue using new service
+    const result = await generationService.generateDialogue(
+      scene, storyInput, context, projectPath, username, model, creativeDirections
+    );
+    
+    // Deduct credits using new service
+    await creditService.deductCredits(username, 3, 'generate-dialogue');
+    await creditService.logUsage(username, 'generate-dialogue', 3, true);
+    
+    res.json({
+      ...result,
+      generatedBy: 'GenerationService v2.0',
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error in v2 dialogue generation:', error);
+    
+    if (creditService) {
+      await creditService.logUsage(req.user.username, 'generate-dialogue', 3, false, error.message);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate dialogue',
+      details: error.message,
+      fallback: 'Try /api/generate-dialogue for the original endpoint'
+    });
+  }
+});
+
+// 🧪 SERVICE STATUS ENDPOINT
+app.get('/api/v2/service-status', (req, res) => {
+  res.json({
+    generationService: generationService ? 'available' : 'not available',
+    creditService: creditService ? 'available' : 'not available',
+    timestamp: new Date().toISOString(),
+    refactoringPhase: 'Phase 1 - Proof of Concept'
+  });
+});
+
 // Start server for local development
 const startServer = async () => {
   await ensureDirectories();
   await connectToDatabase();
+  await initializeServices(); // Initialize new services
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
     console.log(`🌐 Access: http://localhost:${PORT}`);
     console.log('📊 Usage tracking and credit system enabled');
     console.log('🔐 API key authentication required for all generation endpoints');
+    console.log('🧪 New services available at /api/v2/* endpoints');
   });
 };
 
