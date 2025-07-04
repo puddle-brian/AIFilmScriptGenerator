@@ -1677,16 +1677,25 @@ class HierarchicalContext {
     
 
     
-    // Use passed scene distribution or try to find it in plot points data
-    const distribution = sceneDistribution || plotPointsData.sceneDistribution || [];
-    const plotPointInfo = distribution[plotPointIndexNum];
+    // 🔧 CRITICAL FIX: Always recalculate scene distribution using fixed logic
+    // Don't rely on stored scene distribution which may be from old buggy calculation
+    console.log(`🔧 [HierarchicalContext] Recalculating scene distribution using fixed logic for plot point ${plotPointIndexNum}`);
     
-    if (!plotPointInfo) {
-      throw new Error('Scene distribution not found. Please regenerate plot points.');
+    // Use same fixed logic as calculateSceneDistribution
+    const totalScenes = projectContext?.storyInput?.totalScenes || 70;
+    const totalActs = projectContext?.generatedStructure ? Object.keys(projectContext.generatedStructure).length : 15;
+    const expectedPlotPoints = totalActs * 3;
+    const sceneCount = Math.max(1, Math.min(3, Math.round(totalScenes / expectedPlotPoints)));
+    
+    console.log(`📊 [HierarchicalContext] Fixed calculation: ${totalScenes} scenes ÷ ${expectedPlotPoints} expected plot points = ${sceneCount} scenes per plot point (capped at 3 max)`);
+    
+    // Get plot point text from plotPointsData (handle both array and object formats)
+    const plotPointsArray = Array.isArray(plotPointsData) ? plotPointsData : (plotPointsData.plotPoints || []);
+    const plotPoint = plotPointsArray[plotPointIndexNum];
+    
+    if (!plotPoint) {
+      throw new Error(`Plot point ${plotPointIndexNum} not found in act ${actKey}`);
     }
-    
-    const sceneCount = plotPointInfo.sceneCount;
-    const plotPoint = plotPointInfo.plotPoint;
     
     // Initialize hierarchical context (no file loading needed - use database context)
     const context = new HierarchicalContext();
@@ -1801,57 +1810,35 @@ Return ONLY valid JSON in this exact format:
       plotPoint: plotPoint,
       scenes: scenesData.scenes,
       sceneCount: scenesData.scenes.length,
-      isKeyPlot: plotPointInfo.isKeyPlot,
+      isKeyPlot: false, // 🔧 Fixed: simplified since we don't use complex key plot logic anymore
       generatedAt: new Date().toISOString(),
       message: `Generated ${scenesData.scenes.length} scenes for plot point: "${plotPoint}"`
     };
   }
 
-  // Calculate intelligent scene distribution across plot points
+  // Simple scene distribution: total scenes ÷ total plot points
   calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalMovieScenes = null, projectContext = null) {
-    const totalPlotPoints = plotPoints.length;
-    const baseScenesPerPlot = Math.floor(totalScenesForAct / totalPlotPoints);
-    const extraScenes = totalScenesForAct % totalPlotPoints;
+    // Get total scenes from calculator (user input)
+    const totalScenes = totalMovieScenes || (projectContext?.storyInput?.totalScenes) || 70;
     
-    // Define key plot point patterns that deserve more scenes
-    const keyPlotPatterns = [
-      'catalyst', 'crisis', 'climax', 'transformation', 'confrontation', 
-      'revelation', 'inciting', 'turning point', 'moment of truth'
-    ];
+    // Count EXPECTED plot points across all acts (not just generated ones)
+    const totalActs = projectContext?.generatedStructure ? Object.keys(projectContext.generatedStructure).length : 15;
+    const avgPlotPointsPerAct = 3; // Reasonable average
+    const totalExpectedPlotPoints = totalActs * avgPlotPointsPerAct;
+    
+    // Simple division: scenes per plot point (capped at 3 max)
+    const scenesPerPlotPoint = Math.max(1, Math.min(3, Math.round(totalScenes / totalExpectedPlotPoints)));
+    
+    console.log(`🎬 Simple scene distribution: ${totalScenes} scenes ÷ ${totalExpectedPlotPoints} expected plot points = ${scenesPerPlotPoint} scenes per plot point (capped at 3 max)`);
     
     const sceneDistribution = plotPoints.map((plotPoint, index) => {
-      const plotText = plotPoint.toLowerCase();
-      const actName = actKey.toLowerCase();
-      
-      // Determine if this is a key plot point deserving extra scenes
-      const isKeyPlot = keyPlotPatterns.some(pattern => 
-        plotText.includes(pattern) || actName.includes(pattern)
-      ) || index === 0 || index === plotPoints.length - 1; // First and last are usually key
-      
-      // Distribute extra scenes to key plot points first
-      const extraSceneBonus = isKeyPlot && index < extraScenes ? 1 : 
-                             !isKeyPlot && (index >= totalPlotPoints - extraScenes) ? 1 : 0;
-      
-      const sceneCount = Math.max(1, baseScenesPerPlot + extraSceneBonus); // Minimum 1 scene per plot point
-      
       return {
         plotPoint,
-        sceneCount,
-        isKeyPlot,
+        sceneCount: scenesPerPlotPoint,
+        isKeyPlot: false, // Keep it simple
         plotPointIndex: index
       };
     });
-    
-    // Verify total scenes match target
-    const totalDistributed = sceneDistribution.reduce((sum, dist) => sum + dist.sceneCount, 0);
-    
-    // Adjust if there's a mismatch (shouldn't happen, but safety check)
-    if (totalDistributed !== totalScenesForAct) {
-      console.log(`Scene distribution mismatch: ${totalDistributed} distributed vs ${totalScenesForAct} target`);
-      // Add remaining scenes to the last plot point
-      const difference = totalScenesForAct - totalDistributed;
-      sceneDistribution[sceneDistribution.length - 1].sceneCount += difference;
-    }
     
     return sceneDistribution;
   }
@@ -3614,23 +3601,21 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
       return res.status(400).json({ error: 'Invalid plot point index' });
     }
     
-    // Handle scene distribution - only available in object format
-    const sceneDistribution = (plotPointsData.sceneDistribution) ? plotPointsData.sceneDistribution : [];
-    const plotPointInfo = sceneDistribution[plotPointIndexNum];
+    // 🔧 CRITICAL FIX: Always recalculate scene distribution using fixed logic
+    // Don't rely on stored scene distribution which may be from old buggy calculation
+    console.log(`🔧 Recalculating scene distribution using fixed logic for plot point ${plotPointIndexNum}`);
     
-    // If no scene distribution, create a simple 1:1 mapping
-    let sceneCount, plotPoint;
-    if (!plotPointInfo) {
-      console.log(`No scene distribution found for plot point ${plotPointIndexNum}, using fallback`);
-      sceneCount = 2; // Default 2 scenes per plot point
-      plotPoint = plotPointsArray[plotPointIndexNum];
-      
-      if (!plotPoint) {
-        return res.status(400).json({ error: `Plot point ${plotPointIndexNum} not found in act ${actKey}` });
-      }
-    } else {
-      sceneCount = plotPointInfo.sceneCount;
-      plotPoint = plotPointInfo.plotPoint;
+    // Use same logic as calculateSceneDistribution for consistency
+    const totalScenes = projectContext?.storyInput?.totalScenes || 70;
+    const totalActs = projectContext?.generatedStructure ? Object.keys(projectContext.generatedStructure).length : 15;
+    const expectedPlotPoints = totalActs * 3;
+    const sceneCount = Math.max(1, Math.min(3, Math.round(totalScenes / expectedPlotPoints)));
+    
+    console.log(`📊 Fixed calculation: ${totalScenes} scenes ÷ ${expectedPlotPoints} expected plot points = ${sceneCount} scenes per plot point (capped at 3 max)`);
+    
+    const plotPoint = plotPointsArray[plotPointIndexNum];
+    if (!plotPoint) {
+      return res.status(400).json({ error: `Plot point ${plotPointIndexNum} not found in act ${actKey}` });
     }
     
     console.log(`Generating ${sceneCount} scenes for plot point ${plotPointIndexNum + 1}: "${plotPoint}"`);
@@ -3763,7 +3748,7 @@ Return ONLY valid JSON in this exact format:
       plotPoint: plotPoint,
       sceneCount: sceneCount,
       scenes: scenesData.scenes,
-      isKeyPlot: plotPointInfo?.isKeyPlot || false,
+      isKeyPlot: false, // 🔧 Fixed: simplified since we don't use complex key plot logic anymore
       generatedAt: new Date().toISOString()
     };
     
