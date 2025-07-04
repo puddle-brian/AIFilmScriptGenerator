@@ -40,6 +40,9 @@ const appState = {
     autoSaveEnabled: true
 };
 
+// Make appState available globally for other components
+window.appState = appState;
+
 // Authentication Management
 const authManager = {
     init() {
@@ -3068,6 +3071,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     initializeGlobalModelSelector();
     loadTemplates();
     setupUniversalLibraryKeyboardSupport();
+    setupLibraryChangeListener();
 });
 
 // Initialize application
@@ -3450,6 +3454,103 @@ function setupEventListeners() {
             }
         }
     });
+}
+
+// Setup library change listener for ADD NEW modal integration
+function setupLibraryChangeListener() {
+    // Listen for library changes from +ADD NEW modals
+    window.addEventListener('libraryChange', function(event) {
+        const { type, entryData } = event.detail;
+        
+        console.log('📚 Library change event received:', { type, entryData });
+        
+        // Map library manager singular types to appState plural types
+        const typeMap = {
+            'director': 'directors',
+            'screenwriter': 'screenwriters', 
+            'film': 'films',
+            'tone': 'tones',
+            'character': 'characters',
+            'storyconcept': 'storyconcepts'
+        };
+        
+        const pluralType = typeMap[type];
+        if (!pluralType) {
+            console.warn('Unknown library type:', type);
+            return;
+        }
+        
+        // Add to influences for types that use blue tags (characters DO get blue tags)
+        if (['directors', 'screenwriters', 'films', 'tones', 'characters'].includes(pluralType)) {
+            console.log(`✅ ${type} "${entryData.name}" will be added to project influences (blue tags)`);
+            
+            // Initialize influences if not present
+            if (!appState.influences) {
+                appState.influences = { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
+            }
+            
+            if (!appState.influences[pluralType]) {
+                appState.influences[pluralType] = [];
+            }
+            
+            // Add to current project influences if not already present
+            if (!appState.influences[pluralType].includes(entryData.name)) {
+                appState.influences[pluralType].push(entryData.name);
+                console.log(`✅ Added ${type} "${entryData.name}" to current project influences`);
+                
+                // Update the UI to show the blue tag
+                updateInfluenceTags(type);
+                
+                // Update storyInput influences
+                if (appState.storyInput) {
+                    appState.storyInput.influences = appState.influences;
+                }
+                
+                // Auto-save the changes
+                saveToLocalStorage();
+                
+                // Show success message
+                if (window.showToast) {
+                    window.showToast(`"${entryData.name}" added to project influences and saved to library!`, 'success');
+                }
+            } else {
+                console.log(`${type} "${entryData.name}" already in project influences`);
+            }
+        } else {
+            console.log(`ℹ️ ${type} "${entryData.name}" saved to library but NOT added to project influences`);
+            
+            // Handle story concepts - set as current story concept
+            if (type === 'storyconcept') {
+                console.log('✅ Setting as current story concept in Step 1');
+                
+                // Set the current story concept
+                appState.currentStoryConcept = {
+                    title: entryData.name,
+                    logline: entryData.description || `Story concept: ${entryData.name}`
+                };
+                
+                // Update the story concept display
+                if (typeof updateStoryConceptDisplay === 'function') {
+                    updateStoryConceptDisplay();
+                }
+                
+                // Update storyInput if it exists
+                if (appState.storyInput) {
+                    appState.storyInput.storyConcept = appState.currentStoryConcept;
+                }
+                
+                // Auto-save the changes
+                saveToLocalStorage();
+                
+                // Show success message
+                if (window.showToast) {
+                    window.showToast(`"${entryData.name}" set as current story concept and saved to library!`, 'success');
+                }
+            }
+        }
+    });
+    
+    console.log('✅ Library change listener set up');
 }
 
 // Handle story form submission

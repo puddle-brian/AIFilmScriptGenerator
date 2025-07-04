@@ -6647,22 +6647,31 @@ h3 .creative-direction-controls .btn:hover {
 }
 
 /* Enhanced modal footer for Genie button positioning */
-.universal-library-modal .modal-footer {
+.universal-library-modal .modal-footer,
+.library-modal .modal-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 15px 20px;
     border-top: 1px solid #dee2e6;
+    width: 100%;
 }
 
 .modal-footer-left {
     display: flex;
+    align-items: center;
     gap: 0;
+    flex: 1;
+    justify-content: flex-start;
+    margin-right: 20px; /* Add spacing between genie button and right side buttons */
 }
 
 .modal-footer-right {
     display: flex;
+    align-items: center;
     gap: 10px;
+    flex: 0 0 auto;
+    justify-content: flex-end;
 }
 
 /* Responsive adjustments for Genie system */

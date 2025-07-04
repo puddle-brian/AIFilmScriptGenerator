@@ -301,20 +301,23 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
      */
     displaySuggestion(suggestion, suggestionType) {
         const config = this.suggestionTypes[suggestionType];
-        const modal = document.getElementById('universalLibrarySaveModal');
+        const modal = document.getElementById('universalLibrarySaveModal') || document.getElementById('libraryModal');
         if (!modal) return;
 
-        // Update form fields with suggestion
+        // Update form fields with suggestion - handle both modal systems
         if (config.isComplex) {
             // For character/story concept - fill both name and description
-            const nameField = document.getElementById('universalLibraryEntryName');
-            const descField = document.getElementById('universalLibraryEntryDescription');
+            const nameField = document.getElementById('universalLibraryEntryName') || 
+                             document.getElementById('libraryEntryName');
+            const descField = document.getElementById('universalLibraryEntryDescription') || 
+                             document.getElementById('libraryEntryDescription');
             
             if (nameField) nameField.value = suggestion.name || suggestion.title || '';
             if (descField) descField.value = suggestion.description || suggestion.logline || '';
         } else {
             // For simple types - fill name field
-            const nameField = document.getElementById('universalLibraryEntryName');
+            const nameField = document.getElementById('universalLibraryEntryName') || 
+                             document.getElementById('libraryEntryName');
             if (nameField) nameField.value = suggestion.content || '';
         }
 
@@ -327,8 +330,6 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
         // Highlight the fields briefly
         this.highlightFields();
     }
-
-
 
     /**
      * Update loading state
@@ -361,8 +362,10 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
      * Check if modal has existing content
      */
     checkForExistingContent() {
-        const nameField = document.getElementById('universalLibraryEntryName');
-        const descField = document.getElementById('universalLibraryEntryDescription');
+        const nameField = document.getElementById('universalLibraryEntryName') || 
+                         document.getElementById('libraryEntryName');
+        const descField = document.getElementById('universalLibraryEntryDescription') || 
+                         document.getElementById('libraryEntryDescription');
         
         const hasName = nameField && nameField.value.trim().length > 0;
         const hasDesc = descField && descField.value.trim().length > 0;
@@ -374,7 +377,7 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
      * Highlight form fields briefly
      */
     highlightFields() {
-        const fields = document.querySelectorAll('#universalLibraryEntryName, #universalLibraryEntryDescription');
+        const fields = document.querySelectorAll('#universalLibraryEntryName, #universalLibraryEntryDescription, #libraryEntryName, #libraryEntryDescription');
         fields.forEach(field => {
             field.classList.add('genie-highlight');
             setTimeout(() => {
@@ -387,8 +390,17 @@ Be creative and consider what would add depth, contrast, or enhancement to the e
 // Global instance
 const genieSuggestions = new GenieSuggestions();
 
+// Export for global use
+window.genieSuggestions = genieSuggestions;
+
 // Auto-inject Genie button when modals are shown
 function initializeGenieSystem() {
+    // DISABLED: Genie suggestions now handled directly by modal system
+    // This function is kept for backward compatibility but is no longer active
+    console.log('Genie suggestions system integrated directly into modal system');
+    
+    // Old code disabled:
+    /*
     // Check if the function exists
     if (typeof window.showUniversalLibrarySaveModal === 'function') {
         // Store the original function
@@ -408,6 +420,7 @@ function initializeGenieSystem() {
         // Retry if function not found yet
         setTimeout(initializeGenieSystem, 1000);
     }
+    */
 }
 
 // Initialize when DOM is ready

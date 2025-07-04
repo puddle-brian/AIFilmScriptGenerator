@@ -405,10 +405,13 @@ class LibraryManager {
             </form>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" onclick="window.libraryManager.hideLibraryModal()">Cancel</button>
-            <button class="btn btn-primary" onclick="window.libraryManager.saveLibraryEntryFromModal('${type}', ${isNew})">
-              ${isNew ? 'Add to Library' : isEdit ? 'Update' : 'Save to Library'}
-            </button>
+            <div class="modal-footer-left"></div>
+            <div class="modal-footer-right">
+              <button class="btn btn-secondary" onclick="window.libraryManager.hideLibraryModal()">Cancel</button>
+              <button class="btn btn-primary" onclick="window.libraryManager.saveLibraryEntryFromModal('${type}', ${isNew})">
+                ${isNew ? 'Add to Library' : isEdit ? 'Update' : 'Save to Library'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -480,7 +483,71 @@ class LibraryManager {
           descInput.addEventListener('keypress', handleEnterKey);
         }
       }
+      
+      // Initialize genie suggestions for this modal
+      this.initializeGenieSuggestions(type);
     }, 100);
+  }
+  
+  /**
+   * Initialize genie suggestions for the library modal
+   */
+  initializeGenieSuggestions(suggestionType) {
+    console.log('🧞 LibraryManager: Initializing genie suggestions for', suggestionType);
+    
+    // Check if genie suggestions system is available
+    if (typeof window.genieSuggestions === 'undefined') {
+      console.warn('🚨 LibraryManager: Genie suggestions system not available');
+      return;
+    }
+
+    const modalFooterLeft = document.querySelector('#libraryModal .modal-footer-left');
+    if (!modalFooterLeft) {
+      console.warn('🚨 LibraryManager: Modal footer left container not found');
+      return;
+    }
+
+    console.log('✅ LibraryManager: Modal footer left container found');
+
+    // Create genie button and icon
+    const genieIcon = document.createElement('img');
+    genieIcon.src = 'askthegenie_black.png';
+    genieIcon.className = 'genie-icon-button';
+    genieIcon.alt = 'Ask the Genie';
+
+    const genieButton = document.createElement('button');
+    genieButton.type = 'button';
+    genieButton.className = 'btn btn-genie';
+    genieButton.id = 'genieSuggestBtn';
+    
+    // Check if modal has existing content to determine button text
+    const hasExistingContent = this.checkForExistingContent();
+    genieButton.innerHTML = hasExistingContent ? 'Replace' : 'Genie Suggests';
+    genieButton.onclick = () => {
+      console.log('🧞 LibraryManager: Genie button clicked!');
+      if (window.genieSuggestions && window.genieSuggestions.generateSuggestion) {
+        window.genieSuggestions.generateSuggestion(suggestionType);
+      }
+    };
+
+    // Add both to left container
+    modalFooterLeft.appendChild(genieIcon);
+    modalFooterLeft.appendChild(genieButton);
+    
+    console.log('✅ LibraryManager: Genie button and icon added to modal');
+  }
+
+  /**
+   * Check if modal has existing content (for genie suggestions)
+   */
+  checkForExistingContent() {
+    const nameField = document.getElementById('libraryEntryName');
+    const descField = document.getElementById('libraryEntryDescription');
+    
+    const hasName = nameField && nameField.value.trim().length > 0;
+    const hasDesc = descField && descField.value.trim().length > 0;
+    
+    return hasName || hasDesc;
   }
   
   /**
