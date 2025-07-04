@@ -3054,6 +3054,69 @@ function diagnoseStructureGeneration() {
     console.log('=====================================');
 }
 
+// 🔍 RECOVERY FUNCTION: Restore missing structure from database
+async function restoreMissingStructure() {
+    console.log('🔄 Attempting to restore missing structure from database...');
+    
+    if (!appState.projectPath) {
+        console.log('❌ No project path - cannot restore structure');
+        return false;
+    }
+    
+    try {
+        // Try to load the full project data
+        const response = await fetch(`/api/projects/${appState.projectPath}`, {
+            headers: {
+                'X-API-Key': appState.apiKey
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to load project: ${response.statusText}`);
+        }
+        
+        const projectData = await response.json();
+        console.log('🔄 Loaded project data:', projectData);
+        
+        // Check if project has structure data
+        if (projectData.structure && Object.keys(projectData.structure).length > 0) {
+            console.log('✅ Found structure in project data - restoring...');
+            
+            // Restore the structure to app state
+            appState.generatedStructure = projectData.structure;
+            appState.lastUsedPrompt = projectData.prompt || null;
+            appState.lastUsedSystemMessage = projectData.systemMessage || null;
+            
+            // Also ensure template data is preserved
+            if (projectData.templateData) {
+                appState.templateData = projectData.templateData;
+            }
+            
+            console.log('✅ Structure restored to app state');
+            
+            // Now display the restored structure
+            displayStructure(projectData.structure, projectData.prompt, projectData.systemMessage);
+            
+            // Update UI elements
+            updateActsGenerationButton();
+            updateUniversalNavigation();
+            updateGlobalDirectionIndicators();
+            
+            showToast('Structure restored successfully!', 'success');
+            
+            return true;
+        } else {
+            console.log('❌ No structure found in project data');
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Error restoring structure:', error);
+        showToast('Failed to restore structure: ' + error.message, 'error');
+        return false;
+    }
+}
+
 // 🔍 QUICK TEST: Test structure display with sample data
 function testStructureDisplay() {
     console.log('🔍 Testing structure display with sample data...');
