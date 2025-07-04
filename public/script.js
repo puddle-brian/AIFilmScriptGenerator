@@ -3375,10 +3375,10 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
     
     chronologicalKeys.forEach((key, index) => {
         const element = structure[key];
-        if (typeof element === 'object' && element.name) {
+        if (typeof element === 'object' && (element.name || element.title)) {
             const actContent = JSON.stringify(element);
             const actProgress = `${index + 1}/${totalActs}`;
-            const actTitle = element.name || key.replace(/_/g, ' ').toUpperCase();
+            const actTitle = element.name || element.title || key.replace(/_/g, ' ').toUpperCase();
             
             console.log(`🔧 displayStructure: Creating act ${actProgress} - ${actTitle} (${key})`);
             
