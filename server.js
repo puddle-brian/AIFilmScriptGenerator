@@ -4326,158 +4326,71 @@ Return ONLY valid JSON in this exact format:
   }
 });
 
-// Generate plot points for all scenes with causal connections
+// 🆕 MIGRATED: Generate plot points using GenerationService (Phase 2A)
 app.post('/api/generate-plot-points/:projectPath', authenticateApiKey, async (req, res) => {
   try {
+    // Check if new services are available
+    if (!generationService || !creditService) {
+      return res.status(503).json({ 
+        error: 'Services temporarily unavailable. Please try again later.',
+        fallback: 'Server restarting...'
+      });
+    }
+
     const { projectPath } = req.params;
     const { model = "claude-sonnet-4-20250514" } = req.body;
+    const username = req.user.username;
     
-    // Load project data from database
-    const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    console.log(`🆕 Using GenerationService for plot points: ${projectPath}`);
     
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+    // Check credits using new CreditService
+    const creditCheck = await creditService.checkCredits(username, 5);
+    if (!creditCheck.hasCredits) {
+      return res.status(402).json({ error: creditCheck.message });
     }
-    
-    const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
+
+    // Load project data from database using DatabaseService
+    const projectContext = await databaseService.loadProject(username, projectPath);
+    if (!projectContext) {
+      return res.status(404).json({ error: 'Project not found' });
+    }
+
+    // Generate plot points using new GenerationService
+    const result = await generationService.generatePlotPoints(
+      projectContext.generatedScenes, 
+      projectContext.storyInput, 
+      projectContext.generatedStructure, 
+      projectPath, 
+      username, 
+      model
     );
     
-    if (projectResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Project not found in database' });
-    }
+    // Deduct credits using new CreditService
+    await creditService.deductCredits(username, 5, 'generate-plot-points');
+    await creditService.logUsage(username, 'generate-plot-points', 5, true);
     
-    const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-    const structure = projectContext.generatedStructure;
-    const storyInput = projectContext.storyInput;
+    console.log('✅ Plot points generation completed using GenerationService');
     
-    // Load existing scenes from database
-    const rawScenesData = projectContext.generatedScenes || {};
-    console.log('Loaded scenes data structure:', Object.keys(rawScenesData));
-    console.log('Sample scenes data:', JSON.stringify(rawScenesData, null, 2).substring(0, 500));
-    
-    // Extract the actual scenes data (handle nested structure)
-    const scenesData = rawScenesData.scenes || rawScenesData;
-    
-    // Create a comprehensive context for plot point generation
-    const allScenes = [];
-    const sceneStructureMap = [];
-    
-    Object.entries(scenesData).forEach(([structureKey, sceneGroup]) => {
-      // Handle both formats: direct array or nested object with scenes property
-      let scenes = Array.isArray(sceneGroup) ? sceneGroup : sceneGroup.scenes;
-      
-      if (scenes && Array.isArray(scenes)) {
-        scenes.forEach((scene, index) => {
-          allScenes.push({
-            title: scene.title || scene.name || 'Untitled Scene',
-            description: scene.description || '',
-            location: scene.location || '',
-            structureElement: structure[structureKey]?.name || structureKey
-          });
-          sceneStructureMap.push({ structureKey, sceneIndex: index });
-        });
-      }
-    });
-    
-    const prompt = `You are a master screenwriter creating plot points that connect scenes with clear causal relationships.
-
-STORY CONTEXT:
-Title: ${storyInput.title}
-Logline: ${storyInput.logline}
-Characters: ${storyInput.characters}
-Genre: ${storyInput.genre || storyInput.tone}
-Tone: ${storyInput.tone}
-
-SCENES TO CONNECT:
-${allScenes.map((scene, index) => `
-Scene ${index + 1} (${scene.structureElement}): ${scene.title}
-- Description: ${scene.description}
-- Location: ${scene.location}
-`).join('')}
-
-TASK: Generate a plot point for each scene that creates clear causal connections between scenes using "BUT" and "THEREFORE" logic (avoid weak "and then" sequencing). Each plot point should:
-
-1. Be a single, clear sentence that captures the scene's key story beat
-2. Connect causally to the previous scene (using "BUT" for conflict or "THEREFORE" for consequence - avoid "and then")
-3. Set up the next scene logically
-4. Maintain narrative momentum and character development
-5. Be specific to the scene's content and purpose
-
-Return ONLY a JSON object with this structure:
-{
-  "plotPoints": [
-    "Scene 1 plot point that establishes the initial situation",
-    "But Scene 2 plot point that introduces conflict or complication from Scene 1",
-    "Therefore Scene 3 plot point that shows the consequence or progress from Scene 2",
-    // ... continue for all ${allScenes.length} scenes
-  ]
-}
-
-Focus on creating a strong narrative spine where each scene leads logically to the next through conflict and consequence.`;
-
-    console.log('Sending plot points request to Claude API...');
-    console.log('Number of scenes found:', allScenes.length);
-    console.log('First few scenes:', allScenes.slice(0, 3));
-    console.log('Prompt being sent (first 1000 chars):', prompt.substring(0, 1000));
-    
-    const response = await anthropic.messages.create({
-      model: model,
-      max_tokens: 4000,
-      messages: [{ role: 'user', content: prompt }]
-    });
-
-    console.log('Received plot points response from Claude API');
-    const rawResponse = response.content[0].text;
-    console.log('Raw AI response:', rawResponse.substring(0, 500) + '...');
-    
-    let plotPointsData;
-    try {
-      // Try to extract JSON from the response
-      let jsonString = rawResponse;
-      
-      // Look for JSON object in the response
-      const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonString = jsonMatch[0];
-      }
-      
-      plotPointsData = JSON.parse(jsonString);
-    } catch (parseError) {
-      console.error('Failed to parse plot points response:', parseError);
-      console.error('Raw response was:', rawResponse);
-      throw new Error('Invalid response format from AI');
-    }
-    
-    if (!plotPointsData.plotPoints || !Array.isArray(plotPointsData.plotPoints)) {
-      throw new Error('Invalid plot points structure received');
-    }
-    
-    // Map plot points back to their structural elements
-    const plotPointsByStructure = {};
-    plotPointsData.plotPoints.forEach((plotPoint, index) => {
-      const mapping = sceneStructureMap[index];
-      if (mapping) {
-        if (!plotPointsByStructure[mapping.structureKey]) {
-          plotPointsByStructure[mapping.structureKey] = [];
-        }
-        plotPointsByStructure[mapping.structureKey][mapping.sceneIndex] = plotPoint;
-      }
-    });
-    
-    console.log('Plot points generated successfully');
     res.json({
-      success: true,
-      message: `Generated ${plotPointsData.plotPoints.length} connected plot points`,
-      plotPoints: plotPointsByStructure
+      ...result,
+      migratedEndpoint: true,
+      generatedBy: 'GenerationService v2.0',
+      codeReduction: '120+ lines -> 35 lines'
     });
-    
+
   } catch (error) {
-    console.error('Error generating plot points:', error);
-    res.status(500).json({ error: error.message || 'Failed to generate plot points' });
+    console.error('Error in migrated plot points generation:', error);
+    
+    // Log error with CreditService if available
+    if (creditService) {
+      await creditService.logUsage(req.user.username, 'generate-plot-points', 5, false, error.message);
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate plot points',
+      details: error.message,
+      migratedEndpoint: true
+    });
   }
 });
 
