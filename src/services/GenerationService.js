@@ -63,9 +63,19 @@ class GenerationService {
         throw new Error('Invalid response format from AI');
       }
 
-      // Save to database if project path provided
+      // Create project path if none exists and we have a username (authenticated user)
+      if (username && !projectPath) {
+        // Generate a unique project path for this structure
+        const timestamp = Date.now();
+        const sanitizedTitle = storyInput.title.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        projectPath = `${username}-${timestamp}-${sanitizedTitle}`;
+        this.logger.log(`📁 Created new project path: ${projectPath}`);
+      }
+
+      // Save to database if we have a project path and username
       if (projectPath && username) {
         await this.saveStructureToDatabase(structureData, storyInput, templateData, projectPath, username);
+        this.logger.log(`💾 Saved structure to database: ${projectPath}`);
       }
 
       this.logger.log('✅ Structure generation completed');
@@ -73,7 +83,9 @@ class GenerationService {
         success: true,
         structure: structureData,
         template: templateData,
-        storyInput: storyInput
+        storyInput: storyInput,
+        projectPath: projectPath,  // Include project path in response
+        projectId: projectPath     // Also include as projectId for compatibility
       };
 
     } catch (error) {

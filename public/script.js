@@ -2496,9 +2496,28 @@ function handleStorySubmission() {
         storyConcept: appState.currentStoryConcept // Store the full story concept
     };
     
+    // Generate project path immediately if not exists (same logic as autogenerate)
+    if (!appState.projectPath) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+        const titleSlug = title.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 30);
+        appState.projectPath = `${titleSlug}_${timestamp}`;
+        appState.projectId = null; // Will be set when saved to database
+        console.log('📁 Created project path for manual story submission:', appState.projectPath);
+        
+        // Show project header immediately
+        showProjectHeader({
+            title: title,
+            logline: logline || appState.storyInput.logline || ''
+        });
+    }
+    
     // Mark for auto-save (project gets created here)
-    // Temporarily disabled until auto-save is fully stabilized
-    // autoSaveManager.markDirty();
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+        console.log('📁 Project creation triggered via auto-save manager');
+    } else {
+        console.warn('⚠️ Auto-save manager not available, project may not be created');
+    }
     
     saveToLocalStorage();
     
@@ -3665,15 +3684,24 @@ function resetPlotPointsToDefault() {
         const storyAct = appState.generatedStructure[key];
         const dropdown = document.getElementById(`plotPointsCount-${key}`);
         
-        if (dropdown && storyAct.plotPoints) {
-            // Get original template value (preserved in generated structure)
-            const originalValue = storyAct.plotPoints;
+        if (dropdown) {
+            // Get original template value - prioritize template data over generated structure
+            let originalValue = 4; // Default fallback
+            
+            // 1. First try template data (most reliable)
+            if (appState.templateData?.structure?.[key]?.plotPoints) {
+                originalValue = appState.templateData.structure[key].plotPoints;
+            }
+            // 2. Fallback to generated structure
+            else if (storyAct.plotPoints) {
+                originalValue = storyAct.plotPoints;
+            }
             
             // Ensure dropdown has the option
             ensureDropdownHasOption(dropdown, originalValue);
             dropdown.value = originalValue;
             
-            console.log(`🔄 Reset ${key} to original: ${originalValue} plot points`);
+            console.log(`🔄 Reset ${key} to template default: ${originalValue} plot points`);
         }
     });
     
@@ -3799,6 +3827,13 @@ async function displayPlotPointsGeneration() {
     // First, try to load existing plot points from the project
     await loadExistingPlotPoints();
     
+    // 🔧 CRITICAL FIX: Clear stale cached plot points values to use fresh template values
+    // Only clear if we haven't manually set any values yet
+    if (!appState.manuallySetPlotPoints || Object.keys(appState.manuallySetPlotPoints).length === 0) {
+        console.log('📊 Clearing stale cached plot points to use fresh template values');
+        appState.currentActPlotPoints = {};
+    }
+    
     // Display each story act with plot points generation in chronological order
     const structureKeys = Object.keys(appState.generatedStructure);
     const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
@@ -3822,12 +3857,17 @@ async function displayPlotPointsGeneration() {
             recommendedPlotPoints = appState.currentActPlotPoints[structureKey];
             console.log(`📊 ✅ Using saved current value: ${recommendedPlotPoints} for ${structureKey}`);
         }
-        // 2. SECOND: Try to get plot points directly from the generated structure (preserved from template)
+        // 2. SECOND: Try to get plot points directly from the template data (main source)
+        else if (appState.templateData?.structure?.[structureKey]?.plotPoints) {
+            recommendedPlotPoints = appState.templateData.structure[structureKey].plotPoints;
+            console.log(`📊 ✅ Using template plotPoints: ${recommendedPlotPoints} for ${structureKey}`);
+        }
+        // 3. THIRD: Try to get plot points from the generated structure (preserved from template)
         else if (storyAct.plotPoints) {
             recommendedPlotPoints = storyAct.plotPoints;
             console.log(`📊 ⚠️  Using preserved plot points from generated structure: ${recommendedPlotPoints} for ${structureKey}`);
         }
-        // 3. THIRD: Fallback to template distribution data
+        // 4. FOURTH: Fallback to template distribution data
         else {
             const templateDistribution = appState.templateData?.structure?.[structureKey]?.distribution;
             const totalPlotPoints = appState.totalPlotPoints || appState.templateData?.total_plot_points || 40;
@@ -3942,7 +3982,10 @@ async function displayPlotPointsGeneration() {
     container.innerHTML = html;
     
     // 🔧 CRITICAL FIX: Sync dropdown values to appState.currentActPlotPoints for persistence
-    syncDropdownValuesToState();
+    // But only sync the values that were correctly set from template, not override them
+    setTimeout(() => {
+        syncDropdownValuesToState();
+    }, 100); // Small delay to ensure DOM is fully rendered
     
     // Display any existing plot points that were loaded
     if (appState.plotPoints) {
