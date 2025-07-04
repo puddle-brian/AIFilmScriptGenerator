@@ -3223,12 +3223,12 @@ async function generateStructure() {
             // 🔍 DEBUG: Log the response data
             console.log('🔍 Generate structure response data:', data);
             
-            appState.generatedStructure = data.generatedStructure;
-            appState.templateData = data.templateData;
-            appState.projectId = data.projectId;
-            appState.projectPath = data.projectPath;
-            appState.lastUsedPrompt = data.prompt;
-            appState.lastUsedSystemMessage = data.systemMessage;
+            appState.generatedStructure = data.structure;
+            appState.templateData = data.template || appState.templateData; // Keep existing if not in response
+            appState.projectId = data.projectId || appState.projectId; // Keep existing if not in response
+            appState.projectPath = data.projectPath || appState.projectPath; // Keep existing if not in response
+            appState.lastUsedPrompt = data.prompt || null;
+            appState.lastUsedSystemMessage = data.systemMessage || null;
             
             // 🔍 DEBUG: Log the updated app state
             console.log('🔍 Updated app state after structure generation:', {
@@ -3248,12 +3248,12 @@ async function generateStructure() {
             
             // 🔍 DEBUG: About to call displayStructure
             console.log('🔍 About to call displayStructure with:', {
-                structure: data.generatedStructure,
+                structure: data.structure,
                 prompt: data.prompt,
                 systemMessage: data.systemMessage
             });
             
-            displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
+            displayStructure(data.structure, data.prompt, data.systemMessage);
             updateActsGenerationButton(); // Update button to show "Regenerate Acts"
                     updateUniversalNavigation(); // Update navigation after structure generation
         updateGlobalDirectionIndicators(); // Update global direction UI indicators
