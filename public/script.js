@@ -3012,135 +3012,7 @@ function updateAllGenerationButtons() {
     updateGenerateAllDialogueButton();
 }
 
-// 🔍 DIAGNOSTIC FUNCTION: Check structure generation flow
-function diagnoseStructureGeneration() {
-    console.log('🔍 DIAGNOSTIC: Structure Generation Flow');
-    console.log('=====================================');
-    
-    // 1. Check if we have the required data
-    console.log('1. Prerequisites:');
-    console.log('   - selectedTemplate:', appState.selectedTemplate);
-    console.log('   - storyInput:', appState.storyInput);
-    console.log('   - isAuthenticated:', appState.isAuthenticated);
-    
-    // 2. Check if container exists
-    const container = document.getElementById('structureContent');
-    console.log('2. Container check:');
-    console.log('   - structureContent exists:', !!container);
-    console.log('   - container innerHTML length:', container?.innerHTML?.length || 0);
-    
-    // 3. Check current app state
-    console.log('3. Current app state:');
-    console.log('   - generatedStructure:', appState.generatedStructure);
-    console.log('   - templateData:', appState.templateData);
-    console.log('   - projectPath:', appState.projectPath);
-    
-    // 4. Check if structure was generated but display failed
-    if (appState.generatedStructure && container) {
-        console.log('4. Structure data analysis:');
-        console.log('   - Structure keys:', Object.keys(appState.generatedStructure));
-        console.log('   - Structure sample:', appState.generatedStructure);
-        
-        // Try to display structure manually
-        console.log('   - Attempting manual display...');
-        try {
-            displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
-            console.log('   - ✅ Manual display successful');
-        } catch (error) {
-            console.log('   - ❌ Manual display failed:', error);
-        }
-    }
-    
-    console.log('=====================================');
-}
 
-// 🔍 RECOVERY FUNCTION: Restore missing structure from database
-async function restoreMissingStructure() {
-    console.log('🔄 Attempting to restore missing structure from database...');
-    
-    if (!appState.projectPath) {
-        console.log('❌ No project path - cannot restore structure');
-        return false;
-    }
-    
-    try {
-        // Try to load the full project data
-        const response = await fetch(`/api/projects/${appState.projectPath}`, {
-            headers: {
-                'X-API-Key': appState.apiKey
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Failed to load project: ${response.statusText}`);
-        }
-        
-        const projectData = await response.json();
-        console.log('🔄 Loaded project data:', projectData);
-        
-        // Check if project has structure data
-        if (projectData.structure && Object.keys(projectData.structure).length > 0) {
-            console.log('✅ Found structure in project data - restoring...');
-            
-            // Restore the structure to app state
-            appState.generatedStructure = projectData.structure;
-            appState.lastUsedPrompt = projectData.prompt || null;
-            appState.lastUsedSystemMessage = projectData.systemMessage || null;
-            
-            // Also ensure template data is preserved
-            if (projectData.templateData) {
-                appState.templateData = projectData.templateData;
-            }
-            
-            console.log('✅ Structure restored to app state');
-            
-            // Now display the restored structure
-            displayStructure(projectData.structure, projectData.prompt, projectData.systemMessage);
-            
-            // Update UI elements
-            updateActsGenerationButton();
-            updateUniversalNavigation();
-            updateGlobalDirectionIndicators();
-            
-            showToast('Structure restored successfully!', 'success');
-            
-            return true;
-        } else {
-            console.log('❌ No structure found in project data');
-            return false;
-        }
-        
-    } catch (error) {
-        console.error('❌ Error restoring structure:', error);
-        showToast('Failed to restore structure: ' + error.message, 'error');
-        return false;
-    }
-}
-
-// 🔍 QUICK TEST: Test structure display with sample data
-function testStructureDisplay() {
-    console.log('🔍 Testing structure display with sample data...');
-    
-    const sampleStructure = {
-        setup: {
-            name: "Setup",
-            description: "Establish the world and characters",
-            plotPoints: 6
-        },
-        midpoint: {
-            name: "Midpoint",
-            description: "Major plot twist or revelation",
-            plotPoints: 1
-        }
-    };
-    
-    try {
-        displayStructure(sampleStructure, "Test prompt", "Test system message");
-        console.log('✅ Sample structure display successful');
-    } catch (error) {
-        console.error('❌ Sample structure display failed:', error);
-    }
-}
 
 // Generate structure
 async function generateStructure() {
@@ -3220,30 +3092,11 @@ async function generateStructure() {
             // 🔥 Refresh credits after successful generation
             window.creditWidget.refreshAfterOperation();
             
-            // 🔍 DEBUG: Log the response data
-            console.log('🔍 Generate structure response data:', data);
-            
             appState.generatedStructure = data.structure;
-            // Keep existing templateData object - don't replace with string from API
-            // appState.templateData = data.template || appState.templateData; // This replaces object with string
-            console.log('🔍 DEBUG: templateData preservation:', {
-                apiReturned: data.template,
-                existingTemplateData: appState.templateData,
-                existingType: typeof appState.templateData,
-                hasStructure: !!(appState.templateData && appState.templateData.structure)
-            });
-            appState.projectId = data.projectId || appState.projectId; // Keep existing if not in response
-            appState.projectPath = data.projectPath || appState.projectPath; // Keep existing if not in response
+            appState.projectId = data.projectId || appState.projectId;
+            appState.projectPath = data.projectPath || appState.projectPath;
             appState.lastUsedPrompt = data.prompt || null;
             appState.lastUsedSystemMessage = data.systemMessage || null;
-            
-            // 🔍 DEBUG: Log the updated app state
-            console.log('🔍 Updated app state after structure generation:', {
-                generatedStructure: appState.generatedStructure,
-                templateData: appState.templateData,
-                projectId: appState.projectId,
-                projectPath: appState.projectPath
-            });
             
             // Show project header now that we have a project
             showProjectHeader({
@@ -3251,13 +3104,6 @@ async function generateStructure() {
                 templateName: appState.templateData ? appState.templateData.name : 'Unknown',
                 totalScenes: appState.storyInput.totalScenes,
                 projectId: appState.projectId
-            });
-            
-            // 🔍 DEBUG: About to call displayStructure
-            console.log('🔍 About to call displayStructure with:', {
-                structure: data.structure,
-                prompt: data.prompt,
-                systemMessage: data.systemMessage
             });
             
             displayStructure(data.structure, data.prompt, data.systemMessage);
@@ -3323,21 +3169,7 @@ function getChronologicalActOrder(templateData, structureKeys) {
 
 // Display generated structure
 function displayStructure(structure, prompt = null, systemMessage = null) {
-    // 🔍 DEBUG: Log function entry
-    console.log('🔍 displayStructure called with:', {
-        structure: structure,
-        prompt: prompt,
-        systemMessage: systemMessage
-    });
-    
     const container = document.getElementById('structureContent');
-    
-    // 🔍 DEBUG: Check container
-    console.log('🔍 Container check:', {
-        exists: !!container,
-        element: container,
-        innerHTML: container?.innerHTML?.length || 0
-    });
     
     // Validate structure data
     if (!structure || typeof structure !== 'object') {
@@ -3410,12 +3242,6 @@ function displayStructure(structure, prompt = null, systemMessage = null) {
             
             // Add creative direction section for this act (BEFORE the editable content block)
             const hasActCreativeDirections = appState.templateData?.structure?.[key]?.userDirections && appState.templateData.structure[key].userDirections.trim();
-            console.log('🔍 DEBUG: Creative direction check for', key, {
-                templateData: appState.templateData,
-                hasStructure: !!(appState.templateData && appState.templateData.structure),
-                hasActInStructure: !!(appState.templateData && appState.templateData.structure && appState.templateData.structure[key]),
-                hasUserDirections: hasActCreativeDirections
-            });
             const actCreativeDirectionSection = document.createElement('div');
             actCreativeDirectionSection.className = 'creative-direction-section';
             actCreativeDirectionSection.innerHTML = `
