@@ -2306,253 +2306,58 @@ Project ID: ${customProjectId}
   }
 });
 
-// Generate high-level plot structure
-app.post('/api/generate-structure', authenticateApiKey, checkCredits(10), async (req, res) => {
+// 🆕 MIGRATED: Generate structure using GenerationService (Phase 2A)
+app.post('/api/generate-structure', authenticateApiKey, async (req, res) => {
   try {
-    console.log('Received structure generation request:', req.body);
-    const { storyInput, template, customTemplateData, model = "claude-sonnet-4-20250514", existingProjectPath } = req.body;
-    
-    if (!process.env.ANTHROPIC_API_KEY) {
-      console.error('ANTHROPIC_API_KEY not found in environment variables');
-      return res.status(500).json({ error: 'API key not configured' });
-    }
-    
-    // 🔧 Use customized template data if provided, otherwise load from file
-    let templateData;
-    if (customTemplateData && customTemplateData.structure) {
-      console.log('🎭 Using customized template data for structure generation');
-      templateData = customTemplateData;
-    } else {
-      console.log('🎭 Loading original template data from file');
-      const templatePath = path.join(__dirname, 'templates', `${template}.json`);
-      const templateContent = await fs.readFile(templatePath, 'utf8');
-      templateData = JSON.parse(templateContent);
-    }
-    
-    // Use our new prompt builder system
-    const prompt = promptBuilders.buildStructurePrompt(storyInput, templateData);
-
-    // 🔧 Use existing project path if regenerating, otherwise create new one
-    let structureProjectId, projectFolderName;
-    
-    if (existingProjectPath) {
-      // Regenerating: use existing project path and extract project ID from database
-      projectFolderName = existingProjectPath;
-      console.log('🔄 Regenerating structure for existing project:', projectFolderName);
-      
-      // Try to get existing project ID from database
-      try {
-        const username = req.user.username;
-        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-        if (userResult.rows.length > 0) {
-          const userId = userResult.rows[0].id;
-          const projectResult = await dbClient.query(
-            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-            [userId, projectFolderName]
-          );
-          if (projectResult.rows.length > 0) {
-            const existingContext = JSON.parse(projectResult.rows[0].project_context);
-            structureProjectId = existingContext.projectId;
-            console.log('✅ Found existing project ID:', structureProjectId);
-          } else {
-            // Fallback: generate new ID if project not found
-            structureProjectId = uuidv4();
-            console.log('⚠️ Project not found in database, generating new ID:', structureProjectId);
-          }
-        } else {
-          structureProjectId = uuidv4();
-        }
-      } catch (error) {
-        console.error('Error retrieving existing project ID:', error);
-        structureProjectId = uuidv4();
-      }
-    } else {
-      // New project: generate new ID and path
-      structureProjectId = uuidv4();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const projectTitle = storyInput.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '_') || 'untitled_story';
-      projectFolderName = `${projectTitle}_${timestamp.substring(0, 19)}`;
-      console.log('🆕 Creating new project:', projectFolderName);
-    }
-
-    // Get appropriate max_tokens for the model
-    function getMaxTokensForModel(modelName) {
-      if (modelName.includes('haiku')) {
-        // Check for older Claude 3 Haiku vs newer Claude 3.5 Haiku
-        if (modelName.includes('claude-3-haiku-20240307')) {
-          return 4096; // Claude 3 Haiku limit
-        } else {
-          return 8192; // Claude 3.5 Haiku limit
-        }
-      } else if (modelName.includes('sonnet')) {
-        return 12000; // Claude 3.5 Sonnet can handle more
-      } else {
-        return 4096; // Safe default for older models
-      }
-    }
-
-    console.log('Sending request to Claude API...');
-    const completion = await trackedAnthropic.messages({
-      model: model,
-      max_tokens: getMaxTokensForModel(model),
-      temperature: 0.7,
-      system: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-    }, req.user, '/api/generate-structure', projectFolderName);
-    console.log('Received response from Claude API');
-    console.log('Raw Claude response:', completion.content[0].text);
-
-    let structureData;
-    try {
-      structureData = JSON.parse(completion.content[0].text);
-      console.log('Parsed structure data:', structureData);
-    } catch (parseError) {
-      console.error('JSON parse error:', parseError);
-      console.log('Raw response that failed to parse:', completion.content[0].text);
-      
-      // Try to fix common JSON issues like nested quotes and control characters
-      try {
-        let fixedText = completion.content[0].text;
-        
-        // Fix control characters that break JSON parsing
-        fixedText = fixedText.replace(/[\x00-\x1F\x7F]/g, '');
-        
-        // Fix nested quotes in descriptions
-        fixedText = fixedText.replace(/"([^"]*)"([^"]*)"([^"]*)"/g, '"$1\\"$2\\"$3"');
-        
-        // Fix trailing spaces and newlines in property values
-        fixedText = fixedText.replace(/:\s*"([^"]+)"\s*([,}])/g, ': "$1"$2');
-        
-        // Fix line breaks in JSON strings
-        fixedText = fixedText.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-        
-        // Fix common JSON structure issues
-        fixedText = fixedText.replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
-        
-        structureData = JSON.parse(fixedText);
-        console.log('✅ Fixed JSON parsing with enhanced cleanup');
-      } catch (secondParseError) {
-        console.error('Second JSON parse attempt failed:', secondParseError);
-        console.log('Attempted to parse:', completion.content[0].text.substring(0, 500) + '...');
-        
-        // Final fallback: try to extract just the structure part
-        try {
-          const structureMatch = completion.content[0].text.match(/\{[\s\S]*\}/);
-          if (structureMatch) {
-            let extractedJson = structureMatch[0];
-            // Apply same fixes
-            extractedJson = extractedJson.replace(/[\x00-\x1F\x7F]/g, '');
-            extractedJson = extractedJson.replace(/\n/g, '\\n').replace(/\r/g, '\\r').replace(/\t/g, '\\t');
-            extractedJson = extractedJson.replace(/,(\s*[}\]])/g, '$1');
-            
-            structureData = JSON.parse(extractedJson);
-            console.log('✅ Fixed JSON parsing with structure extraction');
-          } else {
-            throw new Error('No valid JSON structure found');
-          }
-        } catch (finalParseError) {
-          console.error('Final JSON parse attempt failed:', finalParseError);
-          // Fallback if AI doesn't return valid JSON
-          structureData = {
-            error: "Failed to parse AI response",
-            rawResponse: completion.content[0].text
-          };
-        }
-      }
-    }
-
-    // 🔧 CRITICAL FIX: Preserve plot points from template in generated structure
-    if (structureData && typeof structureData === 'object' && !structureData.error && templateData.structure) {
-      console.log('🎯 Preserving plot points from template in generated structure...');
-      Object.keys(structureData).forEach(actKey => {
-        if (templateData.structure[actKey]) {
-          // Preserve plot points from original template (support both formats)
-          if (templateData.structure[actKey].plotPoints) {
-            structureData[actKey].plotPoints = templateData.structure[actKey].plotPoints;
-            console.log(`📊 Preserved ${templateData.structure[actKey].plotPoints} plot points for ${actKey}`);
-          } else if (templateData.structure[actKey].distribution?.plotPoints) {
-            structureData[actKey].plotPoints = templateData.structure[actKey].distribution.plotPoints;
-            console.log(`📊 Preserved ${templateData.structure[actKey].distribution.plotPoints} plot points for ${actKey} (legacy format)`);
-          }
-        }
+    // Check if new services are available
+    if (!generationService || !creditService) {
+      return res.status(503).json({ 
+        error: 'Services temporarily unavailable. Please try again later.',
+        fallback: 'Server restarting...'
       });
-      console.log('✅ Plot points preservation completed');
     }
 
-    console.log(`✅ Structure generated for project: ${projectFolderName}`);
-    console.log(`Project ID: ${structureProjectId}`);
-
-    // Save to database in unified v2.0 format (database-only)
-    const username = req.user.username; // Use the authenticated user
-    const projectContext = {
-      projectId: structureProjectId,
-      projectPath: projectFolderName,
-      storyInput,
-      selectedTemplate: template,
-      templateData: templateData, // 🔧 This now contains user's customized template data
-      generatedStructure: structureData,
-      plotPoints: {},
-      generatedScenes: {},
-      generatedDialogues: {},
-      currentStep: 3,
-      influences: storyInput.influences || {},
-      projectCharacters: storyInput.charactersData || storyInput.projectCharacters || [],
-      generatedAt: new Date().toISOString()
-    };
+    const { storyInput, template, customTemplateData, model = "claude-sonnet-4-20250514", existingProjectPath } = req.body;
+    const username = req.user.username;
     
-    const thumbnailData = {
-      title: storyInput.title,
-      genre: storyInput.genre || 'Unknown',
-      tone: storyInput.tone,
-      structure: templateData.name,
-      currentStep: 3,
-      totalScenes: storyInput.totalScenes || 70
-    };
-
-    // Get user ID
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
-    if (userResult.rows.length > 0) {
-      const userId = userResult.rows[0].id;
-      
-      // Save project to database using unified format
-      await dbClient.query(
-        `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (user_id, project_name) 
-         DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-        [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-      );
-      
-      console.log(`✅ Project saved to database in unified v2.0 format: "${storyInput.title}"`);
-    } else {
-      throw new Error('User not found');
+    console.log(`🆕 Using GenerationService for structure: ${storyInput.title}`);
+    
+    // Check credits using new CreditService
+    const creditCheck = await creditService.checkCredits(username, 10);
+    if (!creditCheck.hasCredits) {
+      return res.status(402).json({ error: creditCheck.message });
     }
 
+    // Generate structure using new GenerationService
+    const result = await generationService.generateStructure(
+      storyInput, template, customTemplateData, model, existingProjectPath, username
+    );
+    
+    // Deduct credits using new CreditService
+    await creditService.deductCredits(username, 10, 'generate-structure');
+    await creditService.logUsage(username, 'generate-structure', 10, true);
+    
+    console.log('✅ Structure generation completed using GenerationService');
+    
     res.json({
-      projectId: structureProjectId,
-      projectPath: projectFolderName,
-      storyInput,
-      selectedTemplate: template,
-      templateData: templateData,
-      generatedStructure: structureData,
-      currentStep: 3,
-      savedToDatabase: true,
-      format: 'v2.0-unified',
-      prompt: prompt,
-      systemMessage: "You are a professional screenwriter and story structure expert. Generate detailed, engaging plot structures that follow the given template format. Always respond with valid JSON."
+      ...result,
+      migratedEndpoint: true,
+      generatedBy: 'GenerationService v2.0',
+      codeReduction: '200+ lines -> 40 lines'
     });
+
   } catch (error) {
-    console.error('Error generating structure:', error);
-    console.error('Error details:', error.message);
-    console.error('Error stack:', error.stack);
+    console.error('Error in migrated structure generation:', error);
+    
+    // Log error with CreditService if available
+    if (creditService) {
+      await creditService.logUsage(req.user.username, 'generate-structure', 10, false, error.message);
+    }
+    
     res.status(500).json({ 
       error: 'Failed to generate structure',
-      details: error.message
+      details: error.message,
+      migratedEndpoint: true
     });
   }
 });
