@@ -5703,12 +5703,6 @@ async function generateAllScenes() {
                 
                 // Increment progress step
                 progressTracker.incrementStep(`Generated ${allScenes.length} scenes`);
-                
-                // 🚦 Add small delay between requests to avoid rate limiting (skip for last act)
-                if (i < actsWithPlotPoints.length - 1) {
-                    console.log('⏳ Waiting 2 seconds before next request to avoid rate limits...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
             } else {
                 throw new Error(`Failed to generate scenes for ${structureKey}: ${data.error}`);
             }
@@ -5985,12 +5979,6 @@ async function generateAllPlotPoints() {
                 
                 // Increment progress step
                 progressTracker.incrementStep(`Generated ${data.plotPoints.length} plot points`);
-                
-                // 🚦 Add small delay between requests to avoid rate limiting (skip for last act)
-                if (i < structureKeys.length - 1) {
-                    console.log('⏳ Waiting 2 seconds before next request to avoid rate limits...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
             } else {
                 throw new Error(`Failed to generate plot points for ${structureKey}: ${data.error}`);
             }
@@ -7170,12 +7158,6 @@ async function generateAllDialogue() {
                 
                 // Increment progress step
                 progressTracker.incrementStep(`Generated dialogue for "${scene.title || 'Untitled'}"`);
-                
-                // 🚦 Add small delay between requests to avoid rate limiting (skip for last scene)
-                if (i < allScenes.length - 1) {
-                    console.log('⏳ Waiting 2 seconds before next request to avoid rate limits...');
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                }
             } else {
                 throw new Error(`Failed to generate dialogue for scene "${scene.title || 'Untitled'}": ${data.error}`);
             }
