@@ -3012,6 +3012,73 @@ function updateAllGenerationButtons() {
     updateGenerateAllDialogueButton();
 }
 
+// 🔍 DIAGNOSTIC FUNCTION: Check structure generation flow
+function diagnoseStructureGeneration() {
+    console.log('🔍 DIAGNOSTIC: Structure Generation Flow');
+    console.log('=====================================');
+    
+    // 1. Check if we have the required data
+    console.log('1. Prerequisites:');
+    console.log('   - selectedTemplate:', appState.selectedTemplate);
+    console.log('   - storyInput:', appState.storyInput);
+    console.log('   - isAuthenticated:', appState.isAuthenticated);
+    
+    // 2. Check if container exists
+    const container = document.getElementById('structureContent');
+    console.log('2. Container check:');
+    console.log('   - structureContent exists:', !!container);
+    console.log('   - container innerHTML length:', container?.innerHTML?.length || 0);
+    
+    // 3. Check current app state
+    console.log('3. Current app state:');
+    console.log('   - generatedStructure:', appState.generatedStructure);
+    console.log('   - templateData:', appState.templateData);
+    console.log('   - projectPath:', appState.projectPath);
+    
+    // 4. Check if structure was generated but display failed
+    if (appState.generatedStructure && container) {
+        console.log('4. Structure data analysis:');
+        console.log('   - Structure keys:', Object.keys(appState.generatedStructure));
+        console.log('   - Structure sample:', appState.generatedStructure);
+        
+        // Try to display structure manually
+        console.log('   - Attempting manual display...');
+        try {
+            displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
+            console.log('   - ✅ Manual display successful');
+        } catch (error) {
+            console.log('   - ❌ Manual display failed:', error);
+        }
+    }
+    
+    console.log('=====================================');
+}
+
+// 🔍 QUICK TEST: Test structure display with sample data
+function testStructureDisplay() {
+    console.log('🔍 Testing structure display with sample data...');
+    
+    const sampleStructure = {
+        setup: {
+            name: "Setup",
+            description: "Establish the world and characters",
+            plotPoints: 6
+        },
+        midpoint: {
+            name: "Midpoint",
+            description: "Major plot twist or revelation",
+            plotPoints: 1
+        }
+    };
+    
+    try {
+        displayStructure(sampleStructure, "Test prompt", "Test system message");
+        console.log('✅ Sample structure display successful');
+    } catch (error) {
+        console.error('❌ Sample structure display failed:', error);
+    }
+}
+
 // Generate structure
 async function generateStructure() {
     if (!appState.selectedTemplate || !appState.storyInput) {
@@ -3090,6 +3157,9 @@ async function generateStructure() {
             // 🔥 Refresh credits after successful generation
             window.creditWidget.refreshAfterOperation();
             
+            // 🔍 DEBUG: Log the response data
+            console.log('🔍 Generate structure response data:', data);
+            
             appState.generatedStructure = data.generatedStructure;
             appState.templateData = data.templateData;
             appState.projectId = data.projectId;
@@ -3097,12 +3167,27 @@ async function generateStructure() {
             appState.lastUsedPrompt = data.prompt;
             appState.lastUsedSystemMessage = data.systemMessage;
             
+            // 🔍 DEBUG: Log the updated app state
+            console.log('🔍 Updated app state after structure generation:', {
+                generatedStructure: appState.generatedStructure,
+                templateData: appState.templateData,
+                projectId: appState.projectId,
+                projectPath: appState.projectPath
+            });
+            
             // Show project header now that we have a project
             showProjectHeader({
                 title: appState.storyInput.title,
                 templateName: appState.templateData ? appState.templateData.name : 'Unknown',
                 totalScenes: appState.storyInput.totalScenes,
                 projectId: appState.projectId
+            });
+            
+            // 🔍 DEBUG: About to call displayStructure
+            console.log('🔍 About to call displayStructure with:', {
+                structure: data.generatedStructure,
+                prompt: data.prompt,
+                systemMessage: data.systemMessage
             });
             
             displayStructure(data.generatedStructure, data.prompt, data.systemMessage);
@@ -3168,7 +3253,21 @@ function getChronologicalActOrder(templateData, structureKeys) {
 
 // Display generated structure
 function displayStructure(structure, prompt = null, systemMessage = null) {
+    // 🔍 DEBUG: Log function entry
+    console.log('🔍 displayStructure called with:', {
+        structure: structure,
+        prompt: prompt,
+        systemMessage: systemMessage
+    });
+    
     const container = document.getElementById('structureContent');
+    
+    // 🔍 DEBUG: Check container
+    console.log('🔍 Container check:', {
+        exists: !!container,
+        element: container,
+        innerHTML: container?.innerHTML?.length || 0
+    });
     
     // Validate structure data
     if (!structure || typeof structure !== 'object') {
