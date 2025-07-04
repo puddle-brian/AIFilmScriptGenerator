@@ -11058,8 +11058,25 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
     }
 
     try {
-        const plotPoint = appState.plotPoints[structureKey][plotPointIndex];
-        showLoading(`Generating scenes for plot point: ${plotPoint}...`);
+        // 🔧 Handle both plot points data formats (direct array or object with plotPoints property)
+        let plotPointsArray;
+        if (Array.isArray(appState.plotPoints[structureKey])) {
+            plotPointsArray = appState.plotPoints[structureKey];
+        } else if (appState.plotPoints[structureKey]?.plotPoints) {
+            plotPointsArray = appState.plotPoints[structureKey].plotPoints;
+        } else {
+            throw new Error('Invalid plot points data structure');
+        }
+        
+        const plotPoint = plotPointsArray[plotPointIndex];
+        
+        // Calculate hierarchical numbering for display using chronological order
+        const structureKeys = Object.keys(appState.generatedStructure || {});
+        const chronologicalKeys = getChronologicalActOrder(appState.templateData, structureKeys);
+        const actIndex = chronologicalKeys.indexOf(structureKey);
+        const hierarchicalNumber = `${actIndex + 1}.${plotPointIndex + 1}`;
+        
+        showLoading(`Generating scenes for Plot Point ${hierarchicalNumber}: ${plotPoint}...`);
         
         // Send creative directions for scenes
         
@@ -11123,7 +11140,7 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
             updateUniversalNavigation();
             updateBreadcrumbNavigation();
             
-            showToast(`Generated ${data.scenes.length} scenes for plot point: "${plotPoint}"`, 'success');
+            showToast(`Generated ${data.scenes.length} scenes for Plot Point ${hierarchicalNumber}: "${plotPoint}"`, 'success');
             saveToLocalStorage();
         } else {
             throw new Error(data.error || 'Failed to generate scenes for plot point');
