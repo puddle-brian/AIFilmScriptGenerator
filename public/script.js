@@ -716,13 +716,26 @@ async function checkAndOfferLibrarySave(type, value) {
     // Re-check authentication status in case it wasn't initialized properly
     authManager.checkAuthStatus();
     
+    // 📚 Use centralized LibraryManager with cleaner API
+    if (window.libraryManager) {
+        try {
+            await window.libraryManager.checkAndOfferSave(type, value);
+        } catch (error) {
+            console.warn('LibraryManager checkAndOfferSave failed:', error);
+            // Fallback to original implementation
+            fallbackCheckAndOfferLibrarySave(type, value);
+        }
+    } else {
+        // Fallback if LibraryManager not available
+        fallbackCheckAndOfferLibrarySave(type, value);
+    }
+}
+
+// Fallback implementation for backward compatibility
+async function fallbackCheckAndOfferLibrarySave(type, value) {
     // Skip if user is not authenticated
     if (!appState.isAuthenticated) {
         console.log('Universal Library System: User not authenticated, skipping library save offer');
-        console.log('Authentication status:', appState.isAuthenticated);
-        console.log('User:', appState.user);
-        console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
-        console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
         return;
     }
     
@@ -736,8 +749,15 @@ async function checkAndOfferLibrarySave(type, value) {
         // Check if this value already exists in user's library
         let userLibrary = [];
         if (appState.isAuthenticated && appState.user) {
-            const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}`);
-            userLibrary = await response.json();
+            // 🌐 Use centralized API client with consistent error handling
+            if (window.apiClient) {
+                window.apiClient.setApiKey(appState.apiKey);
+                userLibrary = await window.apiClient.getUserLibrary(appState.user.username, config.plural);
+            } else {
+                // Fallback to direct fetch if API client not available
+                const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}`);
+                userLibrary = await response.json();
+            }
         }
         
         const exists = userLibrary.some(item => 
@@ -1242,11 +1262,23 @@ function addNewToLibrary(type) {
     // Re-check authentication status in case it wasn't initialized properly
     authManager.checkAuthStatus();
     
-    console.log('Authentication status:', appState.isAuthenticated);
-    console.log('User:', appState.user);
-    console.log('API Key in localStorage:', localStorage.getItem('apiKey') ? 'Present' : 'Missing');
-    console.log('User data in localStorage:', localStorage.getItem('userData') ? 'Present' : 'Missing');
-    
+    // 📚 Use centralized LibraryManager with cleaner API
+    if (window.libraryManager) {
+        try {
+            window.libraryManager.showNewEntryModal(type);
+        } catch (error) {
+            console.warn('LibraryManager showNewEntryModal failed:', error);
+            // Fallback to original implementation
+            fallbackAddNewToLibrary(type);
+        }
+    } else {
+        // Fallback if LibraryManager not available
+        fallbackAddNewToLibrary(type);
+    }
+}
+
+// Fallback implementation for backward compatibility
+function fallbackAddNewToLibrary(type) {
     if (!appState.isAuthenticated) {
         showToast('Please log in to save items to your library', 'error');
         return;
@@ -1257,8 +1289,6 @@ function addNewToLibrary(type) {
         console.warn(`Unknown library type: ${type}`);
         return;
     }
-    
-    console.log('About to show modal for', type, 'with config:', config);
     
     // Show modal directly with empty values
     showUniversalLibrarySaveModal(type, '', config, true);
@@ -4910,18 +4940,29 @@ async function loadExistingPlotPoints() {
     }
     
     try {
-        const response = await fetch(`/api/load-plot-points/${encodeURIComponent(appState.projectPath)}`);
-        if (response.ok) {
-            const data = await response.json();
+        // 🌐 Use centralized API client with consistent error handling
+        if (window.apiClient && appState.user) {
+            window.apiClient.setApiKey(appState.apiKey);
+            const data = await window.apiClient.loadPlotPoints(appState.projectPath, appState.user.username);
             if (data.plotPoints && Object.keys(data.plotPoints).length > 0) {
                 appState.plotPoints = data.plotPoints;
-                console.log('Loaded existing plot points:', data.plotPoints);
+                console.log('✅ Loaded existing plot points via API client:', data.plotPoints);
             }
         } else {
-            console.log('No existing plot points found');
+            // Fallback to direct fetch if API client not available
+            const response = await fetch(`/api/load-plot-points/${encodeURIComponent(appState.projectPath)}${appState.user ? '?username=' + encodeURIComponent(appState.user.username) : ''}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.plotPoints && Object.keys(data.plotPoints).length > 0) {
+                    appState.plotPoints = data.plotPoints;
+                    console.log('✅ Loaded existing plot points via fallback:', data.plotPoints);
+                }
+            } else {
+                console.log('No existing plot points found');
+            }
         }
     } catch (error) {
-        console.log('Failed to load existing plot points:', error);
+        console.log('❌ Failed to load existing plot points:', error);
     }
 }
 

@@ -133,16 +133,11 @@ class UnifiedCreditSystem {
     this.isLoading = true;
     
     try {
-      // Determine correct base URL for API calls
-      const baseUrl = window.location.hostname === 'localhost' ? 
-        'https://screenplaygenie.com' : '';
-      
-      const response = await fetch(`${baseUrl}/api/my-stats`, {
-        headers: { 'X-API-Key': this.apiKey }
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
+      // 🌐 Use centralized API client with consistent error handling
+      if (window.apiClient) {
+        window.apiClient.setApiKey(this.apiKey);
+        const data = await window.apiClient.getMyStats();
+        
         const newBalance = data.user.credits_remaining || 0;
         
         console.log(`💰 Fetched balance: ${newBalance} (previous: ${this.balance})`);
@@ -156,8 +151,31 @@ class UnifiedCreditSystem {
           console.log(`⏹️ Balance unchanged at ${this.balance}, skipping update`);
         }
       } else {
-        console.warn('Failed to fetch credits:', response.status);
-        this.showErrorState();
+        // Fallback to direct fetch if API client not available
+        const baseUrl = window.location.hostname === 'localhost' ? 
+          'https://screenplaygenie.com' : '';
+        
+        const response = await fetch(`${baseUrl}/api/my-stats`, {
+          headers: { 'X-API-Key': this.apiKey }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const newBalance = data.user.credits_remaining || 0;
+          
+          console.log(`💰 Fetched balance: ${newBalance} (previous: ${this.balance})`);
+          
+          if (this.balance !== newBalance) {
+            console.log(`🔄 Balance changed from ${this.balance} to ${newBalance}, updating displays`);
+            this.balance = newBalance;
+            this.updateAllDisplays();
+          } else {
+            console.log(`⏹️ Balance unchanged at ${this.balance}, skipping update`);
+          }
+        } else {
+          console.warn('Failed to fetch credits:', response.status);
+          this.showErrorState();
+        }
       }
     } catch (error) {
       console.warn('Credit fetch error:', error);
@@ -250,29 +268,46 @@ class UnifiedCreditSystem {
     if (!this.apiKey) return true;
 
     try {
-      const baseUrl = window.location.hostname === 'localhost' ? 
-        'https://screenplaygenie.com' : '';
-      
-      const response = await fetch(`${baseUrl}/api/estimate-cost`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': this.apiKey
-        },
-        body: JSON.stringify({
+      // 🌐 Use centralized API client with consistent error handling
+      if (window.apiClient) {
+        window.apiClient.setApiKey(this.apiKey);
+        const estimate = await window.apiClient.estimateCost({
           prompt: prompt,
           model: 'claude-3-5-sonnet-20241022'
-        })
-      });
+        });
+        
+        if (!estimate.sufficient) {
+          this.showInsufficientCreditsModal(estimate);
+          return false;
+        }
 
-      const estimate = await response.json();
-      
-      if (!estimate.sufficient) {
-        this.showInsufficientCreditsModal(estimate);
-        return false;
+        return true;
+      } else {
+        // Fallback to direct fetch if API client not available
+        const baseUrl = window.location.hostname === 'localhost' ? 
+          'https://screenplaygenie.com' : '';
+        
+        const response = await fetch(`${baseUrl}/api/estimate-cost`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': this.apiKey
+          },
+          body: JSON.stringify({
+            prompt: prompt,
+            model: 'claude-3-5-sonnet-20241022'
+          })
+        });
+
+        const estimate = await response.json();
+        
+        if (!estimate.sufficient) {
+          this.showInsufficientCreditsModal(estimate);
+          return false;
+        }
+
+        return true;
       }
-
-      return true;
     } catch (error) {
       console.warn('Credit estimate failed:', error);
       return true; // Don't block on estimate failure

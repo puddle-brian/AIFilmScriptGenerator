@@ -1809,41 +1809,49 @@ Return ONLY valid JSON in this exact format:
 
   // Calculate intelligent scene distribution across plot points
   calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalMovieScenes = null, projectContext = null) {
-    // Calculate total plot points across all acts from project context
-    let totalPlotPoints = plotPoints.length; // Default to current act's plot points
+    const totalPlotPoints = plotPoints.length;
+    const baseScenesPerPlot = Math.floor(totalScenesForAct / totalPlotPoints);
+    const extraScenes = totalScenesForAct % totalPlotPoints;
     
-    if (projectContext && projectContext.plotPoints) {
-      // Calculate actual total plot points across all acts
-      totalPlotPoints = 0;
-      Object.values(projectContext.plotPoints).forEach(actPlotPoints => {
-        if (actPlotPoints.plotPoints && Array.isArray(actPlotPoints.plotPoints)) {
-          totalPlotPoints += actPlotPoints.plotPoints.length;
-        } else if (Array.isArray(actPlotPoints)) {
-          totalPlotPoints += actPlotPoints.length;
-        }
-      });
-    }
-    
-    // 🔥 FIX: Always prioritize the user's current input (totalMovieScenes) over cached values
-    const storyTotalScenes = projectContext?.storyInput?.totalScenes || 70;
-    // CRITICAL: If totalMovieScenes is provided (from frontend), ALWAYS use it, never fall back
-    const calculatedTotalScenes = totalMovieScenes !== null ? totalMovieScenes : storyTotalScenes;
-    
-
-    
-    const scenesPerPlotPointFloat = calculatedTotalScenes / totalPlotPoints;
-    const scenesPerPlotPoint = Math.round(scenesPerPlotPointFloat); // Use normal rounding instead of always rounding up
-    
-
+    // Define key plot point patterns that deserve more scenes
+    const keyPlotPatterns = [
+      'catalyst', 'crisis', 'climax', 'transformation', 'confrontation', 
+      'revelation', 'inciting', 'turning point', 'moment of truth'
+    ];
     
     const sceneDistribution = plotPoints.map((plotPoint, index) => {
+      const plotText = plotPoint.toLowerCase();
+      const actName = actKey.toLowerCase();
+      
+      // Determine if this is a key plot point deserving extra scenes
+      const isKeyPlot = keyPlotPatterns.some(pattern => 
+        plotText.includes(pattern) || actName.includes(pattern)
+      ) || index === 0 || index === plotPoints.length - 1; // First and last are usually key
+      
+      // Distribute extra scenes to key plot points first
+      const extraSceneBonus = isKeyPlot && index < extraScenes ? 1 : 
+                             !isKeyPlot && (index >= totalPlotPoints - extraScenes) ? 1 : 0;
+      
+      const sceneCount = Math.max(1, baseScenesPerPlot + extraSceneBonus); // Minimum 1 scene per plot point
+      
       return {
         plotPoint,
-        sceneCount: scenesPerPlotPoint,
-        isKeyPlot: false, // Simplified: no complex key plot logic
+        sceneCount,
+        isKeyPlot,
         plotPointIndex: index
       };
     });
+    
+    // Verify total scenes match target
+    const totalDistributed = sceneDistribution.reduce((sum, dist) => sum + dist.sceneCount, 0);
+    
+    // Adjust if there's a mismatch (shouldn't happen, but safety check)
+    if (totalDistributed !== totalScenesForAct) {
+      console.log(`Scene distribution mismatch: ${totalDistributed} distributed vs ${totalScenesForAct} target`);
+      // Add remaining scenes to the last plot point
+      const difference = totalScenesForAct - totalDistributed;
+      sceneDistribution[sceneDistribution.length - 1].sceneCount += difference;
+    }
     
     return sceneDistribution;
   }
@@ -3028,6 +3036,105 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
       error: 'Project not found or corrupted',
       details: error.message
     });
+  }
+});
+
+// Load existing plot points for a project (database version)
+app.get('/api/load-plot-points/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    const username = req.query.username;
+    
+    console.log(`📋 Loading plot points for project: ${projectPath}`);
+    
+    if (!projectService) {
+      console.warn('ProjectService not available, loading plot points directly from database');
+      
+      // Direct database query as fallback
+      if (!username) {
+        return res.status(400).json({ error: 'Username required for plot points loading' });
+      }
+      
+      // First, get user ID
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const userId = userResult.rows[0].id;
+      
+      // Then get project context
+      const query = `SELECT project_context FROM user_projects WHERE project_name = $1 AND user_id = $2`;
+      const result = await dbClient.query(query, [projectPath, userId]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      const projectContext = parseProjectContext(result.rows[0].project_context);
+      const plotPoints = projectContext.plotPoints || {};
+      
+      console.log(`✅ Loaded plot points for ${Object.keys(plotPoints).length} structure elements (direct DB)`);
+      
+      return res.json({ 
+        plotPoints: plotPoints,
+        projectPath: projectPath,
+        totalStructures: Object.keys(plotPoints).length
+      });
+    }
+    
+    // Use ProjectService to load project data
+    try {
+      const project = await projectService.loadProject(projectPath, username);
+      
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      const plotPoints = project.plotPoints || {};
+      
+      console.log(`✅ Loaded plot points for ${Object.keys(plotPoints).length} structure elements (ProjectService)`);
+      
+      return res.json({ 
+        plotPoints: plotPoints,
+        projectPath: projectPath,
+        totalStructures: Object.keys(plotPoints).length
+      });
+    } catch (serviceError) {
+      console.warn('ProjectService failed, trying direct database access:', serviceError.message);
+      
+      // Fallback to direct database access if ProjectService fails
+      if (!username) {
+        return res.status(400).json({ error: 'Username required for plot points loading' });
+      }
+      
+      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      const userId = userResult.rows[0].id;
+      
+      const query = `SELECT project_context FROM user_projects WHERE project_name = $1 AND user_id = $2`;
+      const result = await dbClient.query(query, [projectPath, userId]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      
+      const projectContext = parseProjectContext(result.rows[0].project_context);
+      const plotPoints = projectContext.plotPoints || {};
+      
+      console.log(`✅ Loaded plot points for ${Object.keys(plotPoints).length} structure elements (fallback DB)`);
+      
+      return res.json({ 
+        plotPoints: plotPoints,
+        projectPath: projectPath,
+        totalStructures: Object.keys(plotPoints).length
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading plot points:', error);
+    res.status(500).json({ error: 'Failed to load plot points', details: error.message });
   }
 });
 
@@ -6260,7 +6367,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
 
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
     const context = new HierarchicalContext();
-    const sceneDistribution = context.calculateSceneDistribution(plotPoints, null, actKey, totalScenes, projectContext);
+    const sceneDistribution = context.calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalScenes, projectContext);
     
     // 🔥 FIX: Update project context with the user's current totalScenes input to prevent drift
     if (totalScenes && projectContext.storyInput) {
@@ -8167,11 +8274,10 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     const plotPoint = plotPointsArray[plotPointIndexNum];
     
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
-
-    
+    // Fix: Use all plot points in the act, not just the single plot point
     const tempContext = new HierarchicalContext();
-    const sceneDistribution = tempContext.calculateSceneDistribution([plotPoint], null, actKey, totalScenes, projectContext);
-    const sceneCount = sceneDistribution[0].sceneCount;
+    const sceneDistribution = tempContext.calculateSceneDistribution(plotPointsArray, null, actKey, totalScenes, projectContext);
+    const sceneCount = sceneDistribution[plotPointIndexNum].sceneCount;
     
 
     
