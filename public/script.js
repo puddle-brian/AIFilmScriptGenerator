@@ -3072,12 +3072,7 @@ async function initializeApp() {
             
             Object.assign(appState, parsed);
             
-            // 🔧 DEBUG: Show what was loaded from localStorage
-            console.log('💾 Loaded from localStorage:', {
-                totalPlotPoints: appState.totalPlotPoints,
-                currentActPlotPoints: appState.currentActPlotPoints,
-                manuallySetPlotPoints: appState.manuallySetPlotPoints
-            });
+            // Successfully loaded from localStorage
             
             // Initialize plot points state tracking if not present
             if (!appState.manuallySetPlotPoints) appState.manuallySetPlotPoints = {};
@@ -9031,13 +9026,6 @@ function normalizeGeneratedScenes(scenesData) {
 // Save to localStorage
 function saveToLocalStorage() {
     try {
-        // 🔧 DEBUG: Show what's being saved
-        console.log('💾 Saving to localStorage:', {
-            totalPlotPoints: appState.totalPlotPoints,
-            currentActPlotPoints: appState.currentActPlotPoints,
-            manuallySetPlotPoints: appState.manuallySetPlotPoints
-        });
-        
         localStorage.setItem('filmScriptGenerator', JSON.stringify(appState));
         
         // Update progress meters when state changes
