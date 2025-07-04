@@ -19,7 +19,7 @@ class GenerationService {
       // Use prompt builder for structure generation
       const prompt = this.prompts.buildStructurePrompt(storyInput, templateData);
       
-      const completion = await this.ai.messages.create({
+      const completion = await this.ai.messages({
         model: model,
         max_tokens: 3000,
         temperature: 0.7,
@@ -30,7 +30,7 @@ class GenerationService {
             content: prompt
           }
         ],
-      });
+      }, { username: username }, 'generateStructure', projectPath);
 
       let structureData;
       try {
@@ -89,13 +89,13 @@ class GenerationService {
 
       const prompt = this.buildPlotPointsPrompt(storyInput, allScenes);
 
-      const response = await this.ai.messages.create({
+      const response = await this.ai.messages({
         model: model,
         max_tokens: 2000,
         temperature: 0.7,
         system: "You are a professional screenwriter. Generate clear, causal plot points that describe concrete actions and events. Focus on visual conflicts, character choices under pressure, and specific dramatic situations. Always respond with valid JSON.",
         messages: [{ role: 'user', content: prompt }]
-      });
+      }, { username: username }, 'generatePlotPoints', projectPath);
 
       let plotPointsData;
       try {
@@ -152,7 +152,7 @@ class GenerationService {
       
       const prompt = this.buildScenesPrompt(storyInput, structure);
 
-      const completion = await this.ai.messages.create({
+      const completion = await this.ai.messages({
         model: model,
         max_tokens: 4000,
         temperature: 0.7,
@@ -163,7 +163,7 @@ class GenerationService {
             content: prompt
           }
         ],
-      });
+      }, { username: username }, 'generateScenes', projectPath);
 
       let scenesData;
       try {
@@ -213,7 +213,7 @@ class GenerationService {
         prompt = `${prompt}\n\nUser Creative Direction for Dialogue: ${direction}\n⚠️ IMPORTANT: Incorporate this creative direction into the dialogue for this scene.\n\nGenerate the screenplay formatted dialogue and action for this scene:`;
       }
 
-      const completion = await this.ai.messages.create({
+      const completion = await this.ai.messages({
         model: model,
         max_tokens: 2000,
         temperature: 0.8,
@@ -224,7 +224,7 @@ class GenerationService {
             content: prompt
           }
         ],
-      });
+      }, { username: username }, 'generateDialogue', projectPath);
 
       const dialogueText = completion.content[0].text;
       const sceneId = scene.id || this.generateId();
@@ -270,7 +270,7 @@ class GenerationService {
       const responseFormat = this.getSuggestionResponseFormat(suggestionType);
       const fullPrompt = `${prompt}\n\n${responseFormat}`;
 
-      const completion = await this.ai.messages.create({
+      const completion = await this.ai.messages({
         model: "claude-3-5-sonnet-20241022",
         max_tokens: 300,
         temperature: temperature,
@@ -281,7 +281,7 @@ class GenerationService {
             content: fullPrompt
           }
         ],
-      });
+      }, { username: 'system' }, 'generateGenieSuggestion');
 
       let suggestion;
       const text = completion.content[0].text.trim();
