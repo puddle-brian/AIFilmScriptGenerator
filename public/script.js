@@ -8980,6 +8980,54 @@ function getRelevantCreativeDirections(context = {}) {
     return relevant;
 }
 
+// Normalize generated scenes data structure
+function normalizeGeneratedScenes(scenesData) {
+    if (!scenesData || typeof scenesData !== 'object') {
+        return {};
+    }
+    
+    const normalizedScenes = {};
+    
+    Object.entries(scenesData).forEach(([structureKey, sceneData]) => {
+        if (Array.isArray(sceneData)) {
+            // Already in the correct format
+            normalizedScenes[structureKey] = sceneData;
+        } else if (sceneData && typeof sceneData === 'object') {
+            // Convert nested object structure to flat array
+            const scenesArray = [];
+            
+            // Check if it's a nested structure with plot points
+            if (sceneData.scenes && Array.isArray(sceneData.scenes)) {
+                // Server format: { scenes: [...] }
+                scenesArray.push(...sceneData.scenes);
+            } else {
+                // Check for plot point structure: { plot_point_0: {...}, plot_point_1: {...} }
+                Object.entries(sceneData).forEach(([plotPointKey, plotPointData]) => {
+                    if (plotPointKey.startsWith('plot_point_') && plotPointData && plotPointData.scenes) {
+                        const plotPointIndex = parseInt(plotPointKey.replace('plot_point_', ''));
+                        plotPointData.scenes.forEach(scene => {
+                            // Add metadata about which plot point this scene came from
+                            scenesArray.push({
+                                ...scene,
+                                plotPointIndex: plotPointIndex,
+                                plotPoint: plotPointData.plotPoint || '',
+                                isKeyPlot: plotPointData.isKeyPlot || false
+                            });
+                        });
+                    }
+                });
+            }
+            
+            normalizedScenes[structureKey] = scenesArray;
+        } else {
+            // Fallback: initialize as empty array
+            normalizedScenes[structureKey] = [];
+        }
+    });
+    
+    return normalizedScenes;
+}
+
 // Save to localStorage
 function saveToLocalStorage() {
     try {
@@ -9149,7 +9197,7 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     });
     appState.generatedStructure = projectData.generatedStructure || projectData.structure || {};
     appState.plotPoints = projectData.plotPoints || {};
-    appState.generatedScenes = projectData.generatedScenes || projectData.scenes || {};
+    appState.generatedScenes = normalizeGeneratedScenes(projectData.generatedScenes || projectData.scenes || {});
     appState.generatedDialogues = projectData.generatedDialogues || projectData.dialogue || {};
     appState.projectId = projectData.projectId || projectData.id;
     appState.projectPath = projectData.projectPath;
@@ -11168,9 +11216,15 @@ async function generateScenesForPlotPoint(structureKey, plotPointIndex) {
             }
             
             // Remove any existing scenes for this specific plot point (for regeneration)
-            appState.generatedScenes[structureKey] = appState.generatedScenes[structureKey].filter(scene => 
-                scene.plotPointIndex !== plotPointIndex
-            );
+            if (Array.isArray(appState.generatedScenes[structureKey])) {
+                appState.generatedScenes[structureKey] = appState.generatedScenes[structureKey].filter(scene => 
+                    scene.plotPointIndex !== plotPointIndex
+                );
+            } else {
+                // If not an array, initialize as empty array
+                console.warn('generatedScenes[structureKey] is not an array, initializing as empty array');
+                appState.generatedScenes[structureKey] = [];
+            }
             
             // Add the new scenes to the existing act scenes
             data.scenes.forEach(scene => {
