@@ -6846,10 +6846,7 @@ app.post('/api/admin/grant-credits', authenticateApiKey, async (req, res) => {
   
   try {
     // Find user
-    const user = await dbClient.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
+    const user = await userService.getUserByUsername(username);
 
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6977,10 +6974,7 @@ app.get('/api/admin/usage-stats/:username', authenticateApiKey, async (req, res)
   const { username } = req.params;
   
   try {
-    const user = await dbClient.query(
-      'SELECT * FROM users WHERE username = $1',
-      [username]
-    );
+    const user = await userService.getUserByUsername(username);
 
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -7068,10 +7062,7 @@ app.delete('/api/admin/delete-user/:username', authenticateApiKey, async (req, r
     }
     
     // Get user info first
-    const userResult = await dbClient.query(
-      'SELECT id, username, email FROM users WHERE username = $1',
-      [username]
-    );
+    const userResult = await userService.getUserBasicInfo(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -7613,10 +7604,7 @@ app.post('/api/free-credits', async (req, res) => {
     }
     
     // Find user
-    const userResult = await dbClient.query(
-      'SELECT id, username, credits_remaining FROM users WHERE username = $1',
-      [username]
-    );
+    const userResult = await userService.getUserWithCredits(username);
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -7910,7 +7898,7 @@ app.post('/api/debug/structure-generation', authenticateApiKey, async (req, res)
     // Check 4: User Lookup
     if (req.user) {
       try {
-        const userResult = await dbClient.query('SELECT id, username, credits_remaining FROM users WHERE username = $1', [req.user.username]);
+        const userResult = await userService.getUserWithCredits(req.user.username);
         diagnostics.checks.userLookup = {
           status: userResult.rows.length > 0 ? 'ok' : 'user_not_found',
           found: userResult.rows.length > 0,
