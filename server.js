@@ -5517,10 +5517,7 @@ app.get('/api/user-projects/:username', async (req, res) => {
     const userId = userResult.rows[0].id;
     
     // Get projects
-    const result = await dbClient.query(
-      'SELECT project_name, project_context, thumbnail_data, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
-      [userId]
-    );
+    const result = await databaseService.getUserProjects(userId);
     
     res.json(result.rows);
   } catch (error) {
@@ -5605,10 +5602,7 @@ app.post('/api/users/:userId/projects/duplicate', async (req, res) => {
     }
     
     // Load original project from database
-    const originalResult = await dbClient.query(
-      'SELECT project_name, project_context, thumbnail_data FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, project_name]
-    );
+    const originalResult = await databaseService.getProject(userId, project_name);
     
     if (originalResult.rows.length === 0) {
       return res.status(404).json({ error: 'Original project not found' });
@@ -5705,10 +5699,7 @@ async function generateVersionedProjectName(userId, originalProjectName) {
     const candidateName = `${baseProjectName}_V${versionString}`;
     
     // Check if this version already exists
-    const existingResult = await dbClient.query(
-      'SELECT project_name FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, candidateName]
-    );
+    const existingResult = await databaseService.getProject(userId, candidateName);
     
     if (existingResult.rows.length === 0) {
       return candidateName;

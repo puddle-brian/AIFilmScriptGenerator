@@ -113,7 +113,7 @@ class DatabaseService {
 
   async getUserProjects(userId) {
     return await this.client.query(
-      'SELECT project_name FROM user_projects WHERE user_id = $1',
+      'SELECT project_name, project_context, thumbnail_data, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
       [userId]
     );
   }
