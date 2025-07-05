@@ -2198,14 +2198,58 @@ Return ONLY valid JSON in this exact format:
     });
 
     let scenesData;
+    const aiResponse = completion.content[0].text;
+    
+    console.log('🔍 AI Response received, length:', aiResponse.length);
+    console.log('🔍 First 200 chars:', aiResponse.substring(0, 200));
+    console.log('🔍 Last 200 chars:', aiResponse.substring(-200));
+    
     try {
-      scenesData = JSON.parse(completion.content[0].text);
-      console.log(`Generated ${scenesData.scenes.length} scenes for plot point`);
-    } catch (error) {
-      return res.status(500).json({ 
-        error: 'Failed to parse AI response', 
-        rawResponse: completion.content[0].text.substring(0, 500) + "..."
-      });
+      // Try direct JSON parse first
+      scenesData = JSON.parse(aiResponse);
+      console.log(`✅ Successfully parsed JSON: Generated ${scenesData.scenes ? scenesData.scenes.length : 'unknown'} scenes for plot point`);
+    } catch (directParseError) {
+      console.log('❌ Direct JSON parse failed:', directParseError.message);
+      
+      // Try to extract JSON from markdown code blocks or other wrapping
+      const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
+      if (jsonMatch) {
+        console.log('🔧 Found JSON in markdown code block, attempting to parse...');
+        try {
+          scenesData = JSON.parse(jsonMatch[1]);
+          console.log(`✅ Successfully parsed JSON from markdown: Generated ${scenesData.scenes ? scenesData.scenes.length : 'unknown'} scenes for plot point`);
+        } catch (markdownParseError) {
+          console.log('❌ Markdown JSON parse failed:', markdownParseError.message);
+        }
+      }
+      
+      // If still no success, try to find JSON object in the response
+      if (!scenesData) {
+        const jsonStart = aiResponse.indexOf('{');
+        const jsonEnd = aiResponse.lastIndexOf('}');
+        if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+          const extractedJson = aiResponse.substring(jsonStart, jsonEnd + 1);
+          console.log('🔧 Attempting to parse extracted JSON section...');
+          try {
+            scenesData = JSON.parse(extractedJson);
+            console.log(`✅ Successfully parsed extracted JSON: Generated ${scenesData.scenes ? scenesData.scenes.length : 'unknown'} scenes for plot point`);
+          } catch (extractedParseError) {
+            console.log('❌ Extracted JSON parse failed:', extractedParseError.message);
+          }
+        }
+      }
+      
+      // If all parsing attempts failed, return detailed error
+      if (!scenesData) {
+        console.log('❌ All JSON parsing attempts failed');
+        console.log('🔍 Full AI response:', aiResponse);
+        return res.status(500).json({ 
+          error: 'Failed to parse AI response', 
+          details: directParseError.message,
+          rawResponse: aiResponse.substring(0, 1000) + (aiResponse.length > 1000 ? '...' : ''),
+          parseAttempts: ['direct', 'markdown', 'extracted'].join(', ')
+        });
+      }
     }
 
     // Save scenes to database
