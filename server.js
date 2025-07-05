@@ -23,6 +23,7 @@ const BackupSystem = require('./backup-system');
 // Import new route modules
 const authRoutes = require('./routes/auth');
 const generationRoutes = require('./routes/generation');
+const projectRoutes = require('./routes/projects');
 const { authenticateApiKey, checkCredits } = authRoutes;
 
 // Configure Winston logger
@@ -8536,10 +8537,12 @@ const startServer = async () => {
   app.set('HierarchicalContext', HierarchicalContext);
   app.set('anthropic', anthropic);
   app.set('parseProjectContext', parseProjectContext);
+  app.set('projectService', projectService);
 
   // Mount route modules (after dependency injection is set up)
   app.use('/api/auth', authRoutes.router);
   app.use('/api', generationRoutes.router);
+  app.use('/api', projectRoutes.router);
   
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
@@ -8573,10 +8576,12 @@ if (process.env.VERCEL) {
     app.set('HierarchicalContext', HierarchicalContext);
     app.set('anthropic', anthropic);
     app.set('parseProjectContext', parseProjectContext);
+    app.set('projectService', projectService);
 
     // Mount route modules (serverless)
     app.use('/api/auth', authRoutes.router);
     app.use('/api', generationRoutes.router);
+    app.use('/api', projectRoutes.router);
     
     console.log('✅ Serverless route modules mounted successfully');
   }).catch((error) => {
