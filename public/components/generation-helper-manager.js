@@ -198,12 +198,4 @@ class GenerationHelperManager {
 // Create global instance
 const generationHelperManager = new GenerationHelperManager();
 
-// Export functions for backward compatibility
-window.checkPlotPointsCompletion = () => generationHelperManager.checkPlotPointsCompletion();
-window.hasPlotPointsForElement = (structureKey) => generationHelperManager.hasPlotPointsForElement(structureKey);
-window.canGeneratePlotPointsForElement = (structureKey) => generationHelperManager.canGeneratePlotPointsForElement(structureKey);
-window.normalizeGeneratedScenes = (scenesData) => generationHelperManager.normalizeGeneratedScenes(scenesData);
-window.normalizeGeneratedDialogues = (dialoguesData) => generationHelperManager.normalizeGeneratedDialogues(dialoguesData);
-window.calculateHierarchicalSceneNumber = (structureKey, sceneIndex, scene) => generationHelperManager.calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene);
-
 console.log('🔧 GenerationHelperManager component loaded successfully'); 

@@ -2379,116 +2379,32 @@ async function generateStructureWithCustomPrompt() {
     }
 }
 
+// ===== LEGACY COMPATIBILITY WRAPPERS =====
+// These functions now delegate to the GenerationButtonManager component
+
 // Update the acts generation button text based on whether acts exist
 function updateActsGenerationButton() {
-    const button = document.getElementById('generateActsBtn');
-    if (!button) return;
-    
-    const hasExistingActs = appState.generatedStructure && 
-                           Object.keys(appState.generatedStructure).length > 0 &&
-                           Object.keys(appState.generatedStructure).some(key =>
-                               appState.generatedStructure[key] &&
-                               appState.generatedStructure[key].description
-                           );
-    
-    if (hasExistingActs) {
-        button.innerHTML = '🔄 Regenerate Acts';
-        button.title = 'Regenerate story acts using the selected template';
-    } else {
-        button.innerHTML = '📋 Generate Acts';
-        button.title = 'Generate story acts using the selected template';
-    }
+    return generationButtonManager.updateActsGenerationButton();
 }
 
 // Update the "Generate All Plot Points" button text based on whether ALL acts have plot points
 function updateGenerateAllPlotPointsButton() {
-    const button = document.getElementById('generateAllPlotPointsBtn');
-    if (!button) return;
-    
-    // Check if ALL acts have plot points (not just any acts)
-    const structureKeys = appState.generatedStructure ? Object.keys(appState.generatedStructure) : [];
-    const allActsHavePlotPoints = structureKeys.length > 0 && structureKeys.every(key =>
-        hasPlotPointsForElement(key) // Use existing helper function for consistency
-    );
-    
-    if (allActsHavePlotPoints) {
-        button.innerHTML = '🔄 Regenerate All Plot Points';
-        button.title = 'Regenerate connected plot points for all acts';
-    } else {
-        button.innerHTML = '📋 Generate All Plot Points';
-        button.title = 'Generate connected plot points for all acts';
-    }
+    return generationButtonManager.updateGenerateAllPlotPointsButton();
 }
 
 // Update the "Generate All Scenes" button text based on whether ALL acts with plot points have scenes
 function updateGenerateAllScenesButton() {
-    const button = document.getElementById('generateAllScenesBtn');
-    if (!button) return;
-    
-    // Get acts that have plot points using the correct helper function
-    const actsWithPlotPoints = [];
-    if (appState.generatedStructure) {
-        Object.keys(appState.generatedStructure).forEach(key => {
-            if (hasPlotPointsForElement(key)) {
-                actsWithPlotPoints.push(key);
-            }
-        });
-    }
-    
-    // Check if ALL acts with plot points also have scenes
-    const allActsWithPlotPointsHaveScenes = actsWithPlotPoints.length > 0 && actsWithPlotPoints.every(key => {
-        return appState.generatedScenes &&
-               appState.generatedScenes[key] && 
-               Array.isArray(appState.generatedScenes[key]) &&
-               appState.generatedScenes[key].length > 0;
-    });
-    
-    if (allActsWithPlotPointsHaveScenes) {
-        button.innerHTML = '🔄 Regenerate All Scenes';
-        button.title = 'Regenerate scenes for all acts that have plot points';
-    } else {
-        button.innerHTML = '🎬 Generate All Scenes';
-        button.title = 'Generate scenes for all acts that have plot points';
-    }
+    return generationButtonManager.updateGenerateAllScenesButton();
 }
 
 // Update the "Generate All Dialogue" button text based on whether ALL scenes have dialogue
 function updateGenerateAllDialogueButton() {
-    const button = document.getElementById('generateAllDialogueBtn');
-    if (!button) return;
-    
-    // Get all scenes that exist
-    const allScenes = [];
-    if (appState.generatedScenes) {
-        Object.values(appState.generatedScenes).forEach(actScenes => {
-            if (Array.isArray(actScenes)) {
-                allScenes.push(...actScenes);
-            }
-        });
-    }
-    
-    // Check if ALL scenes have dialogue
-    const allScenesHaveDialogue = allScenes.length > 0 && allScenes.every(scene =>
-        appState.generatedDialogues &&
-        appState.generatedDialogues[scene.id] &&
-        appState.generatedDialogues[scene.id].length > 0
-    );
-    
-    if (allScenesHaveDialogue) {
-        button.innerHTML = '🔄 Regenerate All Dialogue';
-        button.title = 'Regenerate dialogue for all scenes that exist';
-    } else {
-        button.innerHTML = '💬 Generate All Dialogue';
-        button.title = 'Generate dialogue for all scenes that exist';
-    }
+    return generationButtonManager.updateGenerateAllDialogueButton();
 }
 
 // Update all generation buttons
 function updateAllGenerationButtons() {
-    updateActsGenerationButton();
-    updateGenerateAllPlotPointsButton();
-    updateGenerateAllScenesButton();
-    updateGenerateAllDialogueButton();
+    return generationButtonManager.updateAllGenerationButtons();
 }
 
 
@@ -3974,7 +3890,7 @@ async function previewElementPlotPointsPrompt(structureKey) {
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function checkPlotPointsCompletion() {
-    return window.checkPlotPointsCompletion();
+    return generationHelperManager.checkPlotPointsCompletion();
 }
 
 // Preview scene generation prompt for an element
@@ -4049,13 +3965,13 @@ async function previewElementScenesPrompt(structureKey) {
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function hasPlotPointsForElement(structureKey) {
-    return window.hasPlotPointsForElement(structureKey);
+    return generationHelperManager.hasPlotPointsForElement(structureKey);
 }
 
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function canGeneratePlotPointsForElement(structureKey) {
-    return window.canGeneratePlotPointsForElement(structureKey);
+    return generationHelperManager.canGeneratePlotPointsForElement(structureKey);
 }
 
 // This function has been replaced with proper hierarchical implementation
@@ -4825,7 +4741,7 @@ function goToDialogue() {
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene) {
-    return window.calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene);
+    return generationHelperManager.calculateHierarchicalSceneNumber(structureKey, sceneIndex, scene);
 }
 
 // Display dialogue generation interface
@@ -6767,13 +6683,13 @@ function hideToast() {
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function normalizeGeneratedScenes(scenesData) {
-    return window.normalizeGeneratedScenes(scenesData);
+    return generationHelperManager.normalizeGeneratedScenes(scenesData);
 }
 
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function normalizeGeneratedDialogues(dialoguesData) {
-    return window.normalizeGeneratedDialogues(dialoguesData);
+    return generationHelperManager.normalizeGeneratedDialogues(dialoguesData);
 }
 
 // ✅ Save to localStorage - MOVED TO components/app-state-manager.js
