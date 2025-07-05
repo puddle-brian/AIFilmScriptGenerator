@@ -5115,13 +5115,10 @@ app.get('/api/user-libraries/:username/:type', async (req, res) => {
       
       const userId = userResult.rows[0].id;
       
-      // Get libraries
-      const result = await dbClient.query(
-        'SELECT entry_key, entry_data, created_at FROM user_libraries WHERE user_id = $1 AND library_type = $2 ORDER BY created_at DESC',
-        [userId, type]
-      );
+      // Get libraries using LibraryService
+      const libraries = await libraryService.getUserLibrary(username, type);
       
-      res.json(result.rows);
+      res.json(libraries);
     }
   } catch (error) {
     console.error('Failed to fetch user libraries:', error);
@@ -5143,29 +5140,7 @@ app.post('/api/user-libraries/:username/:type/:key', async (req, res) => {
       return res.json(result);
       
     } else {
-      // Fallback to existing implementation
-      const { username, type, key } = req.params;
-      const entryData = req.body;
-      
-      // Get user ID
-      const userResult = await databaseService.getUserByUsername(username);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const userId = userResult.rows[0].id;
-      
-      // Insert or update library entry
-      const result = await dbClient.query(
-        `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data) 
-         VALUES ($1, $2, $3, $4) 
-         ON CONFLICT (user_id, library_type, entry_key) 
-         DO UPDATE SET entry_data = $4, created_at = NOW()
-         RETURNING *`,
-        [userId, type, key, JSON.stringify(entryData)]
-      );
-      
-      res.json(result.rows[0]);
+      throw new Error('LibraryService not available');
     }
   } catch (error) {
     console.error('Failed to save library entry:', error);
@@ -5187,29 +5162,7 @@ app.put('/api/user-libraries/:username/:type/:key', async (req, res) => {
       return res.json(result);
       
     } else {
-      // Fallback to existing implementation
-      const { username, type, key } = req.params;
-      const entryData = req.body;
-      
-      // Get user ID
-      const userResult = await databaseService.getUserByUsername(username);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const userId = userResult.rows[0].id;
-      
-      // Update library entry
-      const result = await dbClient.query(
-        'UPDATE user_libraries SET entry_data = $1, created_at = NOW() WHERE user_id = $2 AND library_type = $3 AND entry_key = $4 RETURNING *',
-        [JSON.stringify(entryData), userId, type, key]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Library entry not found' });
-      }
-      
-      res.json(result.rows[0]);
+      throw new Error('LibraryService not available');
     }
   } catch (error) {
     console.error('Failed to update library entry:', error);
@@ -5230,28 +5183,7 @@ app.delete('/api/user-libraries/:username/:type/:key', async (req, res) => {
       return res.json(result);
       
     } else {
-      // Fallback to existing implementation
-      const { username, type, key } = req.params;
-      
-      // Get user ID
-      const userResult = await databaseService.getUserByUsername(username);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const userId = userResult.rows[0].id;
-      
-      // Delete library entry
-      const result = await dbClient.query(
-        'DELETE FROM user_libraries WHERE user_id = $1 AND library_type = $2 AND entry_key = $3 RETURNING *',
-        [userId, type, key]
-      );
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({ error: 'Library entry not found' });
-      }
-      
-      res.json({ success: true });
+      throw new Error('LibraryService not available');
     }
   } catch (error) {
     console.error('Failed to delete library entry:', error);
@@ -5286,116 +5218,7 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
       return res.json(result);
       
     } else {
-      // Fallback to existing implementation
-      const { username } = req.params;
-      
-      // Get user ID
-      const userResult = await databaseService.getUserByUsername(username);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-      
-      const userId = userResult.rows[0].id;
-      
-      console.log(`Populating starter pack for user: ${username} (ID: ${userId})`);
-      
-      // Get starter pack data from dedicated module
-      const starterPackData = starterPack.getStarterPackData();
-      const directorsData = starterPackData.directors;
-      const screenwritersData = starterPackData.screenwriters;
-      const filmsData = starterPackData.films;
-      const tonesData = starterPackData.tones;
-      const charactersData = starterPackData.characters;
-      
-      try {
-        
-        let totalInserted = 0;
-        
-        // Insert directors
-        for (const director of directorsData) {
-          const entryKey = starterPack.generateEntryKey(director);
-          await dbClient.query(
-            `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-             VALUES ($1, $2, $3, $4, NOW()) 
-             ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-            [userId, 'directors', entryKey, JSON.stringify({ name: director })]
-          );
-          totalInserted++;
-        }
-        
-        // Insert screenwriters
-        for (const screenwriter of screenwritersData) {
-          const entryKey = starterPack.generateEntryKey(screenwriter);
-          await dbClient.query(
-            `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-             VALUES ($1, $2, $3, $4, NOW()) 
-             ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-            [userId, 'screenwriters', entryKey, JSON.stringify({ name: screenwriter })]
-          );
-          totalInserted++;
-        }
-        
-        // Insert films
-        for (const film of filmsData) {
-          const entryKey = starterPack.generateEntryKey(film);
-          await dbClient.query(
-            `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-             VALUES ($1, $2, $3, $4, NOW()) 
-             ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-            [userId, 'films', entryKey, JSON.stringify({ name: film })]
-          );
-          totalInserted++;
-        }
-        
-        // Insert tones
-        for (const tone of tonesData) {
-          const entryKey = starterPack.generateEntryKey(tone);
-          await dbClient.query(
-            `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-             VALUES ($1, $2, $3, $4, NOW()) 
-             ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-            [userId, 'tones', entryKey, JSON.stringify({ name: tone })]
-          );
-          totalInserted++;
-        }
-        
-        // Insert characters (characters have a different structure with name and description)
-        for (const character of charactersData) {
-          const entryKey = starterPack.generateEntryKey(character.name);
-          await dbClient.query(
-            `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-             VALUES ($1, $2, $3, $4, NOW()) 
-             ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-            [userId, 'characters', entryKey, JSON.stringify({ name: character.name, description: character.description })]
-          );
-          totalInserted++;
-        }
-        
-        const counts = starterPack.getStarterPackCounts();
-        console.log(`✅ Starter pack populated for ${username}: ${totalInserted} entries added`);
-        console.log(`   - Directors: ${counts.directors}`);
-        console.log(`   - Screenwriters: ${counts.screenwriters}`);
-        console.log(`   - Films: ${counts.films}`);
-        console.log(`   - Tones: ${counts.tones}`);
-        console.log(`   - Characters: ${counts.characters}`);
-        
-        res.json({
-          success: true,
-          message: `Starter pack populated successfully! Added ${counts.directors} directors, ${counts.screenwriters} screenwriters, ${counts.films} films, ${counts.tones} tones, and ${counts.characters} characters.`,
-          counts: {
-            directors: counts.directors,
-            screenwriters: counts.screenwriters,
-            films: counts.films,
-            tones: counts.tones,
-            characters: counts.characters,
-            total: totalInserted
-          }
-        });
-        
-      } catch (dataError) {
-        console.error('Error processing starter pack data:', dataError);
-        res.status(500).json({ error: 'Failed to process starter pack data', details: dataError.message });
-      }
+      throw new Error('LibraryService not available');
     }
     
   } catch (error) {
@@ -5409,94 +5232,23 @@ async function populateUserStarterPack(userId, username) {
   try {
     console.log(`Auto-populating starter pack for new user: ${username} (ID: ${userId})`);
     
-    // Get starter pack data from dedicated module
-    const starterPackData = starterPack.getStarterPackData();
-    const directorsData = starterPackData.directors;
-    const screenwritersData = starterPackData.screenwriters;
-    const filmsData = starterPackData.films;
-    const tonesData = starterPackData.tones;
-    const charactersData = starterPackData.characters;
-    
-    // Insert all data in parallel for better performance
-    const insertPromises = [];
-    
-    // Insert directors
-    directorsData.forEach(director => {
-      const entryKey = starterPack.generateEntryKey(director);
-      insertPromises.push(
-        dbClient.query(
-          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-           VALUES ($1, $2, $3, $4, NOW()) 
-           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'directors', entryKey, JSON.stringify({ name: director })]
-        )
-      );
-    });
-    
-    // Insert screenwriters
-    screenwritersData.forEach(screenwriter => {
-      const entryKey = starterPack.generateEntryKey(screenwriter);
-      insertPromises.push(
-        dbClient.query(
-          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-           VALUES ($1, $2, $3, $4, NOW()) 
-           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'screenwriters', entryKey, JSON.stringify({ name: screenwriter })]
-        )
-      );
-    });
-    
-    // Insert films
-    filmsData.forEach(film => {
-      const entryKey = starterPack.generateEntryKey(film);
-      insertPromises.push(
-        dbClient.query(
-          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-           VALUES ($1, $2, $3, $4, NOW()) 
-           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'films', entryKey, JSON.stringify({ name: film })]
-        )
-      );
-    });
-    
-    // Insert tones
-    tonesData.forEach(tone => {
-      const entryKey = starterPack.generateEntryKey(tone);
-      insertPromises.push(
-        dbClient.query(
-          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-           VALUES ($1, $2, $3, $4, NOW()) 
-           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'tones', entryKey, JSON.stringify({ name: tone })]
-        )
-      );
-    });
-    
-    // Insert characters
-    charactersData.forEach(character => {
-      const entryKey = starterPack.generateEntryKey(character.name);
-      insertPromises.push(
-        dbClient.query(
-          `INSERT INTO user_libraries (user_id, library_type, entry_key, entry_data, created_at) 
-           VALUES ($1, $2, $3, $4, NOW()) 
-           ON CONFLICT (user_id, library_type, entry_key) DO NOTHING`,
-          [userId, 'characters', entryKey, JSON.stringify({ name: character.name, description: character.description })]
-        )
-      );
-    });
-    
-    // Wait for all inserts to complete
-    await Promise.all(insertPromises);
-    
-    const counts = starterPack.getStarterPackCounts();
-    console.log(`✅ Auto-populated starter pack for ${username}:`);
-    console.log(`   - Directors: ${counts.directors}`);
-    console.log(`   - Screenwriters: ${counts.screenwriters}`);
-    console.log(`   - Films: ${counts.films}`);
-    console.log(`   - Tones: ${counts.tones}`);
-    console.log(`   - Characters: ${counts.characters}`);
-    
-    return true;
+    if (libraryService) {
+      // Use LibraryService for starter pack population
+      const starterPackData = starterPack.getStarterPackData();
+      const result = await libraryService.populateStarterPack(username, starterPackData);
+      
+      const counts = starterPack.getStarterPackCounts();
+      console.log(`✅ Auto-populated starter pack for ${username}:`);
+      console.log(`   - Directors: ${counts.directors}`);
+      console.log(`   - Screenwriters: ${counts.screenwriters}`);
+      console.log(`   - Films: ${counts.films}`);
+      console.log(`   - Tones: ${counts.tones}`);
+      console.log(`   - Characters: ${counts.characters}`);
+      
+      return result.success;
+    } else {
+      throw new Error('LibraryService not available');
+    }
   } catch (error) {
     console.error(`Failed to auto-populate starter pack for ${username}:`, error);
     return false;
@@ -6754,16 +6506,12 @@ app.post('/api/debug/add-credits', authenticateApiKey, async (req, res) => {
     await userService.updateUserCredits(req.user.id, parseInt(credits));
 
     // Log the transaction
-    await dbClient.query(`
-      INSERT INTO credit_transactions (
-        user_id, transaction_type, credits_amount, notes
-      ) VALUES ($1, $2, $3, $4)
-    `, [
+    await creditService.logTransaction(
       req.user.id,
       'debug_addition',
       parseInt(credits),
       reason
-    ]);
+    );
 
     // Get updated balance
     const result = await userService.getUserCreditsBalance(req.user.id);
@@ -6839,11 +6587,13 @@ app.post('/api/admin/grant-credits', authenticateApiKey, async (req, res) => {
     await userService.updateUserCredits(user.rows[0].id, credits);
 
     // Log transaction
-    await dbClient.query(`
-      INSERT INTO credit_transactions (
-        user_id, transaction_type, credits_amount, notes, created_by
-      ) VALUES ($1, $2, $3, $4, $5)
-    `, [user.rows[0].id, 'grant', credits, notes, req.user.id]);
+    await creditService.logTransaction(
+      user.rows[0].id, 
+      'grant', 
+      credits, 
+      notes, 
+      req.user.id
+    );
 
     res.json({ 
       message: `Granted ${credits} credits to ${username}`,
@@ -7567,11 +7317,12 @@ app.post('/api/free-credits', async (req, res) => {
     await userService.updateUserCredits(user.id, creditsToGrant);
 
     // Log transaction
-    await dbClient.query(`
-      INSERT INTO credit_transactions (
-        user_id, transaction_type, credits_amount, notes, created_at
-      ) VALUES ($1, $2, $3, $4, NOW())
-    `, [user.id, 'grant', creditsToGrant, 'Free credits code: FREECREDITS2024']);
+    await creditService.logTransaction(
+      user.id, 
+      'grant', 
+      creditsToGrant, 
+      'Free credits code: FREECREDITS2024'
+    );
 
     const newBalance = user.credits_remaining + creditsToGrant;
 

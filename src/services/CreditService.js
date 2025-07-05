@@ -90,6 +90,32 @@ class CreditService {
       // Don't throw - logging failures shouldn't break the main operation
     }
   }
+
+  /**
+   * Log credit transaction to database
+   * @param {number} userId - User ID
+   * @param {string} transactionType - Type of transaction (grant, debug_addition, etc.)
+   * @param {number} creditsAmount - Amount of credits
+   * @param {string} notes - Transaction notes
+   * @param {number} createdBy - User ID of who created the transaction (optional)
+   * @returns {Promise<Object>} Insert result
+   */
+  async logTransaction(userId, transactionType, creditsAmount, notes, createdBy = null) {
+    try {
+      const result = await this.db.query(`
+        INSERT INTO credit_transactions (
+          user_id, transaction_type, credits_amount, notes, created_by, created_at
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
+        RETURNING *
+      `, [userId, transactionType, creditsAmount, notes, createdBy]);
+
+      this.logger.log(`💳 Logged transaction: ${transactionType} ${creditsAmount} credits for user ${userId}`);
+      return result;
+    } catch (error) {
+      this.logger.error('Error logging credit transaction:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = CreditService; 
