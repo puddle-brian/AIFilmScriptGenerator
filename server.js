@@ -6285,7 +6285,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6444,7 +6444,7 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', authenticateApiKey, async
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6512,7 +6512,7 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', authenticateApiKey
     
     // Load project data from database
     const username = req.user.username;
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6587,7 +6587,7 @@ app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', authenticat
     
     // Load project data from database
     const username = req.user.username;
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6669,7 +6669,7 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', authentic
     
     // Load project data from database
     const username = req.user.username;
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -7972,7 +7972,7 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -8334,7 +8334,7 @@ app.post('/api/repair-progress-tracking', async (req, res) => {
         return res.status(400).json({ error: 'username, projectName, and correctStep are required' });
       }
       
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
