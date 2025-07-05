@@ -297,35 +297,52 @@ class ProjectService {
     try {
       this.logger.log(`📋 Duplicating project "${projectName}" for user "${username}"`);
       
+      // Get user ID for versioning function
+      const userResult = await this.db.getUserByUsername(username);
+      if (userResult.rows.length === 0) {
+        throw new Error('User not found');
+      }
+      const userId = userResult.rows[0].id;
+      
       // Load the original project
       const originalProject = await this.loadProject(username, projectName);
       
-      // Generate new project path
-      const originalTitle = originalProject.storyInput?.title || 'Untitled';
-      const newTitle = `${originalTitle} (Copy)`;
-      const newProjectPath = await this.generateProjectPath(newTitle);
+      // Generate versioned project name (e.g., original_project_V02)
+      const { generateVersionedProjectName } = require('../utils/UtilityFunctions');
+      const newProjectName = await generateVersionedProjectName(userId, projectName, this.db);
       
-      // Update the project context for the duplicate
+      // Extract version number from new project name for title
+      const versionMatch = newProjectName.match(/V(\d+)$/);
+      const versionNumber = versionMatch ? versionMatch[1] : '02';
+      
+      // Create versioned title (e.g., "Original Title V02")
+      const originalTitle = originalProject.storyInput?.title || 'Untitled Project';
+      const versionedTitle = `${originalTitle} V${versionNumber}`;
+      
+      // Create new project context with updated IDs, name, and versioned title
       const duplicateContext = {
         ...originalProject,
-        projectId: newProjectPath,
-        projectPath: newProjectPath,
+        projectId: newProjectName,
+        projectPath: newProjectName,
         storyInput: {
           ...originalProject.storyInput,
-          title: newTitle
+          title: versionedTitle
         },
         generatedAt: new Date().toISOString()
       };
       
-      // Save the duplicate
-      await this.saveProject(username, newProjectPath, duplicateContext);
+      // Generate thumbnail data with versioned title
+      const thumbnailData = this.generateThumbnailData(duplicateContext);
       
-      this.logger.log(`✅ Project duplicated successfully: "${newTitle}"`);
+      // Save the duplicate with proper thumbnail data
+      await this.saveProject(username, newProjectName, duplicateContext, thumbnailData);
+      
+      this.logger.log(`✅ Project duplicated successfully: "${versionedTitle}"`);
       
       return {
         success: true,
-        new_project_name: newProjectPath,
-        new_project_title: newTitle,
+        new_project_name: newProjectName,
+        new_project_title: versionedTitle,
         message: 'Project duplicated successfully'
       };
       

@@ -163,7 +163,7 @@ Respond with just the tone phrase, no quotes, no extra text.`;
 }
 
 // Helper function to generate versioned project names
-async function generateVersionedProjectName(userId, originalProjectName) {
+async function generateVersionedProjectName(userId, originalProjectName, databaseService) {
   // Check if project name already has version suffix
   const versionMatch = originalProjectName.match(/^(.+?)_V(\d+)$/);
   const baseProjectName = versionMatch ? versionMatch[1] : originalProjectName;

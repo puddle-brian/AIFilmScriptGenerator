@@ -557,67 +557,54 @@ router.delete('/users/:userId/projects', async (req, res) => {
   }
 });
 
-// Duplicate project for user
+// 🆕 MIGRATED: Duplicate project using ProjectService (Phase 2C)
 router.post('/users/:userId/projects/duplicate', async (req, res) => {
+  console.log('🔍 DUPLICATE ENDPOINT: Request received');
+  console.log('🔍 DUPLICATE ENDPOINT: UserId:', req.params.userId);
+  console.log('🔍 DUPLICATE ENDPOINT: Request body:', req.body);
+  
   try {
     const { userId } = req.params;
-    const { originalProjectName, newProjectName } = req.body;
+    const { project_name } = req.body;
     
-    if (!originalProjectName || !newProjectName) {
+    console.log('🔍 DUPLICATE ENDPOINT: Extracted params:', { userId, project_name });
+    
+    if (!project_name) {
+      console.log('🚨 DUPLICATE ENDPOINT: Missing project_name');
       return res.status(400).json({ 
-        error: 'Both original and new project names are required' 
+        error: 'Original project name is required' 
       });
     }
     
-    // Get database client from app-level dependency injection
+    // Get ProjectService from app-level dependency injection
+    const projectService = req.app.get('projectService');
+    
+    if (!projectService) {
+      throw new Error('ProjectService not available');
+    }
+    
+    // Get username from user ID
     const dbClient = req.app.get('dbClient');
+    const userResult = await dbClient.query('SELECT username FROM users WHERE id = $1', [userId]);
     
-    if (!dbClient) {
-      throw new Error('Database client not available');
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
     
-    console.log(`📋 Duplicating project for user ID: ${userId}, from: ${originalProjectName} to: ${newProjectName}`);
+    const username = userResult.rows[0].username;
     
-    // Get the original project
-    const originalResult = await dbClient.query(
-      'SELECT project_context, thumbnail_data FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, originalProjectName]
-    );
+    console.log(`🆕 Using ProjectService to duplicate project for user: ${username}, project: ${project_name}`);
     
-    if (originalResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Original project not found' });
-    }
+    // Use ProjectService to handle all the complex duplication logic
+    const result = await projectService.duplicateProject(username, project_name);
     
-    const originalProject = originalResult.rows[0];
-    const { v4: uuidv4 } = require('uuid');
-    
-    // Parse and modify project context for duplication
-    const projectContext = JSON.parse(originalProject.project_context);
-    projectContext.projectId = uuidv4(); // New project ID
-    projectContext.projectPath = newProjectName;
-    projectContext.generatedAt = new Date().toISOString();
-    
-    // Update thumbnail data
-    const thumbnailData = JSON.parse(originalProject.thumbnail_data || '{}');
-    thumbnailData.title = newProjectName;
-    
-    // Create the duplicate project
-    const result = await dbClient.query(
-      `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-       VALUES ($1, $2, $3, $4) 
-       RETURNING project_name, created_at`,
-      [userId, newProjectName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-    );
-    
-    console.log(`✅ Project duplicated successfully: ${newProjectName}`);
+    console.log(`✅ Project duplication completed using ProjectService: "${result.new_project_title}"`);
     
     res.json({
       success: true,
-      originalProject: originalProjectName,
-      newProject: result.rows[0].project_name,
-      newProjectId: projectContext.projectId,
-      createdAt: result.rows[0].created_at,
-      message: 'Project duplicated successfully'
+      new_project_title: result.new_project_title,
+      new_project_name: result.new_project_name,
+      message: result.message
     });
     
   } catch (error) {
