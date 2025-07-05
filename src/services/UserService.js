@@ -222,6 +222,26 @@ class UserService {
   }
 
   /**
+   * Deduct credits from user for API usage
+   * @param {string} username - Username
+   * @param {number} costInCents - Cost in cents
+   * @param {number} creditsToDeduct - Credits to deduct (cost * 100)
+   * @returns {Promise<Object>} Update result
+   */
+  async deductUserCredits(username, costInCents, creditsToDeduct) {
+    try {
+      const result = await this.dbClient.query(
+        'UPDATE users SET credits = credits - $1, credits_remaining = credits_remaining - $2 WHERE username = $3',
+        [costInCents, creditsToDeduct, username]
+      );
+      return result;
+    } catch (error) {
+      console.error('Error deducting user credits:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Delete user and all related data (CASCADE operation)
    * @param {number} userId - User ID to delete
    * @returns {Promise<Object>} Deletion results

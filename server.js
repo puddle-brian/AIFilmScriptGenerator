@@ -818,10 +818,11 @@ class TrackedAnthropicAPI {
         
         success = true;
 
-        // Deduct credits from user
-        await this.db.query(
-          'UPDATE users SET credits = credits - $1, credits_remaining = credits_remaining - $2 WHERE username = $3',
-          [creditsCost, Math.ceil(creditsCost * 100), user.username] // Convert to credit units (1 credit = 1 cent)
+        // Deduct credits from user using UserService
+        await userService.deductUserCredits(
+          user.username,
+          creditsCost,
+          Math.ceil(creditsCost * 100) // Convert to credit units (1 credit = 1 cent)
         );
 
         // Log the usage with detailed pricing breakdown
