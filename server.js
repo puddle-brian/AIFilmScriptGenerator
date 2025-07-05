@@ -3829,10 +3829,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
           const userId = userResult.rows[0].id;
           
           // Get project context from database
-          const projectResult = await dbClient.query(
-            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-            [userId, projectPath]
-          );
+          const projectResult = await databaseService.getProject(userId, projectPath);
           
           if (projectResult.rows.length > 0) {
             const projectContext = parseProjectContext(projectResult.rows[0].project_context);
@@ -4028,10 +4025,7 @@ Return ONLY valid JSON in this exact format:
     };
     
     // Save updated project context back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1 WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Scenes for ${structureKey} saved to database`);
 
@@ -4187,10 +4181,7 @@ Return ONLY valid JSON in this exact format:
     projectContext.generatedScenes[structureKey].lastUpdated = new Date().toISOString();
 
     // Save updated project context back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1 WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Individual scene ${sceneIndexNum + 1} for ${structureKey} saved to database`);
 
