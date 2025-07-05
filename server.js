@@ -4471,10 +4471,7 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     };
     
     // Update database with new scenes
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Simple scenes generated and saved to database for project: ${projectPath}`);
     
@@ -4570,10 +4567,7 @@ Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "descri
       };
       
       // Update database with regenerated scenes
-      await dbClient.query(
-        'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-        [JSON.stringify(projectContext), userId, projectPath]
-      );
+      await databaseService.updateProject(userId, projectPath, projectContext);
       
       console.log(`Scenes regenerated and saved to database for project: ${projectPath}`);
     }
@@ -6322,10 +6316,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     }
     
     // Update database with new scenes
-        await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     // Also update thumbnail_data.currentStep for project card consistency
     try {
@@ -6404,10 +6395,7 @@ app.put('/api/edit-content/acts/:projectPath/:actKey', authenticateApiKey, async
     };
     
     // Save back to database
-        await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Act ${actKey} updated successfully`);
     res.json({ 
@@ -6475,10 +6463,7 @@ app.put('/api/edit-content/plot-points/:projectPath/:actKey', authenticateApiKey
     };
     
     // Save back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Plot points for ${actKey} updated successfully`);
     res.json({
@@ -6554,10 +6539,7 @@ app.put('/api/edit-content/scenes/:projectPath/:actKey/:sceneIndex', authenticat
     projectContext.scenes[actKey][sceneIndexNum] = sceneData;
     
     // Save back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Scene ${actKey}[${sceneIndex}] updated successfully`);
     res.json({ 
@@ -6619,10 +6601,7 @@ app.put('/api/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', authentic
     projectContext.dialogue[actKey][sceneIndexNum] = dialogueData;
     
     // Save back to database
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     console.log(`Dialogue for ${actKey}[${sceneIndex}] updated successfully`);
     res.json({ 
