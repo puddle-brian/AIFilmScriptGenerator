@@ -1,6 +1,6 @@
 const fs = require('fs').promises;
 const path = require('path');
-const { DatabaseService } = require('../services/DatabaseService');
+const DatabaseService = require('../services/DatabaseService');
 
 // Initialize database service for utility functions that need database access
 const databaseService = new DatabaseService();

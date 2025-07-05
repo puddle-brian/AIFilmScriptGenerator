@@ -695,7 +695,6 @@ function applySelectedImprovements() {
                         // Update story input
                         if (appState.storyInput) {
                             appState.storyInput.characters = getCharactersForPrompt();
-                            appState.storyInput.charactersData = appState.projectCharacters;
                         }
                     }
                     break;

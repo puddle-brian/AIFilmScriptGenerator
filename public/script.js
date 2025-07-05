@@ -56,7 +56,7 @@ const modelPricing = {
 };
 
 // Global character management variables (projectCharacters moved to appState for persistence)
-let editingCharacterIndex = null;
+// editingCharacterIndex - MOVED TO components/character-manager.js
 
 // Editable Content Block System - moved to components/editable-content-system.js
 // Keeping backward compatibility function
@@ -64,23 +64,13 @@ function createEditableContentBlock(options) {
     return window.editableContentSystem ? window.editableContentSystem.createBlock(options) : null;
 }
 
-// Find template ID by its display name
+// ✅ Find template ID by name - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function findTemplateIdByName(templateName) {
-    if (!templateName || !appState.availableTemplates) {
-        return null;
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.findTemplateIdByName(templateName);
     }
-    
-    // Search through all categories to find the template
-    for (const category of Object.values(appState.availableTemplates)) {
-        if (category.templates) {
-            const template = category.templates.find(t => t.name === templateName);
-            if (template) {
-                return template.id;
-            }
-        }
-    }
-    
-    return null; // Template not found
+    return null;
 }
 
 // DOM Elements
@@ -253,7 +243,6 @@ function initializeNewProjectFromStoryConcept(title, logline) {
         title: title,
         logline: logline || '',
         characters: appState.projectCharacters || [],
-        charactersData: appState.projectCharacters || [],
         totalScenes: document.getElementById('totalScenes')?.value || '70',
         tone: document.getElementById('tone')?.value || '',
         influences: appState.influences || { directors: [], screenwriters: [], films: [] },
@@ -576,20 +565,7 @@ function removeInfluence(type, value) {
     }
 }
 
-function removeCharacter(index) {
-    if (index >= 0 && index < appState.projectCharacters.length) {
-        appState.projectCharacters.splice(index, 1);
-        updateCharacterTags();
-        validateCharactersRequired();
-        saveToLocalStorage();
-        
-        // Mark as dirty to trigger auto-save
-        appState.pendingChanges = true;
-        if (autoSaveManager) {
-            autoSaveManager.markDirty();
-        }
-    }
-}
+// removeCharacter function - MOVED TO components/character-manager.js
 
 // Custom tone addition is now handled by the universal system via addFromDropdownOrNew('tone')
 
@@ -926,25 +902,7 @@ function updateInfluenceTags(type) {
     updateAutoGenerateButtonVisibility();
 }
 
-function updateCharacterTags() {
-    const container = document.getElementById('characterTags');
-    if (!container) return; // Handle case where element doesn't exist
-    
-    container.innerHTML = '';
-    
-    appState.projectCharacters.forEach((character, index) => {
-        const tag = document.createElement('div');
-        tag.className = 'influence-tag clickable-tag';
-        tag.innerHTML = `
-            <span onclick="editCharacterEntry(${index});" style="cursor: pointer; flex: 1;">${character.name}</span>
-            <button type="button" class="remove-tag" onclick="removeCharacter(${index})" title="Remove character">×</button>
-        `;
-        container.appendChild(tag);
-    });
-    
-    // Update autogenerate button visibility when characters change
-    updateAutoGenerateButtonVisibility();
-}
+// updateCharacterTags function - MOVED TO components/character-manager.js
 
 function updateStoryConceptDisplay() {
     const displayContainer = document.getElementById('storyConceptDisplay');
@@ -1201,198 +1159,7 @@ async function editInfluenceEntry(type, influenceName) {
     }
 }
 
-async function editCharacterEntry(characterIndex) {
-    console.log('Editing character entry:', characterIndex);
-    
-    const character = appState.projectCharacters[characterIndex];
-    if (!character) {
-        console.warn('Character not found:', characterIndex);
-        return;
-    }
-    
-    // Get the config for characters
-    const config = LIBRARY_TYPES.character;
-    
-    // Load user libraries to find the full data for this character
-    const userLibraries = await loadUserLibraries();
-    const characterEntries = userLibraries.characters || [];
-    
-    // Find the entry data - try multiple strategies to handle name changes
-    let entryData = null;
-    
-    // Strategy 1: Exact name match (handles most cases)
-    console.log(`🔍 CHARACTER STRATEGY 1: Looking for exact name match for "${character.name}" in ${characterEntries.length} entries`);
-    
-    entryData = characterEntries.find(entry => {
-        const entryName = typeof entry === 'string' ? entry : 
-                         (entry.entry_data && entry.entry_data.name ? entry.entry_data.name : 
-                         (entry.name ? entry.name : 'unknown'));
-        
-        console.log(`🔍 Checking character entry: "${entryName}" against "${character.name}"`);
-        
-        if (typeof entry === 'string') {
-            const match = entry === character.name;
-            if (match) console.log(`✅ Character string match found: "${entry}"`);
-            return match;
-        } else if (entry.entry_data && entry.entry_data.name) {
-            const match = entry.entry_data.name === character.name;
-            if (match) console.log(`✅ Character entry data name match found: "${entry.entry_data.name}"`);
-            return match;
-        } else if (entry.name) {
-            const match = entry.name === character.name;
-            if (match) console.log(`✅ Character entry name match found: "${entry.name}"`);
-            return match;
-        }
-        return false;
-    });
-    
-    if (entryData) {
-        console.log(`✅ CHARACTER STRATEGY 1 SUCCESS: Found exact match`, {
-            type: typeof entryData,
-            name: typeof entryData === 'string' ? entryData : (entryData.entry_data?.name || entryData.name),
-            key: entryData.entry_key || entryData.key || 'no-key'
-        });
-    } else {
-        console.log(`❌ CHARACTER STRATEGY 1 FAILED: No exact name match found for "${character.name}"`);
-    }
-    
-    // Strategy 2: If not found, try to find by generated key match  
-    if (!entryData) {
-        const searchKey = character.name.toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-+|-+$/g, '');
-            
-        console.log(`🔍 CHARACTER FALLBACK SEARCH: Looking for key "${searchKey}" in ${characterEntries.length} entries`);
-        console.log(`📋 Available character entries:`, characterEntries.map(e => ({
-            name: e.entry_data?.name || e.name || (typeof e === 'string' ? e : 'unknown'),
-            key: e.entry_key || e.key || 'no-key'
-        })));
-        
-        entryData = characterEntries.find(entry => {
-            const entryKey = entry.entry_key || entry.key || '';
-            const entryName = entry.entry_data?.name || entry.name || (typeof entry === 'string' ? entry : '');
-            
-            console.log(`🔍 Checking character entry: name="${entryName}", key="${entryKey}" against search="${searchKey}"`);
-            
-            // Direct key match
-            if (entry.entry_key === searchKey || entry.key === searchKey) {
-                console.log(`✅ Direct character key match found!`);
-                return true;
-            }
-            
-            // Check if search key starts with entry key
-            if (entryKey && searchKey.startsWith(entryKey + '-')) {
-                console.log(`✅ Character search key starts with entry key: "${searchKey}" starts with "${entryKey}"`);
-                return true;
-            }
-            
-            // Check if entry key starts with search key
-            if (entryKey && entryKey.startsWith(searchKey + '-')) {
-                console.log(`✅ Character entry key starts with search key: "${entryKey}" starts with "${searchKey}"`);
-                return true;
-            }
-            
-            // Try removing edit suffixes and comparing base names
-            const baseSearchKey = searchKey.replace(/-edit\d*$/g, '');
-            const baseEntryKey = entryKey.replace(/-edit\d*$/g, '');  
-            if (baseSearchKey && baseEntryKey && baseSearchKey === baseEntryKey) {
-                console.log(`✅ Character base key match: "${baseSearchKey}" matches "${baseEntryKey}"`);
-                return true;
-            }
-            
-            return false;
-        });
-        
-        if (entryData) {
-            console.log(`✅ Found character by fallback search:`, {
-                name: entryData.entry_data?.name || entryData.name || 'string-entry',
-                key: entryData.entry_key || entryData.key || 'no-key'
-            });
-        } else {
-            console.log(`❌ No character entry found for "${searchKey}"`);
-        }
-    }
-    
-    if (entryData) {
-        // Extract the actual data based on the structure found
-        let actualData, actualKey;
-        
-        if (typeof entryData === 'string') {
-            // Simple string entry - we need to derive the original key
-            actualData = { name: entryData, description: character.description || '' };
-            
-            // For string entries, we need to find the original base name and key
-            // Strip edit suffixes to get the original base name
-            const originalName = entryData.replace(/\s*\(edit\d*\)\s*/g, '');
-            actualKey = originalName.toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-                .replace(/\s+/g, '-')         // Replace spaces with hyphens
-                .replace(/-+/g, '-')          // Remove multiple hyphens
-                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
-                
-            console.log(`🔧 CHARACTER STRING ENTRY KEY DERIVATION: "${entryData}" -> original: "${originalName}" -> key: "${actualKey}"`);
-        } else if (entryData.entry_data && entryData.entry_data.name) {
-            actualData = entryData.entry_data;
-            actualKey = entryData.entry_key;
-        } else if (entryData.name) {
-            actualData = { name: entryData.name, description: entryData.description || '' };
-            actualKey = entryData.entry_key || entryData.key;
-        } else {
-            actualData = { name: character.name, description: character.description || '' };
-            // Strip edit suffixes to get original key for fallback case too
-            const originalName = character.name.replace(/\s*\(edit\d*\)\s*/g, '');
-            actualKey = originalName.toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-                .replace(/\s+/g, '-')         // Replace spaces with hyphens
-                .replace(/-+/g, '-')          // Remove multiple hyphens
-                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
-                
-            console.log(`🔧 CHARACTER FALLBACK KEY DERIVATION: "${character.name}" -> original: "${originalName}" -> key: "${actualKey}"`);
-        }
-        
-        // Store editing state for the universal modal
-        window.editingLibraryEntry = {
-            type: 'characters',
-            key: actualKey,
-            data: actualData,
-            originalName: actualData.name, // Store original name for reference
-            isFromStep1: true,
-            characterIndex: characterIndex // Store the index for project character updates
-        };
-        
-        // Show universal modal with pre-filled data
-        showUniversalLibrarySaveModal('character', actualData.name, config, false);
-        
-        // Pre-fill description
-        setTimeout(() => {
-            const descField = document.getElementById('universalLibraryEntryDescription');
-            if (descField && actualData.description) {
-                descField.value = actualData.description;
-            }
-        }, 100);
-    } else {
-        // Character not found in library, create a new library entry
-        window.editingLibraryEntry = {
-            originalName: character.name, // Store original name for reference
-            isFromStep1: true,
-            characterIndex: characterIndex,
-            isNewCharacterEntry: true
-        };
-        
-        // Show modal with current character data
-        showUniversalLibrarySaveModal('character', character.name, config, true);
-        
-        // Pre-fill description with current character description
-        setTimeout(() => {
-            const descField = document.getElementById('universalLibraryEntryDescription');
-            if (descField && character.description) {
-                descField.value = character.description;
-            }
-        }, 100);
-    }
-}
+// editCharacterEntry function - MOVED TO components/character-manager.js
 
 function buildInfluencePrompt() {
     let prompt = '';
@@ -2164,13 +1931,65 @@ function setupLibraryChangeListener() {
             return;
         }
         
-        // Add to influences for types that use blue tags (characters DO get blue tags)
-        if (['directors', 'screenwriters', 'films', 'tones', 'characters'].includes(pluralType)) {
+        // 🔧 FIXED: Handle characters separately from influences
+        if (type === 'character') {
+            console.log(`✅ ${type} "${entryData.name}" will be added to main project characters`);
+            
+            // Initialize projectCharacters if not present
+            if (!appState.projectCharacters) {
+                appState.projectCharacters = [];
+            }
+            
+            // Add to main project characters if not already present
+            const existingCharacter = appState.projectCharacters.find(char => char.name === entryData.name);
+            if (!existingCharacter) {
+                const character = {
+                    name: entryData.name,
+                    description: entryData.description || `Main character: ${entryData.name}`,
+                    fromLibrary: true
+                };
+                appState.projectCharacters.push(character);
+                console.log(`✅ Added character "${entryData.name}" to main project characters`);
+                
+                // Update character display
+                if (typeof updateCharacterTags === 'function') {
+                    updateCharacterTags();
+                }
+                if (typeof validateCharactersRequired === 'function') {
+                    validateCharactersRequired();
+                }
+                
+                // Update storyInput characters
+                if (appState.storyInput && typeof getCharactersForPrompt === 'function') {
+                    appState.storyInput.characters = getCharactersForPrompt();
+                }
+                
+                // Save immediately to database
+                if (window.appStateManager && typeof appStateManager.saveImmediately === 'function') {
+                    appStateManager.saveImmediately();
+                } else if (window.autoSaveManager && typeof autoSaveManager.saveImmediately === 'function') {
+                    autoSaveManager.saveImmediately();
+                } else {
+                    // Fallback to marking dirty for delayed save
+                    appState.pendingChanges = true;
+                    saveToLocalStorage();
+                }
+                
+                // Show success message
+                if (window.showToast) {
+                    window.showToast(`"${entryData.name}" added to main characters and saved!`, 'success');
+                }
+            } else {
+                console.log(`Character "${entryData.name}" already in main project characters`);
+            }
+        }
+        // Add to influences for types that use blue tags (directors, screenwriters, films, tones)
+        else if (['directors', 'screenwriters', 'films', 'tones'].includes(pluralType)) {
             console.log(`✅ ${type} "${entryData.name}" will be added to project influences (blue tags)`);
             
             // Initialize influences if not present
             if (!appState.influences) {
-                appState.influences = { directors: [], screenwriters: [], films: [], tones: [], characters: [] };
+                appState.influences = { directors: [], screenwriters: [], films: [], tones: [] };
             }
             
             if (!appState.influences[pluralType]) {
@@ -2252,7 +2071,6 @@ function handleStorySubmission() {
         title: appState.currentStoryConcept.title,
         logline: appState.currentStoryConcept.logline,
         characters: getCharactersForPrompt(), // Use new character system
-        charactersData: appState.projectCharacters, // Store structured character data
         tone: appState.influences.tones && appState.influences.tones.length > 0 
             ? appState.influences.tones.join(' and ') 
             : (formData.get('tone') || 'Dramatic'), // Multi-tone support with fallback to single tone
@@ -2294,180 +2112,56 @@ function handleStorySubmission() {
     goToStep(2);
 }
 
-// Load available templates
+// ✅ Load available templates - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 async function loadTemplates() {
-    try {
-        showLoading('Loading templates...');
-        const response = await fetch('/api/templates');
-        const groupedTemplates = await response.json();
-        
-        appState.availableTemplates = groupedTemplates;
-        displayTemplates(groupedTemplates);
-        hideLoading();
-    } catch (error) {
-        console.error('Error loading templates:', error);
-        showToast('Error loading templates. Please refresh the page.', 'error');
-        hideLoading();
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.loadTemplates();
     }
 }
 
-// Display template options in groups
+// ✅ Display template options - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function displayTemplates(groupedTemplates) {
-    const container = document.getElementById('templateOptions');
-    container.innerHTML = '';
-    
-    // Ensure container starts in expanded state
-    container.classList.add('template-options-expanded');
-    container.classList.remove('template-options-collapsed');
-    
-    Object.entries(groupedTemplates).forEach(([categoryKey, category]) => {
-        // Create category section
-        const categorySection = document.createElement('div');
-        categorySection.className = 'template-category';
-        
-        const categoryHeader = document.createElement('div');
-        categoryHeader.className = 'category-header';
-        categoryHeader.innerHTML = `
-            <h3>${category.title}</h3>
-            <p class="category-description">${category.description}</p>
-        `;
-        
-        const templatesGrid = document.createElement('div');
-        templatesGrid.className = 'templates-grid';
-        
-        // Add templates in this category
-        category.templates.forEach(template => {
-            const templateElement = document.createElement('div');
-            templateElement.className = 'template-option';
-            templateElement.dataset.templateId = template.id;
-            templateElement.innerHTML = `
-                <h4>${template.name}</h4>
-                <p class="template-description">${template.description}</p>
-                ${template.examples ? `<p class="template-examples"><strong>Examples:</strong> ${template.examples}</p>` : ''}
-            `;
-            
-            templateElement.addEventListener('click', () => selectTemplate(template.id));
-            templatesGrid.appendChild(templateElement);
-        });
-        
-        categorySection.appendChild(categoryHeader);
-        categorySection.appendChild(templatesGrid);
-        container.appendChild(categorySection);
-    });
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.displayTemplates(groupedTemplates);
+    }
 }
 
-// Select template
+// ✅ Select template - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function selectTemplate(templateId) {
-    // Add visual feedback for selection
-    const clickedTemplate = document.querySelector(`[data-template-id="${templateId}"]`);
-    if (clickedTemplate) {
-        clickedTemplate.classList.add('selecting');
-        setTimeout(() => clickedTemplate.classList.remove('selecting'), 100);
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.selectTemplate(templateId);
     }
-    
-    // Remove previous selection
-    document.querySelectorAll('.template-option').forEach(el => {
-        el.classList.remove('selected');
-    });
-    
-    // Add selection to clicked template
-    document.querySelector(`[data-template-id="${templateId}"]`).classList.add('selected');
-    
-    appState.selectedTemplate = templateId;
-    
-    // Reset plot points to use template default
-    appState.totalPlotPoints = null;
-    appState.manuallySetPlotPoints = {};
-    appState.currentActPlotPoints = {};
-    
-    // Find and display the selected template immediately
-    let selectedTemplateData = null;
-    Object.values(appState.availableTemplates).forEach(category => {
-        if (category.templates) {
-            const found = category.templates.find(template => template.id === templateId);
-            if (found) {
-                selectedTemplateData = found;
-            }
-        }
-    });
-    
-    if (selectedTemplateData) {
-        displaySelectedTemplate(selectedTemplateData);
-        
-        // Collapse template options and update UI
-        setTimeout(() => {
-            collapseTemplateOptions();
-            updateTemplatePageForSelection();
-            
-            // Update navigation and progress after template selection
-            updateStepIndicators();
-            updateUniversalNavigation();
-            updateBreadcrumbNavigation();
-            updateAllProgressMeters();
-        }, 200);
-    }
-    
-    saveToLocalStorage();
 }
 
-// Collapse template options after selection
+// ✅ Template UI functions - MOVED TO components/template-manager.js
+// Legacy functions for backward compatibility
 function collapseTemplateOptions() {
-    const templateOptions = document.getElementById('templateOptions');
-    templateOptions.classList.add('template-options-collapsed');
-    templateOptions.classList.remove('template-options-expanded');
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.collapseTemplateOptions();
+    }
 }
 
-// Expand template options for browsing
 function expandTemplateOptions() {
-    const templateOptions = document.getElementById('templateOptions');
-    templateOptions.classList.add('template-options-expanded');
-    templateOptions.classList.remove('template-options-collapsed');
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.expandTemplateOptions();
+    }
 }
 
-// Update page UI for selected state
 function updateTemplatePageForSelection() {
-    const stepDescription = document.getElementById('templateStepDescription');
-    stepDescription.textContent = 'Selected template:';
-    
-    // Scroll to show the selected template
-    document.getElementById('selectedTemplateDisplay').scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-    });
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.updateTemplatePageForSelection();
+    }
 }
 
-// Change template function (expand options again)
+// ✅ Change template - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function changeTemplate() {
-    const stepDescription = document.getElementById('templateStepDescription');
-    stepDescription.textContent = 'Select a story structure template that best fits your narrative:';
-    
-    // Hide selected template display
-    document.getElementById('selectedTemplateDisplay').style.display = 'none';
-    
-    // Clear selection
-    document.querySelectorAll('.template-option').forEach(el => {
-        el.classList.remove('selected');
-    });
-    
-    // Clear app state
-    appState.selectedTemplate = null;
-    
-    // Expand template options
-    expandTemplateOptions();
-    
-    // Scroll to template options
-    document.getElementById('templateOptions').scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-    });
-    
-    // Update navigation after template deselection
-    updateStepIndicators();
-    updateUniversalNavigation();
-    updateBreadcrumbNavigation();
-    updateAllProgressMeters();
-    
-    saveToLocalStorage();
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.changeTemplate();
+    }
 }
 
 // Preview prompt that will be sent to Claude
@@ -2910,45 +2604,12 @@ async function generateStructure() {
     }
 }
 
-// Get acts in correct chronological order based on template (matches server-side logic)
+// ✅ Get chronological act order - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function getChronologicalActOrder(templateData, structureKeys) {
-    // Define the correct chronological order for common templates (same as server)
-    const templateOrders = {
-        'three-act': ['setup', 'confrontation_first_half', 'midpoint', 'confrontation_second_half', 'crisis', 'climax', 'resolution'],
-        'save-the-cat': ['opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'],
-        'hero-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
-        'booker-quest': ['call_to_quest', 'preparation', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
-        'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_triumph'],
-        'booker-rags-to-riches': ['humble_origins', 'call_to_adventure', 'getting_out', 'initial_success', 'first_crisis', 'final_crisis', 'final_triumph'],
-        'booker-voyage-return': ['ordinary_world', 'call_to_adventure', 'strange_world', 'initial_fascination', 'growing_threat', 'escape_and_return'],
-        'booker-comedy': ['initial_situation', 'complication', 'development', 'crisis', 'resolution'],
-        'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction'],
-        'booker-rebirth': ['initial_state', 'call_to_life', 'resistance', 'crisis', 'final_awakening']
-    };
-    
-    // Get template name from templateData
-    const templateName = templateData?.name?.toLowerCase().replace(/[^a-z-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown';
-    
-    // Try to match template name to known orders
-    let chronologicalOrder = null;
-    for (const [key, order] of Object.entries(templateOrders)) {
-        if (templateName.includes(key) || key.includes(templateName)) {
-            chronologicalOrder = order;
-            break;
-        }
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.getChronologicalActOrder(templateData, structureKeys);
     }
-    
-    // If we have a known order, filter it to only include acts that exist in the structure
-    if (chronologicalOrder) {
-        const existingActs = chronologicalOrder.filter(actKey => structureKeys.includes(actKey));
-        if (existingActs.length > 0) {
-            console.log(`🔧 Frontend: Using chronological order for template "${templateName}": ${existingActs.join(' → ')}`);
-            return existingActs;
-        }
-    }
-    
-    // Fallback: use provided order but warn about potential ordering issues
-    console.log(`⚠️  Frontend: Using fallback order for template "${templateName}": ${structureKeys.join(' → ')}`);
     return structureKeys;
 }
 
@@ -3136,9 +2797,7 @@ function getInfluencesSummary() {
     if (influences.films?.length > 0) {
         parts.push(`${influences.films.length} film(s)`);
     }
-    if (influences.characters?.length > 0) {
-        parts.push(`${influences.characters.length} character(s)`);
-    }
+
     
     return parts.length > 0 ? parts.join(', ') : 'None';
 }
@@ -7516,7 +7175,18 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     
     // Load project data (unified v2.0 format - with temporary legacy localStorage compatibility)
     appState.currentStoryConcept = projectData.storyInput?.storyConcept || {};
-    appState.projectCharacters = projectData.projectCharacters || projectData.storyInput?.charactersData || [];
+    
+    // 🔧 FIXED: Always load current character data from database
+    // The database now stores the authoritative character data in projectCharacters
+    appState.projectCharacters = projectData.projectCharacters || [];
+    console.log('✅ Characters loaded from project data:', appState.projectCharacters.length);
+    
+    // 🔧 LEGACY CLEANUP: Remove any stale character data from storyInput to prevent conflicts
+    if (projectData.storyInput?.charactersData) {
+        console.log('🧹 Cleaning up legacy charactersData field');
+        delete projectData.storyInput.charactersData;
+    }
+    
     appState.influences = projectData.influences || projectData.storyInput?.influences || { directors: [], screenwriters: [], films: [], tones: [] };
     appState.storyInput = projectData.storyInput || {};
     
@@ -8167,56 +7837,12 @@ function goToNextStep() {
 }
 
 // Display selected template on Acts page
+// ✅ Display selected template - MOVED TO components/template-manager.js
+// Legacy function for backward compatibility
 function displaySelectedTemplate(templateData) {
-    console.log('🔍 DEBUG: displaySelectedTemplate called with:', {
-        templateName: templateData.name,
-        templateId: templateData.id,
-        hasStructure: !!templateData.structure,
-        structureKeys: templateData.structure ? Object.keys(templateData.structure) : []
-    });
-    console.log('🔍 DEBUG: Current appState.templateData before display:', appState.templateData ? {
-        id: appState.templateData.id,
-        name: appState.templateData.name,
-        hasStructure: !!appState.templateData.structure,
-        structureKeys: appState.templateData.structure ? Object.keys(appState.templateData.structure) : []
-    } : 'null');
-    
-    // 🔧 GUARD: Don't overwrite existing customized template data during restoration
-    if (appState.templateData && appState.templateData.structure && 
-        appState.templateData.id === templateData.id &&
-        Object.keys(appState.templateData.structure).length > 0) {
-        console.log('🔧 GUARD: Preventing displaySelectedTemplate from overwriting existing customized data');
-        console.log('🔧 GUARD: Existing structure keys:', Object.keys(appState.templateData.structure));
-        
-        // Just update the UI display without calling loadTemplateStructureForActCards
-        const display = document.getElementById('selectedTemplateDisplay');
-        const name = document.getElementById('selectedTemplateName');
-        const description = document.getElementById('selectedTemplateDescription');
-        const category = document.getElementById('selectedTemplateCategory');
-        
-        if (display && name && description && category) {
-            name.textContent = appState.templateData.name;
-            description.textContent = appState.templateData.description;
-            category.textContent = appState.templateData.category ? appState.templateData.category.replace('_', ' ').toUpperCase() : '';
-            display.style.display = 'block';
-        }
-        return; // Exit early to prevent overwriting
+    if (window.templateManagerInstance) {
+        return window.templateManagerInstance.displaySelectedTemplate(templateData);
     }
-    
-    const display = document.getElementById('selectedTemplateDisplay');
-    const name = document.getElementById('selectedTemplateName');
-    const description = document.getElementById('selectedTemplateDescription');
-    const category = document.getElementById('selectedTemplateCategory');
-    
-    // Update the existing elements (keeping the original HTML structure intact)
-    name.textContent = templateData.name;
-    description.textContent = templateData.description;
-    category.textContent = templateData.category ? templateData.category.replace('_', ' ').toUpperCase() : '';
-    
-    display.style.display = 'block';
-    
-    // Load and display act cards for enhanced template selection
-    loadTemplateStructureForActCards(templateData);
 }
 
 // NEW: Display template structure preview in Step 3 (UNIFIED CONTAINERS)
@@ -8625,259 +8251,16 @@ function hideDialoguePromptModal() {
 // Character Management System
 // Note: projectCharacters and editingCharacterIndex are declared globally at the top of the file
 
-// Add character modal functions
-function addCharacter() {
-    console.log('AddCharacter: Function called');
-    editingCharacterIndex = null;
-    
-    const titleElement = document.getElementById('characterModalTitle');
-    const nameElement = document.getElementById('characterName');
-    const descElement = document.getElementById('characterDescription');
-    
-    console.log('AddCharacter: Elements found:', {
-        title: !!titleElement,
-        name: !!nameElement,
-        description: !!descElement
-    });
-    
-    if (titleElement) titleElement.textContent = 'Add Character';
-    if (nameElement) nameElement.value = '';
-    if (descElement) descElement.value = '';
-    
-    console.log('AddCharacter: Calling showCharacterModal');
-    showCharacterModal();
-}
+// ✅ Character management functions - MOVED TO components/character-manager.js
+// Legacy references maintained for backward compatibility
 
-function editCharacter(index) {
-    editingCharacterIndex = index;
-    const character = appState.projectCharacters[index];
-    document.getElementById('characterModalTitle').textContent = 'Edit Character';
-    document.getElementById('characterName').value = character.name;
-    document.getElementById('characterDescription').value = character.description;
-    showCharacterModal();
-}
-
-function deleteCharacter(index) {
-    if (confirm('Are you sure you want to delete this character?')) {
-        appState.projectCharacters.splice(index, 1);
-        updateCharacterTags();
-        validateCharactersRequired();
-    }
-}
-
-function showCharacterModal() {
-    console.log('ShowCharacterModal: Function called');
-    const modal = document.getElementById('addCharacterModal');
-    console.log('ShowCharacterModal: Modal element found:', !!modal);
-    
-    if (modal) {
-        modal.classList.add('show');
-        console.log('ShowCharacterModal: Added show class, modal classes:', modal.className);
-        
-        // Focus on the first input field
-        setTimeout(() => {
-            const nameInput = document.getElementById('characterName');
-            if (nameInput) {
-                nameInput.focus();
-                nameInput.select(); // Select any existing text
-            }
-        }, 100);
-    } else {
-        console.error('ShowCharacterModal: Modal element not found!');
-    }
-}
-
-function hideCharacterModal() {
-    document.getElementById('addCharacterModal').classList.remove('show');
-}
-
-function displayCharacters() {
-    const container = document.getElementById('charactersList');
-    const emptyState = document.getElementById('charactersEmpty');
-    
-    // Check if elements exist (they might not if we're not on the character management step)
-    if (!container || !emptyState) {
-        console.log('📋 displayCharacters: DOM elements not found, skipping display update');
-        return;
-    }
-    
-    if (appState.projectCharacters.length === 0) {
-        emptyState.style.display = 'block';
-        return;
-    }
-    
-    emptyState.style.display = 'none';
-    
-    const charactersHtml = appState.projectCharacters.map((character, index) => `
-        <div class="character-item">
-            <div class="character-content">
-                <div class="character-name">${character.name}</div>
-                <div class="character-description">${character.description}</div>
-            </div>
-            <div class="character-actions">
-                <button class="character-edit-btn" onclick="editCharacter(${index})">Edit</button>
-                <button class="character-delete-btn" onclick="deleteCharacter(${index})">Delete</button>
-            </div>
-        </div>
-    `).join('');
-    
-    container.innerHTML = `
-        <div class="characters-empty" id="charactersEmpty" style="display: none;">
-            No characters added yet. Click "Add Character" to get started.
-        </div>
-        ${charactersHtml}
-    `;
-}
-
-// Add character from library functionality
-async function addCharacterFromLibrary() {
-    try {
-        // Load user's character library
-        const response = await fetch('/api/user-libraries/guest/characters');
-        const characterLibrary = await response.json();
-        
-        displayCharacterLibrary(characterLibrary);
-        showCharacterLibraryModal();
-    } catch (error) {
-        console.error('Failed to load character library:', error);
-        showToast('Failed to load character library', 'error');
-    }
-}
-
-function displayCharacterLibrary(characters) {
-    const container = document.getElementById('characterLibraryList');
-    
-    if (characters.length === 0) {
-        container.innerHTML = '<div class="character-library-empty">No characters in your library yet. Create some in your <a href="profile.html">profile</a>.</div>';
-        return;
-    }
-    
-    const charactersHtml = characters.map(char => `
-        <div class="character-library-item" onclick="selectCharacterFromLibrary('${char.entry_key}', '${char.entry_data.name}', '${char.entry_data.description}')">
-            <div class="character-name">${char.entry_data.name}</div>
-            <div class="character-description">${char.entry_data.description}</div>
-        </div>
-    `).join('');
-    
-    container.innerHTML = charactersHtml;
-}
-
-function selectCharacterFromLibrary(key, name, description) {
-    // Add to project characters
-    appState.projectCharacters.push({
-        name: name,
-        description: description,
-        fromLibrary: true,
-        libraryKey: key
-    });
-    
-    updateCharacterTags();
-    hideCharacterLibraryModal();
-    validateCharactersRequired();
-    
-    // Mark as dirty to trigger auto-save
-    appState.pendingChanges = true;
-    if (autoSaveManager) {
-        autoSaveManager.markDirty();
-    }
-    
-    showToast(`Added "${name}" to your project`);
-}
-
-function showCharacterLibraryModal() {
-    document.getElementById('characterLibraryModal').classList.add('show');
-}
-
-function hideCharacterLibraryModal() {
-    document.getElementById('characterLibraryModal').classList.remove('show');
-}
-
-// Character form submission
-document.getElementById('characterForm').onsubmit = function(e) {
-    e.preventDefault();
-    
-    const formData = new FormData(e.target);
-    const name = formData.get('characterName').trim();
-    const description = formData.get('characterDescription').trim();
-    
-    if (!name || !description) {
-        showToast('Please fill in all fields', 'error');
-        return;
-    }
-    
-    const character = { name, description };
-    
-    if (editingCharacterIndex !== null) {
-        // Editing existing character
-        appState.projectCharacters[editingCharacterIndex] = character;
-        console.log(`🔍 CHARACTER DEBUG: Updated character at index ${editingCharacterIndex}:`, character);
-        showToast('Character updated');
-    } else {
-        // Adding new character
-        appState.projectCharacters.push(character);
-        console.log(`🔍 CHARACTER DEBUG: Added new character:`, character);
-        showToast('Character added');
-        
-        // Offer to save to library if authenticated
-        if (appState.isAuthenticated) {
-            checkAndOfferLibrarySave('character', name);
-        }
-    }
-    
-    console.log('  - Current projectCharacters:', appState.projectCharacters);
-    
-    // Mark as dirty to trigger auto-save
-    appState.pendingChanges = true;
-    if (autoSaveManager) {
-        autoSaveManager.markDirty();
-    }
-    console.log('  - Marked as dirty for auto-save');
-    
-    updateCharacterTags();
-    hideCharacterModal();
-    validateCharactersRequired();
-    e.target.reset();
-};
+// Character form submission - MOVED TO components/character-manager.js
 
 
 
-// Characters are now optional - validation disabled
-function validateCharactersRequired() {
-    // Characters are now optional, so always enable the continue button
-    // Target only navigation buttons, not our AI feedback button
-    const continueBtn = document.querySelector('#step1 .step-actions .btn-primary');
-    if (continueBtn) {
-            continueBtn.disabled = false;
-            continueBtn.textContent = 'Continue to Act Selection';
-    }
-}
+// Character validation and prompt functions - MOVED TO components/character-manager.js
 
-// Get characters as text for prompt generation (replaces old textarea value)
-function getCharactersForPrompt() {
-    return appState.projectCharacters.map(char => {
-        // Skip descriptions that are just "Main character: [name]" - show name only
-        if (char.description && !char.description.startsWith('Main character:')) {
-            return `${char.name} (${char.description})`;
-        }
-        return char.name;
-    }).join(', ');
-}
-
-// Modal click outside to close (for character modals)
-document.addEventListener('click', function(e) {
-    if (e.target.id === 'addCharacterModal') {
-        hideCharacterModal();
-    }
-    if (e.target.id === 'characterLibraryModal') {
-        hideCharacterLibraryModal();
-    }
-});
-
-// Initialize character system when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    updateCharacterTags();
-    validateCharactersRequired();
-});
+// Character modal handlers and initialization - MOVED TO components/character-manager.js
 
 // Global auth utilities for testing and debugging
 window.authUtils = {
