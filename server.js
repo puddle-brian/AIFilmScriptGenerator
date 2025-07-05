@@ -3416,10 +3416,7 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     
     // Load project data from database using authenticated user
     const userId = req.user.id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found' });
@@ -3743,10 +3740,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     const userId = userResult.rows[0].id;
     
     // Get project context from database
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -4059,10 +4053,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     const userId = userResult.rows[0].id;
     
     // Get project context from database
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -4282,10 +4273,7 @@ app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', asyn
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -4426,10 +4414,7 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -4525,10 +4510,7 @@ app.post('/api/regenerate-scenes/:projectPath', async (req, res) => {
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
