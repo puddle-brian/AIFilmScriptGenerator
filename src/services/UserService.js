@@ -307,6 +307,88 @@ class UserService {
       throw error;
     }
   }
+
+  /**
+   * Create new user with username only
+   * @param {string} username - Username
+   * @returns {Promise<Object>} Created user data
+   */
+  async createUser(username) {
+    try {
+      const result = await this.dbClient.query(
+        'INSERT INTO users (username) VALUES ($1) RETURNING id, username, created_at',
+        [username.trim()]
+      );
+      return result;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create new user with API key and credits
+   * @param {string} username - Username
+   * @param {number} initialCredits - Initial credits amount (default 0)
+   * @returns {Promise<Object>} Created user data with API key
+   */
+  async createUserWithCredits(username, initialCredits = 0) {
+    try {
+      const apiKey = 'user_' + require('crypto').randomBytes(32).toString('hex');
+      
+      const result = await this.dbClient.query(`
+        INSERT INTO users (username, api_key, credits_remaining)
+        VALUES ($1, $2, $3)
+        RETURNING id, username, api_key, credits_remaining
+      `, [username, apiKey, initialCredits]);
+      
+      return result;
+    } catch (error) {
+      console.error('Error creating user with credits:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create admin user with full privileges
+   * @param {string} username - Username
+   * @param {number} initialCredits - Initial credits amount (default 999999)
+   * @returns {Promise<Object>} Created admin user data with API key
+   */
+  async createAdminUser(username, initialCredits = 999999) {
+    try {
+      const adminApiKey = 'admin_' + require('crypto').randomBytes(32).toString('hex');
+      
+      const result = await this.dbClient.query(`
+        INSERT INTO users (username, api_key, credits_remaining, is_admin)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, username, api_key, credits_remaining, is_admin
+      `, [username, adminApiKey, initialCredits, true]);
+      
+      return result;
+    } catch (error) {
+      console.error('Error creating admin user:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Promote existing user to admin
+   * @param {string} username - Username to promote
+   * @returns {Promise<Object>} Update result
+   */
+  async promoteToAdmin(username) {
+    try {
+      const result = await this.dbClient.query(
+        'UPDATE users SET is_admin = TRUE WHERE username = $1 RETURNING id, username, is_admin',
+        [username]
+      );
+      return result;
+    } catch (error) {
+      console.error('Error promoting user to admin:', error);
+      throw error;
+    }
+  }
 }
 
 module.exports = UserService; 

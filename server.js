@@ -177,11 +177,8 @@ async function initializeDatabase() {
     const adminUser = await userService.getUserByUsername('admin');
     
     if (adminUser.rows.length === 0) {
-      const adminApiKey = 'admin_' + require('crypto').randomBytes(32).toString('hex');
-      await dbClient.query(`
-        INSERT INTO users (username, api_key, credits_remaining, is_admin)
-        VALUES ($1, $2, $3, $4)
-      `, ['admin', adminApiKey, 999999, true]);
+      const result = await userService.createAdminUser('admin', 999999);
+      const adminApiKey = result.rows[0].api_key;
       
       console.log('✅ Admin user created with API key:', adminApiKey);
       console.log('   Save this API key securely - it won\'t be shown again!');
@@ -5078,10 +5075,7 @@ app.post('/api/users', async (req, res) => {
       return res.status(400).json({ error: 'Username is required' });
     }
     
-    const result = await dbClient.query(
-      'INSERT INTO users (username) VALUES ($1) RETURNING id, username, created_at',
-      [username.trim()]
-    );
+    const result = await userService.createUser(username);
     
     res.json(result.rows[0]);
   } catch (error) {
@@ -6756,13 +6750,7 @@ app.post('/api/admin/create-user', authenticateApiKey, async (req, res) => {
   const { username, email, initialCredits = 0 } = req.body;
   
   try {
-    const apiKey = 'user_' + require('crypto').randomBytes(32).toString('hex');
-    
-    const result = await dbClient.query(`
-      INSERT INTO users (username, api_key, credits_remaining)
-      VALUES ($1, $2, $3)
-      RETURNING id, username, api_key, credits_remaining
-    `, [username, apiKey, initialCredits]);
+    const result = await userService.createUserWithCredits(username, initialCredits);
 
     res.json({
       message: 'User created successfully',
@@ -7136,11 +7124,8 @@ app.post('/api/create-emergency-admin', async (req, res) => {
     }
     
     // Create new admin user
-    const adminApiKey = 'admin_' + require('crypto').randomBytes(32).toString('hex');
-    await dbClient.query(`
-      INSERT INTO users (username, api_key, credits_remaining, is_admin)
-      VALUES ($1, $2, $3, $4)
-    `, ['admin', adminApiKey, 999999, true]);
+    const result = await userService.createAdminUser('admin', 999999);
+    const adminApiKey = result.rows[0].api_key;
     
     console.log('🚨 Emergency admin user created with API key:', adminApiKey);
     
@@ -7182,10 +7167,7 @@ app.post('/api/promote-to-admin', async (req, res) => {
     }
     
     // Promote user to admin
-    await dbClient.query(
-      'UPDATE users SET is_admin = TRUE WHERE username = $1',
-      [username]
-    );
+    await userService.promoteToAdmin(username);
     
     console.log(`👑 User ${username} promoted to admin`);
     
