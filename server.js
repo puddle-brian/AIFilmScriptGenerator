@@ -174,10 +174,7 @@ async function initializeDatabase() {
     console.log('✅ Usage tracking tables initialized');
     
     // Create admin user if it doesn't exist
-    const adminUser = await dbClient.query(
-      'SELECT * FROM users WHERE username = $1',
-      ['admin']
-    );
+    const adminUser = await userService.getUserByUsername('admin');
     
     if (adminUser.rows.length === 0) {
       const adminApiKey = 'admin_' + require('crypto').randomBytes(32).toString('hex');
@@ -6786,10 +6783,7 @@ app.post('/api/debug/add-credits', authenticateApiKey, async (req, res) => {
     ]);
 
     // Get updated balance
-    const result = await dbClient.query(
-      'SELECT credits_remaining FROM users WHERE id = $1',
-      [req.user.id]
-    );
+    const result = await userService.getUserCreditsBalance(req.user.id);
     
     const newBalance = result.rows[0].credits_remaining;
     console.log(`✅ DEBUG: Credits added successfully. New balance: ${newBalance}`);
@@ -6813,10 +6807,7 @@ app.post('/api/debug/refresh-credits', authenticateApiKey, async (req, res) => {
     console.log('🔄 Manual credit refresh requested by:', req.user.username);
     
     // Get current user credits
-    const result = await dbClient.query(
-      'SELECT credits_remaining, total_credits_purchased FROM users WHERE id = $1',
-      [req.user.id]
-    );
+    const result = await userService.getUserCreditsStats(req.user.id);
     
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
