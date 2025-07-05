@@ -985,8 +985,6 @@ app.post('/api/generate-dialogue', authenticateApiKey, async (req, res) => {
     await creditService.deductCredits(username, 3, 'generate-dialogue');
     await creditService.logUsage(username, 'generate-dialogue', 3, true);
     
-    console.log('✅ Dialogue generation completed using GenerationService');
-    
     res.json({
       ...result,
       migratedEndpoint: true,
@@ -4478,7 +4476,7 @@ app.get('/api/model-pricing', async (req, res) => {
 app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIndex', authenticateApiKey, async (req, res) => {
   try {
     const { projectPath, actKey, plotPointIndex } = req.params;
-    const { model = "claude-sonnet-4-20250514", totalScenes = null } = req.body;
+    const { model = "claude-sonnet-4-20250514", totalScenes = null, creativeDirections = null } = req.body;
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
@@ -4570,7 +4568,7 @@ CINEMATIC WRITING FOUNDATION:
 
 This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
     
-    const prompt = `${hierarchicalPrompt}
+    let prompt = `${hierarchicalPrompt}
 
 Return ONLY valid JSON in this exact format:
 {
@@ -4588,6 +4586,33 @@ Return ONLY valid JSON in this exact format:
   ]
 }`;
 
+    // Add creative directions if provided
+    const scenesKey = `${actKey}_${plotPointIndexNum}`;
+    if (creativeDirections?.scenes?.[scenesKey]) {
+      const direction = creativeDirections.scenes[scenesKey];
+      console.log(`✨ Adding creative direction to PREVIEW for scenes: "${direction}"`);
+      prompt = `${hierarchicalPrompt}
+
+User Creative Direction for Scenes: ${direction}
+⚠️ IMPORTANT: Incorporate this creative direction into the scenes for this plot point.
+
+Return ONLY valid JSON in this exact format:
+{
+  "scenes": [
+    {
+      "title": "Scene Title",
+      "location": "Specific location",
+      "time_of_day": "Morning/Afternoon/Evening/Night",
+      "description": "What happens in this scene - be specific and visual",
+      "characters": ["Character1", "Character2"],
+      "emotional_beats": ["primary emotion", "secondary emotion"],
+      "plotPointIndex": ${plotPointIndexNum},
+      "sequencePosition": 1
+    }
+  ]
+}`;
+    }
+
     const systemMessage = "You are a professional screenwriter generating scene sequences within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.";
 
     res.json({
@@ -4600,7 +4625,8 @@ Return ONLY valid JSON in this exact format:
       isKeyPlot: false, // Simple distribution - all plot points treated equally
       hierarchicalPrompt: hierarchicalPrompt,
       usedHierarchicalContext: true,
-      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using dynamic calculation: ${sceneCount} scenes per plot point (from ${currentTotalScenes} total scenes).`
+      previewNote: `This shows how ${sceneCount} scenes will be generated to implement Plot Point ${plotPointIndexNum + 1}: "${plotPoint}". Using dynamic calculation: ${sceneCount} scenes per plot point (from ${currentTotalScenes} total scenes).`,
+      creativeDirectionsUsed: creativeDirections?.scenes?.[scenesKey] || null
     });
 
   } catch (error) {
