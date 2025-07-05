@@ -7185,52 +7185,10 @@ app.get('/api/admin/chart-data', authenticateApiKey, async (req, res) => {
       default: days = 1;
     }
 
-    // Get daily usage data
-    const dailyUsageResult = await dbClient.query(`
-      SELECT 
-        DATE(timestamp) as date,
-        COUNT(*) as requests,
-        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as tokens,
-        COALESCE(SUM(total_cost), 0) as cost,
-        ROUND(AVG(CASE WHEN success = true THEN 1 ELSE 0 END) * 100, 1) as success_rate
-      FROM usage_logs_v2 
-      WHERE timestamp >= NOW() - INTERVAL '${days} days'
-      GROUP BY DATE(timestamp)
-      ORDER BY date ASC
-    `);
+    // Use AnalyticsService for daily usage analytics
+    const chartData = await analyticsService.getDailyUsageAnalytics(days);
 
-    // Get endpoint data
-    const endpointResult = await dbClient.query(`
-      SELECT 
-        endpoint,
-        COUNT(*) as requests
-      FROM usage_logs_v2 
-      WHERE timestamp >= NOW() - INTERVAL '${days} days'
-      GROUP BY endpoint 
-      ORDER BY requests DESC 
-      LIMIT 6
-    `);
-
-    // Format daily usage data
-    const dailyUsage = dailyUsageResult.rows.map(row => ({
-      date: new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      requests: parseInt(row.requests) || 0,
-      tokens: parseInt(row.tokens) || 0,
-      cost: parseFloat(row.cost) || 0,
-      successRate: parseFloat(row.success_rate) || 0,
-      errorRate: 100 - (parseFloat(row.success_rate) || 0)
-    }));
-
-    // Format endpoint data
-    const endpoints = endpointResult.rows.map(row => ({
-      name: row.endpoint.replace('/api/', '').replace('generate-', ''),
-      requests: parseInt(row.requests) || 0
-    }));
-
-    res.json({
-      dailyUsage,
-      endpoints
-    });
+    res.json(chartData);
   } catch (error) {
     console.error('Error loading chart data:', error);
     res.status(500).json({ error: 'Failed to load chart data' });
@@ -7245,74 +7203,10 @@ app.get('/api/admin/analytics', authenticateApiKey, async (req, res) => {
   try {
     const { timeframe = '24h' } = req.query;
     
-    let interval;
-    switch (timeframe) {
-      case '24h': interval = '1 day'; break;
-      case '7d': interval = '7 days'; break;
-      case '30d': interval = '30 days'; break;
-      default: interval = '1 day';
-    }
+    // Use AnalyticsService for comprehensive analytics
+    const analyticsData = await analyticsService.getComprehensiveAnalytics(timeframe);
 
-    // Get real analytics from usage_logs_v2 table
-    const timeFilter = `WHERE timestamp >= NOW() - INTERVAL '${interval}'`;
-    
-    // Total requests
-    const requestsResult = await dbClient.query(`
-      SELECT COUNT(*) as total_requests 
-      FROM usage_logs_v2 
-      ${timeFilter}
-    `);
-    
-    // Total tokens and cost
-    const tokensResult = await dbClient.query(`
-      SELECT 
-        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as total_tokens,
-        COALESCE(SUM(total_cost), 0) as total_cost
-      FROM usage_logs_v2 
-      ${timeFilter}
-    `);
-    
-    // Error rate
-    const errorResult = await dbClient.query(`
-      SELECT 
-        COUNT(*) as total_calls,
-        COUNT(CASE WHEN success = false THEN 1 END) as error_calls
-      FROM usage_logs_v2 
-      ${timeFilter}
-    `);
-    
-    // Top endpoints
-    const endpointsResult = await dbClient.query(`
-      SELECT 
-        endpoint,
-        COUNT(*) as request_count,
-        COALESCE(SUM(COALESCE(input_tokens, 0) + COALESCE(output_tokens, 0)), 0) as total_tokens,
-        COALESCE(SUM(total_cost), 0) as total_cost,
-        ROUND(AVG(CASE WHEN success = true THEN 1 ELSE 0 END) * 100, 1) as success_rate
-      FROM usage_logs_v2 
-      ${timeFilter}
-      GROUP BY endpoint 
-      ORDER BY request_count DESC 
-      LIMIT 10
-    `);
-
-    const totalCalls = parseInt(errorResult.rows[0].total_calls) || 0;
-    const errorCalls = parseInt(errorResult.rows[0].error_calls) || 0;
-    const errorRate = totalCalls > 0 ? Math.round((errorCalls / totalCalls) * 100 * 10) / 10 : 0;
-
-    res.json({
-      totalRequests: parseInt(requestsResult.rows[0].total_requests) || 0,
-      totalTokens: parseInt(tokensResult.rows[0].total_tokens) || 0,
-      totalCost: parseFloat(tokensResult.rows[0].total_cost) || 0,
-      errorRate: errorRate,
-      topEndpoints: endpointsResult.rows.map(row => ({
-        endpoint: row.endpoint,
-        requests: parseInt(row.request_count),
-        tokens: parseInt(row.total_tokens),
-        cost: parseFloat(row.total_cost),
-        successRate: parseFloat(row.success_rate)
-      }))
-    });
+    res.json(analyticsData);
   } catch (error) {
     console.error('Error loading analytics:', error);
     res.status(500).json({ error: 'Failed to load analytics' });
@@ -7330,19 +7224,14 @@ app.post('/api/admin/test-database', authenticateApiKey, async (req, res) => {
   try {
     const result = await dbClient.query('SELECT NOW() as timestamp, version() as version');
     
-    // Also check the usage_logs_v2 table structure
-    const tableInfo = await dbClient.query(`
-      SELECT column_name, data_type 
-      FROM information_schema.columns 
-      WHERE table_name = 'usage_logs_v2'
-      ORDER BY ordinal_position
-    `);
+    // Also check the usage_logs_v2 table structure using AnalyticsService
+    const tableInfo = await analyticsService.getUsageLogsTableStructure();
     
     res.json({ 
       success: true, 
       message: 'Database connection successful',
       data: result.rows[0],
-      usage_logs_v2_columns: tableInfo.rows
+      usage_logs_v2_columns: tableInfo
     });
   } catch (error) {
     console.error('Database test failed:', error);
@@ -8316,6 +8205,7 @@ let databaseService = null;
 let authService = null;
 let projectService = null;
 let libraryService = null;
+let analyticsService = null;
 
 async function initializeServices() {
   try {
@@ -8325,6 +8215,7 @@ async function initializeServices() {
     const AuthService = require('./src/services/AuthService');
     const ProjectService = require('./src/services/ProjectService');
     const LibraryService = require('./src/services/LibraryService');
+    const AnalyticsService = require('./src/services/AnalyticsService');
     
     // Load prompt builders from existing system
     const promptBuilders = require('./prompt-builders');
@@ -8338,6 +8229,7 @@ async function initializeServices() {
     authService = new AuthService(databaseService);
     projectService = new ProjectService(databaseService);
     libraryService = new LibraryService(databaseService);
+    analyticsService = new AnalyticsService(dbClient);
     
     console.log('✅ New services initialized successfully');
   } catch (error) {
@@ -8427,6 +8319,7 @@ const startServer = async () => {
   app.set('anthropic', anthropic);
   app.set('parseProjectContext', parseProjectContext);
   app.set('projectService', projectService);
+  app.set('analyticsService', analyticsService);
 
   // Mount route modules (after dependency injection is set up)
   app.use('/api/auth', authRoutes.router);
@@ -8467,6 +8360,7 @@ if (process.env.VERCEL) {
     app.set('anthropic', anthropic);
     app.set('parseProjectContext', parseProjectContext);
     app.set('projectService', projectService);
+    app.set('analyticsService', analyticsService);
 
     // Mount route modules (serverless)
     app.use('/api/auth', authRoutes.router);
