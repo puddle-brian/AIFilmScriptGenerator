@@ -455,7 +455,7 @@ app.get('/api/health', authenticateApiKey, async (req, res) => {
   try {
     // Check database
     const dbStart = Date.now();
-    await dbClient.query('SELECT 1');
+    await databaseService.healthCheck();
     healthCheck.services.database = {
       status: 'ok',
       responseTime: Date.now() - dbStart
@@ -1324,7 +1324,7 @@ class HierarchicalContext {
       console.log(`  📁 Project path: "${projectPath}"`);
       
       // Load from database using provided username
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       
       if (userResult.rows.length === 0) {
         console.log('  ⚠️  User not found in database');
@@ -2090,7 +2090,7 @@ app.post('/api/generate-structure-custom', async (req, res) => {
       // Try to get existing project ID from database
       try {
         const username = req.user.username;
-        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        const userResult = await databaseService.getUserByUsername(username);
         if (userResult.rows.length > 0) {
           const userId = userResult.rows[0].id;
           const projectResult = await dbClient.query(
@@ -2233,7 +2233,7 @@ Project ID: ${customProjectId}
       };
 
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length > 0) {
         const userId = userResult.rows[0].id;
         
@@ -2614,7 +2614,7 @@ app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) =>
         // Try to load project structure and template from database
         try {
           const username = req.user.username; // Get from authenticated user
-          const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+          const userResult = await databaseService.getUserByUsername(username);
           
           if (userResult.rows.length > 0) {
             const userId = userResult.rows[0].id;
@@ -2832,7 +2832,7 @@ app.post('/api/save-project', async (req, res) => {
     };
     
     // Get user ID
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -2903,7 +2903,7 @@ app.get('/api/project/:id', async (req, res) => {
     const username = req.user.username; // Get from authenticated user
     
     // Try to load from database first
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length > 0) {
       const userId = userResult.rows[0].id;
@@ -3014,7 +3014,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
       }
       
       // First, get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -3065,7 +3065,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
         return res.status(400).json({ error: 'Username required for plot points loading' });
       }
       
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -3118,7 +3118,7 @@ app.post('/api/preview-scene-prompt', authenticateApiKey, async (req, res) => {
         // Try to load project structure and template from database
         try {
           const username = req.user.username; // Get from authenticated user
-          const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+          const userResult = await databaseService.getUserByUsername(username);
           
           if (userResult.rows.length > 0) {
             const userId = userResult.rows[0].id;
@@ -3513,13 +3513,13 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     
     // Ensure database connection is healthy
     try {
-      await dbClient.query('SELECT 1');
+      await databaseService.healthCheck();
     } catch (connectionError) {
       console.error('Database connection error, attempting to reconnect:', connectionError);
       await connectToDatabase();
     }
     
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -3761,7 +3761,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     
     // Load project data from database instead of file system
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -3850,7 +3850,7 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
       let plotPoints = [];
       try {
         const username = req.user.username; // Get from authenticated user
-        const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+        const userResult = await databaseService.getUserByUsername(username);
         
         if (userResult.rows.length > 0) {
           const userId = userResult.rows[0].id;
