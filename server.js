@@ -4083,7 +4083,7 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     
     // Load project data from database instead of file system
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -4311,7 +4311,7 @@ app.post('/api/generate-plot-point/:projectPath/:structureKey/:sceneIndex', asyn
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -4455,7 +4455,7 @@ app.post('/api/regenerate-scenes-simple/:projectPath', async (req, res) => {
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -4554,7 +4554,7 @@ app.post('/api/regenerate-scenes/:projectPath', async (req, res) => {
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -5176,7 +5176,7 @@ app.get('/api/user-libraries/:username/:type', async (req, res) => {
       const { username, type } = req.params;
       
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -5216,7 +5216,7 @@ app.post('/api/user-libraries/:username/:type/:key', async (req, res) => {
       const entryData = req.body;
       
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -5260,7 +5260,7 @@ app.put('/api/user-libraries/:username/:type/:key', async (req, res) => {
       const entryData = req.body;
       
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -5302,7 +5302,7 @@ app.delete('/api/user-libraries/:username/:type/:key', async (req, res) => {
       const { username, type, key } = req.params;
       
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -5358,7 +5358,7 @@ app.post('/api/user-libraries/:username/populate-starter-pack', async (req, res)
       const { username } = req.params;
       
       // Get user ID
-      const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+      const userResult = await databaseService.getUserByUsername(username);
       if (userResult.rows.length === 0) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -5577,7 +5577,7 @@ app.get('/api/user-projects/:username', async (req, res) => {
     const { username } = req.params;
     
     // Get user ID
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -5603,7 +5603,7 @@ app.post('/api/user-projects/:username', async (req, res) => {
     const { projectName, projectContext, thumbnailData } = req.body;
     
     // Get user ID
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -5955,7 +5955,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const username = req.user.username; // Get from authenticated user
     
     // Get user and project from database
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     if (userResult.rows.length === 0) {
       throw new Error('User not found');
     }
@@ -6035,7 +6035,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -6187,7 +6187,7 @@ app.post('/api/preview-individual-plot-point-prompt', authenticateApiKey, async 
     
     // Load project data from database
     const username = req.user.username; // Get from authenticated user
-    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    const userResult = await databaseService.getUserByUsername(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
