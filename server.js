@@ -22,6 +22,8 @@ const BackupSystem = require('./backup-system');
 
 // Import new route modules
 const authRoutes = require('./routes/auth');
+const generationRoutes = require('./routes/generation');
+const { authenticateApiKey, checkCredits } = authRoutes;
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -663,22 +665,18 @@ app.use(express.static('public'));
 // =====================================
 // DEPENDENCY INJECTION MIDDLEWARE
 // =====================================
-// Inject dependencies into request object for modular routes
-app.use((req, res, next) => {
-  req.dbClient = dbClient;
-  req.authService = authService;
-  req.populateUserStarterPack = populateUserStarterPack;
-  next();
-});
+// Note: Dependency injection now handled through app.set() in startServer() function
+// This ensures all services are properly initialized before injection
 
 // =====================================
 // MOUNT ROUTE MODULES
 // =====================================
-// Mount authentication routes
-app.use('/api/auth', authRoutes.router);
+
+// Note: Dependency injection and route mounting moved to startServer() function
+// This ensures all services are properly initialized before injection
 
 // Import authentication middleware from routes/auth.js
-const { authenticateApiKey, checkCredits } = authRoutes;
+// (authenticateApiKey and checkCredits are now imported at the top of the file)
 
 // Enhanced Anthropic API wrapper with usage tracking
 class TrackedAnthropicAPI {
@@ -8525,6 +8523,24 @@ const startServer = async () => {
   await ensureDirectories();
   await connectToDatabase();
   await initializeServices(); // Initialize new services
+  
+  // Set up dependency injection for route modules (after services are initialized)
+  app.set('dbClient', dbClient);
+  app.set('authService', authService);
+  app.set('populateUserStarterPack', populateUserStarterPack);
+  app.set('generationService', generationService);
+  app.set('creditService', creditService);
+  app.set('aiFeedbackSystem', aiFeedbackSystem);
+  app.set('trackedAnthropic', trackedAnthropic);
+  app.set('promptBuilders', promptBuilders);
+  app.set('HierarchicalContext', HierarchicalContext);
+  app.set('anthropic', anthropic);
+  app.set('parseProjectContext', parseProjectContext);
+
+  // Mount route modules (after dependency injection is set up)
+  app.use('/api/auth', authRoutes.router);
+  app.use('/api', generationRoutes.router);
+  
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
     console.log(`🌐 Access: http://localhost:${PORT}`);
@@ -8539,8 +8555,30 @@ if (process.env.VERCEL) {
   // Initialize database for serverless with timeout protection
   console.log('🔧 Serverless mode - initializing database with pooling');
   
-  initializeDatabase().then(() => {
+  initializeDatabase().then(async () => {
     console.log('✅ Serverless database initialized successfully');
+    
+    // Initialize services for serverless
+    await initializeServices();
+    
+    // Set up dependency injection for route modules (serverless)
+    app.set('dbClient', dbClient);
+    app.set('authService', authService);
+    app.set('populateUserStarterPack', populateUserStarterPack);
+    app.set('generationService', generationService);
+    app.set('creditService', creditService);
+    app.set('aiFeedbackSystem', aiFeedbackSystem);
+    app.set('trackedAnthropic', trackedAnthropic);
+    app.set('promptBuilders', promptBuilders);
+    app.set('HierarchicalContext', HierarchicalContext);
+    app.set('anthropic', anthropic);
+    app.set('parseProjectContext', parseProjectContext);
+
+    // Mount route modules (serverless)
+    app.use('/api/auth', authRoutes.router);
+    app.use('/api', generationRoutes.router);
+    
+    console.log('✅ Serverless route modules mounted successfully');
   }).catch((error) => {
     console.error('⚠️  Serverless database initialization failed:', error.message);
   });

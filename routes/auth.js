@@ -18,8 +18,14 @@ async function authenticateApiKey(req, res, next) {
   try {
     console.log('🔐 Authenticating API key:', apiKey.substring(0, 10) + '...');
     
+    // Get database client from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Simple query with built-in timeout handling
-    const user = await req.dbClient.query(
+    const user = await dbClient.query(
       'SELECT * FROM users WHERE api_key = $1',
       [apiKey]
     );
@@ -62,8 +68,11 @@ function checkCredits(estimatedCost = 1) {
 // 🆕 MIGRATED: User Registration using AuthService (Phase 2B)
 router.post('/register', async (req, res) => {
   try {
-    // Check if new services are available
-    if (!req.authService) {
+    // Get services from app-level dependency injection
+    const authService = req.app.get('authService');
+    const populateUserStarterPack = req.app.get('populateUserStarterPack');
+    
+    if (!authService) {
       return res.status(503).json({ 
         error: 'Authentication service temporarily unavailable. Please try again later.',
         fallback: 'Server restarting...'
@@ -75,11 +84,11 @@ router.post('/register', async (req, res) => {
     console.log(`🆕 Using AuthService for user registration: ${username} (${email})`);
     
     // Create user using AuthService - handles all validation, hashing, and database operations
-    const result = await req.authService.createUser({ username, email, password, emailUpdates });
+    const result = await authService.createUser({ username, email, password, emailUpdates });
     
     // Populate starter pack with default libraries
     try {
-      const starterPackSuccess = await req.populateUserStarterPack(result.user.id, username);
+      const starterPackSuccess = await populateUserStarterPack(result.user.id, username);
       if (starterPackSuccess) {
         console.log(`✅ Starter pack successfully populated for ${username}`);
       } else {
@@ -118,8 +127,10 @@ router.post('/register', async (req, res) => {
 // 🆕 MIGRATED: User Login using AuthService (Phase 2B)
 router.post('/login', async (req, res) => {
   try {
-    // Check if new services are available
-    if (!req.authService) {
+    // Get services from app-level dependency injection
+    const authService = req.app.get('authService');
+    
+    if (!authService) {
       return res.status(503).json({ 
         error: 'Authentication service temporarily unavailable. Please try again later.',
         fallback: 'Server restarting...'
@@ -131,7 +142,7 @@ router.post('/login', async (req, res) => {
     console.log(`🆕 Using AuthService for user login: ${email}`);
     
     // Login user using AuthService - handles all validation and authentication
-    const result = await req.authService.login(email, password);
+    const result = await authService.login(email, password);
     
     console.log(`✅ User login completed using AuthService: ${result.user.username}`);
     
@@ -164,8 +175,14 @@ router.post('/forgot-password', async (req, res) => {
       return res.status(400).json({ error: 'Email is required' });
     }
     
+    // Get database client from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Check if user exists
-    const result = await req.dbClient.query(
+    const result = await dbClient.query(
       'SELECT id, username, email FROM users WHERE email = $1',
       [email]
     );
@@ -182,7 +199,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetExpires = new Date(Date.now() + 3600000); // 1 hour from now
     
     // Store reset token
-    await req.dbClient.query(
+    await dbClient.query(
       'UPDATE users SET reset_token = $1, reset_token_expires = $2 WHERE id = $3',
       [resetToken, resetExpires, user.id]
     );
@@ -212,8 +229,14 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
     
+    // Get database client from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Find user with valid reset token
-    const result = await req.dbClient.query(
+    const result = await dbClient.query(
       'SELECT id, username, email FROM users WHERE reset_token = $1 AND reset_token_expires > NOW()',
       [token]
     );
@@ -229,7 +252,7 @@ router.post('/reset-password', async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     
     // Update password and clear reset token
-    await req.dbClient.query(
+    await dbClient.query(
       'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
       [hashedPassword, user.id]
     );
@@ -253,8 +276,14 @@ router.get('/verify-email', async (req, res) => {
       return res.status(400).json({ error: 'Verification token is required' });
     }
     
+    // Get database client from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Find user with verification token
-    const result = await req.dbClient.query(
+    const result = await dbClient.query(
       'SELECT id, username, email FROM users WHERE email_verification_token = $1',
       [token]
     );
@@ -266,7 +295,7 @@ router.get('/verify-email', async (req, res) => {
     const user = result.rows[0];
     
     // Mark email as verified
-    await req.dbClient.query(
+    await dbClient.query(
       'UPDATE users SET email_verified = true, email_verification_token = NULL WHERE id = $1',
       [user.id]
     );
@@ -294,8 +323,14 @@ router.post('/v2/login', async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
     
+    // Get database client from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Find user by email
-    const result = await req.dbClient.query(
+    const result = await dbClient.query(
       'SELECT id, username, email, password_hash, api_key, credits_remaining, is_admin, email_verified FROM users WHERE email = $1',
       [email]
     );
@@ -314,7 +349,7 @@ router.post('/v2/login', async (req, res) => {
     
     // Update last login (non-critical)
     try {
-      await req.dbClient.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+      await dbClient.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
     } catch (updateError) {
       console.log('Last login update failed:', updateError.message);
     }
@@ -368,8 +403,16 @@ router.post('/v2/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
     
+    // Get database client and services from app-level dependency injection
+    const dbClient = req.app.get('dbClient');
+    const populateUserStarterPack = req.app.get('populateUserStarterPack');
+    
+    if (!dbClient) {
+      throw new Error('Database client not available');
+    }
+    
     // Check if user already exists
-    const existingUser = await req.dbClient.query(
+    const existingUser = await dbClient.query(
       'SELECT id FROM users WHERE username = $1 OR email = $2',
       [username, email]
     );
@@ -386,7 +429,7 @@ router.post('/v2/register', async (req, res) => {
     const apiKey = 'user_' + crypto.randomBytes(32).toString('hex');
     
     // Create user with initial credits (100 free credits = $1.00)
-    const result = await req.dbClient.query(`
+    const result = await dbClient.query(`
       INSERT INTO users (
         username, email, password_hash, api_key, 
         credits_remaining, total_credits_purchased, 
@@ -402,7 +445,7 @@ router.post('/v2/register', async (req, res) => {
     
     // Populate starter pack with default libraries (non-blocking)
     try {
-      const starterPackSuccess = await req.populateUserStarterPack(user.id, username);
+      const starterPackSuccess = await populateUserStarterPack(user.id, username);
       if (starterPackSuccess) {
         console.log(`✅ Starter pack successfully populated for ${username} (v2)`);
       } else {
