@@ -6765,10 +6765,7 @@ app.post('/api/debug/add-credits', authenticateApiKey, async (req, res) => {
     console.log(`🔧 DEBUG: Manual credit addition - ${credits} credits for user ${req.user.username}`);
     
     // Add credits to user account
-    await dbClient.query(
-      'UPDATE users SET credits_remaining = credits_remaining + $1 WHERE id = $2',
-      [parseInt(credits), req.user.id]
-    );
+    await userService.updateUserCredits(req.user.id, parseInt(credits));
 
     // Log the transaction
     await dbClient.query(`
@@ -6853,10 +6850,7 @@ app.post('/api/admin/grant-credits', authenticateApiKey, async (req, res) => {
     }
 
     // Grant credits
-    await dbClient.query(
-      'UPDATE users SET credits_remaining = credits_remaining + $1 WHERE id = $2',
-      [credits, user.rows[0].id]
-    );
+    await userService.updateUserCredits(user.rows[0].id, credits);
 
     // Log transaction
     await dbClient.query(`
@@ -7616,10 +7610,7 @@ app.post('/api/free-credits', async (req, res) => {
     }
 
     // Grant credits
-    await dbClient.query(
-      'UPDATE users SET credits_remaining = credits_remaining + $1 WHERE id = $2',
-      [creditsToGrant, user.id]
-    );
+    await userService.updateUserCredits(user.id, creditsToGrant);
 
     // Log transaction
     await dbClient.query(`
