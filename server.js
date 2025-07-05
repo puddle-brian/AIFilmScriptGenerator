@@ -174,17 +174,6 @@ async function initializeDatabase() {
     await dbClient.query(CREATE_USAGE_TRACKING_TABLES);
     console.log('✅ Usage tracking tables initialized');
     
-    // Create admin user if it doesn't exist
-    const adminUser = await userService.getUserByUsername('admin');
-    
-    if (adminUser.rows.length === 0) {
-      const result = await userService.createAdminUser('admin', 999999);
-      const adminApiKey = result.rows[0].api_key;
-      
-      console.log('✅ Admin user created with API key:', adminApiKey);
-      console.log('   Save this API key securely - it won\'t be shown again!');
-    }
-    
     // Initialize payment handler
     paymentHandler = new PaymentHandler(dbClient);
     console.log('✅ Payment system initialized');
@@ -7390,6 +7379,17 @@ async function initializeServices() {
     analyticsService = new AnalyticsService(dbClient);
     userService = new UserService(dbClient);
     
+    // Create admin user if it doesn't exist (after UserService is initialized)
+    const adminUser = await userService.getUserByUsername('admin');
+    
+    if (adminUser.rows.length === 0) {
+      const result = await userService.createAdminUser('admin', 999999);
+      const adminApiKey = result.rows[0].api_key;
+      
+      console.log('✅ Admin user created with API key:', adminApiKey);
+      console.log('   Save this API key securely - it won\'t be shown again!');
+    }
+    
     console.log('✅ New services initialized successfully');
   } catch (error) {
     console.error('⚠️  Failed to initialize new services:', error.message);
@@ -7486,7 +7486,7 @@ const startServer = async () => {
   app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
   app.use('/api', generationRoutes.router);
   app.use('/api', projectRoutes.router);
-  app.use('/api', paymentsRoutes);
+  app.use('/api', paymentsRoutes.router);
   
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
@@ -7529,7 +7529,7 @@ if (process.env.VERCEL) {
     app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
     app.use('/api', generationRoutes.router);
     app.use('/api', projectRoutes.router);
-    app.use('/api', paymentsRoutes);
+    app.use('/api', paymentsRoutes.router);
     
     console.log('✅ Serverless route modules mounted successfully');
   }).catch((error) => {

@@ -577,4 +577,4 @@ router.get('/debug-env', authenticateApiKey, (req, res) => {
   res.json(envDebug);
 });
 
-module.exports = router; 
+module.exports = { router }; 
