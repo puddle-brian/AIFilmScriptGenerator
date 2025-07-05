@@ -33,6 +33,30 @@ const { validateEmail, validateUsername, validatePassword, validateRequest, body
 const { sanitizeInput } = require('./middleware/security');
 const { setupErrorHandling } = require('./middleware/errorHandling');
 const TrackedAnthropicAPI = require('./src/core/TrackedAnthropicAPI');
+const HierarchicalContext = require('./src/core/HierarchicalContext');
+const {
+  ensureDirectories,
+  generateStructureDescription,
+  parseProjectContext,
+  getSuggestionResponseFormat,
+  generateVersionedProjectName,
+  getModelDescription
+} = require('./src/utils/UtilityFunctions');
+const {
+  generateBasicScript,
+  generateProfessionalScreenplay,
+  generateContentFromV2Format,
+  formatSceneForScreenplay,
+  formatPlaceholderScene,
+  generateTitlePage,
+  formatDialogueForScreenplay,
+  generateFountainFormat,
+  convertToFountain,
+  generateFinalDraftFormat,
+  convertToFinalDraft,
+  generatePDFReadyFormat,
+  generateProductionPackage
+} = require('./src/formatters/ScriptFormatters');
 
 // Setup global error handlers
 setupGlobalErrorHandlers();
@@ -366,807 +390,12 @@ app.use('/data', express.static('data'));
 // ==================== CREDIT TEST ENDPOINTS MOVED TO routes/payments.js ====================
 // Test endpoints for frontend credits have been extracted
 
-// Ensure directories exist (skip on Vercel serverless)
-const ensureDirectories = async () => {
-  // Skip directory creation on Vercel serverless environment
-  if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-    console.log('🔧 Skipping directory creation on serverless environment');
-    return;
-  }
-  
-  const dirs = ['generated', 'templates'];
-  for (const dir of dirs) {
-    try {
-      await fs.access(dir);
-    } catch {
-      await fs.mkdir(dir, { recursive: true });
-    }
-  }
-};
+// ensureDirectories function extracted to src/utils/UtilityFunctions.js
 
-// Generate detailed description of a story structure template
-async function generateStructureDescription(templateData) {
-  const name = templateData.name;
-  const description = templateData.description || '';
-  const category = templateData.category || '';
-  const examples = templateData.examples || '';
-  
-  let structureDesc = `${name}`;
-  
-  if (category) {
-    structureDesc += ` (${category})`;
-  }
-  
-  if (description) {
-    structureDesc += `\n${description}`;
-  }
-  
-  if (examples) {
-    structureDesc += `\n\nExamples: ${examples}`;
-  }
-  
-  // Add detailed breakdown of the story acts
-  if (templateData.structure) {
-    structureDesc += `\n\nStory Acts:`;
-    
-    // 🔧 FIX: Preserve original template order by loading the original template file
-    let originalOrder = [];
-    try {
-      if (templateData.id) {
-        const fs = require('fs').promises;
-        const path = require('path');
-        const originalTemplatePath = path.join(__dirname, 'templates', `${templateData.id}.json`);
-        const originalTemplateContent = await fs.readFile(originalTemplatePath, 'utf8');
-        const originalTemplate = JSON.parse(originalTemplateContent);
-        if (originalTemplate.structure) {
-          originalOrder = Object.keys(originalTemplate.structure);
-        }
-      }
-    } catch (error) {
-      console.log('Could not load original template for ordering, using current order');
-      originalOrder = Object.keys(templateData.structure);
-    }
-    
-    // Use original order if available, otherwise fall back to current order
-    const keysToUse = originalOrder.length > 0 ? originalOrder : Object.keys(templateData.structure);
-    
-    keysToUse.forEach(key => {
-      const act = templateData.structure[key];
-      if (!act) return; // Skip if act doesn't exist in current structure
-      
-      if (typeof act === 'string') {
-        structureDesc += `\n- ${key}: ${act}`;
-      } else if (act && typeof act === 'object') {
-        const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const actDesc = act.description || act;
-        structureDesc += `\n- ${actName}: ${actDesc}`;
-      }
-    });
-  }
-  
-  // Add philosophical/theoretical context based on category
-  if (category === 'booker_7_plots') {
-    structureDesc += `\n\nThis follows Christopher Booker's archetypal story patterns that he argues underlie all narratives. Each pattern represents a fundamental human psychological journey that resonates across cultures and time periods.`;
-  } else if (category === 'tobias_20_plots') {
-    structureDesc += `\n\nThis structure is from Ronald Tobias's analysis of the core dramatic situations that drive compelling narratives. These plots focus on the fundamental conflicts and motivations that create engaging stories.`;
-  } else if (category === 'polti_36_situations') {
-    structureDesc += `\n\nBased on Georges Polti's exhaustive catalog of dramatic situations, derived from analyzing thousands of works. These represent the fundamental emotional and ethical conflicts that drive human drama.`;
-  } else if (category === 'criterion_patterns') {
-    structureDesc += `\n\nThis structure is inspired by arthouse and auteur cinema, focusing on psychological depth, visual storytelling, and unconventional narrative approaches that prioritize character interiority and thematic resonance over traditional plot mechanics.`;
-  }
-  
-  return structureDesc;
-}
+// generateStructureDescription function extracted to src/utils/UtilityFunctions.js
 
 // Hierarchical Context Management System
-class HierarchicalContext {
-  constructor() {
-    this.contexts = {
-      story: null,        // Level 1: Original story concept and influences
-      structure: null,    // Level 2: Generated plot structure 
-      act: null,          // Level 3: Specific story act
-      plotPoints: null,   // Level 4: Plot points for current act
-      scene: null         // Level 5: Individual scene context
-    };
-  }
-
-  // Build Level 1: Story Foundation Context
-  buildStoryContext(storyInput, originalPrompt = null, systemMessage = null, projectContext = null) {
-    // If we have full project context from database, use that for richer information
-    const fullContext = projectContext || {};
-    
-    // Enhanced character handling - use structured character data if available
-    let charactersDisplay = storyInput.characters;
-    if (fullContext.projectCharacters && Array.isArray(fullContext.projectCharacters) && fullContext.projectCharacters.length > 0) {
-      charactersDisplay = fullContext.projectCharacters.map(char => {
-        if (typeof char === 'object' && char.name) {
-          // Skip descriptions that are just "Main character: [name]" - show name only
-          if (char.description && !char.description.startsWith('Main character:')) {
-            return `${char.name} (${char.description})`;
-          }
-          return char.name;
-        }
-        return char;
-      }).join(', ');
-    }
-    
-    // Enhanced influences - use project-level influences if available
-    const influences = fullContext.influences || storyInput.influences || {};
-    
-
-    this.contexts.story = {
-      level: 1,
-      type: 'story',
-      data: {
-        title: storyInput.title,
-        logline: storyInput.logline,
-        characters: charactersDisplay,
-        tone: storyInput.tone,
-        genre: storyInput.genre,
-        totalScenes: storyInput.totalScenes || 70,
-        influences: influences,
-        originalPrompt: originalPrompt,
-        systemMessage: systemMessage
-      },
-      generatedAt: new Date().toISOString()
-    };
-    return this.contexts.story;
-  }
-
-  // Build Level 2: Structure Context (builds on story)
-  buildStructureContext(structure, templateData) {
-    if (!this.contexts.story) {
-      throw new Error('Story context must be built before structure context');
-    }
-    
-    // Get acts in correct chronological order based on template
-    const actKeys = this.getChronologicalActOrder(templateData, structure);
-    
-    this.contexts.structure = {
-      level: 2,
-      type: 'structure',
-      parentContext: this.contexts.story,
-      data: {
-        template: templateData,
-        structure: structure,
-        actKeys: actKeys,
-        totalActs: actKeys.length
-      },
-      generatedAt: new Date().toISOString()
-    };
-    return this.contexts.structure;
-  }
-
-  // Get acts in correct chronological order based on template structure
-  getChronologicalActOrder(templateData, structure) {
-    // Define the correct chronological order for common templates
-    const templateOrders = {
-      'three-act': ['setup', 'confrontation_first_half', 'midpoint', 'confrontation_second_half', 'crisis', 'climax', 'resolution'],
-      'save-the-cat': ['opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'],
-      'hero-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
-      'hero-s-journey': ['ordinary_world', 'call_to_adventure', 'refusal_of_call', 'meeting_mentor', 'crossing_threshold', 'tests_allies_enemies', 'approach_inmost_cave', 'ordeal', 'reward', 'road_back', 'resurrection', 'return_with_elixir'],
-      'booker-quest': ['call_to_quest', 'preparation', 'journey_begins', 'trials_and_tests', 'approach_goal', 'final_ordeal', 'goal_achieved'],
-      'booker-overcoming-monster': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'final_triumph'],
-      'booker-rags-to-riches': ['humble_origins', 'call_to_adventure', 'getting_out', 'initial_success', 'first_crisis', 'final_crisis', 'final_triumph'],
-      'booker-voyage-return': ['ordinary_world', 'call_to_adventure', 'strange_world', 'initial_fascination', 'growing_threat', 'escape_and_return'],
-      'booker-comedy': ['initial_situation', 'complication', 'development', 'crisis', 'resolution'],
-      'booker-tragedy': ['anticipation_stage', 'dream_stage', 'frustration_stage', 'nightmare_stage', 'destruction'],
-      'booker-rebirth': ['initial_state', 'call_to_life', 'resistance', 'crisis', 'final_awakening']
-    };
-    
-    // Get template name from templateData
-    const templateName = templateData?.name?.toLowerCase().replace(/[^a-z-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'unknown';
-    
-    // Try to match template name to known orders
-    let chronologicalOrder = null;
-    for (const [key, order] of Object.entries(templateOrders)) {
-      if (templateName.includes(key) || key.includes(templateName)) {
-        chronologicalOrder = order;
-        break;
-      }
-    }
-    
-    // If we have a known order, filter it to only include acts that exist in the structure
-    if (chronologicalOrder) {
-      const existingActs = chronologicalOrder.filter(actKey => structure[actKey]);
-      if (existingActs.length > 0) {
-        console.log(`🔧 Using chronological order for template "${templateName}": ${existingActs.join(' → ')}`);
-        return existingActs;
-      }
-    }
-    
-    // Fallback: use Object.keys but warn about potential ordering issues
-    const fallbackOrder = Object.keys(structure);
-    console.log(`⚠️  Using fallback Object.keys() order for template "${templateName}": ${fallbackOrder.join(' → ')}`);
-    console.log(`⚠️  This may cause incorrect act ordering. Consider adding template to chronological order map.`);
-    return fallbackOrder;
-  }
-
-  // Build Level 3: Act Context (builds on structure)
-  buildActContext(actKey, act, actPosition) {
-    if (!this.contexts.structure) {
-      throw new Error('Structure context must be built before act context');
-    }
-
-
-
-    this.contexts.act = {
-      level: 3,
-      type: 'act',
-      parentContext: this.contexts.structure,
-      data: {
-        key: actKey,
-        name: act?.name || actKey,
-        description: act?.description || 'No description available',
-        characterDevelopment: act?.character_development || 'No character development available',
-        position: actPosition,
-        totalActs: this.contexts.structure.data.totalActs
-      },
-      generatedAt: new Date().toISOString()
-    };
-    return this.contexts.act;
-  }
-
-  // Build Level 4: Plot Points Context (builds on act) - ENHANCED with previous acts' plot points
-  async buildPlotPointsContext(plotPoints, totalScenes = null, projectPath = null, username = null) {
-    if (!this.contexts.act) {
-      throw new Error('Act context must be built before plot points context');
-    }
-
-    // Load previous acts' plot points for inter-act causality
-    let previousPlotPoints = [];
-    if (projectPath) {
-      previousPlotPoints = await this.loadPreviousActsPlotPoints(projectPath, username);
-    } else {
-      console.log(`🔍 No projectPath provided, skipping previous acts loading`);
-    }
-
-    this.contexts.plotPoints = {
-      level: 4,
-      type: 'plotPoints',
-      parentContext: this.contexts.act,
-      data: {
-        plotPoints: plotPoints, // Array of plot point strings for current act
-        totalPlotPoints: plotPoints.length,
-        totalScenes: totalScenes || plotPoints.length,
-        sceneDistribution: totalScenes ? `${plotPoints.length} plot points for ${totalScenes} scenes` : '1:1 plot point to scene ratio',
-        previousPlotPoints: previousPlotPoints, // Plot points from all previous acts for causality
-        hasPreviousPlotPoints: previousPlotPoints.length > 0
-      },
-      generatedAt: new Date().toISOString()
-    };
-    return this.contexts.plotPoints;
-  }
-
-  // Load plot points from all previous acts for inter-act causality (database version)
-  async loadPreviousActsPlotPoints(projectPath, username = null) {
-    try {
-      if (!this.contexts.structure || !this.contexts.act) {
-        return [];
-      }
-
-      const currentActKey = this.contexts.act.data.key;
-      let structureKeys = this.contexts.structure.data.actKeys;
-      
-      // CRITICAL FIX: Ensure chronological order even for loaded projects
-      // Get the correct chronological order based on template
-      const templateData = this.contexts.structure.data.template;
-      const structure = this.contexts.structure.data.structure;
-      const correctOrder = this.getChronologicalActOrder(templateData, structure);
-      
-      // Use correct chronological order instead of potentially wrong saved order
-      if (correctOrder && correctOrder.length > 0) {
-        structureKeys = correctOrder;
-        console.log(`🔧 FIXED: Using correct chronological order: ${structureKeys.join(' → ')}`);
-      } else {
-        console.log(`⚠️  WARNING: Using potentially incorrect saved order: ${structureKeys.join(' → ')}`);
-      }
-      
-      // Find the current act's position in the structure
-      const currentActIndex = structureKeys.indexOf(currentActKey);
-      if (currentActIndex <= 0) {
-        return []; // No previous acts or act not found
-      }
-      
-      // Get all previous acts in chronological order
-      const previousActKeys = structureKeys.slice(0, currentActIndex);
-      const previousPlotPoints = [];
-      
-      console.log(`🔗 Loading previous plot points for ${currentActKey} from database:`);
-      console.log(`  📝 Previous acts: ${previousActKeys.join(', ')}`);
-      console.log(`  👤 Using username: ${username}`);
-      console.log(`  📁 Project path: "${projectPath}"`);
-      
-      // Load from database using provided username
-      const userResult = await databaseService.getUserByUsername(username);
-      
-      if (userResult.rows.length === 0) {
-        console.log('  ⚠️  User not found in database');
-        return [];
-      }
-      
-      const userId = userResult.rows[0].id;
-      
-      // Get project context from database
-      console.log(`  🔍 Querying database: user_id=${userId}, project_name="${projectPath}"`);
-      const projectResult = await databaseService.getProject(userId, projectPath);
-      
-      console.log(`  📊 Query result: ${projectResult.rows.length} rows found`);
-      if (projectResult.rows.length === 0) {
-        console.log('  ⚠️  Project not found in database');
-        // Let's also check what projects DO exist for this user
-        const allProjectsResult = await databaseService.getUserProjects(userId);
-        console.log(`  📋 Available projects for user: ${allProjectsResult.rows.map(row => `"${row.project_name}"`).join(', ')}`);
-        return [];
-      }
-      
-      const projectContext = parseProjectContext(projectResult.rows[0].project_context);
-      
-      console.log(`  🔍 Project context keys: ${Object.keys(projectContext).join(', ')}`);
-      if (projectContext.plotPoints) {
-        console.log(`  📋 Plot points structure keys: ${Object.keys(projectContext.plotPoints).join(', ')}`);
-      } else {
-        console.log('  ⚠️  No plotPoints key found in project context');
-      }
-      
-      if (!projectContext.plotPoints) {
-        console.log('  ⚠️  No plot points found in project context');
-        return [];
-      }
-      
-      for (const actKey of previousActKeys) {
-        try {
-          const actPlotPointsData = projectContext.plotPoints[actKey];
-          console.log(`  🔍 Checking act "${actKey}": ${actPlotPointsData ? 'EXISTS' : 'NOT FOUND'}`);
-          if (actPlotPointsData) {
-            console.log(`    📊 Act data keys: ${Object.keys(actPlotPointsData).join(', ')}`);
-            if (actPlotPointsData.plotPoints) {
-              console.log(`    📝 Plot points type: ${Array.isArray(actPlotPointsData.plotPoints) ? 'Array' : typeof actPlotPointsData.plotPoints}`);
-              console.log(`    📝 Plot points length: ${Array.isArray(actPlotPointsData.plotPoints) ? actPlotPointsData.plotPoints.length : 'N/A'}`);
-            }
-          }
-          
-          if (actPlotPointsData) {
-            // Handle both array format and numeric index format
-            let plotPoints = [];
-            
-            if (actPlotPointsData.plotPoints && Array.isArray(actPlotPointsData.plotPoints)) {
-              // New format: plotPoints array
-              plotPoints = actPlotPointsData.plotPoints;
-              console.log(`    ✅ Found ${plotPoints.length} plot points for ${actKey} (array format)`);
-            } else {
-              // Legacy format: numeric indices (0, 1, 2, 3...)
-              const numericKeys = Object.keys(actPlotPointsData)
-                .filter(key => /^\d+$/.test(key))
-                .sort((a, b) => parseInt(a) - parseInt(b));
-              
-              if (numericKeys.length > 0) {
-                plotPoints = numericKeys.map(key => actPlotPointsData[key]);
-                console.log(`    ✅ Found ${plotPoints.length} plot points for ${actKey} (numeric format)`);
-              }
-            }
-            
-            if (plotPoints.length > 0) {
-              // Add act context to each plot point for better understanding
-              const actPlotPoints = plotPoints.map((plotPoint, index) => ({
-                actKey: actKey,
-                actName: this.contexts.structure.data.structure[actKey]?.name || actKey,
-                plotPoint: typeof plotPoint === 'string' ? plotPoint : (plotPoint.plotPoint || JSON.stringify(plotPoint)),
-                plotPointIndex: index,
-                isLastInAct: index === plotPoints.length - 1
-              }));
-              
-              previousPlotPoints.push(...actPlotPoints);
-              console.log(`  ✅ Loaded ${plotPoints.length} plot points from ${actKey} (database)`);
-            } else {
-              console.log(`  ⚠️  No plot points found for ${actKey} in database`);
-            }
-          } else {
-            console.log(`  ⚠️  No plot points found for ${actKey} in database`);
-          }
-        } catch (actError) {
-          console.log(`  ⚠️  Error loading plot points for ${actKey}: ${actError.message}`);
-          // Continue loading other acts even if one fails
-        }
-      }
-      
-      console.log(`  🎯 Total previous plot points loaded: ${previousPlotPoints.length}`);
-      return previousPlotPoints;
-      
-    } catch (error) {
-      console.error('Error loading previous acts plot points from database:', error);
-      return [];
-    }
-  }
-
-  // Build Level 5: Scene Context (builds on plot points)
-  buildSceneContext(sceneIndex, plotPointIndex = null, existingScene = null, totalScenesInAct = 1) {
-    if (!this.contexts.plotPoints) {
-      throw new Error('Plot points context must be built before scene context');
-    }
-
-    const assignedPlotPoint = plotPointIndex !== null ? this.contexts.plotPoints.data.plotPoints[plotPointIndex] : null;
-
-    this.contexts.scene = {
-      level: 5,
-      type: 'scene',
-      parentContext: this.contexts.plotPoints,
-      data: {
-        sceneIndex: sceneIndex,
-        position: sceneIndex + 1,
-        totalInAct: totalScenesInAct,
-        plotPointIndex: plotPointIndex,
-        assignedPlotPoint: assignedPlotPoint,
-        existingScene: existingScene,
-        title: existingScene?.title || 'New Scene'
-      },
-      generatedAt: new Date().toISOString()
-    };
-    return this.contexts.scene;
-  }
-
-  // Generate a hierarchical prompt from the context chain
-  async generateHierarchicalPrompt(targetLevel = 5, customInstructions = '') {
-
-    
-    let prompt = '';
-    
-    // Track if this is plot point generation for later use
-    const isPlotPointGeneration = targetLevel === 4;
-    
-    // Level 1: Story Foundation with Full Creative Context
-    // Story context is built properly below - no need to dump raw object
-    if (this.contexts.story) {
-      const story = this.contexts.story.data;
-      
-      // Include the full original creative direction if available
-      if (story.originalPrompt) {
-        prompt += `${story.originalPrompt}Based on the following story concept, generate a detailed plot structure using the selected format that embodies these artistic sensibilities:\n\n`;
-      }
-      
-      prompt += `STORY DETAILS:\n`;
-      prompt += `- Title: ${story.title}\n`;
-      prompt += `- Logline: ${story.logline}\n`;
-      
-      // Enhanced character display with descriptions if available
-      if (Array.isArray(story.characters)) {
-        const characterDetails = story.characters.map(char => {
-          if (typeof char === 'object' && char.name) {
-            // Skip descriptions that are just "Main character: [name]" - show name only
-            if (char.description && !char.description.startsWith('Main character:')) {
-              return `${char.name} (${char.description})`;
-            }
-            return char.name;
-          }
-          return char;
-        }).join(', ');
-        prompt += `- Main Characters: ${characterDetails}\n`;
-
-      } else {
-        prompt += `- Main Characters: ${story.characters}\n`;
-
-      }
-      
-      // Tone is now handled via the influence prompt at the top - no structured list needed
-      
-      prompt += '\n';
-    }
-
-    // Level 2: Streamlined Structure Context - Just show template name
-    if (this.contexts.structure && targetLevel >= 2) {
-      const structure = this.contexts.structure.data;
-      prompt += `STRUCTURE: ${structure.template.name}\n\n`;
-    }
-
-
-
-    // Level 4: Streamlined Plot Points Context
-    if (this.contexts.plotPoints && targetLevel >= 4) {
-      const plotPoints = this.contexts.plotPoints.data;
-      
-      // Show ALL previous plot points for story coherence (essential for causality)
-      if (plotPoints.hasPreviousPlotPoints && plotPoints.previousPlotPoints.length > 0) {
-        prompt += `STORY PROGRESSION (Previous Plot Points):\n`;
-        
-        let currentActKey = '';
-        plotPoints.previousPlotPoints.forEach((prevPlotPoint, index) => {
-          // Group by act for better readability
-          if (prevPlotPoint.actKey !== currentActKey) {
-            currentActKey = prevPlotPoint.actKey;
-            prompt += `\n${prevPlotPoint.actName}:\n`;
-          }
-          
-          // 🔗 ONLY appears on the very last plot point in the entire sequence (for causal connection)
-          const isVeryLastPlotPoint = index === plotPoints.previousPlotPoints.length - 1;
-          const marker = isVeryLastPlotPoint ? ' 🔗' : '';
-          prompt += `  ${prevPlotPoint.plotPointIndex + 1}. ${prevPlotPoint.plotPoint}${marker}\n`;
-        });
-        prompt += '\n';
-      }
-    }
-    
-    // CRITICAL: Current act focus - Show AFTER story details for plot point generation (maximum recency & prominence)
-    // Show at normal position for non-plot-point generation  
-    if (this.contexts.act && targetLevel >= 3) {
-      const currentAct = this.contexts.act.data;
-      
-      if (isPlotPointGeneration) {
-        // For plot point generation: Place AFTER story details for maximum AI focus
-        prompt += `CURRENT STORY ACT (TAKES PRECEDENCE):\n`;
-        prompt += `${currentAct.name}\n`;
-        prompt += `Purpose: ${currentAct.description}\n`;
-        
-        // Include character development if available
-        if (currentAct.characterDevelopment) {
-          prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
-        }
-        
-        // Include userDirections if available
-        if (currentAct.userDirections && currentAct.userDirections.trim()) {
-          prompt += `User Creative Direction: ${currentAct.userDirections}\n`;
-          prompt += `⚠️  MANDATORY: Incorporate this creative direction into all plot points for this act.\n`;
-        }
-        
-        // Add explicit instruction for plot point generation
-        prompt += `\n⚠️  IMPORTANT: Generate plot points that match THIS CURRENT ACT's description above, not the general story details.\n\n`;
-      } else {
-        // For non-plot-point generation: Normal position
-        prompt += `CURRENT STORY ACT:\n`;
-        prompt += `${currentAct.name}\n`;
-        prompt += `Purpose: ${currentAct.description}\n`;
-        
-        // Include character development if available
-        if (currentAct.characterDevelopment) {
-          prompt += `Character Development: ${currentAct.characterDevelopment}\n`;
-        }
-        
-        // Include userDirections if available
-        if (currentAct.userDirections && currentAct.userDirections.trim()) {
-          prompt += `User Creative Direction: ${currentAct.userDirections}\n`;
-        }
-        
-        prompt += '\n';
-      }
-    }
-
-    // Level 5: Scene Context
-    if (this.contexts.scene && targetLevel >= 5) {
-      const scene = this.contexts.scene.data;
-      prompt += `SCENE CONTEXT:\n`;
-      prompt += `- Position: Scene ${scene.position}/${scene.totalInAct} in this act\n`;
-      prompt += `- Current Title: ${scene.title}\n`;
-      if (scene.assignedPlotPoint) {
-        prompt += `- ASSIGNED Plot Point: ${scene.assignedPlotPoint}\n`;
-        prompt += `- Plot Point Index: ${scene.plotPointIndex + 1}\n`;
-      }
-      prompt += '\n';
-    }
-
-    // Add custom instructions
-    if (customInstructions) {
-      prompt += `SPECIFIC INSTRUCTIONS:\n${customInstructions}\n\n`;
-    }
-
-    
-    
-    return prompt;
-  }
-
-  // Save context to project file (database-only mode - skip file system)
-  async saveToProject(projectPath) {
-    // In database-only mode, we don't need to save context files
-    // Context is managed in memory during generation and saved to database
-    console.log(`Context management: Skipping file system save for ${projectPath} (database-only mode)`);
-    return;
-  }
-
-  // Load context from project file
-  async loadFromProject(projectPath) {
-    try {
-      const contextFile = path.join(__dirname, 'generated', projectPath, 'context.json');
-      const contextData = await fs.readFile(contextFile, 'utf8');
-      this.contexts = JSON.parse(contextData);
-      return this.contexts;
-    } catch (error) {
-      // Context file doesn't exist, that's okay
-      return null;
-    }
-  }
-
-  // Get context summary for a specific level
-  getContextSummary(level) {
-    const levelNames = ['', 'story', 'structure', 'act', 'plotPoints', 'scene'];
-    const contextName = levelNames[level];
-    return this.contexts[contextName];
-  }
-
-  // Helper function to generate scenes for a plot point (database version)
-  async generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model = "claude-sonnet-4-20250514", projectContext = null, sceneDistribution = null, username = null, creativeDirections = null) {
-    // Use provided project context or load from database as fallback
-    if (!projectContext) {
-      throw new Error('Project context must be provided to generateScenesForPlotPoint');
-    }
-    
-    if (!projectContext.plotPoints || !projectContext.plotPoints[actKey]) {
-      throw new Error('Plot points not found for this act in database');
-    }
-    
-    const plotPointsData = projectContext.plotPoints[actKey];
-    const plotPointIndexNum = parseInt(plotPointIndex);
-    
-
-    
-    // 🔧 CRITICAL FIX: Always recalculate scene distribution using fixed logic
-    // Don't rely on stored scene distribution which may be from old buggy calculation
-    console.log(`🔧 [HierarchicalContext] Recalculating scene distribution using fixed logic for plot point ${plotPointIndexNum}`);
-    
-    // Use same fixed logic as calculateSceneDistribution
-    const totalScenes = projectContext?.storyInput?.totalScenes || 70;
-    const totalActs = projectContext?.generatedStructure ? Object.keys(projectContext.generatedStructure).length : 15;
-    const expectedPlotPoints = totalActs * 3;
-    const sceneCount = Math.max(1, Math.min(3, Math.round(totalScenes / expectedPlotPoints)));
-    
-    console.log(`📊 [HierarchicalContext] Fixed calculation: ${totalScenes} scenes ÷ ${expectedPlotPoints} expected plot points = ${sceneCount} scenes per plot point (capped at 3 max)`);
-    
-    // Get plot point text from plotPointsData (handle both array and object formats)
-    const plotPointsArray = Array.isArray(plotPointsData) ? plotPointsData : (plotPointsData.plotPoints || []);
-    const plotPoint = plotPointsArray[plotPointIndexNum];
-    
-    if (!plotPoint) {
-      throw new Error(`Plot point ${plotPointIndexNum} not found in act ${actKey}`);
-    }
-    
-    // Initialize hierarchical context (no file loading needed - use database context)
-    const context = new HierarchicalContext();
-    
-    // Get structure data from database project context
-    const structure = projectContext.generatedStructure;
-    const storyInput = projectContext.storyInput;
-    
-    // Build context from database data
-    context.buildStoryContext(storyInput, storyInput.influencePrompt, null, projectContext);
-    context.buildStructureContext(structure, projectContext.templateData);
-    
-    // Build act context
-    const actPosition = Object.keys(structure).indexOf(actKey) + 1;
-    context.buildActContext(actKey, structure[actKey], actPosition);
-    
-    // Build plot points context (scene generation doesn't need previous plot points)
-    // plotPointsData is an array of plot point strings in the working format
-    await context.buildPlotPointsContext(plotPointsData, sceneCount, projectPath, username);
-    
-    // Build scene context for this specific plot point
-    context.buildSceneContext(0, plotPointIndexNum, null, sceneCount);
-    
-    // Generate hierarchical prompt for multiple scenes from one plot point
-    const hierarchicalPrompt = await context.generateHierarchicalPrompt(5, `
-MULTIPLE SCENES GENERATION FROM SINGLE PLOT POINT:
-1. Create exactly ${sceneCount} scenes that collectively implement this plot point: "${plotPoint}"
-2. Break the plot point into a ${sceneCount}-scene sequence that shows progression
-3. Each scene should advance this plot point's dramatic purpose step-by-step
-4. Vary scene types: some dialogue-heavy, some action, some introspective
-5. Create a natural flow between scenes in this sequence
-6. Each scene needs: title, location, time_of_day, description (3-6 sentences), characters, emotional_beats
-7. Scenes should feel like organic parts of a sequence, not isolated fragments
-8. Write in CINEMATIC LANGUAGE that translates story beats into visual terms
-9. ALWAYS surprise the audience with unpredictable actions and novel ways of moving scenes forward - avoid static or predictable transitions that feel formulaic
-
-CINEMATIC WRITING FOUNDATION:
-• Lead with CHARACTER ACTIONS and decisions that drive the story forward
-• Show physical behaviors, movements, and reactions in visual detail
-• Focus on cause-and-effect storytelling through character choices
-• Use concrete, observable details that a camera could capture
-• Let the artistic influences naturally flavor this strong foundation
-
-This plot point is ${true ? 'a plot point' : 'a plot point'} in the story structure.`);
-    
-    let prompt = `${hierarchicalPrompt}
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night",
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"],
-      "plotPointIndex": ${plotPointIndexNum},
-      "sequencePosition": 1
-    }
-  ]
-}`;
-
-    // Add creative directions if provided
-    const scenesKey = `${actKey}_${plotPointIndexNum}`;
-    if (creativeDirections?.scenes?.[scenesKey]) {
-      const direction = creativeDirections.scenes[scenesKey];
-      prompt = `${hierarchicalPrompt}
-
-User Creative Direction for Scenes: ${direction}
-⚠️ IMPORTANT: Incorporate this creative direction into the scenes for this plot point.
-
-Return ONLY valid JSON in this exact format:
-{
-  "scenes": [
-    {
-      "title": "Scene Title",
-      "location": "Specific location",
-      "time_of_day": "Morning/Afternoon/Evening/Night",
-      "description": "What happens in this scene - be specific and visual",
-      "characters": ["Character1", "Character2"],
-      "emotional_beats": ["primary emotion", "secondary emotion"],
-      "plotPointIndex": ${plotPointIndexNum},
-      "sequencePosition": 1
-    }
-  ]
-}`;
-    }
-
-    const completion = await anthropic.messages.create({
-      model: model,
-      max_tokens: 3000,
-      temperature: 0.7,
-      system: "You are a professional screenwriter generating scene sequences within a hierarchical story structure. Return ONLY valid JSON. Do not add any explanatory text, notes, or comments before or after the JSON.",
-      messages: [
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-    });
-
-    const scenesData = JSON.parse(completion.content[0].text);
-
-    // Save scenes to database (part of unified format - scenes will be saved by the calling endpoint)
-    console.log(`✅ Generated ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum} (database integration)`);
-
-    return {
-      success: true,
-      actKey: actKey,
-      plotPointIndex: plotPointIndexNum,
-      plotPoint: plotPoint,
-      scenes: scenesData.scenes,
-      sceneCount: scenesData.scenes.length,
-      isKeyPlot: false, // 🔧 Fixed: simplified since we don't use complex key plot logic anymore
-      generatedAt: new Date().toISOString(),
-      message: `Generated ${scenesData.scenes.length} scenes for plot point: "${plotPoint}"`
-    };
-  }
-
-  // Simple scene distribution: total scenes ÷ total plot points
-  calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalMovieScenes = null, projectContext = null) {
-    // Get total scenes from calculator (user input)
-    const totalScenes = totalMovieScenes || (projectContext?.storyInput?.totalScenes) || 70;
-    
-    // Count EXPECTED plot points across all acts (not just generated ones)
-    const totalActs = projectContext?.generatedStructure ? Object.keys(projectContext.generatedStructure).length : 15;
-    const avgPlotPointsPerAct = 3; // Reasonable average
-    const totalExpectedPlotPoints = totalActs * avgPlotPointsPerAct;
-    
-    // Simple division: scenes per plot point (capped at 3 max)
-    const scenesPerPlotPoint = Math.max(1, Math.min(3, Math.round(totalScenes / totalExpectedPlotPoints)));
-    
-    console.log(`🎬 Simple scene distribution: ${totalScenes} scenes ÷ ${totalExpectedPlotPoints} expected plot points = ${scenesPerPlotPoint} scenes per plot point (capped at 3 max)`);
-    
-    const sceneDistribution = plotPoints.map((plotPoint, index) => {
-      return {
-        plotPoint,
-        sceneCount: scenesPerPlotPoint,
-        isKeyPlot: false, // Keep it simple
-        plotPointIndex: index
-      };
-    });
-    
-    return sceneDistribution;
-  }
-}
-
-// Helper function to safely parse project context (handles both JSONB and TEXT storage)
-function parseProjectContext(projectContextRaw) {
-  return typeof projectContextRaw === 'string' ? JSON.parse(projectContextRaw) : projectContextRaw;
-}
+// parseProjectContext function extracted to src/utils/UtilityFunctions.js
 
 
 
@@ -1870,67 +1099,7 @@ app.post('/api/genie-suggestion', authenticateApiKey, checkCredits(2), async (re
   }
 });
 
-// Helper function to get response format instructions for each suggestion type
-function getSuggestionResponseFormat(suggestionType) {
-  switch (suggestionType) {
-    case 'director':
-      return `This suggestion will be inserted into prompts as: "With direction reminiscent of [YOUR SUGGESTION], "
-
-Provide ONLY a concise directorial influence phrase that fits this format. 
-
-Examples of good responses:
-- "Christopher Nolan's layered storytelling and practical effects"
-- "Denis Villeneuve's atmospheric visual poetry"
-- "The Wachowskis' kinetic action choreography"
-
-Respond with just the influence phrase, no quotes, no extra text.`;
-    
-    case 'screenwriter':
-      return `This suggestion will be inserted into prompts as: "with prose style that invokes [YOUR SUGGESTION], "
-
-Provide ONLY a concise prose style influence phrase that fits this format.
-
-Examples of good responses:  
-- "Tony Gilroy's procedural descriptions"
-- "Aaron Sorkin's rapid-fire dialogue"
-- "Charlie Kaufman's surreal introspection"
-
-Respond with just the influence phrase, no quotes, no extra text.`;
-    
-    case 'film':
-      return `This suggestion will be inserted into prompts as: "channeling the essence of [YOUR SUGGESTION], "
-
-Provide ONLY a concise film essence phrase that fits this format.
-
-Examples of good responses:
-- "Blade Runner's neo-noir atmosphere"  
-- "The Godfather's family dynamics"
-- "Heat's procedural tension"
-
-Respond with just the influence phrase, no quotes, no extra text.`;
-    
-    case 'tone':
-      return `This suggestion will be inserted into prompts as: "with tone and atmosphere inspired by [YOUR SUGGESTION], "
-
-Provide ONLY a concise tone description that fits this format.
-
-Examples of good responses:
-- "dark comedy with underlying melancholy"
-- "tense psychological thriller atmosphere"
-- "elegant period drama sophistication"
-
-Respond with just the tone phrase, no quotes, no extra text.`;
-    
-    case 'character':
-      return 'Respond with JSON in this exact format: {"name": "Character Name", "description": "Brief but compelling character description"}. The character should add depth, conflict, or enhancement to the existing story elements.';
-    
-    case 'storyconcept':
-      return 'You must respond in this EXACT format:\n\nTitle: [Your Story Title]\nLogline: [One sentence premise describing the story]\n\nCreate something completely different from your previous suggestions. Avoid memory, time, dystopian, or supernatural themes. Focus on realistic human conflicts and relationships. Be creative and unexpected.\n\nDo not include any other text, explanations, or commentary. Just the title and logline as specified.';
-    
-    default:
-      return 'Provide a helpful suggestion to enhance the story. Be specific and creative.';
-  }
-}
+// getSuggestionResponseFormat function extracted to src/utils/UtilityFunctions.js
 
 // Preview dialogue generation prompt
 app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) => {
@@ -1945,7 +1114,10 @@ app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) =>
     if (projectPath && storyInput && structureKey !== undefined && sceneIndex !== undefined) {
       try {
         // Initialize and load hierarchical context
-        const hierarchicalContext = new HierarchicalContext();
+        const hierarchicalContext = new HierarchicalContext({
+      db: dbClient,
+      anthropic: anthropic
+    });
         
         // Build story context
         hierarchicalContext.buildStoryContext(storyInput, storyInput.influencePrompt);
@@ -2441,7 +1613,10 @@ app.post('/api/preview-scene-prompt', authenticateApiKey, async (req, res) => {
     if (projectPath && storyInput) {
       try {
         // Initialize and load hierarchical context
-        const context = new HierarchicalContext();
+        const context = new HierarchicalContext({
+          db: dbClient,
+          anthropic: anthropic
+        });
         
         // Build story context
         context.buildStoryContext(storyInput, storyInput.influencePrompt);
@@ -2781,7 +1956,10 @@ app.post('/api/preview-act-plot-points-prompt', authenticateApiKey, async (req, 
     const storyAct = structure[structureKey];
     
     // Initialize and load hierarchical context
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({
+      db: dbClient,
+      anthropic: anthropic
+    });
     await context.loadFromProject(projectPath);
     
     // Rebuild context if needed
@@ -2914,7 +2092,10 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     console.log(`Generating ${sceneCount} scenes for plot point ${plotPointIndexNum + 1}: "${plotPoint}"`);
     
     // Initialize hierarchical context (don't load from file system - we have database data)
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({
+      db: dbClient,
+      anthropic: anthropic
+    });
     
     const structure = projectContext.generatedStructure;
     const storyInput = projectContext.storyInput;
@@ -3148,7 +2329,10 @@ app.post('/api/generate-scene/:projectPath/:structureKey', async (req, res) => {
     // Try to use hierarchical context, but fall back to simple prompt if it fails
     try {
       // Initialize and load hierarchical context for this project
-      const context = new HierarchicalContext();
+      const context = new HierarchicalContext({
+        db: dbClient,
+        anthropic: anthropic
+      });
       await context.loadFromProject(projectPath);
       
       // If context doesn't exist, rebuild it from project data
@@ -3430,7 +2614,10 @@ app.post('/api/generate-individual-scene/:projectPath/:structureKey/:sceneIndex'
     console.log(`Regenerating scene ${sceneIndexNum + 1} for ${structureKey} in project: ${projectPath}`);
     
     // Initialize and load hierarchical context for this project
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({
+      db: dbClient,
+      anthropic: anthropic
+    });
     await context.loadFromProject(projectPath);
     
     // If context doesn't exist, rebuild it from project data
@@ -3979,376 +3166,7 @@ app.post('/api/export', async (req, res) => {
         script = generateBasicScript(fullProjectData);
     }
     
-    function generateBasicScript(data) {
-      let script = `${data.storyInput.title}\n`;
-      script += `Written by: [Author Name]\n\n`;
-      script += `LOGLINE: ${data.storyInput.logline}\n\n`;
-      script += `GENRE: ${data.storyInput.genre || data.storyInput.tone || 'Drama'}\n\n`;
-      
-      // Handle characters - could be array or string
-      if (data.storyInput.characters) {
-        if (Array.isArray(data.storyInput.characters)) {
-          script += `CHARACTERS: ${data.storyInput.characters.join(', ')}\n\n`;
-        } else {
-          script += `CHARACTERS: ${data.storyInput.characters}\n\n`;
-        }
-      }
-      
-      // Handle projectCharacters array from v2.0 format
-      if (data.projectCharacters && Array.isArray(data.projectCharacters)) {
-        script += `MAIN CHARACTERS:\n`;
-        data.projectCharacters.forEach(char => {
-          script += `${char.name} - ${char.description}\n`;
-        });
-        script += '\n';
-      }
-      
-      script += `FADE IN:\n\n`;
-      
-      // Add scenes and dialogue from v2.0 database format
-      script += generateContentFromV2Format(data);
-      
-      script += '\n\nFADE OUT.\n\nTHE END';
-      return script;
-    }
-    
-    function generateProfessionalScreenplay(data) {
-      let script = generateTitlePage(data);
-      script += '\n\n\nFADE IN:\n\n';
-      
-      // Add content from v2.0 database format
-      script += generateContentFromV2Format(data);
-      
-      script += '\n\nFADE OUT.\n\nTHE END';
-      return script;
-    }
-    
-    function generateContentFromV2Format(data) {
-      let content = '';
-      let sceneNumber = 1;
-      
-      console.log('🎬 Processing v2.0 format:', {
-        hasStructure: !!data.generatedStructure,
-        hasScenes: !!data.generatedScenes,
-        hasDialogues: !!data.generatedDialogues,
-        dialogueKeys: Object.keys(data.generatedDialogues || {})
-      });
-      
-      // Use the same logic as frontend assembleScript() function
-      if (data.generatedScenes) {
-        let structureKeys = Object.keys(data.generatedScenes);
-        
-        // If we have template data, use its order (same as frontend)
-        if (data.templateData && data.templateData.structure) {
-          const templateKeys = Object.keys(data.templateData.structure);
-          structureKeys = templateKeys.filter(key => data.generatedScenes[key]);
-          console.log('📋 Using template structure order:', structureKeys);
-        }
-        
-        structureKeys.forEach(structureKey => {
-          const sceneGroup = data.generatedScenes[structureKey];
-          const act = data.generatedStructure ? data.generatedStructure[structureKey] : null;
-          
-          if (act) {
-            content += `\n\n=== ${act.name.toUpperCase()} ===\n\n`;
-          }
-          
-          if (sceneGroup && Array.isArray(sceneGroup)) {
-            sceneGroup.forEach((scene, index) => {
-              // Use exact same sceneId format as frontend: structureKey-index
-              const sceneId = `${structureKey}-${index}`;
-              
-              console.log(`🔍 Checking scene ${sceneId} for dialogue`);
-              
-              // Check if dialogue exists (same logic as frontend)
-              let dialogueFound = false;
-              let dialogueContent = null;
-              
-              if (data.generatedDialogues && data.generatedDialogues[sceneId]) {
-                dialogueContent = data.generatedDialogues[sceneId];
-                dialogueFound = true;
-                console.log(`✅ Found dialogue for ${sceneId}`);
-              }
-              
-              if (dialogueFound) {
-                // Format the same way as frontend formatSceneForScreenplay
-                content += formatSceneForScreenplay(dialogueContent, sceneNumber);
-              } else {
-                // No dialogue - show placeholder (same as frontend)
-                content += formatPlaceholderScene(scene, sceneNumber);
-              }
-              
-              sceneNumber++;
-            });
-          }
-        });
-      }
-      
-      return content;
-    }
-    
-    function formatSceneForScreenplay(dialogueContent, sceneNumber) {
-      // Format dialogue professionally (similar to frontend)
-      return `\n\n${formatDialogueForScreenplay(dialogueContent)}\n\n`;
-    }
-    
-    function formatPlaceholderScene(scene, sceneNumber) {
-      // Create placeholder for scenes without dialogue (same as frontend)
-      let placeholder = `\n\n${sceneNumber}. `;
-      
-      if (scene.location && scene.time_of_day) {
-        placeholder += `${scene.location.toUpperCase()} - ${scene.time_of_day.toUpperCase()}\n\n`;
-      } else if (scene.location) {
-        placeholder += `${scene.location.toUpperCase()}\n\n`;
-      } else {
-        placeholder += `SCENE ${sceneNumber}\n\n`;
-      }
-      
-      if (scene.description) {
-        placeholder += `${scene.description}\n\n`;
-      }
-      
-      placeholder += `[DIALOGUE TO BE WRITTEN FOR: ${scene.title || 'Untitled Scene'}]\n\n`;
-      
-      return placeholder;
-    }
-    
-    function generateTitlePage(data) {
-      const title = data.storyInput?.title || 'UNTITLED';
-      const author = '[Author Name]';
-      const date = new Date().toLocaleDateString();
-      
-      return `
-
-
-
-
-                                    ${title.toUpperCase()}
-
-
-                                      by
-
-                                   ${author}
-
-
-
-
-                                Based on a true story
-                                    (if applicable)
-
-
-
-
-                                     ${date}
-
-
-
-
-                              Contact Information:
-                              [Your Name]
-                              [Your Address]
-                              [Your Phone]
-                              [Your Email]
-
-
-
-
-                                   FIRST DRAFT`;
-    }
-    
-    function formatDialogueForScreenplay(dialogue) {
-      const lines = dialogue.split('\n');
-      let formatted = '';
-      let inDialogue = false;
-      
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) {
-          formatted += '\n';
-          continue;
-        }
-        
-        // Scene headings (INT./EXT.)
-        if (line.match(/^(INT\.|EXT\.)/i)) {
-          formatted += `\n${line.toUpperCase()}\n\n`;
-        }
-        // Character names (all caps, no colon)
-        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
-          const character = line.replace(':', '').trim();
-          formatted += `                    ${character}\n`;
-          inDialogue = true;
-        }
-        // Parentheticals
-        else if (line.match(/^\(.+\)$/)) {
-          formatted += `                  ${line}\n`;
-        }
-        // Dialogue lines
-        else if (inDialogue && !line.match(/^(INT\.|EXT\.)/i)) {
-          formatted += `          ${line}\n`;
-        }
-        // Action lines
-        else {
-          formatted += `${line}\n`;
-          inDialogue = false;
-        }
-      }
-      
-      return formatted + '\n\n';
-    }
-    
-    function generateFountainFormat(data) {
-      let fountain = `Title: ${data.storyInput?.title || 'UNTITLED'}\n`;
-      fountain += `Author: [Author Name]\n`;
-      fountain += `Draft date: ${new Date().toLocaleDateString()}\n\n`;
-      fountain += 'FADE IN:\n\n';
-      
-      // Use the same content generation as other formats for v2.0 database format
-      const scriptContent = generateContentFromV2Format(data);
-      if (scriptContent && scriptContent.trim()) {
-        fountain += convertToFountain(scriptContent) + '\n\n';
-      }
-      
-      fountain += 'FADE OUT.\n\nTHE END';
-      return fountain;
-    }
-    
-    function convertToFountain(dialogue) {
-      const lines = dialogue.split('\n');
-      let fountain = '';
-      
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) {
-          fountain += '\n';
-          continue;
-        }
-        
-        // Scene headings - Fountain auto-detects INT./EXT.
-        if (line.match(/^(INT\.|EXT\.)/)) {
-          fountain += line + '\n\n';
-        }
-        // Character names - no special formatting needed
-        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
-          fountain += line.replace(':', '') + '\n';
-        }
-        // Everything else
-        else {
-          fountain += line + '\n';
-        }
-      }
-      
-      return fountain;
-    }
-    
-    function generateFinalDraftFormat(data) {
-      const title = data.storyInput?.title || 'UNTITLED';
-      
-      let fdx = `<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
-<FinalDraft DocumentType="Script" Template="No" Version="1">
-    <Content>
-        <Paragraph Type="Scene Heading">
-            <Text>${title}</Text>
-        </Paragraph>
-`;
-      
-      // Use the same content generation as other formats for v2.0 database format
-      const scriptContent = generateContentFromV2Format(data);
-      if (scriptContent && scriptContent.trim()) {
-        fdx += convertToFinalDraft(scriptContent);
-      }
-      
-      fdx += `    </Content>
-</FinalDraft>`;
-      
-      return fdx;
-    }
-    
-    function convertToFinalDraft(dialogue) {
-      const lines = dialogue.split('\n');
-      let fdx = '';
-      
-      for (let line of lines) {
-        line = line.trim();
-        if (!line) continue;
-        
-        if (line.match(/^(INT\.|EXT\.)/)) {
-          fdx += `        <Paragraph Type="Scene Heading">
-            <Text>${line}</Text>
-        </Paragraph>\n`;
-        } else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
-          fdx += `        <Paragraph Type="Character">
-            <Text>${line.replace(':', '')}</Text>
-        </Paragraph>\n`;
-        } else if (line.match(/^\(.+\)$/)) {
-          fdx += `        <Paragraph Type="Parenthetical">
-            <Text>${line}</Text>
-        </Paragraph>\n`;
-        } else if (line.length > 0) {
-          const type = line.match(/^[A-Z]/) ? 'Action' : 'Dialogue';
-          fdx += `        <Paragraph Type="${type}">
-            <Text>${line}</Text>
-        </Paragraph>\n`;
-        }
-      }
-      
-      return fdx;
-    }
-    
-    function generatePDFReadyFormat(data) {
-      let pdfScript = `PDF CONVERSION INSTRUCTIONS:
-============================
-1. Use Courier 12pt font
-2. Set margins: Left 1.5", Right 1", Top/Bottom 1"
-3. Page numbers top-right
-4. Page breaks at [PAGE BREAK] markers
-
-============================
-
-${generateProfessionalScreenplay(data)}
-
-============================
-END OF SCREENPLAY
-============================`;
-      
-      return pdfScript;
-    }
-    
-    function generateProductionPackage(data) {
-      const title = data.storyInput?.title || 'UNTITLED';
-      
-      let productionScript = `PRODUCTION PACKAGE: ${title.toUpperCase()}
-${'='.repeat(50)}
-
-SCRIPT STATISTICS:
-• Genre: ${data.storyInput?.genre || data.storyInput?.tone || 'Not specified'}
-• Estimated Pages: ${Math.ceil((data.dialogueContent?.length || 0) * 3)}
-• Total Scenes: ${data.dialogueContent?.length || 0}
-
-CHARACTER BREAKDOWN:
-${data.storyInput?.characters || 'Characters not specified'}
-
-LOGLINE:
-${data.storyInput?.logline || 'Logline not provided'}
-
-PRODUCTION NOTES:
-• This script was generated using AI assistance
-• Review all dialogue for consistency and character voice
-• Consider script coverage and professional review
-• Verify all scene locations and time requirements
-• Check for continuity and pacing issues
-
-${'='.repeat(50)}
-SCREENPLAY BEGINS BELOW
-${'='.repeat(50)}
-
-${generateProfessionalScreenplay(data)}
-
-${'='.repeat(50)}
-END OF PRODUCTION PACKAGE
-${'='.repeat(50)}`;
-
-      return productionScript;
-    }
+    // Script formatting functions extracted to src/formatters/ScriptFormatters.js
 
     
     console.log('✅ Script generated successfully:', { 
@@ -4652,39 +3470,7 @@ app.post('/api/users/:userId/projects/duplicate', async (req, res) => {
   }
 });
 
-// Helper function to generate versioned project names
-async function generateVersionedProjectName(userId, originalProjectName) {
-  // Check if project name already has version suffix
-  const versionMatch = originalProjectName.match(/^(.+?)_V(\d+)$/);
-  const baseProjectName = versionMatch ? versionMatch[1] : originalProjectName;
-  
-  let versionNumber = 2; // Start with V02
-  
-  // If it already has a version, increment it
-  if (versionMatch) {
-    versionNumber = parseInt(versionMatch[2]) + 1;
-  }
-  
-  // Find the next available version number
-  while (true) {
-    const versionString = versionNumber.toString().padStart(2, '0');
-    const candidateName = `${baseProjectName}_V${versionString}`;
-    
-    // Check if this version already exists
-    const existingResult = await databaseService.getProject(userId, candidateName);
-    
-    if (existingResult.rows.length === 0) {
-      return candidateName;
-    }
-    
-    versionNumber++;
-    
-    // Safety check to prevent infinite loop
-    if (versionNumber > 99) {
-      return `${baseProjectName}_V${Date.now()}`;
-    }
-  }
-}
+// generateVersionedProjectName function extracted to src/utils/UtilityFunctions.js
 
 // Server startup moved to bottom of file for proper Vercel export handling
 
@@ -4741,7 +3527,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const storyAct = structure[actKey];
     
     // Initialize and load hierarchical context
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     await context.loadFromProject(projectPath);
     
     // Rebuild context if needed
@@ -4963,7 +3749,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     const targetPlotPoint = existingPlotPoints[plotPointIndexNum];
     
     // Initialize and load hierarchical context
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     await context.loadFromProject(projectPath);
     
     // Rebuild context if needed
@@ -5097,7 +3883,7 @@ app.post('/api/preview-individual-plot-point-prompt', authenticateApiKey, async 
     const targetPlotPoint = existingPlotPoints[plotPointIndexNum];
     
     // Initialize and load hierarchical context
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     await context.loadFromProject(projectPath);
     
     // Rebuild context if needed
@@ -5205,7 +3991,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     }
 
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     const sceneDistribution = context.calculateSceneDistribution(plotPoints, totalScenesForAct, actKey, totalScenes, projectContext);
     
     // 🔥 FIX: Update project context with the user's current totalScenes input to prevent drift
@@ -5232,7 +4018,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
       
       try {
         // Generate scenes for this plot point directly
-        const context = new HierarchicalContext();
+        const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
         const plotPointResult = await context.generateScenesForPlotPoint(projectPath, actKey, plotPointIndex, model, projectContext, sceneDistribution, req.user.username, creativeDirections);
         allGeneratedScenes.push({
           plotPointIndex: plotPointIndex,
@@ -5630,18 +4416,7 @@ app.get('/api/model-pricing', async (req, res) => {
   }
 });
 
-// Helper function to describe models
-function getModelDescription(model) {
-  const descriptions = {
-    'claude-3-5-sonnet-20241022': 'Latest Claude 3.5 Sonnet - Best balance of performance and cost',
-    'claude-sonnet-4-20250514': 'Legacy name for Claude 3.5 Sonnet',
-    'claude-3-sonnet-20240229': 'Original Claude 3 Sonnet',
-    'claude-3-opus-20240229': 'Most capable Claude model - Highest cost, best quality',
-    'claude-3-haiku-20240307': 'Fastest and most cost-effective Claude model',
-    'claude-3-5-haiku-20241022': 'Latest Claude 3.5 Haiku - Good balance of speed and capability'
-  };
-  return descriptions[model] || 'Claude model';
-}
+// getModelDescription function extracted to src/utils/UtilityFunctions.js
 
 
 
@@ -5699,14 +4474,14 @@ app.post('/api/preview-plot-point-scene-prompt/:projectPath/:actKey/:plotPointIn
     
     // 🔧 DYNAMIC SCENE DISTRIBUTION: Use calculateSceneDistribution method with project context and user's totalScenes
     // Fix: Use all plot points in the act, not just the single plot point
-    const tempContext = new HierarchicalContext();
+    const tempContext = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     const sceneDistribution = tempContext.calculateSceneDistribution(plotPointsArray, null, actKey, totalScenes, projectContext);
     const sceneCount = sceneDistribution[plotPointIndexNum].sceneCount;
     
 
     
     // Initialize and load hierarchical context
-    const context = new HierarchicalContext();
+    const context = new HierarchicalContext({ db: dbClient, anthropic: anthropic });
     await context.loadFromProject(projectPath);
     
     const structure = projectContext.generatedStructure;
@@ -6246,6 +5021,7 @@ const startServer = async () => {
   app.set('anthropic', anthropic);
   app.set('parseProjectContext', parseProjectContext);
   app.set('projectService', projectService);
+  app.set('libraryService', libraryService);
   app.set('analyticsService', analyticsService);
   app.set('userService', userService);
   app.set('starterPack', starterPack);
@@ -6293,6 +5069,7 @@ if (process.env.VERCEL) {
     app.set('anthropic', anthropic);
     app.set('parseProjectContext', parseProjectContext);
     app.set('projectService', projectService);
+    app.set('libraryService', libraryService);
     app.set('analyticsService', analyticsService);
     app.set('userService', userService);
     app.set('starterPack', starterPack);
