@@ -7376,9 +7376,7 @@ app.post('/api/admin/update-rate-limits', authenticateApiKey, async (req, res) =
 // Admin status check endpoint (no auth required - for initial setup)
 app.get('/api/admin-status', async (req, res) => {
   try {
-    const adminUser = await dbClient.query(
-      'SELECT username, api_key, is_admin FROM users WHERE is_admin = TRUE LIMIT 1'
-    );
+    const adminUser = await userService.getFirstAdminUser();
     
     if (adminUser.rows.length === 0) {
       res.json({ 
@@ -7443,10 +7441,7 @@ app.post('/api/promote-to-admin', async (req, res) => {
     }
     
     // Check if user exists
-    const user = await dbClient.query(
-      'SELECT id, username, is_admin FROM users WHERE username = $1',
-      [username]
-    );
+    const user = await userService.getUserWithAdminStatus(username);
     
     if (user.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -7486,10 +7481,7 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     const username = 'CCKRAD';
     
     // Get user info first
-    const userResult = await dbClient.query(
-      'SELECT id, username, email FROM users WHERE username = $1',
-      [username]
-    );
+    const userResult = await userService.getUserBasicInfo(username);
     
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'CCKRAD user not found' });
