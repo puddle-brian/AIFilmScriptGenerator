@@ -102,6 +102,9 @@ class APIClient {
       return 'Authentication required. Please check your API key.';
     } else if (error.status === 403) {
       return 'Access denied. Please check your permissions.';
+    } else if (error.status === 409) {
+      // For 409 Conflict errors, use the specific error message from the server
+      return error.message || 'Item already exists.';
     } else if (error.status === 429) {
       return 'Too many requests. Please wait and try again.';
     } else if (error.status === 500) {
@@ -151,7 +154,19 @@ class APIClient {
       
       // Handle response
       if (!response.ok) {
-        const error = new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // Try to parse error response as JSON to get detailed error message
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          }
+        } catch (parseError) {
+          // If parsing fails, use the original status text
+          console.warn('Failed to parse error response as JSON:', parseError);
+        }
+        
+        const error = new Error(errorMessage);
         error.status = response.status;
         error.response = response;
         throw error;

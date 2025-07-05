@@ -89,6 +89,19 @@ class LibraryService {
       return result.rows[0];
       
     } catch (error) {
+      // 🔧 Handle duplicate key constraint gracefully
+      if (error.code === '23505' && error.constraint === 'user_libraries_user_id_library_type_entry_key_key') {
+        const friendlyName = entryData.name || key;
+        const errorMessage = `${type.charAt(0).toUpperCase() + type.slice(0, -1)} "${friendlyName}" already exists in your library.`;
+        
+        this.logger.warn(`⚠️ Duplicate ${type} entry attempted for ${username}: ${key}`);
+        
+        const duplicateError = new Error(errorMessage);
+        duplicateError.code = 'DUPLICATE_ENTRY';
+        duplicateError.statusCode = 409;
+        throw duplicateError;
+      }
+      
       this.logger.error(`Error creating ${type} entry for ${username}:`, error);
       throw error;
     }

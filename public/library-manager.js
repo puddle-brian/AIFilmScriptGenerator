@@ -590,6 +590,17 @@ class LibraryManager {
         if (window.showToast) {
           window.showToast(`"${name}" saved to your ${config.plural} library!`, 'success');
         }
+        
+        // 🔧 STORY CONCEPT SPECIAL HANDLING: Initialize new project
+        if (type === 'storyconcept') {
+          console.log('🚀 LibraryManager: Story concept created, initializing new project...');
+          // Call the global function to initialize new project from story concept
+          if (typeof window.initializeNewProjectFromStoryConcept === 'function') {
+            window.initializeNewProjectFromStoryConcept(name, description);
+          } else {
+            console.warn('🚨 LibraryManager: initializeNewProjectFromStoryConcept function not found');
+          }
+        }
       }
       
       this.hideLibraryModal();
@@ -599,6 +610,16 @@ class LibraryManager {
       
     } catch (error) {
       console.error('Failed to save library entry:', error);
+      
+      // 🔧 Handle duplicate entry with friendly message
+      if (error.message && error.message.includes('already exists')) {
+        if (window.showToast) {
+          window.showToast(error.message, 'error');
+        }
+        return;
+      }
+      
+      // Generic error message
       if (window.showToast) {
         window.showToast('Failed to save to library. Please try again.', 'error');
       }

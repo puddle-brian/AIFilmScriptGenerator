@@ -59,6 +59,15 @@ router.post('/user-libraries/:username/:type/:key', async (req, res) => {
       throw new Error('LibraryService not available');
     }
   } catch (error) {
+    // 🔧 Handle duplicate entry gracefully
+    if (error.code === 'DUPLICATE_ENTRY' && error.statusCode === 409) {
+      console.log(`⚠️ Duplicate entry: ${error.message}`);
+      return res.status(409).json({ 
+        error: error.message,
+        code: 'DUPLICATE_ENTRY'
+      });
+    }
+    
     console.error('Failed to save library entry:', error);
     res.status(500).json({ error: 'Failed to save library entry' });
   }
