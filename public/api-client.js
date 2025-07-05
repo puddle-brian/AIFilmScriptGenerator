@@ -29,7 +29,7 @@ class APIClient {
    */
   getBaseURL() {
     return window.location.hostname === 'localhost' ? 
-      'https://screenplaygenie.com' : '';
+      'http://localhost:3000' : '';
   }
   
   /**

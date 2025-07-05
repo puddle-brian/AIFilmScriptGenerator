@@ -24,7 +24,7 @@ const BackupSystem = require('./backup-system');
 const authRoutes = require('./routes/auth');
 const generationRoutes = require('./routes/generation');
 const projectRoutes = require('./routes/projects');
-const { authenticateApiKey, checkCredits } = authRoutes;
+const { authenticateApiKey, checkCredits, requireAdmin, optionalAuth } = require('./middleware/auth');
 
 // Configure Winston logger
 const logger = winston.createLogger({
@@ -8541,6 +8541,7 @@ const startServer = async () => {
 
   // Mount route modules (after dependency injection is set up)
   app.use('/api/auth', authRoutes.router);
+  app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
   app.use('/api', generationRoutes.router);
   app.use('/api', projectRoutes.router);
   
@@ -8580,6 +8581,7 @@ if (process.env.VERCEL) {
 
     // Mount route modules (serverless)
     app.use('/api/auth', authRoutes.router);
+    app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
     app.use('/api', generationRoutes.router);
     app.use('/api', projectRoutes.router);
     

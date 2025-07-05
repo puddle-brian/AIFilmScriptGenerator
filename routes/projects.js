@@ -1,18 +1,16 @@
 const express = require('express');
 const router = express.Router();
 
+// Import authentication middleware
+const { authenticateApiKey, checkCredits } = require('../middleware/auth');
+
 // Middleware to inject dependencies from app
 router.use((req, res, next) => {
   req.dbClient = req.app.get('dbClient');
   req.projectService = req.app.get('projectService');
   req.parseProjectContext = req.app.get('parseProjectContext');
-  req.authenticateApiKey = req.app.get('authenticateApiKey');
-  req.checkCredits = req.app.get('checkCredits');
-  
-  // Import auth middleware from routes/auth.js for these routes
-  const authRoutes = require('./auth');
-  req.authenticateApiKey = authRoutes.authenticateApiKey;
-  req.checkCredits = authRoutes.checkCredits;
+  req.authenticateApiKey = authenticateApiKey;
+  req.checkCredits = checkCredits;
   
   next();
 });
@@ -199,11 +197,9 @@ router.get('/list-projects', async (req, res) => {
 // Load project (legacy endpoint - redirects to database)
 router.get('/project/:id', async (req, res) => {
   try {
-    // Get auth middleware from app-level dependency injection
-    const authenticateApiKey = req.app.get('authenticateApiKey');
-    if (authenticateApiKey) {
-      await authenticateApiKey(req, res, () => {});
-    }
+    // Authenticate user using imported middleware
+    await authenticateApiKey(req, res, () => {});
+    
     const projectId = req.params.id;
     const username = req.user.username; // Get from authenticated user
     
@@ -648,11 +644,8 @@ router.post('/users/:userId/projects/duplicate', async (req, res) => {
 // Save edited act content
 router.put('/edit-content/acts/:projectPath/:actKey', async (req, res) => {
   try {
-    // Get auth middleware from app-level dependency injection
-    const authenticateApiKey = req.app.get('authenticateApiKey');
-    if (authenticateApiKey) {
-      await authenticateApiKey(req, res, () => {});
-    }
+    // Authenticate user using imported middleware
+    await authenticateApiKey(req, res, () => {});
     
     const { projectPath, actKey } = req.params;
     const { content } = req.body;
@@ -730,11 +723,8 @@ router.put('/edit-content/acts/:projectPath/:actKey', async (req, res) => {
 // Save edited plot points content
 router.put('/edit-content/plot-points/:projectPath/:actKey', async (req, res) => {
   try {
-    // Get auth middleware from app-level dependency injection
-    const authenticateApiKey = req.app.get('authenticateApiKey');
-    if (authenticateApiKey) {
-      await authenticateApiKey(req, res, () => {});
-    }
+    // Authenticate user using imported middleware
+    await authenticateApiKey(req, res, () => {});
     
     const { projectPath, actKey } = req.params;
     const { content } = req.body;
@@ -818,11 +808,8 @@ router.put('/edit-content/plot-points/:projectPath/:actKey', async (req, res) =>
 // Save edited scene content
 router.put('/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req, res) => {
   try {
-    // Get auth middleware from app-level dependency injection
-    const authenticateApiKey = req.app.get('authenticateApiKey');
-    if (authenticateApiKey) {
-      await authenticateApiKey(req, res, () => {});
-    }
+    // Authenticate user using imported middleware
+    await authenticateApiKey(req, res, () => {});
     
     const { projectPath, actKey, sceneIndex } = req.params;
     const { content } = req.body;
@@ -914,11 +901,8 @@ router.put('/edit-content/scenes/:projectPath/:actKey/:sceneIndex', async (req, 
 // Save edited dialogue content
 router.put('/edit-content/dialogue/:projectPath/:actKey/:sceneIndex', async (req, res) => {
   try {
-    // Get auth middleware from app-level dependency injection
-    const authenticateApiKey = req.app.get('authenticateApiKey');
-    if (authenticateApiKey) {
-      await authenticateApiKey(req, res, () => {});
-    }
+    // Authenticate user using imported middleware
+    await authenticateApiKey(req, res, () => {});
     
     const { projectPath, actKey, sceneIndex } = req.params;
     const { content } = req.body;
