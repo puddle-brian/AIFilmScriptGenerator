@@ -6955,13 +6955,11 @@ app.delete('/api/admin/user/:userId', authenticateApiKey, async (req, res) => {
 
   try {
     // First check if user exists
-    const userCheck = await dbClient.query('SELECT username FROM users WHERE id = $1', [userId]);
+    const username = await userService.getUsernameById(userId);
     
-    if (userCheck.rows.length === 0) {
+    if (!username) {
       return res.status(404).json({ error: 'User not found' });
     }
-
-    const username = userCheck.rows[0].username;
 
     // Delete user (this will cascade delete related records due to foreign key constraints)
     await databaseService.deleteUser(userId);
@@ -7422,14 +7420,12 @@ app.get('/api/admin-status', async (req, res) => {
 app.post('/api/create-emergency-admin', async (req, res) => {
   try {
     // Check if admin already exists
-    const existingAdmin = await dbClient.query(
-      'SELECT username FROM users WHERE is_admin = TRUE LIMIT 1'
-    );
+    const adminUsername = await userService.getAdminUsername();
     
-    if (existingAdmin.rows.length > 0) {
+    if (adminUsername) {
       return res.status(400).json({ 
         error: 'Admin user already exists',
-        adminUsername: existingAdmin.rows[0].username 
+        adminUsername: adminUsername 
       });
     }
     
@@ -8206,6 +8202,7 @@ let authService = null;
 let projectService = null;
 let libraryService = null;
 let analyticsService = null;
+let userService = null;
 
 async function initializeServices() {
   try {
@@ -8216,6 +8213,7 @@ async function initializeServices() {
     const ProjectService = require('./src/services/ProjectService');
     const LibraryService = require('./src/services/LibraryService');
     const AnalyticsService = require('./src/services/AnalyticsService');
+    const UserService = require('./src/services/UserService');
     
     // Load prompt builders from existing system
     const promptBuilders = require('./prompt-builders');
@@ -8230,6 +8228,7 @@ async function initializeServices() {
     projectService = new ProjectService(databaseService);
     libraryService = new LibraryService(databaseService);
     analyticsService = new AnalyticsService(dbClient);
+    userService = new UserService(dbClient);
     
     console.log('✅ New services initialized successfully');
   } catch (error) {
@@ -8320,6 +8319,7 @@ const startServer = async () => {
   app.set('parseProjectContext', parseProjectContext);
   app.set('projectService', projectService);
   app.set('analyticsService', analyticsService);
+  app.set('userService', userService);
 
   // Mount route modules (after dependency injection is set up)
   app.use('/api/auth', authRoutes.router);
@@ -8361,6 +8361,7 @@ if (process.env.VERCEL) {
     app.set('parseProjectContext', parseProjectContext);
     app.set('projectService', projectService);
     app.set('analyticsService', analyticsService);
+    app.set('userService', userService);
 
     // Mount route modules (serverless)
     app.use('/api/auth', authRoutes.router);
