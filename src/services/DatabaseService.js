@@ -207,6 +207,42 @@ class DatabaseService {
   async healthCheck() {
     return await this.client.query('SELECT NOW() as timestamp');
   }
+
+  // ==================================================
+  // USER MANAGEMENT OPERATIONS
+  // ==================================================
+
+  async deleteUser(userId) {
+    return await this.client.query(
+      'DELETE FROM users WHERE id = $1 RETURNING *',
+      [userId]
+    );
+  }
+
+  async deleteUserLibraries(userId) {
+    return await this.client.query(
+      'DELETE FROM user_libraries WHERE user_id = $1 RETURNING *',
+      [userId]
+    );
+  }
+
+  async listUsers() {
+    return await this.client.query(
+      'SELECT id, username, created_at FROM users ORDER BY created_at DESC'
+    );
+  }
+
+  // ==================================================
+  // COUNT OPERATIONS
+  // ==================================================
+
+  async getUsersCount() {
+    return await this.client.query('SELECT COUNT(*) FROM users');
+  }
+
+  async getProjectsCount() {
+    return await this.client.query('SELECT COUNT(*) FROM user_projects');
+  }
 }
 
 module.exports = DatabaseService; 

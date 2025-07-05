@@ -5116,7 +5116,7 @@ app.use((error, req, res, next) => {
 // User Management
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await dbClient.query('SELECT id, username, created_at FROM users ORDER BY created_at DESC');
+    const result = await databaseService.listUsers();
     res.json(result.rows);
   } catch (error) {
     console.error('Failed to fetch users:', error);
@@ -7020,7 +7020,7 @@ app.get('/api/admin/users', authenticateApiKey, async (req, res) => {
     `, [limit, offset]);
 
     // Get total count
-    const countResult = await dbClient.query('SELECT COUNT(*) FROM users');
+    const countResult = await databaseService.getUsersCount();
     const totalUsers = parseInt(countResult.rows[0].count);
 
     res.json({
@@ -7057,7 +7057,7 @@ app.delete('/api/admin/user/:userId', authenticateApiKey, async (req, res) => {
     const username = userCheck.rows[0].username;
 
     // Delete user (this will cascade delete related records due to foreign key constraints)
-    await dbClient.query('DELETE FROM users WHERE id = $1', [userId]);
+    await databaseService.deleteUser(userId);
 
     console.log(`🗑️ User ${username} (ID: ${userId}) deleted by admin ${req.user.username}`);
     
@@ -7185,10 +7185,10 @@ app.delete('/api/admin/delete-user/:username', authenticateApiKey, async (req, r
     
     // Delete user data in order (respecting foreign key constraints)
     await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM user_libraries WHERE user_id = $1', [user.id]);
+    await databaseService.deleteUserLibraries(user.id);
     await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
     await dbClient.query('DELETE FROM usage_logs_v2 WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM users WHERE id = $1', [user.id]);
+    await databaseService.deleteUser(user.id);
     
     console.log(`🗑️ Admin deleted user: ${username} (ID: ${user.id})`);
     
@@ -7218,8 +7218,8 @@ app.get('/api/admin/system-status', authenticateApiKey, async (req, res) => {
     const dbTest = await dbClient.query('SELECT NOW()');
     
     // Get system metrics
-    const usersCount = await dbClient.query('SELECT COUNT(*) FROM users');
-    const projectsCount = await dbClient.query('SELECT COUNT(*) FROM user_projects');
+    const usersCount = await databaseService.getUsersCount();
+    const projectsCount = await databaseService.getProjectsCount();
     
     res.json({
       database: '✅ Connected',
@@ -7246,8 +7246,8 @@ app.get('/api/admin/metrics', authenticateApiKey, async (req, res) => {
   }
 
   try {
-    const usersCount = await dbClient.query('SELECT COUNT(*) FROM users');
-    const projectsCount = await dbClient.query('SELECT COUNT(*) FROM user_projects');
+    const usersCount = await databaseService.getUsersCount();
+    const projectsCount = await databaseService.getProjectsCount();
     
     res.json({
       database: '✅ Connected',
@@ -7734,7 +7734,7 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     }
     
     try {
-      const libResult = await dbClient.query('DELETE FROM user_libraries WHERE user_id = $1', [user.id]);
+      const libResult = await databaseService.deleteUserLibraries(user.id);
       console.log(`✅ Deleted ${libResult.rowCount} user library entries`);
     } catch (e) {
       console.log(`⚠️ User libraries deletion failed (might not exist):`, e.message);
@@ -7755,7 +7755,7 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     }
     
     // Finally delete the user
-    const userDeleteResult = await dbClient.query('DELETE FROM users WHERE id = $1', [user.id]);
+    const userDeleteResult = await databaseService.deleteUser(user.id);
     console.log(`✅ Deleted user: ${userDeleteResult.rowCount} rows affected`);
     
     console.log(`🗑️ Emergency deleted CCKRAD user: ${username} (ID: ${user.id})`);
