@@ -7064,12 +7064,8 @@ app.delete('/api/admin/delete-user/:username', authenticateApiKey, async (req, r
     
     const user = userResult.rows[0];
     
-    // Delete user data in order (respecting foreign key constraints)
-    await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
-    await databaseService.deleteUserLibraries(user.id);
-    await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
-    await dbClient.query('DELETE FROM usage_logs_v2 WHERE user_id = $1', [user.id]);
-    await databaseService.deleteUser(user.id);
+    // Delete user and all related data using UserService CASCADE method
+    await userService.deleteUserCompletely(user.id);
     
     console.log(`🗑️ Admin deleted user: ${username} (ID: ${user.id})`);
     
@@ -7486,37 +7482,9 @@ app.delete('/api/emergency-delete-cckrad', async (req, res) => {
     
     // Delete user data in order (respecting foreign key constraints)
     // Try each deletion separately and log results
-    try {
-      const creditResult = await dbClient.query('DELETE FROM credit_transactions WHERE user_id = $1', [user.id]);
-      console.log(`✅ Deleted ${creditResult.rowCount} credit transactions`);
-    } catch (e) {
-      console.log(`⚠️ Credit transactions deletion failed (might not exist):`, e.message);
-    }
-    
-    try {
-      const libResult = await databaseService.deleteUserLibraries(user.id);
-      console.log(`✅ Deleted ${libResult.rowCount} user library entries`);
-    } catch (e) {
-      console.log(`⚠️ User libraries deletion failed (might not exist):`, e.message);
-    }
-    
-    try {
-      const projResult = await dbClient.query('DELETE FROM user_projects WHERE user_id = $1', [user.id]);
-      console.log(`✅ Deleted ${projResult.rowCount} user projects`);
-    } catch (e) {
-      console.log(`⚠️ User projects deletion failed (might not exist):`, e.message);
-    }
-    
-    try {
-      const logsResult = await dbClient.query('DELETE FROM usage_logs WHERE username = $1', [username]);
-      console.log(`✅ Deleted ${logsResult.rowCount} usage logs (by username)`);
-    } catch (e) {
-      console.log(`⚠️ Usage logs deletion failed (might not exist):`, e.message);
-    }
-    
-    // Finally delete the user
-    const userDeleteResult = await databaseService.deleteUser(user.id);
-    console.log(`✅ Deleted user: ${userDeleteResult.rowCount} rows affected`);
+    // Delete user and all related data using UserService CASCADE method
+    const deletionResults = await userService.deleteUserCompletely(user.id);
+    console.log(`✅ Deleted user and all related data:`, deletionResults);
     
     console.log(`🗑️ Emergency deleted CCKRAD user: ${username} (ID: ${user.id})`);
     
