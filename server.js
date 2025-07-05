@@ -2093,10 +2093,7 @@ app.post('/api/generate-structure-custom', async (req, res) => {
         const userResult = await databaseService.getUserByUsername(username);
         if (userResult.rows.length > 0) {
           const userId = userResult.rows[0].id;
-          const projectResult = await dbClient.query(
-            'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-            [userId, projectFolderName]
-          );
+          const projectResult = await databaseService.getProject(userId, projectFolderName);
           if (projectResult.rows.length > 0) {
             const existingContext = JSON.parse(projectResult.rows[0].project_context);
             customProjectId = existingContext.projectId;
@@ -2238,13 +2235,7 @@ Project ID: ${customProjectId}
         const userId = userResult.rows[0].id;
         
         // Save project to database
-        await dbClient.query(
-          `INSERT INTO user_projects (user_id, project_name, project_context, thumbnail_data) 
-           VALUES ($1, $2, $3, $4) 
-           ON CONFLICT (user_id, project_name) 
-           DO UPDATE SET project_context = $3, thumbnail_data = $4, updated_at = NOW()`,
-          [userId, projectFolderName, JSON.stringify(projectContext), JSON.stringify(thumbnailData)]
-        );
+        await databaseService.saveProject(userId, projectFolderName, projectContext, thumbnailData);
         
         console.log(`✅ Custom prompt project also saved to database for user: ${username}`);
       }
@@ -2620,10 +2611,7 @@ app.post('/api/preview-dialogue-prompt', authenticateApiKey, async (req, res) =>
             const userId = userResult.rows[0].id;
             
             // Get project context from database
-            const projectResult = await dbClient.query(
-              'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-              [userId, projectPath]
-            );
+            const projectResult = await databaseService.getProject(userId, projectPath);
             
             if (projectResult.rows.length > 0) {
               const projectContext = parseProjectContext(projectResult.rows[0].project_context);
@@ -3124,10 +3112,7 @@ app.post('/api/preview-scene-prompt', authenticateApiKey, async (req, res) => {
             const userId = userResult.rows[0].id;
             
             // Get project context from database
-            const projectResult = await dbClient.query(
-              'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-              [userId, projectPath]
-            );
+            const projectResult = await databaseService.getProject(userId, projectPath);
             
             if (projectResult.rows.length > 0) {
               const projectContext = parseProjectContext(projectResult.rows[0].project_context);
@@ -7537,7 +7522,7 @@ app.post('/api/admin/health-check', authenticateApiKey, async (req, res) => {
 
   try {
     // Check database
-    await dbClient.query('SELECT 1');
+    await databaseService.healthCheck();
     
     // Check Anthropic API
     await anthropic.messages.create({
