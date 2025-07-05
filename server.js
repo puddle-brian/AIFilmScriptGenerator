@@ -5796,7 +5796,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const plotUsername = req.user.username; // Get from authenticated user
     
     // Get user and project from database
-    const plotUserResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [plotUsername]);
+    const plotUserResult = await databaseService.getUserByUsername(plotUsername);
     if (plotUserResult.rows.length === 0) {
       throw new Error('User not found');
     }
@@ -5804,10 +5804,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     const plotUserId = plotUserResult.rows[0].id;
     
     // Load project context from database
-    const plotProjectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [plotUserId, projectPath]
-    );
+    const plotProjectResult = await databaseService.getProject(plotUserId, projectPath);
     
     if (plotProjectResult.rows.length === 0) {
       throw new Error('Project not found in database');
@@ -5981,10 +5978,7 @@ app.post('/api/generate-plot-points-for-act/:projectPath/:actKey', authenticateA
     }
     
     // Save back to database
-        await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = NOW() WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
 
     console.log(`✅ Plot points saved to database for ${actKey} in unified v2.0 format`);
     console.log(`Generated ${plotPointsData.plotPoints.length} plot points for ${actKey} with scene distribution:`);
@@ -6027,10 +6021,7 @@ app.post('/api/regenerate-plot-point/:projectPath/:structureKey/:plotPointIndex'
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -6140,10 +6131,7 @@ Return ONLY a JSON object with this exact structure:
     
     // Save updated plot points back to database
     projectContext.plotPoints[structureKey] = plotPointsData;
-        await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
     
     // Update hierarchical context with new plot points
     await context.buildPlotPointsContext(plotPointsData.plotPoints, plotPointsData.plotPoints.length, projectPath, req.user.username);
@@ -6179,10 +6167,7 @@ app.post('/api/preview-individual-plot-point-prompt', authenticateApiKey, async 
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });

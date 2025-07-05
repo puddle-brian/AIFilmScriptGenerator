@@ -243,6 +243,17 @@ class DatabaseService {
   async getProjectsCount() {
     return await this.client.query('SELECT COUNT(*) FROM user_projects');
   }
+
+  // ==================================================
+  // PROJECT UPDATE OPERATIONS
+  // ==================================================
+
+  async updateProject(userId, projectName, projectContext) {
+    return await this.client.query(
+      'UPDATE user_projects SET project_context = $1, updated_at = NOW() WHERE user_id = $2 AND project_name = $3 RETURNING *',
+      [JSON.stringify(projectContext), userId, projectName]
+    );
+  }
 }
 
 module.exports = DatabaseService; 
