@@ -1335,19 +1335,13 @@ class HierarchicalContext {
       
       // Get project context from database
       console.log(`  🔍 Querying database: user_id=${userId}, project_name="${projectPath}"`);
-      const projectResult = await dbClient.query(
-        'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-        [userId, projectPath]
-      );
+      const projectResult = await databaseService.getProject(userId, projectPath);
       
       console.log(`  📊 Query result: ${projectResult.rows.length} rows found`);
       if (projectResult.rows.length === 0) {
         console.log('  ⚠️  Project not found in database');
         // Let's also check what projects DO exist for this user
-        const allProjectsResult = await dbClient.query(
-          'SELECT project_name FROM user_projects WHERE user_id = $1',
-          [userId]
-        );
+        const allProjectsResult = await databaseService.getUserProjects(userId);
         console.log(`  📋 Available projects for user: ${allProjectsResult.rows.map(row => `"${row.project_name}"`).join(', ')}`);
         return [];
       }
@@ -3511,10 +3505,7 @@ app.post('/api/generate-scenes-for-plot-point/:projectPath/:actKey/:plotPointInd
     }
     
     const userId = userResult.rows[0].id;
-    const projectResult = await dbClient.query(
-      'SELECT project_context FROM user_projects WHERE user_id = $1 AND project_name = $2',
-      [userId, projectPath]
-    );
+    const projectResult = await databaseService.getProject(userId, projectPath);
     
     if (projectResult.rows.length === 0) {
       return res.status(404).json({ error: 'Project not found in database' });
@@ -3709,10 +3700,7 @@ Return ONLY valid JSON in this exact format:
     };
     
     // Update database with new scenes
-    await dbClient.query(
-      'UPDATE user_projects SET project_context = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND project_name = $3',
-      [JSON.stringify(projectContext), userId, projectPath]
-    );
+    await databaseService.updateProject(userId, projectPath, projectContext);
 
     console.log(`Saved ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum + 1} to database`);
 
