@@ -2888,10 +2888,7 @@ app.get('/api/project/:id', async (req, res) => {
       const userId = userResult.rows[0].id;
       
       // Look for project in database by project_name (assuming projectId = project_name)
-      const projectResult = await dbClient.query(
-        'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
-        [userId, projectId]
-      );
+      const projectResult = await databaseService.getProject(userId, projectId);
       
       if (projectResult.rows.length > 0) {
         const dbProject = projectResult.rows[0];
@@ -3000,8 +2997,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
       const userId = userResult.rows[0].id;
       
       // Then get project context
-      const query = `SELECT project_context FROM user_projects WHERE project_name = $1 AND user_id = $2`;
-      const result = await dbClient.query(query, [projectPath, userId]);
+      const result = await databaseService.getProject(userId, projectPath);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Project not found' });
@@ -3050,8 +3046,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
       }
       const userId = userResult.rows[0].id;
       
-      const query = `SELECT project_context FROM user_projects WHERE project_name = $1 AND user_id = $2`;
-      const result = await dbClient.query(query, [projectPath, userId]);
+      const result = await databaseService.getProject(userId, projectPath);
       
       if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Project not found' });
