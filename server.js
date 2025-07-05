@@ -3,10 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const { body, validationResult } = require('express-validator');
 const compression = require('compression');
-const winston = require('winston');
 const fs = require('fs').promises;
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -29,44 +26,15 @@ const libraryRoutes = require('./routes/library');
 const adminRoutes = require('./routes/admin');
 const { authenticateApiKey, checkCredits, requireAdmin, optionalAuth } = require('./middleware/auth');
 
-// Configure Winston logger
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: winston.format.combine(
-    winston.format.timestamp(),
-    winston.format.errors({ stack: true }),
-    winston.format.json()
-  ),
-  transports: [
-    new winston.transports.File({ filename: 'error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'combined.log' })
-  ]
-});
+// Import middleware modules
+const { logger, requestLoggingMiddleware, setupGlobalErrorHandlers } = require('./middleware/logging');
+const { setupRateLimiting } = require('./middleware/rateLimiting');
+const { validateEmail, validateUsername, validatePassword, validateRequest, body } = require('./middleware/validation');
+const { sanitizeInput } = require('./middleware/security');
+const { setupErrorHandling } = require('./middleware/errorHandling');
 
-// Add console logging in development
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
-}
-
-// Add comprehensive error handling to prevent server crashes
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  logger.error('Uncaught Exception:', { error: error.message, stack: error.stack });
-  console.error('Stack:', error.stack);
-  // Don't exit - keep server running
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  logger.error('Unhandled Rejection:', { reason, promise, stack: reason?.stack });
-  console.error('Stack:', reason?.stack);
-  // Don't exit - keep server running
-});
+// Setup global error handlers
+setupGlobalErrorHandlers();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -255,43 +223,7 @@ app.use(helmet({
 app.use(compression());
 
 // 3. Rate Limiting - DoS Protection
-const generalLimiter = rateLimit({
-windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // limit each IP to 1000 requests per windowMs - reasonable for normal usage
-  message: {
-    error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-  skip: (req) => {
-    // Skip rate limiting for health checks, webhooks, and static files
-    return req.path === '/health' || 
-           req.path.startsWith('/api/stripe-webhook') ||
-           req.path.startsWith('/public/') ||
-           req.path === '/' ||  // Skip root index page
-           req.path.match(/\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|html)$/);  // Added html extension
-  }
-});
-
-// Stricter rate limiting for auth endpoints
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // limit each IP to 5 auth requests per windowMs
-  message: {
-    error: 'Too many authentication attempts, please try again later.',
-    retryAfter: '15 minutes'
-  },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
-// Apply general rate limiting
-app.use(generalLimiter);
-
-// Apply auth rate limiting to specific routes
-app.use('/api/auth/', authLimiter);
-app.use('/api/v2/auth/', authLimiter);
+setupRateLimiting(app);
 
 // 4. CORS Configuration
 const corsOptions = {
@@ -329,91 +261,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // 5. Request Logging Middleware
-app.use((req, res, next) => {
-  const startTime = Date.now();
-  const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  
-  // Log request
-  logger.info('Incoming request', {
-    method: req.method,
-    url: req.url,
-    ip: clientIp,
-    userAgent: req.headers['user-agent'],
-    timestamp: new Date().toISOString()
-  });
-  
-  // Log response
-  res.on('finish', () => {
-    const duration = Date.now() - startTime;
-    const logLevel = res.statusCode >= 400 ? 'warn' : 'info';
-    
-    logger.log(logLevel, 'Request completed', {
-      method: req.method,
-      url: req.url,
-      statusCode: res.statusCode,
-      duration,
-      ip: clientIp,
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  next();
-});
+app.use(requestLoggingMiddleware);
 
 // ==================== SECURITY UTILITY FUNCTIONS ====================
-
-// Input validation helpers
-function validateEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-function validateUsername(username) {
-  if (!username || typeof username !== 'string') return false;
-  if (username.length < 3 || username.length > 30) return false;
-  return /^[a-zA-Z0-9_-]+$/.test(username);
-}
-
-function validatePassword(password) {
-  if (!password || typeof password !== 'string') return false;
-  if (password.length < 8) return false;
-  
-  // Check for at least one number, one lowercase, one uppercase letter
-  const hasNumber = /\d/.test(password);
-  const hasLower = /[a-z]/.test(password);
-  const hasUpper = /[A-Z]/.test(password);
-  
-  return hasNumber && hasLower && hasUpper;
-}
-
-function sanitizeInput(input) {
-  if (typeof input !== 'string') return input;
-  
-  // Remove potential XSS patterns
-  return input
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
-    .trim();
-}
-
-// Validation middleware factory
-function validateRequest(validations) {
-  return [
-    ...validations,
-    (req, res, next) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        logger.warn('Validation error:', { errors: errors.array(), ip: req.ip, url: req.url });
-        return res.status(400).json({
-          error: 'Validation failed',
-          details: errors.array()
-        });
-      }
-      next();
-    }
-  ];
-}
+// Note: Security and validation functions moved to middleware/security.js and middleware/validation.js
 
 // ==================== HEALTH CHECK ENDPOINT ====================
 
@@ -4864,20 +4715,8 @@ ${'='.repeat(50)}`;
   }
 });
 
-// JSON parsing error middleware
-app.use((error, req, res, next) => {
-  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
-    console.error('JSON parsing error:', error.message);
-    return res.status(400).json({ error: 'Invalid JSON in request body' });
-  }
-  next(error);
-});
-
-// General error handling middleware
-app.use((error, req, res, next) => {
-  console.error('Server error:', error);
-  res.status(500).json({ error: 'Internal server error' });
-});
+// Error handling middleware
+setupErrorHandling(app);
 
 // Profile and User Management API Endpoints
 // User Management
