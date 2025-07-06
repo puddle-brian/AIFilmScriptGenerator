@@ -315,9 +315,15 @@ class ProjectService {
       const versionMatch = newProjectName.match(/V(\d+)$/);
       const versionNumber = versionMatch ? versionMatch[1] : '02';
       
-      // Create versioned title (e.g., "Original Title V02")
+      // Create versioned title - STRIP existing version number first
       const originalTitle = originalProject.storyInput?.title || 'Untitled Project';
-      const versionedTitle = `${originalTitle} V${versionNumber}`;
+      
+      // 🔧 FIX: Remove existing version number from title before adding new one
+      // This prevents "Title V02 V03" and ensures clean "Title V03"
+      const baseTitleMatch = originalTitle.match(/^(.+?)\s+V\d+$/);
+      const baseTitle = baseTitleMatch ? baseTitleMatch[1] : originalTitle;
+      
+      const versionedTitle = `${baseTitle} V${versionNumber}`;
       
       // Create new project context with updated IDs, name, and versioned title
       const duplicateContext = {
