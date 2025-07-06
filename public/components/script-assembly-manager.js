@@ -112,17 +112,12 @@ class ScriptAssemblyManager {
                 const actDialogueKeys = dialogueKeys.filter(key => key.startsWith(actKey + '-'));
                 console.log(`🎬 Available dialogue keys for ${actKey}:`, actDialogueKeys);
                 
-                // 🎯 SKIP EMPTY ACTS: Skip acts that have no content at all
+                // 🎯 HIERARCHICAL CONTENT FALLBACK: Show best available content for each act
                 const hasScenes = appState.generatedScenes && appState.generatedScenes[actKey];
                 const hasDialogue = actDialogueKeys.length > 0;
                 const hasPlotPoints = plotPoints && Array.isArray(plotPoints) && plotPoints.length > 0;
                 
-                if (!hasScenes && !hasDialogue && !hasPlotPoints) {
-                    console.log(`⏭️ Skipping empty act: ${actKey} (no scenes, dialogue, or plot points)`);
-                    return; // Skip this act entirely
-                }
-                
-                console.log(`✅ Processing act: ${actKey} (has content: scenes=${!!hasScenes}, dialogue=${hasDialogue}, plotPoints=${hasPlotPoints})`);
+                console.log(`✅ Processing act: ${actKey} (content levels: dialogue=${hasDialogue}, scenes=${!!hasScenes}, plotPoints=${hasPlotPoints})`);
                 
                 if (plotPoints && Array.isArray(plotPoints)) {
                     // Track overall scene count for this act (for old dialogue key fallback)
@@ -189,12 +184,13 @@ class ScriptAssemblyManager {
                                     }
                                 }
                                 
+                                // 🎯 HIERARCHICAL CONTENT FALLBACK
                                 if (dialogueFound) {
-                                    console.log(`✅ Found dialogue using ${lookupMethod}`);
+                                    console.log(`✅ Level 1: Found dialogue using ${lookupMethod}`);
                                     script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
                                     totalGeneratedScenes++;
                                 } else {
-                                    console.log(`❌ No dialogue found - checked: ${sceneId}, ${scene.title}, ${actKey}-${actSceneCount}, ${actKey}-${sceneIndex}`);
+                                    console.log(`⬇️ Level 2: No dialogue found, using scene info for "${scene.title || 'Untitled'}"`);
                                     script += this.formatPlaceholderScene(scene, sceneNumber);
                                 }
                                 
@@ -229,11 +225,13 @@ class ScriptAssemblyManager {
                             }
                             
                             totalScenes++;
+                            // 🎯 HIERARCHICAL CONTENT FALLBACK
                             if (dialogueFound) {
+                                console.log(`✅ Level 1: Found dialogue using ${lookupMethod}`);
                                 script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
                                 totalGeneratedScenes++;
                             } else {
-                                console.log(`❌ No dialogue found for plot point ${plotPointKey}`);
+                                console.log(`⬇️ Level 3: No dialogue or scenes found, using plot point info for "${plotPoint.title || plotPoint.description || 'Untitled'}"`);
                                 script += this.formatPlotPointFallback(plotPoint, actKey, plotIndex, sceneNumber);
                             }
                             sceneNumber++;
@@ -265,11 +263,25 @@ class ScriptAssemblyManager {
                         foundDialogue = true;
                     }
                     
+                    // 🎯 HIERARCHICAL CONTENT FALLBACK: Check for scenes even without dialogue
                     if (!foundDialogue) {
-                        console.log(`❌ No dialogue found for ${actKey} (checked ${actDialogueKeys.length} keys)`);
-                        script += this.formatActFallback(act, actKey, sceneNumber);
-                        totalScenes++;
-                        sceneNumber++;
+                        // Check if we have scenes for this act (without dialogue)
+                        const actScenes = appState.generatedScenes && appState.generatedScenes[actKey];
+                        if (actScenes && Array.isArray(actScenes) && actScenes.length > 0) {
+                            console.log(`⬇️ Level 2: No dialogue found, but found ${actScenes.length} scenes for ${actKey}`);
+                            // Process scenes without dialogue
+                            actScenes.forEach((scene, index) => {
+                                console.log(`📝 Adding scene ${sceneNumber} with scene info: "${scene.title || 'Untitled'}"`);
+                                script += this.formatPlaceholderScene(scene, sceneNumber);
+                                totalScenes++;
+                                sceneNumber++;
+                            });
+                        } else {
+                            console.log(`⬇️ Level 4: No dialogue, scenes, or plot points found for ${actKey}, using act info`);
+                            script += this.formatActFallback(act, actKey, sceneNumber);
+                            totalScenes++;
+                            sceneNumber++;
+                        }
                     }
                 }
             });
@@ -474,9 +486,15 @@ class ScriptAssemblyManager {
         }
         
         formatted += `SCENE ${sceneNumber}\n\n${sceneHeading}\n\n`;
+        
+        // Show scene title if available
+        if (scene.title) {
+            formatted += `${scene.title}\n\n`;
+        }
+        
         formatted += `${scene.description || 'Scene description not available.'}\n\n`;
-        formatted += `                    [DIALOGUE NOT GENERATED]\n\n`;
-        formatted += `          This scene requires dialogue generation\n`;
+        formatted += `                    [LEVEL 2: SCENE OUTLINE]\n\n`;
+        formatted += `          This scene needs dialogue generation\n`;
         formatted += `          to complete the screenplay.\n\n\n`;
         
         return formatted;
@@ -493,9 +511,9 @@ class ScriptAssemblyManager {
         formatted += `SCENE ${sceneNumber}\n\n`;
         formatted += `INT. LOCATION TO BE DETERMINED - DAY\n\n`;
         formatted += `${plotPoint.description || plotPoint.title || 'Plot point description not available.'}\n\n`;
-        formatted += `                    [SCENES NOT GENERATED]\n\n`;
-        formatted += `          This plot point requires scene generation\n`;
-        formatted += `          to break down into specific scenes.\n\n\n`;
+        formatted += `                    [LEVEL 3: PLOT POINT OUTLINE]\n\n`;
+        formatted += `          This plot point needs scenes and dialogue\n`;
+        formatted += `          to be fully developed.\n\n\n`;
         
         return formatted;
     }
@@ -527,13 +545,9 @@ class ScriptAssemblyManager {
         }
         
         formatted += `${actContent}\n\n`;
-        formatted += `                    [PLOT POINTS NOT GENERATED]\n\n`;
-        formatted += `          This act requires plot point generation\n`;
-        formatted += `          to break down into specific story beats.\n\n\n`;
-        
-        console.log(`🚨 formatActFallback called for ${actKey} - this should not happen if plot points exist!`);
-        console.log(`🔍 appState.plotPoints:`, appState.plotPoints);
-        console.log(`🔍 Available plot point keys:`, Object.keys(appState.plotPoints || {}));
+        formatted += `                    [LEVEL 4: ACT OUTLINE ONLY]\n\n`;
+        formatted += `          This act needs plot points, scenes, and dialogue\n`;
+        formatted += `          to be fully developed.\n\n\n`;
         
         return formatted;
     }
