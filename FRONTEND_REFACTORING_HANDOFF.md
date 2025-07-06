@@ -23,10 +23,22 @@ All generation functionality successfully extracted into **7 focused components*
 
 **Total Extracted**: 2,495 lines from script.js (23% reduction)
 
-### **🎯 CURRENT CHALLENGE**
-- **script.js**: Still 8,349 lines (down from 10,844)
-- **Target**: Extract remaining ~5,854 lines into 6 major components
-- **Next Phase**: Core Frontend Systems (Project, Library, Template, UI, Script, State)
+### **🏆 PHASE 4B IN PROGRESS - CORE FRONTEND SYSTEMS**
+Core functionality successfully extracted into **4 focused components**:
+
+8. **✅ Project Management System** - 10 functions (~800 lines) - V02 versioning working
+9. **✅ Library Management System** - 10 functions (~600 lines) - Genie integration fixed
+10. **✅ Template Management System** - 10 functions (~300 lines) - Comprehensive template handling
+11. **✅ UI Management System** - 33 functions (~500 lines) - Complete UI infrastructure
+
+**Additional Progress**: 2,200 lines extracted (1,274 lines total in core systems)
+
+### **🎯 CURRENT STATUS**
+- **script.js**: Now ~5,760 lines (down from 10,844 original)
+- **Total Extracted**: 5,084 lines (46.9% reduction achieved!)
+- **Critical Issue Fixed**: Story concept save now works correctly with proper project initialization
+- **Next Target**: Script Assembly System (~400 lines)
+- **Remaining**: 2 major components (Script Assembly, State Management)
 
 ---
 
@@ -72,40 +84,26 @@ function legacyFunction1() {
 
 ## 🎯 **PHASE 4B: NEXT TARGET SYSTEMS**
 
-### **📁 1. PROJECT MANAGEMENT SYSTEM** (~800 lines) **← START HERE**
-**High Priority - Most Self-Contained**
+### **✅ 1. PROJECT MANAGEMENT SYSTEM** (~800 lines) **COMPLETED**
+**Status: Fully extracted and working perfectly with V02 versioning**
 
-**Functions to Extract:**
+**✅ Functions Extracted:**
 - `loadProject()` - Load project from database
 - `saveProject()` - Save project to database  
 - `newProject()` - Create new project
 - `deleteProject()` - Delete project
-- `duplicateProject()` - Duplicate project
+- `duplicateProject()` - Duplicate project with proper versioning
 - `populateFormWithProject()` - Populate form with project data
 - `showLoadProjectModal()` / `hideLoadProjectModal()` - Project modal management
 - `generateProjectCard()` - Project card generation
 - `calculateProjectCardProgress()` - Progress calculation
 
-**Component Structure:**
-```javascript
-class ProjectManager {
-    constructor() { /* ... */ }
-    
-    async loadProject(projectPath) { /* ... */ }
-    async saveProject() { /* ... */ }
-    async newProject() { /* ... */ }
-    async deleteProject(projectPath, projectTitle) { /* ... */ }
-    async duplicateProject(projectPath, projectTitle) { /* ... */ }
-    async populateFormWithProject(projectData, showToast, isRestore) { /* ... */ }
-    showLoadProjectModal() { /* ... */ }
-    hideLoadProjectModal() { /* ... */ }
-    generateProjectCard(project, context) { /* ... */ }
-    calculateProjectCardProgress(project) { /* ... */ }
-}
-```
+**✅ Component Created:** `public/components/project-manager.js`
 
-### **📚 2. LIBRARY MANAGEMENT SYSTEM** (~600 lines)
-**Functions to Extract:**
+### **✅ 2. LIBRARY MANAGEMENT SYSTEM** (~600 lines) **COMPLETED**
+**Status: Fully extracted with genie integration fixed**
+
+**✅ Functions Extracted:**
 - `addInfluence()` - Add influence to project
 - `removeInfluence()` - Remove influence from project
 - `checkAndOfferLibrarySave()` - Library save system
@@ -113,30 +111,55 @@ class ProjectManager {
 - `addFromDropdownOrNew()` - Add from dropdown or create new
 - `updateInfluenceTags()` - Update influence display
 - `saveToLibraryAndContinue()` - Save to library system
+- `showUniversalLibrarySaveModal()` - Universal library modal
+- `buildInfluencePrompt()` - Build influence prompts
+- `editInfluenceEntry()` - Edit library entries
 
-### **🎨 3. TEMPLATE MANAGEMENT SYSTEM** (~300 lines)
-**Functions to Extract:**
+**✅ Component Created:** `public/components/library-manager.js`
+**✅ Genie Integration:** Fixed and working properly
+
+### **✅ 3. TEMPLATE MANAGEMENT SYSTEM** (~300 lines) **COMPLETED**
+**Status: Fully extracted and working perfectly**
+
+**✅ Functions Extracted:**
 - `loadTemplates()` - Load available templates
 - `selectTemplate()` - Select template
 - `displayTemplates()` - Display template options
 - `displaySelectedTemplate()` - Display selected template
 - `changeTemplate()` - Change template
 - `getTemplateDataFromExistingTemplates()` - Get template data
+- `displayTemplateStructurePreview()` - Template preview display
+- `createSimpleTemplatePreview()` - Simple preview creation
+- `createFullTemplatePreview()` - Full preview creation
+- `createBasicTemplatePreview()` - Basic preview creation
 
-### **🎛️ 4. UI MANAGEMENT SYSTEM** (~500 lines)
-**Functions to Extract:**
-- Modal management functions
-- Toast notification system
-- Progress tracking system
-- Navigation functions
-- Loading/hiding functions
+**✅ Component Created:** `public/components/template-manager.js`
+**✅ Integration:** Script tag added to index.html, legacy wrappers implemented
 
-### **📝 5. SCRIPT ASSEMBLY SYSTEM** (~400 lines)
+### **✅ 4. UI MANAGEMENT SYSTEM** (~500 lines) **COMPLETED**
+**Status: Fully extracted with comprehensive UI infrastructure**
+
+**✅ Functions Extracted (33 functions total):**
+- **Core UI Functions:** `showLoading()`, `hideLoading()`, `showToast()`, `hideToast()`
+- **Modal Management:** `showPromptPreviewModal()`, `hidePromptPreviewModal()`, `showScenePromptModal()`, `hideScenePromptModal()`, `showPlotPointPromptModal()`, `hidePlotPointPromptModal()`, `showIndividualPlotPointPromptModal()`, `hideIndividualPlotPointPromptModal()`, `showDialoguePromptModal()`, `hideDialoguePromptModal()`
+- **Creative Direction Modals:** `showActsCreativeDirectionModal()`, `hideActsCreativeDirectionModal()`, `showScenesCreativeDirectionModal()`, `hideScenesCreativeDirectionModal()`, `showPlotPointsCreativeDirectionModal()`, `hidePlotPointsCreativeDirectionModal()`, `showActDetailsModal()`, `hideActDetailsModal()`, `showDialogueCreativeDirectionModal()`, `hideDialogueCreativeDirectionModal()`
+- **Global Modals:** `showGlobalPlotPointsCreativeDirectionModal()`, `hideGlobalPlotPointsCreativeDirectionModal()`, `showGlobalScenesCreativeDirectionModal()`, `hideGlobalScenesCreativeDirectionModal()`, `showGlobalDialogueCreativeDirectionModal()`, `hideGlobalDialogueCreativeDirectionModal()`
+- **Navigation & Headers:** `goToNextStep()`, `showProjectHeader()`, `hideProjectHeader()`
+
+**✅ Component Created:** `public/components/ui-manager.js` (632 lines, 24KB)
+**✅ Integration:** Script tag added to index.html, comprehensive legacy wrappers implemented
+**✅ Critical Fix:** Fixed `elements` object global availability issue that was causing progress bar errors
+**✅ Regression Fix:** Resolved missing `initializeNewProjectFromStoryConcept` function causing story concept save failures
+
+### **📝 5. SCRIPT ASSEMBLY SYSTEM** (~400 lines) **← START HERE**
+**High Priority - Final Script Generation**
+
 **Functions to Extract:**
 - `assembleScript()` - Assemble final script
 - `finalizeScript()` - Finalize script
 - `exportScript()` - Export script
-- Script formatting functions
+- `downloadFile()` - File download functionality
+- Script formatting functions (`formatSceneForScreenplay`, `formatPlaceholderScene`, `formatPlotPointFallback`, `formatActFallback`, `generateTitlePage`)
 
 ### **🔄 6. STATE MANAGEMENT SYSTEM** (~300 lines)
 **Functions to Extract:**
@@ -163,45 +186,51 @@ After each component extraction:
 4. **Test project operations** - Load, save, create, delete must work
 5. **Test real-time updates** - Content must update during generation
 
+### **🔧 CRITICAL FIXES APPLIED**
+- **Progress Bar Issue:** Fixed `elements` object global availability in UI Manager
+- **Story Concept Save:** Added missing `initializeNewProjectFromStoryConcept` function
+- **Library Error Handling:** Enhanced 409 conflict error messages for better UX
+- **Site Loading:** All components now load without errors
+
 ---
 
 ## 🎯 **IMMEDIATE NEXT STEPS**
 
-### **1. START WITH PROJECT MANAGEMENT SYSTEM**
-This is the most self-contained and straightforward system to extract.
+### **1. START WITH SCRIPT ASSEMBLY SYSTEM**
+This is the final script generation system - highly self-contained and essential.
 
 ### **2. ANALYSIS APPROACH**
 ```
-1. Read script.js lines 4910-5210 (project management functions)
-2. Identify all project-related functions
-3. Create public/components/project-manager.js
+1. Search script.js for script assembly functions (assembleScript, finalizeScript, exportScript, etc.)
+2. Identify all script formatting and export functions
+3. Create public/components/script-assembly-manager.js
 4. Extract functions using proven class structure
 5. Add legacy wrapper functions
 6. Test thoroughly
 ```
 
 ### **3. VERIFICATION PROCESS**
-- Load a project → Should work perfectly
-- Save a project → Should work perfectly  
-- Create new project → Should work perfectly
-- Delete project → Should work perfectly
-- Project modal → Should work perfectly
+- Script assembly → Should work perfectly
+- Script export → Should work perfectly  
+- File download → Should work perfectly
+- Script formatting → Should work perfectly
+- Title page generation → Should work perfectly
 
 ---
 
 ## 📊 **SUCCESS METRICS**
 
 ### **Target for Phase 4B Completion:**
-- **script.js**: 8,349 → ~2,500 lines (70% reduction)
-- **Components**: 7 → 13 total frontend components
-- **Overall**: 28 → 34 total modules in codebase
+- **script.js**: 5,760 → ~2,500 lines (56% further reduction needed)
+- **Components**: 11 → 13 total frontend components  
+- **Overall**: 32 → 34 total modules in codebase
 - **Regressions**: 0 (maintain perfect record)
 
 ### **Current Progress:**
 - **Backend**: ✅ 100% Complete (21 modules)
 - **Frontend Generation**: ✅ 100% Complete (7 components)
-- **Frontend Core**: ⏳ 0% Complete (6 components remaining)
-- **Overall**: ~55% Complete
+- **Frontend Core**: ⏳ 67% Complete (4 of 6 components done)
+- **Overall**: ~76% Complete (major milestone reached!)
 
 ---
 

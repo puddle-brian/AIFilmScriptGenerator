@@ -395,12 +395,8 @@ window.genieSuggestions = genieSuggestions;
 
 // Auto-inject Genie button when modals are shown
 function initializeGenieSystem() {
-    // DISABLED: Genie suggestions now handled directly by modal system
-    // This function is kept for backward compatibility but is no longer active
-    console.log('Genie suggestions system integrated directly into modal system');
+    console.log('🧞 Initializing Genie suggestions system');
     
-    // Old code disabled:
-    /*
     // Check if the function exists
     if (typeof window.showUniversalLibrarySaveModal === 'function') {
         // Store the original function
@@ -413,14 +409,17 @@ function initializeGenieSystem() {
             
             // Inject Genie button after modal is created
             setTimeout(() => {
+                console.log('🧞 Injecting genie button for type:', type);
                 genieSuggestions.injectGenieButton('universalLibrarySaveModal', type);
-            }, 100);
+            }, 150);
         };
+        
+        console.log('✅ Genie suggestions system initialized successfully');
     } else {
+        console.log('🔄 Retrying genie system initialization...');
         // Retry if function not found yet
         setTimeout(initializeGenieSystem, 1000);
     }
-    */
 }
 
 // Initialize when DOM is ready

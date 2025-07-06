@@ -73,166 +73,35 @@ function findTemplateIdByName(templateName) {
         return null;
 }
 
-// DOM Elements
-const elements = {
-    progressFill: document.getElementById('progressFill'),
-    loadingOverlay: document.getElementById('loadingOverlay'),
-    loadingText: document.getElementById('loadingText'),
-    toast: document.getElementById('toast'),
-    toastMessage: document.getElementById('toastMessage')
-};
+// DOM Elements - MOVED TO components/ui-manager.js
+// Legacy compatibility maintained through UI Manager component
 
-// Influence Management Functions
-function addInfluence(type) {
-    const selectElement = document.getElementById(`${type}Select`);
-    
-    let value = '';
-    if (selectElement && selectElement.value) {
-        value = selectElement.value;
-        selectElement.value = '';
-    }
-    
-    if (value && !appState.influences[type + 's'].includes(value)) {
-        appState.influences[type + 's'].push(value);
-    
-        console.log('  - Current influences:', appState.influences);
-        
-        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
-        if (appState.storyInput) {
-            appState.storyInput.influences = appState.influences;
-            appState.storyInput.influencePrompt = buildInfluencePrompt();
-            console.log('  - Synchronized to storyInput.influences');
-        }
-        
-        updateInfluenceTags(type);
-        saveToLocalStorage();
-        
-        // Mark as dirty to trigger auto-save
-        appState.pendingChanges = true;
-        if (autoSaveManager) {
-            autoSaveManager.markDirty();
-        }
-        console.log('  - Marked as dirty for auto-save');
-        
-        // Check if this is a custom entry (not in default dropdown)
-        checkAndOfferLibrarySave(type, value);
-    }
+// ✅ Influence Management Functions - MOVED TO components/library-manager.js
+// Legacy wrapper functions are provided by the library manager
+
+// ✅ Universal Library System Configuration - MOVED TO components/library-manager.js
+// Legacy access to LIBRARY_TYPES through library manager
+const LIBRARY_TYPES = window.libraryManagerInstance ? window.libraryManagerInstance.LIBRARY_TYPES : {};
+
+// ✅ Universal library saving system - MOVED TO components/library-manager.js
+// Legacy wrapper functions are provided by the library manager
+
+// ✅ saveToLibraryAndContinue - MOVED TO components/library-manager.js
+async function saveToLibraryAndContinue(type, isNewEntry = false) {
+    return libraryManager.saveToLibraryAndContinue(type, isNewEntry);
 }
 
-// Universal Library System Configuration
-const LIBRARY_TYPES = {
-    director: {
-        singular: 'director',
-        plural: 'directors',
-        displayName: 'Director',
-        placeholder: 'e.g., "Christopher Nolan", "classic film noir directors", "a cross between Kubrick and Wes Anderson"'
-    },
-    screenwriter: {
-        singular: 'screenwriter', 
-        plural: 'screenwriters',
-        displayName: 'Screenwriter',
-        placeholder: 'e.g., "Charlie Kaufman", "witty British comedy writers", "Shakespeare meets Tarantino"'
-    },
-    film: {
-        singular: 'film',
-        plural: 'films', 
-        displayName: 'Film',
-        placeholder: 'e.g., "Inception", "moody 1970s thrillers", "a blend of Casablanca and Blade Runner"'
-    },
-    character: {
-        singular: 'character',
-        plural: 'characters',
-        displayName: 'Character',
-        placeholder: 'Describe this character\'s role, personality, and background...'
-    },
-    tone: {
-        singular: 'tone',
-        plural: 'tones',
-        displayName: 'Tone',
-        placeholder: 'e.g., "dark comedy", "melancholic and introspective", "fast-paced thriller"'
-    },
-    storyconcept: {
-        singular: 'story concept',
-        plural: 'storyconcepts',
-        displayName: 'Story Concept',
-        placeholder: 'Write or paste your story idea here - be as brief or detailed as you like...'
-    }
-};
-
-// Universal library saving system
-async function checkAndOfferLibrarySave(type, value) {
-    // Re-check authentication status in case it wasn't initialized properly
-    authManager.checkAuthStatus();
-    
-    // 📚 Use centralized LibraryManager with cleaner API
-    if (window.libraryManager) {
-        try {
-            await window.libraryManager.checkAndOfferSave(type, value);
-        } catch (error) {
-            console.warn('LibraryManager checkAndOfferSave failed:', error);
-            // Fallback to original implementation
-            fallbackCheckAndOfferLibrarySave(type, value);
-        }
-    } else {
-        // Fallback if LibraryManager not available
-        fallbackCheckAndOfferLibrarySave(type, value);
-    }
+function setupUniversalLibraryKeyboardSupport() {
+    // Keyboard support is now handled by the modal forms directly
+    console.log('Universal Library System: Keyboard support initialized');
 }
 
-// Fallback implementation for backward compatibility
-async function fallbackCheckAndOfferLibrarySave(type, value) {
-    // Skip if user is not authenticated
-    if (!appState.isAuthenticated) {
-        console.log('Universal Library System: User not authenticated, skipping library save offer');
-        return;
-    }
-    
-    const config = LIBRARY_TYPES[type];
-    if (!config) {
-        console.warn(`Unknown library type: ${type}`);
-        return;
-    }
-    
-    try {
-        // Check if this value already exists in user's library
-        let userLibrary = [];
-        if (appState.isAuthenticated && appState.user) {
-            // 🌐 Use centralized API client with consistent error handling
-            if (window.apiClient) {
-                window.apiClient.setApiKey(appState.apiKey);
-                userLibrary = await window.apiClient.getUserLibrary(appState.user.username, config.plural);
-            } else {
-                // Fallback to direct fetch if API client not available
-                const response = await fetch(`/api/user-libraries/${appState.user.username}/${config.plural}`);
-                userLibrary = await response.json();
-            }
-        }
-        
-        const exists = userLibrary.some(item => 
-            item.entry_data.name === value || 
-            item.entry_key === value
-        );
-        
-        if (!exists) {
-            // Show universal save-to-library modal
-            showUniversalLibrarySaveModal(type, value, config);
-        }
-    } catch (error) {
-        console.warn('Could not check user library:', error);
-        // Show modal anyway if there's an error
-        showUniversalLibrarySaveModal(type, value, config);
-    }
+// ✅ removeInfluence - MOVED TO components/library-manager.js  
+function removeInfluence(type, value) {
+    return libraryManager.removeInfluence(type, value);
 }
 
-
-
-function hideUniversalLibrarySaveModal() {
-    const modal = document.getElementById('universalLibrarySaveModal');
-    if (modal) {
-        modal.classList.remove('show');
-        setTimeout(() => modal.remove(), 300);
-    }
-}
+// ✅ hideUniversalLibrarySaveModal - MOVED TO components/library-manager.js
 
 // Helper function to properly initialize a new project when story concept is created
 function initializeNewProjectFromStoryConcept(title, logline) {
@@ -243,6 +112,7 @@ function initializeNewProjectFromStoryConcept(title, logline) {
         title: title,
         logline: logline || '',
         characters: appState.projectCharacters || [],
+        charactersData: appState.projectCharacters || [],
         totalScenes: document.getElementById('totalScenes')?.value || '70',
         tone: document.getElementById('tone')?.value || '',
         influences: appState.influences || { directors: [], screenwriters: [], films: [] },
@@ -270,10 +140,12 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     appState.currentStep = 1; // Set to step 1 since this is a new story concept
     
     // Show project header immediately
-    showProjectHeader({
-        title: title,
-        logline: logline || ''
-    });
+    if (typeof showProjectHeader === 'function') {
+        showProjectHeader({
+            title: title,
+            logline: logline || ''
+        });
+    }
     
     // Mark as having changes to trigger auto-save
     appState.pendingChanges = true;
@@ -287,10 +159,18 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     saveToLocalStorage();
     
     // Update progress meters and step indicators after story creation
-    updateAllProgressMeters();
-    updateStepIndicators();
-    updateUniversalNavigation();
-    updateBreadcrumbNavigation();
+    if (typeof updateAllProgressMeters === 'function') {
+        updateAllProgressMeters();
+    }
+    if (typeof updateStepIndicators === 'function') {
+        updateStepIndicators();
+    }
+    if (typeof updateUniversalNavigation === 'function') {
+        updateUniversalNavigation();
+    }
+    if (typeof updateBreadcrumbNavigation === 'function') {
+        updateBreadcrumbNavigation();
+    }
     
     console.log('✅ New project initialized:', {
         title: appState.storyInput.title,
@@ -302,267 +182,6 @@ function initializeNewProjectFromStoryConcept(title, logline) {
     showToast(`New project "${title}" created and ready!`, 'success');
     
     return appState.projectPath;
-}
-
-async function saveToLibraryAndContinue(type, isNewEntry = false) {
-    const name = document.getElementById('universalLibraryEntryName').value.trim();
-    const descriptionElement = document.getElementById('universalLibraryEntryDescription');
-    const description = descriptionElement ? descriptionElement.value.trim() : '';
-    const config = LIBRARY_TYPES[type];
-    
-    if (!name) {
-        showToast('Please provide a name', 'error');
-        return;
-    }
-    
-    try {
-        // Check if we're editing an existing entry
-        const isEditing = window.editingLibraryEntry;
-        let url, method;
-        
-        if (isEditing && !isEditing.isNewCharacterEntry) {
-            // Editing existing entry - ALWAYS use the original key, ignore name changes
-            method = 'PUT';
-            url = `/api/user-libraries/${appState.user.username}/${isEditing.type}/${encodeURIComponent(isEditing.key)}`;
-            console.log(`🔧 EDIT: Using original key "${isEditing.key}" for editing, regardless of name changes`);
-            console.log(`   - Original name: "${isEditing.data?.name}""`);
-            console.log(`   - New name: "${name}"`);
-        } else {
-            // Creating new entry - generate new key from current name
-            method = 'POST';
-            // Generate safe entry key (same logic as server-side)
-            let entryKey = name.toLowerCase()
-                .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-                .replace(/\s+/g, '-')         // Replace spaces with hyphens
-                .replace(/-+/g, '-')          // Remove multiple hyphens
-                .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
-                
-            // Truncate to 47 chars to fit database constraint (VARCHAR(50))
-            if (entryKey.length > 47) {
-                entryKey = entryKey.substring(0, 47) + '...';
-            }
-            
-            url = `/api/user-libraries/${appState.user.username}/${config.plural}/${entryKey}`;
-            console.log(`🆕 NEW: Generated key "${entryKey}" from name "${name}"`);
-        }
-        
-        // For characters and story concepts, store both name and description
-        // For influences, store just the name (which is actually the full influence phrase)
-        const entryData = (type === 'character' || type === 'storyconcept') ? {
-            name, 
-            description: description || (type === 'character' ? `Main character: ${name}` : `Story concept: ${name}`)
-        } : {
-            name,
-            description: `${config.displayName} influence: ${name}` // Simple fallback for database
-        };
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: { 
-                'Content-Type': 'application/json',
-                'X-API-Key': appState.apiKey
-            },
-            body: JSON.stringify(isEditing && !isEditing.isNewCharacterEntry ? entryData : entryData)
-        });
-        
-        if (response.ok) {
-            const action = (isEditing && !isEditing.isNewCharacterEntry) ? 'updated' : 'saved';
-            showToast(`"${name}" ${action} in your ${config.plural} library!`, 'success');
-            
-            // If editing from step 1, update the current project state
-            if (isEditing && isEditing.isFromStep1) {
-                if (type === 'character' && typeof isEditing.characterIndex === 'number') {
-                    // Update the character in the project
-                    const originalName = appState.projectCharacters[isEditing.characterIndex].name;
-                    appState.projectCharacters[isEditing.characterIndex] = {
-                        name: name,
-                        description: description || `Main character: ${name}`,
-                        fromLibrary: true
-                    };
-                    updateCharacterTags();
-                    saveToLocalStorage();
-                } else if (type !== 'character') {
-                    // Update influence in the project
-                    const pluralType = config.plural;
-                    const influences = appState.influences[pluralType];
-                    if (influences && isEditing.data && isEditing.data.name) {
-                        const oldName = isEditing.data.name;
-                        const index = influences.indexOf(oldName);
-                        if (index !== -1) {
-                            influences[index] = name;
-                            updateInfluenceTags(type);
-                            saveToLocalStorage();
-                        }
-                    }
-                }
-            }
-            
-            // For new entries, also add to the current form
-            if (isNewEntry) {
-                if (type === 'tone') {
-                    // Add to tone influences array (like other influences)
-                    // Ensure tones array exists
-                    if (!appState.influences.tones) {
-                        appState.influences.tones = [];
-                    }
-                    
-                    if (!appState.influences.tones.includes(name)) {
-                        appState.influences.tones.push(name);
-                        updateInfluenceTags('tone');
-                        saveToLocalStorage();
-                        
-                        // Mark as dirty to trigger auto-save
-                        appState.pendingChanges = true;
-                        if (autoSaveManager) {
-                            autoSaveManager.markDirty();
-                        }
-                    }
-                } else if (type === 'character') {
-                    // Add to main story characters (not influences)
-                    const existingCharacter = appState.projectCharacters.find(char => char.name === name);
-                    if (!existingCharacter) {
-                        const character = {
-                            name: name,
-                            description: description || `Main character: ${name}`,
-                            fromLibrary: true
-                        };
-                        appState.projectCharacters.push(character);
-                        
-                        
-                        // Update character tags display (similar to influences)
-                        updateCharacterTags();
-                        validateCharactersRequired();
-                        saveToLocalStorage();
-                        
-                        // Mark as dirty to trigger auto-save
-                        appState.pendingChanges = true;
-                        if (autoSaveManager) {
-                            autoSaveManager.markDirty();
-                        }
-                
-                    }
-                } else if (type === 'storyconcept') {
-                    // For story concepts, create concept display AND initialize new project
-                    
-                    appState.currentStoryConcept = {
-                        title: name,
-                        logline: description || '',
-                        fromLibrary: true
-                    };
-                    
-                    updateStoryConceptDisplay();
-                    
-                    // Initialize a new project with this story concept
-                    initializeNewProjectFromStoryConcept(name, description || '');
-                    
-                    showToast(`Story concept "${name}" created and project initialized!`, 'success');
-                } else {
-                    // Handle influence editing vs new additions
-                    let actionTaken = false;
-                    
-                    if (window.editingLibraryEntry && window.editingLibraryEntry.originalName) {
-                        // We're editing an existing influence - replace the original entry
-                        const originalName = window.editingLibraryEntry.originalName;
-                        const originalIndex = appState.influences[config.plural].indexOf(originalName);
-                        
-                        if (originalIndex > -1) {
-                            // Replace the original entry with the new name
-                            appState.influences[config.plural][originalIndex] = name;
-                            console.log(`🔄 INFLUENCE EDIT: Replaced "${originalName}" with "${name}"`);
-                            actionTaken = true;
-                        } else {
-                            console.log(`⚠️ INFLUENCE EDIT: Original "${originalName}" not found in influences, adding as new`);
-                        }
-                    }
-                    
-                    // If not editing or original not found, add as new (but check for duplicates)
-                    if (!actionTaken && !appState.influences[config.plural].includes(name)) {
-                        appState.influences[config.plural].push(name);
-                        console.log(`🔍 INFLUENCE DEBUG: Added ${type} "${name}" to appState.influences`);
-                        actionTaken = true;
-                    }
-                    
-                    if (actionTaken) {
-                        console.log('  - Current influences:', appState.influences);
-                        
-                        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
-                        if (appState.storyInput) {
-                            appState.storyInput.influences = appState.influences;
-                            appState.storyInput.influencePrompt = buildInfluencePrompt();
-                            console.log('  - Synchronized to storyInput.influences');
-                        }
-                        
-                        updateInfluenceTags(type);
-                        saveToLocalStorage();
-                        
-                        // Mark as dirty to trigger auto-save
-                        appState.pendingChanges = true;
-                        if (autoSaveManager) {
-                            autoSaveManager.markDirty();
-                        }
-                        console.log('  - Marked as dirty for auto-save');
-                    } else {
-                        console.log(`ℹ️ INFLUENCE: "${name}" already exists, no action taken`);
-                    }
-                }
-            }
-            
-            // Refresh dropdowns to include the new entry
-            await populateDropdowns();
-        } else {
-            showToast('Failed to save to library', 'error');
-        }
-    } catch (error) {
-        console.error('Error saving to library:', error);
-        showToast('Error saving to library', 'error');
-    }
-    
-    // Clear editing state
-    if (window.editingLibraryEntry) {
-        window.editingLibraryEntry = null;
-    }
-    
-    hideUniversalLibrarySaveModal();
-}
-
-// Setup keyboard support for universal library system
-function setupUniversalLibraryKeyboardSupport() {
-    // The custom input fields have been removed in favor of direct "Add New" buttons
-    // Keyboard support is now handled by the modal forms directly
-    console.log('Universal Library System: Keyboard support initialized');
-}
-
-function removeInfluence(type, value) {
-    // Ensure influences object and specific array exist
-    if (!appState.influences) {
-        appState.influences = {};
-    }
-    
-    const pluralType = type + 's';
-    if (!appState.influences[pluralType]) {
-        appState.influences[pluralType] = [];
-    }
-    
-    const index = appState.influences[pluralType].indexOf(value);
-    if (index > -1) {
-        appState.influences[pluralType].splice(index, 1);
-        
-        // 🔧 SYNC FIX: Keep storyInput.influences synchronized
-        if (appState.storyInput) {
-            appState.storyInput.influences = appState.influences;
-            appState.storyInput.influencePrompt = buildInfluencePrompt();
-            console.log('🔄 REMOVE INFLUENCE: Synchronized to storyInput.influences');
-        }
-        
-        updateInfluenceTags(type);
-        saveToLocalStorage();
-        
-        // Mark as dirty to trigger auto-save
-        appState.pendingChanges = true;
-        if (autoSaveManager) {
-            autoSaveManager.markDirty();
-        }
-    }
 }
 
 // removeCharacter function - MOVED TO components/character-manager.js
@@ -728,178 +347,9 @@ function fallbackAddNewToLibrary(type) {
     showUniversalLibrarySaveModal(type, '', config, true);
 }
 
-// Enhanced universal modal to handle both save-existing and create-new flows
-function showUniversalLibrarySaveModal(type, value, config, isNewEntry = false) {
-    
-    // Check if this is an edit operation (existing entry from library)
-    const isEdit = window.editingLibraryEntry && !isNewEntry;
-    
-    const modalTitle = isNewEntry ? `Add New ${
-        type === 'director' ? 'Directional Style' : 
-        type === 'screenwriter' ? 'Prose Style' : 
-        type === 'film' ? 'Essence' : 
-        type === 'tone' ? 'Tone & Atmosphere' : 
-        config.displayName
-    }` : isEdit ? `Edit ${
-        type === 'director' ? 'Directional Style' : 
-        type === 'screenwriter' ? 'Prose Style' : 
-        type === 'film' ? 'Essence' : 
-        type === 'tone' ? 'Tone & Atmosphere' : 
-        config.displayName
-    }` : `Save ${
-        type === 'director' ? 'Directional Style' : 
-        type === 'screenwriter' ? 'Prose Style' : 
-        type === 'film' ? 'Essence' : 
-        type === 'tone' ? 'Tone & Atmosphere' : 
-        config.displayName
-    } to Library`;
-    
-    const modalMessage = isNewEntry ? 
-        `Create a new ${
-            type === 'director' ? 'directional influence' : 
-            type === 'screenwriter' ? 'prose influence' : 
-            type === 'film' ? 'creative influence' : 
-            type === 'tone' ? 'tone influence' : 
-            config.singular
-        } for your library:` : isEdit ? 
-        `Edit this ${
-            type === 'director' ? 'directional influence' : 
-            type === 'screenwriter' ? 'prose influence' : 
-            type === 'film' ? 'creative influence' : 
-            type === 'tone' ? 'tone influence' : 
-            config.singular
-        }:` :
-        `Would you like to save "<strong>${value}</strong>" to your ${
-            type === 'director' ? 'directional styles' : 
-            type === 'screenwriter' ? 'prose styles' : 
-            type === 'film' ? 'essences' : 
-            type === 'tone' ? 'tones & atmosphere' : 
-            config.plural
-        } library for future projects?`;
-    
-    // Create prompt context help text based on type
-    let promptHelpText = '';
-    if (type === 'director') {
-        promptHelpText = `This will appear in prompts as: "With direction reminiscent of <em>[what you enter]</em>, ..."`;
-    } else if (type === 'screenwriter') {
-        promptHelpText = `This will appear in prompts as: "with prose style that invokes <em>[what you enter]</em>, ..."`;
-    } else if (type === 'film') {
-        promptHelpText = `This will appear in prompts as: "channeling the essence of <em>[what you enter]</em>, ..."`;
-    } else if (type === 'character') {
-        promptHelpText = `Characters use both name and description in prompts for detailed character development.`;
-    } else if (type === 'tone') {
-        promptHelpText = `This tone will be used throughout your story generation.`;
-    } else if (type === 'storyconcept') {
-                        promptHelpText = `This story description will be included in every AI prompt as your story develops, guiding all generated content.`;
-    }
-    
-    // For characters and story concepts, keep the name/description structure since they use both fields
-    // For influences (director/screenwriter/film), use single field that matches prompt usage
-    const isComplexType = type === 'character' || type === 'storyconcept';
-    
-    const modalHtml = `
-        <div class="modal universal-library-modal" id="universalLibrarySaveModal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>${modalTitle}</h3>
-                    <button class="modal-close" onclick="hideUniversalLibrarySaveModal()">&times;</button>
-                </div>
-                <div class="modal-body">
-                    <p>${modalMessage}</p>
-                    <form id="universalLibrarySaveForm">
-                        ${isComplexType ? `
-                            <div class="form-group">
-                                <label for="universalLibraryEntryName">${type === 'character' ? 'Character Name' : 'Story Title'}</label>
-                                <input type="text" id="universalLibraryEntryName" value="${value}" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="universalLibraryEntryDescription">${type === 'character' ? 'Character Description' : 'Story Description'}</label>
-                                <textarea id="universalLibraryEntryDescription" rows="3" 
-                                    placeholder="${config.placeholder}"></textarea>
-                                ${type === 'storyconcept' ? `<small class="form-help">${promptHelpText}</small>` : ''}
-                            </div>
-                        ` : `
-                            <div class="form-group">
-                                <label for="universalLibraryEntryName">${type === 'director' ? 'Direction reminiscent of...' : 
-                                    type === 'screenwriter' ? 'Prose style that invokes...' : 
-                                    type === 'film' ? 'Channeling the essence of...' : 
-                                    type === 'tone' ? 'Tone and atmosphere inspired by...' : 
-                                    `${config.displayName} Influence`}</label>
-                                <input type="text" id="universalLibraryEntryName" value="${value}" required 
-                                    placeholder="${config.placeholder}">
-                                <small class="form-help">${promptHelpText}</small>
-                            </div>
-                        `}
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" onclick="hideUniversalLibrarySaveModal()">Cancel</button>
-                    <button class="btn btn-primary" onclick="saveToLibraryAndContinue('${type}', ${isNewEntry})">
-                        ${isNewEntry ? 'Add to Library' : isEdit ? 'Update' : 'Save to Library'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Remove existing modal if present
-    const existingModal = document.getElementById('universalLibrarySaveModal');
-    if (existingModal) existingModal.remove();
-    
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    document.getElementById('universalLibrarySaveModal').classList.add('show');
-    
-    // Focus on the name input and set up Enter key handling
-    setTimeout(() => {
-        const nameInput = document.getElementById('universalLibraryEntryName');
-        const descInput = document.getElementById('universalLibraryEntryDescription');
-        
-        nameInput.focus();
-        
-        // Add Enter key handling for form submission
-        const handleEnterKey = (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                saveToLibraryAndContinue(type, isNewEntry);
-            }
-        };
-        
-        nameInput.addEventListener('keypress', handleEnterKey);
-        if (descInput) {
-            descInput.addEventListener('keypress', handleEnterKey);
-        }
-    }, 100);
-}
-
+// ✅ updateInfluenceTags - MOVED TO components/library-manager.js
 function updateInfluenceTags(type) {
-    const container = document.getElementById(`${type}Tags`);
-    if (!container) return; // Handle case where element doesn't exist
-    
-    container.innerHTML = '';
-    
-    // Ensure influences object and specific array exist
-    if (!appState.influences) {
-        appState.influences = {};
-    }
-    
-    const pluralType = type + 's';
-    if (!appState.influences[pluralType]) {
-        appState.influences[pluralType] = [];
-    }
-    
-    appState.influences[pluralType].forEach(influence => {
-        const tag = document.createElement('div');
-        tag.className = 'influence-tag clickable-tag';
-        tag.innerHTML = `
-            <span onclick="editInfluenceEntry('${type}', '${influence.replace(/'/g, "\\'")}');" style="cursor: pointer; flex: 1;">${influence}</span>
-            <button type="button" class="remove-tag" onclick="removeInfluence('${type}', '${influence.replace(/'/g, "\\'")}')">×</button>
-        `;
-        container.appendChild(tag);
-    });
-    
-    // Update autogenerate button visibility when influences change
-    updateAutoGenerateButtonVisibility();
+    return libraryManager.updateInfluenceTags(type);
 }
 
 // updateCharacterTags function - MOVED TO components/character-manager.js
@@ -1161,26 +611,9 @@ async function editInfluenceEntry(type, influenceName) {
 
 // editCharacterEntry function - MOVED TO components/character-manager.js
 
+// ✅ buildInfluencePrompt - MOVED TO components/library-manager.js
 function buildInfluencePrompt() {
-    let prompt = '';
-    
-    if (appState.influences.directors.length > 0) {
-        prompt += `With direction reminiscent of ${appState.influences.directors.join(', ')}, `;
-    }
-    
-    if (appState.influences.screenwriters.length > 0) {
-        prompt += `with prose style that invokes ${appState.influences.screenwriters.join(', ')}, `;
-    }
-    
-    if (appState.influences.films.length > 0) {
-        prompt += `channeling the essence of ${appState.influences.films.join(', ')}, `;
-    }
-    
-    if (appState.influences.tones.length > 0) {
-        prompt += `with tone and atmosphere inspired by ${appState.influences.tones.join(' and ')}, `;
-    }
-    
-    return prompt;
+    return libraryManager.buildInfluencePrompt();
 }
 
 // Story Analysis System functions moved to /components/story-analysis-system.js
@@ -1803,52 +1236,9 @@ async function populateDropdowns() {
 }
 
 // Load user's custom libraries for dropdowns
+// ✅ loadUserLibraries - MOVED TO components/library-manager.js
 async function loadUserLibraries() {
-    // Re-check authentication status in case it wasn't initialized properly
-    authManager.checkAuthStatus();
-    
-    // Skip user libraries for guest users (not authenticated)
-    if (!appState.isAuthenticated) {
-        return { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
-    }
-    
-    try {
-        const libraryTypes = ['directors', 'screenwriters', 'films', 'tones', 'characters', 'storyconcepts'];
-        const userLibraries = { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
-        
-        // Load each library type from the API with timeout
-        for (const type of libraryTypes) {
-            try {
-                // Add 5-second timeout to prevent hanging
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000);
-                
-                const response = await fetch(`/api/user-libraries/${appState.user.username}/${type}`, {
-                    signal: controller.signal
-                });
-                clearTimeout(timeoutId);
-                
-                if (response.ok) {
-                    const libraries = await response.json();
-                    // For characters and story concepts, preserve full data structure; for others, just get name
-                    if (type === 'characters') {
-                        userLibraries[type] = libraries.map(lib => lib.entry_data);
-                    } else if (type === 'storyconcepts') {
-                        userLibraries[type] = libraries.map(lib => lib.entry_data);
-                    } else {
-                        userLibraries[type] = libraries.map(lib => lib.entry_data.name);
-                    }
-                }
-            } catch (error) {
-                // Continue with empty array for this type
-            }
-        }
-        
-        return userLibraries;
-    } catch (error) {
-        console.error('LoadUserLibraries: Error occurred:', error);
-        return { directors: [], screenwriters: [], films: [], tones: [], characters: [], storyconcepts: [] };
-    }
+    return libraryManager.loadUserLibraries();
 }
 
 // Restore a loaded project from localStorage on page reload
@@ -2300,16 +1690,20 @@ async function previewPrompt() {
     }
 }
 
-// Show prompt preview modal
+// ✅ Show prompt preview modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function showPromptPreviewModal() {
-    document.getElementById('promptPreviewModal').classList.add('show');
-    document.body.style.overflow = 'hidden';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showPromptPreviewModal();
+    }
 }
 
-// Hide prompt preview modal
+// ✅ Hide prompt preview modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function hidePromptPreviewModal() {
-    document.getElementById('promptPreviewModal').classList.remove('show');
-    document.body.style.overflow = 'auto';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hidePromptPreviewModal();
+    }
 }
 
 // 🔧 MOVED TO: public/components/structure-generation-manager.js
@@ -3151,34 +2545,20 @@ async function previewIndividualPlotPointPrompt(structureKey, plotPointIndex) {
     }
 }
 
-// Show individual plot point prompt modal
+// ✅ Show individual plot point prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function showIndividualPlotPointPromptModal() {
-    const modal = document.getElementById('individualPlotPointPromptModal');
-    const prompt = appState.currentIndividualPlotPointPrompt;
-    
-    if (!prompt) {
-        showToast('No individual plot point prompt data available.', 'error');
-        return;
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showIndividualPlotPointPromptModal();
     }
-    
-    // Populate modal content
-    document.getElementById('individualPlotPointPromptSystemMessage').textContent = prompt.systemMessage;
-    document.getElementById('individualPlotPointPromptUserPrompt').textContent = prompt.userPrompt;
-    
-    // Update modal title
-    const modalTitle = document.querySelector('#individualPlotPointPromptModal .modal-header h3');
-    const plotPointNumber = prompt.plotPointIndex + 1;
-    const actName = prompt.storyAct?.name || prompt.structureKey.replace(/_/g, ' ').toUpperCase();
-    modalTitle.textContent = `Plot Point ${plotPointNumber} Regeneration Prompt - ${actName}`;
-    
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
 }
 
-// Hide individual plot point prompt modal
+// ✅ Hide individual plot point prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function hideIndividualPlotPointPromptModal() {
-    document.getElementById('individualPlotPointPromptModal').classList.remove('show');
-    document.body.style.overflow = 'auto';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hideIndividualPlotPointPromptModal();
+    }
 }
 
 // Preview plot points generation prompt for an element
@@ -3628,21 +3008,17 @@ async function previewPlotPointPrompt(structureKey, sceneIndex) {
     }
 }
 
-// Project Header Management
+// ✅ Project Header Management - MOVED TO components/ui-manager.js
+// Legacy functions for backward compatibility
 function showProjectHeader(projectData) {
-    const indicator = document.getElementById('currentProjectIndicator');
-    const projectNameEl = document.getElementById('currentProjectName');
-    
-    if (projectData && indicator && projectNameEl) {
-        projectNameEl.textContent = projectData.title || 'Untitled Project';
-        indicator.style.display = 'flex';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showProjectHeader(projectData);
     }
 }
 
 function hideProjectHeader() {
-    const indicator = document.getElementById('currentProjectIndicator');
-    if (indicator) {
-        indicator.style.display = 'none';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hideProjectHeader();
     }
 }
 
@@ -5119,28 +4495,32 @@ const progressTracker = {
     }
 };
 
-// Loading functions
+// ✅ Loading functions - MOVED TO components/ui-manager.js
+// Legacy functions for backward compatibility
 function showLoading(message = 'Loading...') {
-    elements.loadingText.textContent = message;
-    elements.loadingOverlay.classList.add('active');
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showLoading(message);
+    }
 }
 
 function hideLoading() {
-    elements.loadingOverlay.classList.remove('active');
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hideLoading();
+    }
 }
 
-// Toast notification functions
+// ✅ Toast notification functions - MOVED TO components/ui-manager.js
+// Legacy functions for backward compatibility
 function showToast(message, type = 'success') {
-    elements.toastMessage.textContent = message;
-    elements.toast.className = `toast ${type} show`;
-    
-    setTimeout(() => {
-        hideToast();
-    }, 5000);
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showToast(message, type);
+    }
 }
 
 function hideToast() {
-    elements.toast.classList.remove('show');
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hideToast();
+    }
 }
 
 // 🔧 Creative Direction Functions moved to components/creative-direction-manager.js
@@ -5192,104 +4572,36 @@ async function populateFormWithProject(projectData, showToastMessage = true, isR
     return await window.projectManagerInstance.populateFormWithProject(projectData, showToastMessage, isRestore);
 }
 
-// Show scene prompt modal
+// ✅ Show scene prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function showScenePromptModal() {
-    const modal = document.getElementById('scenePromptModal');
-    const prompt = appState.currentScenePrompt;
-    
-    // Populate modal content
-    document.getElementById('scenePromptSystemMessage').textContent = prompt.systemMessage;
-    document.getElementById('scenePromptUserPrompt').textContent = prompt.userPrompt;
-    
-    // Update modal title
-    const modalTitle = document.querySelector('#scenePromptModal .modal-header h3');
-    
-    if (prompt.previewNote) {
-        // This is for "Generate All Scenes" preview
-        modalTitle.textContent = 'All Scenes Generation Prompt Preview';
-        
-        // Add or update preview note
-        let previewNoteElement = document.getElementById('scenePromptPreviewNote');
-        if (!previewNoteElement) {
-            previewNoteElement = document.createElement('div');
-            previewNoteElement.id = 'scenePromptPreviewNote';
-            previewNoteElement.className = 'prompt-preview-note';
-            previewNoteElement.style.cssText = 'background: #e3f2fd; border: 1px solid #2196f3; border-radius: 4px; padding: 10px; margin-bottom: 15px; font-size: 0.9rem; color: #1565c0;';
-            
-            const modalBody = document.querySelector('#scenePromptModal .modal-body');
-            modalBody.insertBefore(previewNoteElement, modalBody.firstChild);
-        }
-        previewNoteElement.textContent = `ℹ️ ${prompt.previewNote}`;
-        previewNoteElement.style.display = 'block';
-    } else {
-        // This is for individual scene prompt
-        if (prompt.isElementGeneration) {
-            modalTitle.textContent = `Scene Generation Prompt - ${prompt.structureElement.name}`;
-        } else {
-            modalTitle.textContent = `Scene Generation Prompt - ${prompt.structureElement.name} (Scene ${prompt.sceneIndex + 1})`;
-        }
-        
-        // Hide preview note if it exists
-        const previewNoteElement = document.getElementById('scenePromptPreviewNote');
-        if (previewNoteElement) {
-            previewNoteElement.style.display = 'none';
-        }
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showScenePromptModal();
     }
-    
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
 }
 
-// Hide scene prompt modal
+// ✅ Hide scene prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function hideScenePromptModal() {
-    document.getElementById('scenePromptModal').classList.remove('show');
-    document.body.style.overflow = 'auto';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hideScenePromptModal();
+    }
 }
 
-// Show plot point prompt modal
+// ✅ Show plot point prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function showPlotPointPromptModal() {
-    const modal = document.getElementById('plotPointPromptModal');
-    const prompt = appState.currentPlotPointsPrompt || appState.currentPlotPrompt;
-    
-    console.log('showPlotPointPromptModal called');
-    console.log('appState.currentPlotPointsPrompt:', appState.currentPlotPointsPrompt);
-    console.log('appState.currentPlotPrompt:', appState.currentPlotPrompt);
-    console.log('Using prompt:', prompt);
-    
-    if (!prompt) {
-        showToast('No prompt data available.', 'error');
-        return;
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.showPlotPointPromptModal();
     }
-    
-    // Populate modal content
-    document.getElementById('plotPointPromptSystemMessage').textContent = prompt.systemMessage;
-    document.getElementById('plotPointPromptUserPrompt').textContent = prompt.userPrompt;
-    
-    // Update modal title
-    const modalTitle = document.querySelector('#plotPointPromptModal .modal-header h3');
-    console.log('prompt.promptType:', prompt.promptType);
-    console.log('prompt.storyAct:', prompt.storyAct);
-    console.log('prompt.isAllPlotPoints:', prompt.isAllPlotPoints);
-    
-    if (prompt.promptType === 'act_plot_points') {
-        modalTitle.textContent = `Plot Points Generation Prompt - ${prompt.storyAct.name}`;
-        console.log('Set title to act:', prompt.storyAct.name);
-    } else if (prompt.isAllPlotPoints) {
-        modalTitle.textContent = 'Plot Point Generation Prompt - All Scenes';
-        console.log('Set title to All Scenes');
-    } else {
-        modalTitle.textContent = `Plot Point Generation Prompt - Scene ${prompt.actualSceneIndex + 1}`;
-        console.log('Set title to Scene:', prompt.actualSceneIndex + 1);
-    }
-    
-    modal.classList.add('show');
-    document.body.style.overflow = 'hidden';
 }
 
-// Hide plot point prompt modal
+// ✅ Hide plot point prompt modal - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function hidePlotPointPromptModal() {
-    document.getElementById('plotPointPromptModal').classList.remove('show');
-    document.body.style.overflow = 'auto';
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.hidePlotPointPromptModal();
+    }
 }
 
 // Preview all plot points generation prompt
@@ -5442,16 +4754,12 @@ async function saveSceneContent(structureKey, sceneIndex, content) {
     return await sceneGenerationManager.saveSceneContent(structureKey, sceneIndex, content);
 }
 
-// Continue to next step after template selection
+// ✅ Continue to next step after template selection - MOVED TO components/ui-manager.js
+// Legacy function for backward compatibility
 function goToNextStep() {
-    if (!appState.selectedTemplate) {
-        showToast('Please select a template first.', 'error');
-        return;
+    if (window.uiManagerInstance) {
+        return window.uiManagerInstance.goToNextStep();
     }
-    
-    // Navigate to Acts page
-    goToStep(3);
-    saveToLocalStorage();
 }
 
 // Display selected template on Acts page
