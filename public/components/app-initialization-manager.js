@@ -14,8 +14,9 @@ class AppInitializationManager {
         // Initialize auto-save manager
         autoSaveManager.init();
         
-        updateProgressBar();
-        updateStepIndicators();
+        // 🔧 PERFORMANCE FIX: Skip early progress updates - wait until correct step is determined
+        // updateProgressBar();
+        // updateStepIndicators();
         
         // Navigation will be updated after localStorage restoration via updateAllProgressMeters()
         
@@ -90,7 +91,8 @@ class AppInitializationManager {
                 if (appState.projectPath && appState.isLoadedProject) {
                     console.log('Restoring loaded project from localStorage:', appState.projectPath);
                     try {
-                        await this.restoreLoadedProject();
+                        // 🔧 PERFORMANCE FIX: Skip database reload on page refresh - localStorage is sufficient
+                        // await this.restoreLoadedProject();
                         console.log('Project restored. Dialogue count:', Object.keys(appState.generatedDialogues || {}).length);
                         
                         // After restoring project data, navigate to the saved step
