@@ -3761,525 +3761,52 @@ async function generateDialogue(structureKey, sceneIndex) {
 
 // MOVED TO dialogue-generation-manager.js - Legacy compatibility wrapper will be loaded from component
 
-// Finalize script
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function finalizeScript() {
-    if (Object.keys(appState.generatedDialogues).length === 0) {
-        showToast('Please generate dialogue for at least one scene.', 'error');
-        return;
-    }
-    
-    assembleScript();
-    goToStep(7); // Go to final script step (now step 7)
-    showToast('Script assembled with your generated scenes!', 'success');
+    return window.scriptAssemblyManagerInstance.finalizeScript();
 }
 
-// Assemble final script in professional format
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function assembleScript() {
-    let script = '';
-    let sceneNumber = 1;
-    let totalGeneratedScenes = 0;
-    let totalScenes = 0;
-    
-    // Debug logging (minimal)
-    console.log('=== ASSEMBLE SCRIPT DEBUG ===');
-    
-    // Professional title page
-    script += generateTitlePage();
-    
-    // Start screenplay content
-    script += '\n\n\nFADE IN:\n\n';
-    
-    // Count total available dialogues first
-    const totalDialogues = Object.keys(appState.generatedDialogues || {}).length;
-    console.log('Total dialogues available:', totalDialogues);
-    console.log('Available dialogue keys:', Object.keys(appState.generatedDialogues || {}));
-    console.log('Template structure exists:', !!appState.templateData?.structure);
-    console.log('Generated scenes exists:', !!appState.generatedScenes);
-    console.log('Generated plot points exists:', !!appState.plotPoints);
-    console.log('Available plot point keys:', Object.keys(appState.plotPoints || {}));
-    console.log('Full appState.plotPoints:', appState.plotPoints);
-    console.log('🔍 SCENE DEBUGGING - Full appState.generatedScenes:', appState.generatedScenes);
-    console.log('🔍 SCENE DEBUGGING - Scene keys:', Object.keys(appState.generatedScenes || {}));
-    
-    // Always use template structure as foundation if available
-    if (appState.templateData && appState.templateData.structure) {
-        console.log('Using complete template structure with hierarchical fallbacks');
-        const templateStructure = appState.templateData.structure;
-        console.log('Template structure keys:', Object.keys(templateStructure));
-        
-        Object.keys(templateStructure).forEach((actKey) => {
-            const act = templateStructure[actKey];
-            console.log(`Processing act: ${actKey}`);
-            
-            // Check if we have plot points for this act
-            const plotPoints = appState.plotPoints && appState.plotPoints[actKey];
-            console.log(`Plot points for ${actKey}:`, plotPoints);
-            
-            if (plotPoints && Array.isArray(plotPoints)) {
-                // Track overall scene count for this act (for old dialogue key fallback)
-                let actSceneCount = 0;
-                
-                // Process each plot point
-                plotPoints.forEach((plotPoint, plotIndex) => {
-                    const plotPointKey = `${actKey}-${plotIndex}`;
-                    
-                    // Check if we have scenes for this plot point
-                    const scenes = appState.generatedScenes && appState.generatedScenes[plotPointKey];
-                    console.log(`🔍 Looking for scenes with key: ${plotPointKey}`);
-                    console.log(`🔍 Found scenes:`, scenes);
-                    
-                    if (scenes && Array.isArray(scenes)) {
-                        // Process each scene
-                        scenes.forEach((scene, sceneIndex) => {
-                            const sceneId = `${plotPointKey}-${sceneIndex}`;
-                            totalScenes++;
-                            
-                            // 1. Check for dialogue (highest priority)
-                            let dialogueFound = false;
-                            let dialogueContent = null;
-                            
-                            console.log(`Looking for dialogue for scene ${sceneId}, title: ${scene.title}`);
-                            
-                            // Try multiple key formats for dialogue
-                            if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
-                                dialogueContent = appState.generatedDialogues[sceneId];
-                                dialogueFound = true;
-                                console.log(`Found dialogue using sceneId: ${sceneId}`);
-                            }
-                            else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
-                                dialogueContent = appState.generatedDialogues[scene.title];
-                                dialogueFound = true;
-                                console.log(`Found dialogue using scene title: ${scene.title}`);
-                            }
-                            else if (appState.generatedDialogues && scene.title) {
-                                const normalizedTitle = scene.title.replace(/\s+/g, '_');
-                                if (appState.generatedDialogues[normalizedTitle]) {
-                                    dialogueContent = appState.generatedDialogues[normalizedTitle];
-                                    dialogueFound = true;
-                                    console.log(`Found dialogue using normalized title: ${normalizedTitle}`);
-                                }
-                            }
-                            // FALLBACK: Try old dialogue key formats
-                            else {
-                                // Try old format with overall act scene count (actKey-actSceneCount)
-                                const oldFormatKey1 = `${actKey}-${actSceneCount}`;
-                                if (appState.generatedDialogues && appState.generatedDialogues[oldFormatKey1]) {
-                                    dialogueContent = appState.generatedDialogues[oldFormatKey1];
-                                    dialogueFound = true;
-                                    console.log(`Found dialogue using old format key (act scene count): ${oldFormatKey1}`);
-                                }
-                                // Try old format with plot point scene index (actKey-sceneIndex)
-                                else {
-                                    const oldFormatKey2 = `${actKey}-${sceneIndex}`;
-                                    if (appState.generatedDialogues && appState.generatedDialogues[oldFormatKey2]) {
-                                        dialogueContent = appState.generatedDialogues[oldFormatKey2];
-                                        dialogueFound = true;
-                                        console.log(`Found dialogue using old format key (plot scene index): ${oldFormatKey2}`);
-                                    }
-                                }
-                            }
-                            
-                            if (!dialogueFound) {
-                                console.log(`No dialogue found for scene ${sceneId} with title ${scene.title}`);
-                            }
-                            
-                            if (dialogueFound) {
-                                // Dialogue exists - use it
-                                script += formatSceneForScreenplay(dialogueContent, sceneNumber);
-                                totalGeneratedScenes++;
-                            } else {
-                                // 2. No dialogue - fall back to scene description
-                                script += formatPlaceholderScene(scene, sceneNumber);
-                            }
-                            
-                            actSceneCount++;
-                            sceneNumber++;
-                        });
-                    } else {
-                        // 3. No scenes - but check for dialogue first (since dialogue can't exist without scenes)
-                        console.log(`🔍 No scenes found for ${plotPointKey}, but checking for dialogue anyway`);
-                        
-                        // If we have dialogue, there MUST be scenes somewhere - let's find them
-                        let dialogueFound = false;
-                        let dialogueContent = null;
-                        
-                        if (appState.generatedDialogues) {
-                            // Try the old format that corresponds to this plot point
-                            const possibleKeys = [
-                                `${actKey}-${plotIndex}`,
-                                `${actKey}-0`, // First scene in act
-                                `${actKey}-${sceneNumber-1}` // Based on scene number
-                            ];
-                            
-                            for (const key of possibleKeys) {
-                                if (appState.generatedDialogues[key]) {
-                                    dialogueContent = appState.generatedDialogues[key];
-                                    dialogueFound = true;
-                                    console.log(`🔍 Found dialogue for ${plotPointKey} using key: ${key}`);
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        totalScenes++;
-                        if (dialogueFound) {
-                            script += formatSceneForScreenplay(dialogueContent, sceneNumber);
-                            totalGeneratedScenes++;
-                        } else {
-                            script += formatPlotPointFallback(plotPoint, actKey, plotIndex, sceneNumber);
-                        }
-                        sceneNumber++;
-                    }
-                });
-            } else {
-                // 4. No plot points - fall back to act description
-                console.log(`No plot points for ${actKey}, using act fallback`);
-                
-                // Before falling back to act description, try to find any dialogue that starts with this actKey
-                let foundOldDialogue = false;
-                if (appState.generatedDialogues) {
-                    const dialogueKeys = Object.keys(appState.generatedDialogues);
-                    console.log(`Checking for old-format dialogue for ${actKey}, available keys:`, dialogueKeys);
-                    const matchingKey = dialogueKeys.find(key => key.startsWith(actKey + '-'));
-                    if (matchingKey) {
-                        console.log(`Found old-format dialogue for ${actKey}: ${matchingKey}`);
-                        script += formatSceneForScreenplay(appState.generatedDialogues[matchingKey], sceneNumber);
-                        totalGeneratedScenes++;
-                        foundOldDialogue = true;
-                    } else {
-                        console.log(`No old-format dialogue found for ${actKey}`);
-                    }
-                }
-                
-                if (!foundOldDialogue) {
-                    script += formatActFallback(act, actKey, sceneNumber);
-                }
-                
-                totalScenes++;
-                sceneNumber++;
-            }
-        });
-    }
-    // Legacy fallback: if no template structure, try to use existing generated content
-    else if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0) {
-        console.log('No template structure, using existing generated scenes');
-        let structureKeys = Object.keys(appState.generatedScenes);
-        
-        structureKeys.forEach((structureKey) => {
-            const sceneGroup = appState.generatedScenes[structureKey];
-            if (sceneGroup && Array.isArray(sceneGroup)) {
-                sceneGroup.forEach((scene, index) => {
-                    const sceneId = `${structureKey}-${index}`;
-                    totalScenes++;
-                    
-                    // Check for dialogue
-                    let dialogueFound = false;
-                    let dialogueContent = null;
-                    
-                    if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
-                        dialogueContent = appState.generatedDialogues[sceneId];
-                        dialogueFound = true;
-                    }
-                    else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
-                        dialogueContent = appState.generatedDialogues[scene.title];
-                        dialogueFound = true;
-                    }
-                    
-                    if (dialogueFound) {
-                        script += formatSceneForScreenplay(dialogueContent, sceneNumber);
-                        totalGeneratedScenes++;
-                    } else {
-                        script += formatPlaceholderScene(scene, sceneNumber);
-                    }
-                    
-                    sceneNumber++;
-                });
-            }
-        });
-    } else {
-        // Final fallback: if no structure at all, just add generated dialogues
-        console.log('No structure, using fallback dialogue method');
-        console.log('Available dialogues in fallback:', Object.keys(appState.generatedDialogues || {}));
-        Object.values(appState.generatedDialogues || {}).forEach(dialogue => {
-            script += formatSceneForScreenplay(dialogue, sceneNumber);
-            totalGeneratedScenes++;
-            sceneNumber++;
-        });
-        totalScenes = totalGeneratedScenes;
-    }
-    
-    script += '\n\nFADE OUT.\n\nTHE END';
-    
-    // Display script preview
-    document.getElementById('scriptPreview').textContent = script;
-    
-    // Add scene navigation
-    addSceneNavigation();
-    
-    // Update statistics with better page estimation
-    const estimatedPages = Math.ceil(script.split('\n').length / 55); // ~55 lines per page
-    
-    console.log(`Final counts - Generated: ${totalGeneratedScenes}, Total: ${totalScenes}`);
-    
-    // Update DOM elements with correct IDs for final script display
-    const totalScenesElement = document.getElementById('totalScenesDisplay');
-    const estimatedPagesElement = document.getElementById('estimatedPagesDisplay');
-    
-    console.log('totalScenesDisplay element:', totalScenesElement);
-    console.log('estimatedPagesDisplay element:', estimatedPagesElement);
-    
-    if (totalScenesElement) {
-        totalScenesElement.textContent = `${totalGeneratedScenes}/${totalScenes} scenes`;
-        console.log(`Updated totalScenesDisplay to: ${totalGeneratedScenes}/${totalScenes} scenes`);
-    } else {
-        console.error('totalScenesDisplay element not found!');
-    }
-    
-    if (estimatedPagesElement) {
-        estimatedPagesElement.textContent = estimatedPages;
-        console.log(`Updated estimatedPagesDisplay to: ${estimatedPages}`);
-    } else {
-        console.error('estimatedPagesDisplay element not found!');
-    }
-    
-    saveToLocalStorage();
+    return window.scriptAssemblyManagerInstance.assembleScript();
 }
 
-// Generate professional title page
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function generateTitlePage() {
-    const title = appState.storyInput?.title || 'UNTITLED';
-    
-    // Use actual username if available, otherwise generic
-    const author = appState.user?.username || 'Writer';
-    
-    // Contact info in bottom right corner (just email is sufficient for spec scripts)
-    const contactInfo = appState.user?.email || 'writer@example.com';
-    
-    return `
-
-
-
-
-                                    ${title.toUpperCase()}
-
-
-                                   written by
-
-                                    ${author}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                                                     ${contactInfo}`;
+    return window.scriptAssemblyManagerInstance.generateTitlePage();
 }
 
-// Format scene for professional screenplay layout
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function formatSceneForScreenplay(dialogue, sceneNumber) {
-    // Add page break suggestion every few scenes
-    let formatted = '';
-    
-    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
-        formatted += '\n\n                         [PAGE BREAK]\n\n';
-    }
-    
-    // Clean up and format the dialogue
-    const lines = dialogue.split('\n');
-    let inDialogue = false;
-    let currentCharacter = '';
-    
-    for (let line of lines) {
-        line = line.trim();
-        if (!line) {
-            formatted += '\n';
-            continue;
-        }
-        
-        // Scene headings (INT./EXT.)
-        if (line.match(/^(INT\.|EXT\.)/i)) {
-            formatted += `\nSCENE ${sceneNumber}\n\n${line.toUpperCase()}\n\n`;
-        }
-        // Character names (all caps, no colon)
-        else if (line.match(/^[A-Z][A-Z\s]+:?$/)) {
-            currentCharacter = line.replace(':', '').trim();
-            formatted += `                    ${currentCharacter}\n`;
-            inDialogue = true;
-        }
-        // Parentheticals
-        else if (line.match(/^\(.+\)$/)) {
-            formatted += `                  ${line}\n`;
-        }
-        // Dialogue lines
-        else if (inDialogue && !line.match(/^(INT\.|EXT\.)/i)) {
-            // Center dialogue text
-            formatted += `          ${line}\n`;
-        }
-        // Action lines
-        else {
-            formatted += `${line}\n`;
-            inDialogue = false;
-        }
-    }
-    
-    formatted += '\n\n';
-    return formatted;
+    return window.scriptAssemblyManagerInstance.formatSceneForScreenplay(dialogue, sceneNumber);
 }
 
-// Format placeholder scene professionally
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function formatPlaceholderScene(scene, sceneNumber) {
-    const location = scene.location || 'LOCATION NOT SPECIFIED';
-    const time = scene.time_of_day || scene.time || 'TIME NOT SPECIFIED';
-    const sceneHeading = `INT. ${location.toUpperCase()} - ${time.toUpperCase()}`;
-    
-    let formatted = '';
-    
-    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
-        formatted += '\n\n                         [PAGE BREAK]\n\n';
-    }
-    
-    formatted += `SCENE ${sceneNumber}\n\n${sceneHeading}\n\n`;
-    formatted += `${scene.description || 'Scene description not available.'}\n\n`;
-    formatted += `                    [DIALOGUE NOT GENERATED]\n\n`;
-    formatted += `          This scene requires dialogue generation\n`;
-    formatted += `          to complete the screenplay.\n\n\n`;
-    
-    return formatted;
+    return window.scriptAssemblyManagerInstance.formatPlaceholderScene(scene, sceneNumber);
 }
 
-// Format plot point fallback when no scenes exist
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function formatPlotPointFallback(plotPoint, actKey, plotIndex, sceneNumber) {
-    let formatted = '';
-    
-    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
-        formatted += '\n\n                         [PAGE BREAK]\n\n';
-    }
-    
-    formatted += `SCENE ${sceneNumber}\n\n`;
-    formatted += `INT. LOCATION TO BE DETERMINED - DAY\n\n`;
-    formatted += `${plotPoint.description || plotPoint.title || 'Plot point description not available.'}\n\n`;
-    formatted += `                    [SCENES NOT GENERATED]\n\n`;
-    formatted += `          This plot point requires scene generation\n`;
-    formatted += `          to break down into specific scenes.\n\n\n`;
-    
-    return formatted;
+    return window.scriptAssemblyManagerInstance.formatPlotPointFallback(plotPoint, actKey, plotIndex, sceneNumber);
 }
 
-// Format act fallback when no plot points exist
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function formatActFallback(act, actKey, sceneNumber) {
-    let formatted = '';
-    
-    if (sceneNumber > 1 && (sceneNumber - 1) % 3 === 0) {
-        formatted += '\n\n                         [PAGE BREAK]\n\n';
-    }
-    
-    formatted += `SCENE ${sceneNumber}\n\n`;
-    formatted += `INT. LOCATION TO BE DETERMINED - DAY\n\n`;
-    
-    // Try to get the generated act title first, then fall back to template
-    let actContent = '';
-    const generatedAct = appState.generatedStructure && appState.generatedStructure[actKey];
-    
-    if (generatedAct && generatedAct.name) {
-        // Use generated act title
-        actContent = generatedAct.name;
-    } else if (generatedAct && generatedAct.description) {
-        // Use generated act description
-        actContent = generatedAct.description;
-    } else {
-        // Fall back to template
-        actContent = act.description || act.title || 'Act description not available.';
-    }
-    
-    formatted += `${actContent}\n\n`;
-    formatted += `                    [PLOT POINTS NOT GENERATED]\n\n`;
-    formatted += `          This act requires plot point generation\n`;
-    formatted += `          to break down into specific story beats.\n\n\n`;
-    
-    console.log(`🚨 formatActFallback called for ${actKey} - this should not happen if plot points exist!`);
-    console.log(`🔍 appState.plotPoints:`, appState.plotPoints);
-    console.log(`🔍 Available plot point keys:`, Object.keys(appState.plotPoints || {}));
-    
-    return formatted;
+    return window.scriptAssemblyManagerInstance.formatActFallback(act, actKey, sceneNumber);
 }
 
-// Export script
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 async function exportScript(format = 'text') {
-    if (!appState.storyInput || Object.keys(appState.generatedDialogues).length === 0) {
-        showToast('No script to export.', 'error');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/export', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                projectData: appState,
-                format: format,
-                projectPath: appState.projectPath
-            })
-        });
-        
-        if (format === 'json') {
-            const data = await response.json();
-            downloadFile(JSON.stringify(data, null, 2), `${appState.storyInput.title || 'script'}.json`, 'application/json');
-        } else {
-            // Let the browser handle the download using server's headers (preserves correct filename and content-type)
-            const blob = await response.blob();
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            
-            // Extract filename from server response headers if available
-            const contentDisposition = response.headers.get('Content-Disposition');
-            let filename = `${appState.storyInput.title || 'script'}.txt`; // fallback
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-                if (filenameMatch) {
-                    filename = filenameMatch[1];
-                }
-            }
-            
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-        
-        // Mark as exported and update step indicators
-        appState.hasExported = true;
-        updateStepIndicators();
-        updateUniversalNavigation();
-        updateBreadcrumbNavigation();
-        saveToLocalStorage();
-        
-        showToast('Script exported successfully!', 'success');
-    } catch (error) {
-        console.error('Error exporting script:', error);
-        showToast('Error exporting script. Please try again.', 'error');
-    }
+    return await window.scriptAssemblyManagerInstance.exportScript(format);
 }
 
 // Save project
@@ -4289,17 +3816,10 @@ async function saveProject() {
     return await window.projectManagerInstance.saveProject();
 }
 
-// Utility function to download files
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function downloadFile(content, filename, contentType) {
-    const blob = new Blob([content], { type: contentType });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    return window.scriptAssemblyManagerInstance.downloadFile(content, filename, contentType);
 }
 
 // 🔧 EXTRACTED TO: components/progress-tracker.js
@@ -6782,83 +6302,10 @@ function updateGlobalDirectionIndicators() {
     }
 }
 
-// Simple scene navigation
+
+
+// ✅ MOVED TO: components/script-assembly-manager.js
+// Legacy function for backward compatibility
 function addSceneNavigation() {
-    const scriptPreview = document.getElementById('scriptPreview');
-    if (!scriptPreview) return;
-    
-    const scriptText = scriptPreview.textContent;
-    const lines = scriptText.split('\n');
-    const scenes = [];
-    
-    // Build scene titles from appState data
-    const sceneData = [];
-    if (appState.generatedScenes) {
-        let structureKeys = Object.keys(appState.generatedScenes);
-        
-        // Use template order if available
-        if (appState.templateData && appState.templateData.structure) {
-            const templateKeys = Object.keys(appState.templateData.structure);
-            structureKeys = templateKeys.filter(key => appState.generatedScenes[key]);
-        }
-        
-        structureKeys.forEach((structureKey) => {
-            const sceneGroup = appState.generatedScenes[structureKey];
-            if (sceneGroup && Array.isArray(sceneGroup)) {
-                sceneGroup.forEach((scene, index) => {
-                    sceneData.push({
-                        title: scene.title || `Scene ${structureKey}-${index}`,
-                        location: scene.location || 'Unknown Location'
-                    });
-                });
-            }
-        });
-    }
-    
-    // Find scene headers and match with scene data
-    let sceneIndex = 0;
-    lines.forEach((line, index) => {
-        const trimmed = line.trim();
-        if (trimmed.match(/^(INT\.|EXT\.)/i)) {
-            const sceneTitle = sceneData[sceneIndex] ? sceneData[sceneIndex].title : trimmed;
-            scenes.push({
-                title: sceneTitle,
-                lineNumber: index
-            });
-            sceneIndex++;
-        }
-    });
-    
-    if (scenes.length === 0) return;
-    
-    // Add dropdown if it doesn't exist
-    let navDropdown = document.getElementById('sceneNavDropdown');
-    if (!navDropdown) {
-        const navContainer = document.createElement('div');
-        navContainer.className = 'scene-nav';
-        navContainer.innerHTML = `
-            <select id="sceneNavDropdown">
-                <option value="">Jump to scene...</option>
-                ${scenes.map((scene, index) => `
-                    <option value="${scene.lineNumber}">Scene ${index + 1}: ${scene.title}</option>
-                `).join('')}
-            </select>
-        `;
-        scriptPreview.parentNode.insertBefore(navContainer, scriptPreview);
-        navDropdown = document.getElementById('sceneNavDropdown');
-    }
-    
-    // Navigation handler
-    navDropdown.addEventListener('change', function() {
-        const lineNumber = parseInt(this.value);
-        if (!lineNumber) return;
-        
-        // Calculate approximate scroll position
-        const totalLines = lines.length;
-        const percentage = lineNumber / totalLines;
-        const scrollPosition = scriptPreview.scrollHeight * percentage;
-        
-        scriptPreview.scrollTop = scrollPosition;
-        this.value = ''; // Reset dropdown
-    });
+    return window.scriptAssemblyManagerInstance.addSceneNavigation();
 }
