@@ -163,6 +163,26 @@ class AppInitializationManager {
         // Update button visibility after initialization
         updateAutoGenerateButtonVisibility();
         
+        // 🔧 FIX: Restore project header if there's an active project
+        // This ensures the project title is shown when returning from profile/library pages
+        if (appState.storyInput && appState.storyInput.title) {
+            console.log('🎯 Restoring project header for active project:', appState.storyInput.title);
+            if (typeof showProjectHeader === 'function') {
+                showProjectHeader({
+                    title: appState.storyInput.title,
+                    logline: appState.storyInput.logline || ''
+                });
+            }
+        } else if (appState.currentStoryConcept && appState.currentStoryConcept.title) {
+            console.log('🎯 Restoring project header for current story concept:', appState.currentStoryConcept.title);
+            if (typeof showProjectHeader === 'function') {
+                showProjectHeader({
+                    title: appState.currentStoryConcept.title,
+                    logline: appState.currentStoryConcept.logline || ''
+                });
+            }
+        }
+        
         this.initialized = true;
     }
 
