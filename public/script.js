@@ -1226,8 +1226,12 @@ function updateGenerateAllDialogueButton() {
     return generationButtonManager.updateGenerateAllDialogueButton();
 }
 
-// Update all generation buttons
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function updateAllGenerationButtons() {
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.updateAllGenerationButtons();
+    }
     return generationButtonManager.updateAllGenerationButtons();
 }
 
@@ -2513,12 +2517,11 @@ function hideProjectHeader() {
     }
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function getCurrentStep() {
-    // Find the currently active step
-    const activeStep = document.querySelector('.workflow-step.active');
-    if (activeStep) {
-        const stepId = activeStep.id;
-        return parseInt(stepId.replace('step', ''));
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.getCurrentStep();
     }
     return 1;
 }
@@ -3615,68 +3618,11 @@ function hidePlotPointPromptModal() {
     }
 }
 
-// Preview all plot points generation prompt
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 async function previewAllPlotPointsPrompt() {
-    if (!appState.generatedStructure || !appState.storyInput || !appState.generatedScenes) {
-        showToast('No structure, story data, or scenes available for prompt preview.', 'error');
-        return;
-    }
-
-    // Check if we have a generated structure (plot points are generated FROM structure, not scenes)
-    if (!appState.generatedStructure || Object.keys(appState.generatedStructure).length === 0) {
-        showToast('No story structure found. Please generate a structure first.', 'error');
-        return;
-    }
-
-    // Build structure elements array for the prompt
-    const structureElements = [];
-    Object.entries(appState.generatedStructure).forEach(([key, act]) => {
-        structureElements.push({
-            key: key,
-            name: act.name || key.replace(/_/g, ' ').toUpperCase(),
-            description: act.description || '',
-            characterDevelopments: act.character_developments || act.character_development || ''
-        });
-    });
-
-    try {
-        showLoading('Generating all plot points prompt preview...');
-        
-        const response = await fetch('/api/preview-plot-point-prompt', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-API-Key': appState.apiKey
-            },
-            body: JSON.stringify({
-                storyInput: appState.storyInput,
-                structure: appState.generatedStructure,
-                templateData: appState.templateData,
-                structureElements: structureElements
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-            // Store the prompt data for the modal
-            appState.currentPlotPrompt = {
-                systemMessage: data.systemMessage,
-                userPrompt: data.prompt,
-                promptType: data.promptType,
-                isAllPlotPoints: true
-            };
-            
-            // Show the plot point prompt modal
-            showPlotPointPromptModal();
-            hideLoading();
-        } else {
-            throw new Error(data.error || 'Failed to generate plot points prompt preview');
-        }
-    } catch (error) {
-        console.error('Error generating plot points prompt preview:', error);
-        showToast('Error generating plot points prompt preview. Please try again.', 'error');
-        hideLoading();
+    if (window.navigationWorkflowManager) {
+        return await window.navigationWorkflowManager.previewAllPlotPointsPrompt();
     }
 }
 
@@ -3713,48 +3659,11 @@ window.addEventListener('click', function(e) {
 });
 
 // Display scenes for a specific structural element
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function displayScenesForElement(structureKey, sceneGroup, customContainer = null) {
-    const container = customContainer || document.getElementById(`scenes-${structureKey}`);
-    if (!container) return;
-    
-    container.innerHTML = '';
-    
-    if (Array.isArray(sceneGroup)) {
-        sceneGroup.forEach((scene, index) => {
-            const sceneContent = JSON.stringify(scene);
-            const sceneTitle = `Scene ${index + 1}: ${scene.title || scene.name || 'Untitled Scene'}`;
-            
-            createEditableContentBlock({
-                id: `scene-${structureKey}-${index}`,
-                type: 'scenes',
-                title: sceneTitle,
-                content: sceneContent,
-                container: container,
-                metadata: { structureKey: structureKey, sceneIndex: index },
-                onSave: async (newContent, block) => {
-                    // Save the edited scene content
-                    await saveSceneContent(structureKey, index, newContent);
-                    
-                    // Update the app state
-                    let updatedScene;
-                    try {
-                        updatedScene = JSON.parse(newContent);
-                    } catch (e) {
-                        // If not valid JSON, update description
-                        updatedScene = { ...scene, description: newContent };
-                    }
-                    
-                    if (appState.generatedScenes && appState.generatedScenes[structureKey] && appState.generatedScenes[structureKey][index]) {
-                        appState.generatedScenes[structureKey][index] = { ...appState.generatedScenes[structureKey][index], ...updatedScene };
-                    }
-                    
-                    // Save to local storage
-                    saveToLocalStorage();
-                }
-            });
-            
-            // Individual scene actions removed - use plot point level generation instead
-        });
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.displayScenesForElement(structureKey, sceneGroup, customContainer);
     }
 }
 
@@ -3782,251 +3691,37 @@ function displaySelectedTemplate(templateData) {
     }
 }
 
-// NEW: Display template structure preview in Step 3 (UNIFIED CONTAINERS)
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 async function displayTemplateStructurePreview() {
-    if (!appState.selectedTemplate) {
-        console.log('No template selected for structure preview');
-        return;
-    }
-    
-    // Check if we already have generated structure - if so, display it instead of preview
-    if (appState.generatedStructure && Object.keys(appState.generatedStructure).length > 0) {
-        console.log('Generated structure already exists, displaying actual structure');
-        displayStructure(appState.generatedStructure, appState.lastUsedPrompt, appState.lastUsedSystemMessage);
-        updateActsGenerationButton(); // Update button to show "Regenerate Acts"
-        return;
-    }
-
-    // 🔧 FIX: Check for existing templateData with user edits FIRST
-    if (appState.templateData && appState.templateData.structure) {
-        console.log('Using existing template data with user edits:', appState.templateData.name);
-        
-        // Use the EXISTING structure container - unified approach!
-        const structureContainer = document.getElementById('structureContent');
-        if (!structureContainer) {
-            console.log('Structure container not found');
-            return;
-        }
-        
-        // Create preview using the modified template data (with user edits)
-        createFullTemplatePreview(appState.templateData, structureContainer);
-        return;
-    }
-    
-    // Fallback: If no edited template data exists, load fresh template data
-    try {
-        // Get template data from existing templates (no server call needed)
-        const templateData = await getTemplateDataFromExistingTemplates(appState.selectedTemplate);
-        if (!templateData) {
-            console.log('Template data not found, creating simple preview');
-            // Create a simple preview without full template data
-            createSimpleTemplatePreview();
-            return;
-        }
-        
-        console.log('Template data loaded for preview:', templateData.name);
-        
-        // Use the EXISTING structure container - unified approach!
-        const structureContainer = document.getElementById('structureContent');
-        if (!structureContainer) {
-            console.log('Structure container not found');
-            return;
-        }
-
-        // Clear existing content
-        structureContainer.innerHTML = '';
-        
-        // Add preview header
-        const previewHeader = document.createElement('div');
-        previewHeader.className = 'structure-preview-header';
-        previewHeader.innerHTML = `
-            <h3>${templateData.name} Structure Preview</h3>
-            <p class="structure-preview-description">${templateData.description}</p>
-        `;
-        structureContainer.appendChild(previewHeader);
-        
-        // Create preview structure using the SAME format as displayStructure()
-        if (templateData.structure) {
-            Object.entries(templateData.structure).forEach(([key, act], index) => {
-                const actElement = document.createElement('div');
-                actElement.className = 'structure-element';
-                actElement.setAttribute('data-act', key);
-                
-                const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                
-                actElement.innerHTML = `
-                    <div class="structure-element-header">
-                        <h3>${actName}</h3>
-                        <div class="structure-element-meta">
-                            <span class="act-number">Act ${index + 1}</span>
-                            <span class="preview-status">Ready for generation</span>
-                        </div>
-                    </div>
-                    <div class="structure-element-content">
-                        <div class="template-description">
-                            <strong>Template Guide:</strong> ${act.description || 'No description available'}
-                        </div>
-                        ${act.userDirections && act.userDirections.trim() ? `
-                        <div class="creative-directions">
-                            <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
-                        </div>
-                        ` : ''}
-                        <div class="content-placeholder">
-                            <div class="placeholder-content">
-                                <span class="placeholder-icon">📝</span>
-                                <span class="placeholder-text">Your generated content will appear here</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                structureContainer.appendChild(actElement);
-            });
-        }
-        
-        // Store template data for generation
-        appState.templateData = templateData;
-        
-    } catch (error) {
-        console.error('Error loading template structure preview:', error);
-        showToast('Could not load template structure preview', 'error');
+    if (window.navigationWorkflowManager) {
+        return await window.navigationWorkflowManager.displayTemplateStructurePreview();
     }
 }
 
-// Helper function to get template data from already loaded templates
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 async function getTemplateDataFromExistingTemplates(templateId) {
-    // Check if we have templates loaded
-    if (!window.loadedTemplates) {
-        console.log('Templates not loaded yet, loading...');
-        await loadTemplates();
+    if (window.navigationWorkflowManager) {
+        return await window.navigationWorkflowManager.getTemplateDataFromExistingTemplates(templateId);
     }
-    
-    // Double-check templates are loaded and not null
-    if (!window.loadedTemplates || typeof window.loadedTemplates !== 'object') {
-        console.log('Failed to load templates, cannot get template data');
-        return null;
-    }
-    
-    // Search through all template groups
-    try {
-        for (const [groupKey, group] of Object.entries(window.loadedTemplates)) {
-            if (group && group.templates && Array.isArray(group.templates)) {
-                const template = group.templates.find(t => t.id === templateId);
-                if (template) {
-                    return template;
-                }
-            }
-        }
-    } catch (error) {
-        console.error('Error searching templates:', error);
-        return null;
-    }
-    
-    console.log(`Template ${templateId} not found in loaded templates`);
     return null;
 }
 
-// Fallback function to create template preview by loading template file directly
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 async function createSimpleTemplatePreview() {
-    const structureContainer = document.getElementById('structureContent');
-    if (!structureContainer) {
-        console.log('Structure container not found');
-        return;
+    if (window.navigationWorkflowManager) {
+        return await window.navigationWorkflowManager.createSimpleTemplatePreview();
     }
-    
-    try {
-        // Try to load template data from the API endpoint
-        const response = await fetch(`/api/template/${appState.selectedTemplate}`);
-        if (response.ok) {
-            const templateData = await response.json();
-            console.log('Loaded template data from API:', templateData.name);
-            
-            // Use the full template data to create proper preview
-            createFullTemplatePreview(templateData, structureContainer);
-            return;
-        }
-    } catch (error) {
-        console.log('Could not load template data from API, using basic preview');
-    }
-    
-    // If template file loading fails, show basic preview
-    createBasicTemplatePreview(structureContainer);
 }
 
-// Create full template preview with actual act structure
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function createFullTemplatePreview(templateData, structureContainer) {
-    // Clear existing content
-    structureContainer.innerHTML = '';
-    
-    // Add preview header
-    const previewHeader = document.createElement('div');
-    previewHeader.className = 'structure-preview-header';
-    previewHeader.innerHTML = `
-        <h3>${templateData.name} Structure Preview</h3>
-        <p class="structure-preview-description">${templateData.description}</p>
-    `;
-    structureContainer.appendChild(previewHeader);
-    
-    // Create preview structure using the SAME format as displayStructure()
-    if (templateData.structure) {
-        const totalActs = Object.keys(templateData.structure).length;
-        Object.entries(templateData.structure).forEach(([key, act], index) => {
-            const actElement = document.createElement('div');
-            actElement.className = 'structure-element preview-mode';
-            actElement.setAttribute('data-act', key);
-            
-            const actName = act.name || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const actNumber = `${index + 1}/${totalActs}`;
-            
-                            // Check if there are creative directions
-                const hasCreativeDirections = act.userDirections && act.userDirections.trim();
-                const creativeDirectionsHtml = `
-                    <div class="creative-direction-section">
-                        <div class="creative-direction-controls">
-                            <button class="btn btn-sm" 
-                                    onclick="showActsCreativeDirectionModal('${key}')" 
-                                    title="Add/edit creative direction for this act" 
-                                    style="font-size: 0.8rem;">
-                                Add creative direction for act ${index + 1}/${totalActs}
-                            </button>
-                            ${hasCreativeDirections ? `
-                                <div class="creative-directions-preview">
-                                    <strong>✨ Your Creative Directions:</strong> ${act.userDirections}
-                                </div>
-                            ` : `
-                                <span class="creative-direction-placeholder">Add creative direction to guide act generation</span>
-                            `}
-                        </div>
-                    </div>
-                `;
-                
-                actElement.innerHTML = `
-                    <div class="structure-element-header">
-                        <h3><span class="act-progress">${actNumber}</span> ${actName}</h3>
-                        <div class="structure-element-meta">
-                            <span class="preview-status">Ready for generation</span>
-                        </div>
-                    </div>
-                    <div class="structure-element-content">
-                        ${creativeDirectionsHtml}
-                        <div class="template-description">
-                            <strong>Template Guide:</strong> ${act.description || 'No description available'}
-                        </div>
-                        <div class="content-placeholder">
-                            <div class="placeholder-content">
-                                <span class="placeholder-icon">📝</span>
-                                <span class="placeholder-text">Your generated content will appear here</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            
-            structureContainer.appendChild(actElement);
-        });
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.createFullTemplatePreview(templateData, structureContainer);
     }
-    
-    // Store template data for generation
-    appState.templateData = templateData;
 }
 
 // Basic fallback preview when no template data is available
@@ -4231,16 +3926,22 @@ const autoSaveManager = window.autoSaveManager || {
     destroy: () => {}
 };
 
-// 🔧 MOVED TO: public/components/project-manager.js
+// ✅ MOVED TO: components/navigation-workflow-manager.js
 // Legacy function for backward compatibility
 function calculateProjectCardProgress(project) {
-    return window.projectManagerInstance.calculateProjectCardProgress(project);
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.calculateProjectCardProgress(project);
+    }
+    return 0;
 }
 
-// 🔧 MOVED TO: public/components/project-manager.js
+// ✅ MOVED TO: components/navigation-workflow-manager.js
 // Legacy function for backward compatibility
 function generateProjectCard(project, context = 'modal') {
-    return window.projectManagerInstance.generateProjectCard(project, context);
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.generateProjectCard(project, context);
+    }
+    return '';
 }
 
 // 🔧 MOVED TO: public/components/scene-generation-manager.js
@@ -4628,97 +4329,19 @@ function updateDialogueEstimates() {
 // 🔧 EXTRACTED TO: components/progress-tracker.js
 // Functions moved: updateUniversalNavigation, getForwardButtonText, updateBreadcrumbNavigation
 
-// Enhanced Template Selection - Act Cards Functions
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 async function loadTemplateStructureForActCards(templateData) {
-    console.log('🎭 Loading template structure for act cards:', templateData.name);
-    console.log('🔍 DEBUG: Current appState.templateData:', appState.templateData);
-    console.log('🔍 DEBUG: Incoming templateData:', templateData);
-    
-    try {
-        // 🔧 FIX #3: Check if we already have customized template data
-        // Compare by name since database templateData might not have id field
-        const templateMatches = appState.templateData && 
-            (appState.templateData.id === templateData.id || 
-             appState.templateData.name === templateData.name) && 
-            appState.templateData.structure;
-        
-        if (templateMatches) {
-            console.log('🎭 Using existing customized template data (preserving user edits)');
-            console.log('🔍 DEBUG: Using customized structure keys:', Object.keys(appState.templateData.structure));
-            const existingTemplateData = appState.templateData;
-            
-            // Update the header with template name and act count
-            updateActCardsHeader(existingTemplateData.name, Object.keys(existingTemplateData.structure).length);
-            
-            // Create and display act cards with existing (potentially edited) data
-            await createActCards(existingTemplateData.structure);
-        } else {
-            console.log('🎭 Fetching fresh template data from server');
-            console.log('🔍 DEBUG: Condition failed because:');
-            console.log('  - appState.templateData exists:', !!appState.templateData);
-            console.log('  - ID match:', appState.templateData?.id === templateData.id);
-            console.log('  - Structure exists:', !!appState.templateData?.structure);
-            
-            // Fetch the full template data including structure
-            const response = await fetch(`/api/template/${templateData.id}`);
-            if (!response.ok) {
-                throw new Error('Failed to load template structure');
-            }
-            
-            const fullTemplateData = await response.json();
-            console.log('🎭 Full template data loaded:', fullTemplateData);
-            
-            // Store template data in appState for editing (ensure ID is included)
-            appState.templateData = {
-                ...fullTemplateData,
-                id: templateData.id // Ensure ID is preserved for future comparisons
-            };
-            
-            // 🆕 Step 1: Initialize userDirections for all acts if not present (backwards compatibility)
-            if (appState.templateData.structure) {
-                Object.keys(appState.templateData.structure).forEach(actKey => {
-                    if (!appState.templateData.structure[actKey].hasOwnProperty('userDirections')) {
-                        appState.templateData.structure[actKey].userDirections = '';
-                    }
-                });
-            }
-            
-            console.log('🎭 Template data stored in appState for editing');
-            
-            // Update the header with template name and act count
-            updateActCardsHeader(fullTemplateData.name, Object.keys(fullTemplateData.structure).length);
-            
-            // Create and display act cards
-            await createActCards(fullTemplateData.structure);
-        }
-        
-        // Show the act cards container
-        const actCardsContainer = document.getElementById('actCardsContainer');
-        if (actCardsContainer) {
-            actCardsContainer.style.display = 'block';
-        }
-        
-    } catch (error) {
-        console.error('Error loading template structure:', error);
-        // Hide act cards container on error
-        const actCardsContainer = document.getElementById('actCardsContainer');
-        if (actCardsContainer) {
-            actCardsContainer.style.display = 'none';
-        }
+    if (window.navigationWorkflowManager) {
+        return await window.navigationWorkflowManager.loadTemplateStructureForActCards(templateData);
     }
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function updateActCardsHeader(templateName, actCount) {
-    // Update the header title to show the template and act count
-    const headerTitle = document.querySelector('.act-cards-header h4');
-    if (headerTitle) {
-        headerTitle.textContent = `${templateName} contains ${actCount} acts:`;
-    }
-    
-    // Hide the description/subtitle
-    const headerDescription = document.querySelector('.act-cards-description');
-    if (headerDescription) {
-        headerDescription.style.display = 'none';
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.updateActCardsHeader(templateName, actCount);
     }
 }
 
@@ -4799,179 +4422,30 @@ async function createActCards(templateStructure) {
     });
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function createActCard(act, totalActs) {
-    const card = document.createElement('div');
-    card.className = 'act-card';
-    card.setAttribute('data-act-key', act.key);
-    // 🆕 Step 1: Store userDirections in data attribute for future UI use
-    card.setAttribute('data-user-directions', act.userDirections || '');
-    
-    // Truncate title for display (keep full title for tooltip)
-    const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
-    const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
-    
-    // Use consistent act numbering format like the rest of the site
-    const actNumber = `${act.number}/${totalActs}`;
-    
-    // Get plot points from act data (handle both old and new formats)
-    let plotPoints = 4; // default
-    if (act.plotPoints) {
-        plotPoints = act.plotPoints;
-    } else if (act.distribution && act.distribution.plotPoints) {
-        plotPoints = act.distribution.plotPoints;
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.createActCard(act, totalActs);
     }
-    
-    card.innerHTML = `
-        <div class="act-card-number">${actNumber}</div>
-        <div class="act-card-title" data-original="${act.name}">${truncatedTitle}</div>
-        <div class="act-card-description" data-original="${act.description}">${truncatedDescription}</div>
-        <div class="act-card-edit-icon">✏️</div>
-        <div class="act-card-plot-points" data-original="${plotPoints}">${plotPoints} pts</div>
-        <div class="act-card-edit-controls">
-            <div class="act-card-edit-primary">
-                <button class="act-card-edit-btn save">Save</button>
-                <button class="act-card-edit-btn cancel">Cancel</button>
-                    </div>
-            <div class="act-card-edit-secondary">
-                <!-- Future delete button will go here -->
-                </div>
-                </div>
-        <div class="act-card-tooltip">
-            <strong>${act.name}</strong><br>
-            ${act.description}
-            ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
-            <br><br><strong>Plot Points:</strong> ${plotPoints}
-                </div>
-            `;
-            
-    // Add click handler for the edit icon only
-    const editIcon = card.querySelector('.act-card-edit-icon');
-    editIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
-        // 🆕 Step 2: Open modal instead of inline editing
-        showActDetailsModal(act);
-    });
-    
-    // 🆕 Step 2: Removed old button event listeners - now using modal
-    
-    return card;
+    return document.createElement('div');
 }
 
 // Enhanced Template Selection - Phase 2: Inline Editing Functions
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function startEditingActCard(card, act) {
-    console.log('🎭 Starting edit mode for act:', act.name);
-    
-    // Close any other cards that are currently being edited
-    closeAllEditingCards();
-    
-    // Add editing class
-    card.classList.add('editing');
-    
-    // Get title, description, and plot points elements
-    const titleElement = card.querySelector('.act-card-title');
-    const descriptionElement = card.querySelector('.act-card-description');
-    const plotPointsElement = card.querySelector('.act-card-plot-points');
-    
-    // Convert to editable text areas
-    const titleTextarea = document.createElement('textarea');
-    titleTextarea.className = 'act-card-title editable';
-    titleTextarea.value = titleElement.getAttribute('data-original');
-    titleTextarea.rows = 1;
-    
-    const descriptionTextarea = document.createElement('textarea');
-    descriptionTextarea.className = 'act-card-description editable';
-    descriptionTextarea.value = descriptionElement.getAttribute('data-original');
-    descriptionTextarea.rows = 3;
-    
-    // Convert plot points to editable input
-    const plotPointsInput = document.createElement('input');
-    plotPointsInput.type = 'number';
-    plotPointsInput.min = '1';
-    plotPointsInput.max = '20';
-    plotPointsInput.className = 'act-card-plot-points editable';
-    plotPointsInput.value = plotPointsElement.getAttribute('data-original');
-    
-    // Replace elements
-    titleElement.replaceWith(titleTextarea);
-    descriptionElement.replaceWith(descriptionTextarea);
-    plotPointsElement.replaceWith(plotPointsInput);
-    
-    // Auto-resize textareas
-    autoResizeTextarea(titleTextarea);
-    autoResizeTextarea(descriptionTextarea);
-    
-    // Focus on title
-    titleTextarea.focus();
-    titleTextarea.select();
-    
-    // Add auto-resize listeners
-    titleTextarea.addEventListener('input', () => autoResizeTextarea(titleTextarea));
-    descriptionTextarea.addEventListener('input', () => autoResizeTextarea(descriptionTextarea));
-    
-    // Hide tooltip during editing
-    const tooltip = card.querySelector('.act-card-tooltip');
-    if (tooltip) {
-        tooltip.style.display = 'none';
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.startEditingActCard(card, act);
     }
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function saveActCardChanges(card, act) {
-    console.log('🎭 Saving changes for act:', act.name);
-    
-    // Get current values from textareas and input
-    const titleTextarea = card.querySelector('.act-card-title.editable');
-    const descriptionTextarea = card.querySelector('.act-card-description.editable');
-    const plotPointsInput = card.querySelector('.act-card-plot-points.editable');
-    
-    if (!titleTextarea || !descriptionTextarea || !plotPointsInput) {
-        console.error('Could not find editable elements');
-        return;
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.saveActCardChanges(card, act);
     }
-    
-    const newTitle = titleTextarea.value.trim();
-    const newDescription = descriptionTextarea.value.trim();
-    const newPlotPoints = parseInt(plotPointsInput.value) || 1;
-    
-    // Validate inputs
-    if (!newTitle) {
-        alert('Act title cannot be empty');
-        titleTextarea.focus();
-        return;
-    }
-    
-    if (!newDescription) {
-        alert('Act description cannot be empty');
-        descriptionTextarea.focus();
-        return;
-    }
-    
-    if (newPlotPoints < 1 || newPlotPoints > 20) {
-        alert('Plot points must be between 1 and 20');
-        plotPointsInput.focus();
-        return;
-    }
-    
-    // Update the act object
-    act.name = newTitle;
-    act.description = newDescription;
-    act.plotPoints = newPlotPoints;
-    
-    // Update template data in app state
-    updateTemplateStructureInAppState(act.key, newTitle, newDescription, newPlotPoints);
-    
-    // Exit editing mode
-    exitEditingMode(card, act);
-    
-    // Show save feedback
-    showActCardSaveFeedback(card, 'Changes saved!');
-    
-    // 🔧 Save to database immediately (consistent with database-first architecture)
-    if (window.autoSaveManager) {
-        autoSaveManager.saveImmediately();
-    }
-    
-    console.log('🎭 Act updated:', { key: act.key, name: newTitle, description: newDescription });
 }
 
 function cancelActCardEditing(card, act) {
@@ -4979,54 +4453,11 @@ function cancelActCardEditing(card, act) {
     exitEditingMode(card, act);
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function exitEditingMode(card, act, silent = false) {
-    if (!silent) {
-        console.log('🎭 Exiting edit mode for act:', act.name);
-    }
-    
-    // Remove editing class
-    card.classList.remove('editing');
-    
-    // Get textareas and input
-    const titleTextarea = card.querySelector('.act-card-title.editable');
-    const descriptionTextarea = card.querySelector('.act-card-description.editable');
-    const plotPointsInput = card.querySelector('.act-card-plot-points.editable');
-    
-    if (!titleTextarea || !descriptionTextarea || !plotPointsInput) return;
-    
-    // Create display elements with updated content
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'act-card-title';
-    titleDiv.setAttribute('data-original', act.name);
-    const truncatedTitle = act.name.length > 20 ? act.name.substring(0, 17) + '...' : act.name;
-    titleDiv.textContent = truncatedTitle;
-    
-    const descriptionDiv = document.createElement('div');
-    descriptionDiv.className = 'act-card-description';
-    descriptionDiv.setAttribute('data-original', act.description);
-    const truncatedDescription = act.description.length > 80 ? act.description.substring(0, 77) + '...' : act.description;
-    descriptionDiv.textContent = truncatedDescription;
-    
-    const plotPointsDiv = document.createElement('div');
-    plotPointsDiv.className = 'act-card-plot-points';
-    plotPointsDiv.setAttribute('data-original', act.plotPoints || 4);
-    plotPointsDiv.textContent = `${act.plotPoints || 4} pts`;
-    
-    // Replace textareas with display elements
-    titleTextarea.replaceWith(titleDiv);
-    descriptionTextarea.replaceWith(descriptionDiv);
-    plotPointsInput.replaceWith(plotPointsDiv);
-    
-    // Update tooltip
-    const tooltip = card.querySelector('.act-card-tooltip');
-    if (tooltip) {
-        tooltip.innerHTML = `
-            <strong>${act.name}</strong><br>
-            ${act.description}
-            ${act.elements && act.elements.length > 0 ? `<br><br><em>Elements: ${act.elements.join(', ')}</em>` : ''}
-            <br><br><strong>Plot Points:</strong> ${act.plotPoints || 4}
-        `;
-        tooltip.style.display = '';
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.exitEditingMode(card, act, silent);
     }
 }
 
@@ -5132,61 +4563,20 @@ function showActCardSaveFeedback(card, message) {
     }, 2000);
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function autoResizeTextarea(textarea) {
-    // Reset height to auto to get the correct scrollHeight
-    textarea.style.height = 'auto';
-    // Set height to scrollHeight to fit content
-    textarea.style.height = textarea.scrollHeight + 'px';
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.autoResizeTextarea(textarea);
+    }
 }
 
+// ✅ MOVED TO: components/navigation-workflow-manager.js
+// Legacy function for backward compatibility
 function closeAllEditingCards() {
-    // Find all cards currently in editing mode
-    const editingCards = document.querySelectorAll('.act-card.editing');
-    
-    if (editingCards.length > 0) {
-        console.log('🎭 Closing', editingCards.length, 'open editing cards');
+    if (window.navigationWorkflowManager) {
+        return window.navigationWorkflowManager.closeAllEditingCards();
     }
-    
-    editingCards.forEach(card => {
-        // Get the act data from the card
-        const actKey = card.getAttribute('data-act-key');
-        
-        // 🔧 FIX: Get act data from appState.templateData instead of DOM reconstruction
-        if (appState.templateData && appState.templateData.structure && appState.templateData.structure[actKey]) {
-            const act = {
-                key: actKey,
-                name: appState.templateData.structure[actKey].name,
-                description: appState.templateData.structure[actKey].description,
-                plotPoints: appState.templateData.structure[actKey].plotPoints || 4
-            };
-            
-            console.log('🔧 Closing card for act:', act.name, 'using data from appState');
-            
-            // Cancel editing for this card (without logging since it's auto-close)
-            exitEditingMode(card, act, true);
-        } else {
-            console.warn('🚨 Could not find act data for key:', actKey, 'in appState.templateData');
-            
-            // Fallback: Try to reconstruct from DOM (original behavior)
-            const titleElement = card.querySelector('.act-card-title.editable') || card.querySelector('.act-card-title');
-            const descriptionElement = card.querySelector('.act-card-description.editable') || card.querySelector('.act-card-description');
-            
-            if (titleElement && descriptionElement) {
-                const plotPointsElement = card.querySelector('.act-card-plot-points.editable') || card.querySelector('.act-card-plot-points');
-                const act = {
-                    key: actKey,
-                    name: titleElement.getAttribute('data-original') || titleElement.textContent || 'Untitled Act',
-                    description: descriptionElement.getAttribute('data-original') || descriptionElement.textContent || 'No description',
-                    plotPoints: plotPointsElement ? (parseInt(plotPointsElement.getAttribute('data-original')) || 4) : 4
-                };
-                
-                console.log('🔧 Using fallback DOM reconstruction for act:', act.name);
-                
-                // Cancel editing for this card (without logging since it's auto-close)
-                exitEditingMode(card, act, true);
-            }
-        }
-    });
 }
 
 // Acts Creative Direction Modal Functions
