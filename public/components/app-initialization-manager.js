@@ -142,9 +142,21 @@ class AppInitializationManager {
                 console.error('Error loading saved state:', e);
             }
         } else {
+            // New session - populate dropdowns and navigate to Step 1
+            console.log('🆕 New session - setting up Step 1');
+            
             // Initialize plot points state tracking for new sessions
             appState.manuallySetPlotPoints = {};
             appState.currentActPlotPoints = {};
+            
+            // Populate dropdowns for Step 1
+            await this.populateDropdowns();
+            
+            // Update progress meters for clean state
+            updateAllProgressMeters();
+            
+            // Navigate to Step 1
+            goToStep(1);
         }
         
         // Final step indicator update after everything is initialized (includes progress meters)
