@@ -149,14 +149,35 @@ class AuthManager {
     }
     
     clearAuth() {
+        // 🔧 PRESERVE USER PREFERENCES before clearing localStorage
+        let preservedPreferences = {};
+        if (window.appState && window.appState.selectedModel) {
+            preservedPreferences.selectedModel = window.appState.selectedModel;
+        }
+        
         localStorage.removeItem('apiKey');
         localStorage.removeItem('userData');
         localStorage.removeItem('filmScriptGenerator'); // Clear app state when auth changes
+        
+        // 🔧 SAVE PRESERVED PREFERENCES back to localStorage
+        if (preservedPreferences.selectedModel) {
+            try {
+                localStorage.setItem('filmScriptGenerator', JSON.stringify({
+                    selectedModel: preservedPreferences.selectedModel
+                }));
+                console.log('💾 Preserved model selection during logout:', preservedPreferences.selectedModel);
+            } catch (error) {
+                console.error('Error saving preserved preferences:', error);
+            }
+        }
         
         if (window.appState) {
             window.appState.isAuthenticated = false;
             window.appState.user = null;
             window.appState.apiKey = null;
+            
+            // 🔧 RESTORE USER PREFERENCES after clearing auth
+            Object.assign(window.appState, preservedPreferences);
         }
         
         // Reset app state to defaults when user changes
@@ -167,6 +188,11 @@ class AuthManager {
     resetAppState() {
         // Reset all user-specific state when switching users
         if (window.appState) {
+            // 🔧 PRESERVE USER PREFERENCES during auth reset
+            const preservedPreferences = {
+                selectedModel: window.appState.selectedModel // Keep model selection across login/logout
+            };
+            
             Object.assign(window.appState, {
                 currentStep: 1,
                 storyInput: {},
@@ -193,7 +219,9 @@ class AuthManager {
                     plotPoints: "",
                     scenes: "",
                     dialogue: ""
-                }
+                },
+                // 🔧 RESTORE USER PREFERENCES after reset
+                ...preservedPreferences
             });
         }
         
@@ -206,6 +234,16 @@ class AuthManager {
             updateInfluenceTags('tone');
         }
         if (typeof updateStoryConceptDisplay === 'function') updateStoryConceptDisplay();
+        
+        // 🔧 UPDATE MODEL SELECTOR UI after auth reset
+        if (typeof setupModelSelector === 'function') {
+            setTimeout(() => {
+                setupModelSelector();
+                if (typeof initializeGlobalModelSelector === 'function') {
+                    initializeGlobalModelSelector();
+                }
+            }, 100);
+        }
     }
 
     // Logout functionality

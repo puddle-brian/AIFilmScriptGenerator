@@ -3898,9 +3898,25 @@ function hideDialoguePromptModal() {
 window.authUtils = {
     switchUser: (username, userData, apiKey) => {
         // For testing: manually switch to a different user
+        // 🔧 PRESERVE USER PREFERENCES during test user switching
+        const preservedModel = window.appState?.selectedModel;
+        
         localStorage.setItem('apiKey', apiKey);
         localStorage.setItem('userData', JSON.stringify(userData));
         localStorage.removeItem('filmScriptGenerator'); // Clear old state
+        
+        // 🔧 SAVE PRESERVED MODEL SELECTION back to localStorage
+        if (preservedModel) {
+            try {
+                localStorage.setItem('filmScriptGenerator', JSON.stringify({
+                    selectedModel: preservedModel
+                }));
+                console.log('💾 Preserved model selection during user switch:', preservedModel);
+            } catch (error) {
+                console.error('Error saving preserved model during user switch:', error);
+            }
+        }
+        
         authManager.checkAuthStatus();
         authManager.updateUI();
         window.location.reload(); // Reload to ensure clean state

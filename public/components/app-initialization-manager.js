@@ -32,12 +32,46 @@ class AppInitializationManager {
                     currentStep: parsed.currentStep,
                     projectPath: parsed.projectPath,
                     isLoadedProject: parsed.isLoadedProject,
-                    hasDialogues: parsed.generatedDialogues ? Object.keys(parsed.generatedDialogues).length : 0
+                    hasDialogues: parsed.generatedDialogues ? Object.keys(parsed.generatedDialogues).length : 0,
+                    selectedModel: parsed.selectedModel // 🔧 DEBUG: Show model selection
                 });
                 
-                Object.assign(appState, parsed);
+                // 🔧 FIX: Check if this is just preserved preferences (model selection only) vs actual project data
+                const isMinimalPreferences = parsed.selectedModel && 
+                    !parsed.currentStep && 
+                    !parsed.projectPath && 
+                    !parsed.storyInput && 
+                    Object.keys(parsed).length <= 2; // Allow for selectedModel + maybe lastSaved timestamp
                 
-                // Successfully loaded from localStorage
+                if (isMinimalPreferences) {
+                    console.log('🔧 Detected minimal preferences (model selection only) - treating as new session');
+                    // Just preserve the model selection and treat as new session
+                    if (parsed.selectedModel) {
+                        appState.selectedModel = parsed.selectedModel;
+                        console.log('📱 Preserved model selection for new session:', appState.selectedModel);
+                    }
+                    
+                    // Initialize as new session
+                    appState.manuallySetPlotPoints = {};
+                    appState.currentActPlotPoints = {};
+                    
+                    // Populate dropdowns for Step 1
+                    await this.populateDropdowns();
+                    
+                    // Update progress meters for clean state
+                    updateAllProgressMeters();
+                    
+                    // Navigate to Step 1
+                    goToStep(1);
+                    
+                } else {
+                    // Full project data - restore normally
+                    Object.assign(appState, parsed);
+                    
+                    // 🔧 DEBUG: Confirm model selection was restored
+                    console.log('📱 Model selection after localStorage restore:', appState.selectedModel);
+                    
+                    // Successfully loaded from localStorage
                 
                 // Initialize plot points state tracking if not present
                 if (!appState.manuallySetPlotPoints) appState.manuallySetPlotPoints = {};
@@ -138,6 +172,7 @@ class AppInitializationManager {
                         await goToStep(validStep);
                     }
                 }
+                } // 🔧 FIX: Close the "else" block for full project data restoration
             } catch (e) {
                 console.error('Error loading saved state:', e);
             }
