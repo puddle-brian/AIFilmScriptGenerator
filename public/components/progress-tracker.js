@@ -436,6 +436,19 @@ async function goToStepInternal(stepNumber, validateAccess = true) {
     if (stepNumber === 1) {
         // Step 1: Story Input - Update character, influence, and story concept displays
         console.log('Step 1 - Story Input');
+        
+        // 🔧 LAZY LOADING: Populate dropdowns only when Step 1 is accessed
+        if (!window.dropdownsLoaded) {
+            console.log('⚡ Lazy loading dropdowns for Step 1...');
+            try {
+                await appInitializationManager.populateDropdowns();
+                window.dropdownsLoaded = true;
+                console.log('✅ Dropdowns lazy loaded successfully');
+            } catch (error) {
+                console.error('❌ Error lazy loading dropdowns:', error);
+            }
+        }
+        
         updateCharacterTags();
         updateInfluenceTags('director');
         updateInfluenceTags('screenwriter');

@@ -19,8 +19,8 @@ class AppInitializationManager {
         
         // Navigation will be updated after localStorage restoration via updateAllProgressMeters()
         
-        // Populate dropdowns from JSON files
-        await this.populateDropdowns();
+        // 🔧 PERFORMANCE FIX: Skip dropdown population - load lazily when Step 1 is accessed
+        // await this.populateDropdowns(); // Moved to lazy loading
         
         // Load from localStorage if available (unless starting fresh)
         const savedState = localStorage.getItem('filmScriptGenerator');
