@@ -4,6 +4,32 @@
  * Part of Micro-Step 7: Frontend Refactoring
  */
 
+// Logging configuration - set to false to disable verbose logging
+// To enable debugging, set enabled: true and the specific categories you want to see
+const DIALOGUE_DEBUG = {
+    enabled: false,           // Master switch for all dialogue logging
+    sceneLoading: false,      // Scene loading/lookup logs (most verbose - causes performance issues)
+    generation: false,        // Generation process logs
+    storage: false,          // Storage operation logs
+    essential: true          // Keep essential logs for production (errors, completion)
+};
+
+// HOW TO USE:
+// For production: Keep enabled: false, essential: true (minimal essential logs only)
+// For debugging scene issues: enabled: true, sceneLoading: true
+// For debugging generation: enabled: true, generation: true
+// For debugging storage: enabled: true, storage: true
+// For completely silent: enabled: false, essential: false
+
+// Debug logging helper
+function debugLog(category, ...args) {
+    if (DIALOGUE_DEBUG.enabled && DIALOGUE_DEBUG[category]) {
+        console.log(...args);
+    } else if (category === 'essential' && DIALOGUE_DEBUG.essential) {
+        console.log(...args);
+    }
+}
+
 class DialogueGenerationManager {
     constructor() {
         console.log('🎬 DialogueGenerationManager initialized');
@@ -320,7 +346,7 @@ class DialogueGenerationManager {
                 // Get hierarchical number for this scene
                 const hierarchicalNumber = sceneNumberingMap[sceneId] || sceneNumber.toString();
                 
-                console.log(`Generating dialogue for scene: ${scene.title || 'Untitled'} (${sceneId})`);
+                debugLog('generation', `Generating dialogue for scene: ${scene.title || 'Untitled'} (${sceneId})`);
                 
                 // Update hierarchy display
                 progressTracker.updateHierarchy(sceneNumber, allScenes.length);
@@ -350,11 +376,11 @@ class DialogueGenerationManager {
                 const data = await response.json();
                 
                 if (response.ok) {
-                    console.log(`🎬 Dialogue generated for ${sceneId}:`, data.dialogue?.substring(0, 100) + '...');
+                    debugLog('generation', `🎬 Dialogue generated for ${sceneId}:`, data.dialogue?.substring(0, 100) + '...');
                     
                     // Store dialogue in app state
                     appState.generatedDialogues[sceneId] = data.dialogue;
-                    console.log(`💾 Stored dialogue with key: ${sceneId}`);
+                    debugLog('storage', `💾 Stored dialogue with key: ${sceneId}`);
                     
                     // 🔥 REAL-TIME UPDATE: Update existing editable blocks immediately
                     if (window.editableBlocks && data.dialogue) {
@@ -387,7 +413,7 @@ class DialogueGenerationManager {
             
             // Refresh the dialogue display after all dialogues are generated
             // This will recreate all dialogue blocks with the updated content from appState.generatedDialogues
-            console.log(`🔄 Refreshing dialogue display with ${Object.keys(appState.generatedDialogues).length} dialogue entries`);
+            debugLog('generation', `🔄 Refreshing dialogue display with ${Object.keys(appState.generatedDialogues).length} dialogue entries`);
             this.displayDialogueGeneration();
             
             // 🔥 Refresh credits after successful generation
@@ -406,7 +432,7 @@ class DialogueGenerationManager {
             
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.log('Dialogue generation cancelled by user');
+                debugLog('essential', 'Dialogue generation cancelled by user');
                 return; // Don't show error toast for cancellation
             }
             
@@ -452,10 +478,10 @@ class DialogueGenerationManager {
         const container = document.getElementById('dialogueContent');
         container.innerHTML = '';
         
-        console.log(`🎬 displayDialogueGeneration() called - clearing container and rebuilding`);
+        debugLog('sceneLoading', `🎬 displayDialogueGeneration() called - clearing container and rebuilding`);
 
         if (appState.generatedStructure && appState.generatedScenes) {
-            console.log('Displaying dialogue with hierarchical structure:', appState.generatedStructure);
+            debugLog('sceneLoading', 'Displaying dialogue with hierarchical structure:', appState.generatedStructure);
             
             // Display dialogue in chronological order with hierarchical structure
             const structureKeys = Object.keys(appState.generatedStructure);
@@ -469,7 +495,7 @@ class DialogueGenerationManager {
                 const hasPlotPoints = hasPlotPointsForElement(structureKey);
                 const sceneCount = hasScenes ? sceneGroup.length : 0;
                 
-                console.log(`Processing dialogue for ${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}, hasPlotPoints=${hasPlotPoints}`);
+                debugLog('sceneLoading', `Processing dialogue for ${structureKey}: hasScenes=${hasScenes}, sceneCount=${sceneCount}, hasPlotPoints=${hasPlotPoints}`);
                 
                 // Show all acts in hierarchy - even those without scenes/plot points
                 
@@ -537,29 +563,29 @@ class DialogueGenerationManager {
                     </div>
                 `;
                 
-                console.log(`Appending dialogue group element for ${structureKey} to container`);
+                debugLog('sceneLoading', `Appending dialogue group element for ${structureKey} to container`);
                 container.appendChild(groupElement);
                 
                 // Always display hierarchical dialogue content (even if empty)
-                console.log(`Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
+                debugLog('sceneLoading', `Displaying hierarchical dialogue content for ${structureKey}: ${plotPoints?.length || 0} plot points, ${sceneCount} scenes`);
                 this.displayHierarchicalDialogueContent(structureKey, plotPoints, sceneGroup, currentActIndex + 1);
             });
             
-            console.log('Finished creating all dialogue groups');
+            debugLog('sceneLoading', 'Finished creating all dialogue groups');
         } else {
-            console.log('No structure/scenes available - showing fallback message');
+            debugLog('sceneLoading', 'No structure/scenes available - showing fallback message');
             container.innerHTML = '<p>No scenes available for dialogue generation. Please complete Steps 1-5 first.</p>';
         }
 
         // Handle any pending dialogue restoration from page reload
         if (appState.pendingDialogueRestore) {
-            console.log('Processing pending dialogue restoration:', appState.pendingDialogueRestore);
+            debugLog('storage', 'Processing pending dialogue restoration:', appState.pendingDialogueRestore);
             
             // Merge pending dialogue into current state if not already present
             Object.entries(appState.pendingDialogueRestore).forEach(([dialogueKey, dialogue]) => {
                 if (!appState.generatedDialogues[dialogueKey]) {
                     appState.generatedDialogues[dialogueKey] = dialogue;
-                    console.log(`Restored dialogue for: ${dialogueKey}`);
+                    debugLog('storage', `Restored dialogue for: ${dialogueKey}`);
                 }
             });
             
@@ -572,7 +598,7 @@ class DialogueGenerationManager {
             }, 100);
         }
         
-        console.log('Hierarchical dialogue interface displayed with existing content restored');
+        debugLog('sceneLoading', 'Hierarchical dialogue interface displayed with existing content restored');
     }
 
     // Display hierarchical dialogue content: Act -> Plot Points -> Scenes (with dialogue)
@@ -735,13 +761,13 @@ class DialogueGenerationManager {
         dialogueContent = sceneDescription + 'Click "Generate Dialogue" to create the screenplay for this scene.';
         
         // Check for existing dialogue
-        console.log(`🔍 Looking for dialogue with sceneId: ${sceneId}`);
-        console.log(`🔍 Available dialogue keys:`, Object.keys(appState.generatedDialogues || {}));
+        debugLog('sceneLoading', `🔍 Looking for dialogue with sceneId: ${sceneId}`);
+        debugLog('sceneLoading', `🔍 Available dialogue keys:`, Object.keys(appState.generatedDialogues || {}));
         
         if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
             dialogueContent = appState.generatedDialogues[sceneId];
             hasExistingDialogue = true;
-            console.log(`✅ Found existing dialogue for ${sceneId}`);
+            debugLog('sceneLoading', `✅ Found existing dialogue for ${sceneId}`);
         } else if (appState.generatedDialogues) {
             // Also check for dialogue matching by scene title (for loaded projects)
             const sceneTitle = scene.title || scene.name || '';
