@@ -7,6 +7,48 @@ const { authenticateApiKey, rateLimit } = require('../middleware/auth');
 // Import FeedbackService
 const FeedbackService = require('../src/services/FeedbackService');
 
+// Middleware to inject dependencies from app
+router.use((req, res, next) => {
+  req.dbClient = req.app.get('dbClient');
+  req.feedbackService = req.app.get('feedbackService');
+  next();
+});
+
+// Fallback feedback submission handler (when FeedbackService is unavailable)
+async function handleSubmitFeedbackFallback(req, res, dbClient) {
+  const { category, message } = req.body;
+  const userId = req.user.id;
+  const pageUrl = req.headers.referer || req.body.pageUrl || '';
+  
+  try {
+    console.log(`🔄 Fallback feedback submission for user: ${userId} (${req.user.username})`);
+    
+    // Direct database insert when service unavailable
+    const result = await dbClient.query(
+      'INSERT INTO feedback (user_id, category, message, page_url, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, created_at',
+      [userId, category, message, pageUrl]
+    );
+    
+    const feedback = result.rows[0];
+    
+    console.log(`✅ Fallback feedback submitted successfully: ${feedback.id}`);
+    
+    res.status(201).json({
+      message: 'Feedback submitted successfully',
+      id: feedback.id,
+      success: true,
+      fallbackMode: true
+    });
+    
+  } catch (error) {
+    console.error('Fallback feedback submission error:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit feedback. Please try again.',
+      fallbackMode: true
+    });
+  }
+}
+
 // =====================================
 // FEEDBACK ROUTES
 // =====================================
@@ -14,7 +56,9 @@ const FeedbackService = require('../src/services/FeedbackService');
 // Submit feedback (requires authentication)
 router.post('/submit', authenticateApiKey, rateLimit, async (req, res) => {
   try {
-    const feedbackService = new FeedbackService();
+    // Get services from app-level dependency injection
+    const feedbackService = req.app.get('feedbackService');
+    const dbClient = req.app.get('dbClient');
     
     const { category, message } = req.body;
     const userId = req.user.id;
@@ -42,9 +86,24 @@ router.post('/submit', authenticateApiKey, rateLimit, async (req, res) => {
       });
     }
     
+    // Fallback to direct database access if FeedbackService unavailable
+    if (!feedbackService && dbClient) {
+      console.log('🔄 Using fallback feedback submission (direct database access)');
+      return await handleSubmitFeedbackFallback(req, res, dbClient);
+    }
+    
+    // If no services available at all
+    if (!feedbackService && !dbClient) {
+      console.log('⚠️ No feedback services available');
+      return res.status(503).json({ 
+        error: 'Feedback service temporarily unavailable. Please try again later.',
+        fallback: 'Server restarting...'
+      });
+    }
+    
     console.log(`📝 New feedback submission from user ${userId} (${req.user.username})`);
     
-    // Create feedback
+    // Use FeedbackService (primary path)
     const result = await feedbackService.createFeedback(userId, category, message, pageUrl);
     
     if (!result.success) {
@@ -61,6 +120,17 @@ router.post('/submit', authenticateApiKey, rateLimit, async (req, res) => {
     
   } catch (error) {
     console.error('Feedback submission error:', error);
+    
+    // Try fallback if primary method failed and database available
+    if (req.app.get('dbClient')) {
+      console.log('🔄 Primary feedback submission failed, trying fallback...');
+      try {
+        return await handleSubmitFeedbackFallback(req, res, req.app.get('dbClient'));
+      } catch (fallbackError) {
+        console.error('Fallback feedback submission also failed:', fallbackError);
+      }
+    }
+    
     res.status(500).json({ 
       error: 'Failed to submit feedback. Please try again.' 
     });

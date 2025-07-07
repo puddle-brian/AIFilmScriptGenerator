@@ -282,11 +282,27 @@ class FeedbackManager {
                 body: JSON.stringify(feedbackData)
             });
             
+            const result = await response.json();
+            
+            // Handle server errors with specific messages
             if (!response.ok) {
-                throw new Error('Failed to submit feedback');
+                let errorMessage = 'Failed to submit feedback';
+                
+                if (response.status === 503 || response.status === 504) {
+                    errorMessage = '🔄 Services starting up, please wait a moment and try again...';
+                } else if (response.status === 400 && result.error) {
+                    errorMessage = result.error; // Show validation errors
+                } else if (result.error) {
+                    errorMessage = result.error;
+                }
+                
+                throw new Error(errorMessage);
             }
             
-            const result = await response.json();
+            // Handle API errors that returned 200 but contain errors
+            if (result.error) {
+                throw new Error(result.error);
+            }
             
             // Show success message
             this.showSuccessMessage();
@@ -298,7 +314,10 @@ class FeedbackManager {
             
         } catch (error) {
             console.error('Error submitting feedback:', error);
-            alert('Failed to submit feedback. Please try again.');
+            
+            // Show specific error message from server or generic fallback
+            const errorMessage = error.message || 'Failed to submit feedback. Please try again.';
+            alert(errorMessage);
             
             // Re-enable submit button
             submitButton.disabled = false;
