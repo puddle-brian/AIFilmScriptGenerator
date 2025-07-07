@@ -1418,16 +1418,22 @@ app.get('/api/project/:id', async (req, res) => {
 // 🆕 MIGRATED: Load project using ProjectService (Phase 2C)
 app.get('/api/load-project/:projectPath', async (req, res) => {
   try {
-    // Check if new services are available
-    if (!projectService) {
+    const projectPath = req.params.projectPath;
+    const username = req.query.username || 'guest';
+    
+    // Check if new services are available, use fallback if not
+    if (!projectService && dbClient && parseProjectContext) {
+      console.log(`🔄 Using fallback project loading for "${projectPath}" (direct database access)`);
+      return await handleLoadProjectFallback(req, res, dbClient, parseProjectContext, projectPath, username);
+    }
+    
+    // Check if no services are available
+    if (!projectService && !dbClient) {
       return res.status(503).json({ 
         error: 'Project service temporarily unavailable. Please try again later.',
         fallback: 'Server restarting...'
       });
     }
-
-    const projectPath = req.params.projectPath;
-    const username = req.query.username || 'guest';
     
     console.log(`🆕 Using ProjectService to load project "${projectPath}" for user "${username}"`);
     
@@ -1458,6 +1464,57 @@ app.get('/api/load-project/:projectPath', async (req, res) => {
     });
   }
 });
+
+// Fallback project loading handler (when ProjectService is unavailable)
+async function handleLoadProjectFallback(req, res, dbClient, parseProjectContext, projectPath, username) {
+  try {
+    console.log(`🔄 Fallback project loading for user: ${username}, project: ${projectPath}`);
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Load project from database
+    const projectResult = await dbClient.query(
+      'SELECT project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 AND project_name = $2',
+      [userId, projectPath]
+    );
+    
+    if (projectResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Project not found in database' });
+    }
+    
+    const dbProject = projectResult.rows[0];
+    const projectContext = parseProjectContext(dbProject.project_context);
+    
+    console.log(`✅ Fallback project loading completed: "${projectContext.storyInput?.title || projectPath}"`);
+    
+    res.json({
+      success: true,
+      project: projectContext,
+      message: 'Project loaded successfully from database',
+      source: 'database',
+      fallbackMode: true,
+      loadedAt: new Date().toISOString(),
+      projectMetadata: {
+        createdAt: dbProject.created_at,
+        updatedAt: dbProject.updated_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('Fallback project loading error:', error);
+    res.status(500).json({ 
+      error: 'Failed to load project',
+      details: error.message,
+      fallbackMode: true
+    });
+  }
+}
 
 // Load existing plot points for a project (database version)
 app.get('/api/load-plot-points/:projectPath', async (req, res) => {
