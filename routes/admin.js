@@ -5,6 +5,39 @@ const router = express.Router();
 // These endpoints handle admin operations: user management, system monitoring, analytics, etc.
 // Most require admin authentication, some are for emergency setup
 
+// Middleware to inject dependencies from app
+router.use((req, res, next) => {
+  req.dbClient = req.app.get('dbClient');
+  req.userService = req.app.get('userService');
+  req.creditService = req.app.get('creditService');
+  req.databaseService = req.app.get('databaseService');
+  req.analyticsService = req.app.get('analyticsService');
+  req.authenticateApiKey = req.app.get('authenticateApiKey');
+  next();
+});
+
+// Helper function to authenticate admin with fallback
+async function authenticateAdmin(req, res, next) {
+  if (!req.authenticateApiKey) {
+    return res.status(503).json({ 
+      error: 'Authentication service unavailable',
+      fallback: 'Server restarting...'
+    });
+  }
+  
+  try {
+    await req.authenticateApiKey(req, res, () => {
+      if (!req.user || !req.user.is_admin) {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+      next();
+    });
+  } catch (error) {
+    console.error('Admin authentication error:', error);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+}
+
 // ==================== CREDIT MANAGEMENT ====================
 
 // POST /api/admin/grant-credits - Grant credits to user
@@ -53,26 +86,27 @@ router.post('/admin/grant-credits', async (req, res) => {
 // ==================== USER MANAGEMENT ====================
 
 // GET /api/admin/users - Get all users with stats
-router.get('/admin/users', async (req, res) => {
-  const authenticateApiKey = req.app.get('authenticateApiKey');
-  await authenticateApiKey(req, res, async () => {
-    if (!req.user.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+router.get('/admin/users', authenticateAdmin, async (req, res) => {
+  try {
+    if (!req.dbClient) {
+      return res.status(503).json({ 
+        error: 'Database service unavailable',
+        fallback: 'Server restarting...' 
+      });
     }
 
-    const dbClient = req.app.get('dbClient');
-    const databaseService = req.app.get('databaseService');
-
+    const { limit = 50, offset = 0, sort = 'created_at', order = 'DESC' } = req.query;
+    
+    // Validate sort parameter
+    const validSortColumns = ['created_at', 'total_cost', 'total_tokens', 'total_requests', 'username'];
+    const sortColumn = validSortColumns.includes(sort) ? sort : 'created_at';
+    const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Try complex query first, fallback to simple if usage_logs_v2 doesn't exist
+    let users;
     try {
-      const { limit = 50, offset = 0, sort = 'created_at', order = 'DESC' } = req.query;
-      
-      // Validate sort parameter
-      const validSortColumns = ['created_at', 'total_cost', 'total_tokens', 'total_requests', 'username'];
-      const sortColumn = validSortColumns.includes(sort) ? sort : 'created_at';
-      const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
-      
       // Get users with basic info, project counts, and usage statistics
-      const users = await dbClient.query(`
+      users = await req.dbClient.query(`
         SELECT 
           u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
           u.total_credits_purchased, u.created_at,
@@ -86,34 +120,61 @@ router.get('/admin/users', async (req, res) => {
         GROUP BY u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
                  u.total_credits_purchased, u.created_at
         ORDER BY 
-          CASE WHEN '${sortColumn}' = 'total_cost' THEN 
+          CASE WHEN $3 = 'total_cost' THEN 
             CASE WHEN COALESCE(SUM(ul.total_cost), 0) > 0 THEN COALESCE(SUM(ul.total_cost), 0) ELSE NULL END
           END ${sortOrder} NULLS LAST,
-          CASE WHEN '${sortColumn}' = 'total_tokens' THEN COALESCE(SUM(COALESCE(ul.input_tokens, 0) + COALESCE(ul.output_tokens, 0)), 0) END ${sortOrder} NULLS LAST,
-          CASE WHEN '${sortColumn}' = 'total_requests' THEN COUNT(ul.id) END ${sortOrder} NULLS LAST,
-          CASE WHEN '${sortColumn}' = 'username' THEN u.username END ${sortOrder} NULLS LAST,
-          CASE WHEN '${sortColumn}' = 'created_at' THEN u.created_at END ${sortOrder} NULLS LAST
+          CASE WHEN $3 = 'total_tokens' THEN COALESCE(SUM(COALESCE(ul.input_tokens, 0) + COALESCE(ul.output_tokens, 0)), 0) END ${sortOrder} NULLS LAST,
+          CASE WHEN $3 = 'total_requests' THEN COUNT(ul.id) END ${sortOrder} NULLS LAST,
+          CASE WHEN $3 = 'username' THEN u.username END ${sortOrder} NULLS LAST,
+          CASE WHEN $3 = 'created_at' THEN u.created_at END ${sortOrder} NULLS LAST
         LIMIT $1 OFFSET $2
-      `, [limit, offset]);
-
-      // Get total count
-      const countResult = await databaseService.getUsersCount();
-      const totalUsers = parseInt(countResult.rows[0].count);
-
-      res.json({
-        users: users.rows,
-        pagination: {
-          total: totalUsers,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: (parseInt(offset) + parseInt(limit)) < totalUsers
-        }
-      });
+      `, [limit, offset, sortColumn]);
     } catch (error) {
-      console.error('Error fetching users:', error);
-      res.status(500).json({ error: 'Failed to fetch users' });
+      console.log('Usage logs table not available, using fallback query:', error.message);
+      // Fallback to simple user query without usage statistics
+      users = await req.dbClient.query(`
+        SELECT 
+          u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
+          u.total_credits_purchased, u.created_at,
+          COUNT(DISTINCT p.id) as project_count,
+          0 as total_tokens,
+          0 as total_cost,
+          0 as total_requests
+        FROM users u
+        LEFT JOIN user_projects p ON u.id = p.user_id 
+        GROUP BY u.id, u.username, u.email, u.credits_remaining, u.is_admin, u.email_verified,
+                 u.total_credits_purchased, u.created_at
+        ORDER BY 
+          CASE WHEN $3 = 'username' THEN u.username END ${sortOrder} NULLS LAST,
+          CASE WHEN $3 = 'created_at' THEN u.created_at END ${sortOrder} NULLS LAST
+        LIMIT $1 OFFSET $2
+      `, [limit, offset, sortColumn]);
     }
-  });
+
+    // Get total count with fallback
+    let totalUsers = 0;
+    if (req.databaseService) {
+      const countResult = await req.databaseService.getUsersCount();
+      totalUsers = parseInt(countResult.rows[0].count);
+    } else {
+      const countResult = await req.dbClient.query('SELECT COUNT(*) as count FROM users');
+      totalUsers = parseInt(countResult.rows[0].count);
+    }
+
+    res.json({
+      users: users.rows,
+      pagination: {
+        total: totalUsers,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: (parseInt(offset) + parseInt(limit)) < totalUsers
+      },
+      fallbackMode: !req.databaseService
+    });
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
 });
 
 // DELETE /api/admin/user/:userId - Delete user
@@ -288,69 +349,91 @@ router.delete('/admin/delete-user/:username', async (req, res) => {
 // ==================== SYSTEM MONITORING ====================
 
 // GET /api/admin/system-status - Get system status
-router.get('/admin/system-status', async (req, res) => {
-  const authenticateApiKey = req.app.get('authenticateApiKey');
-  await authenticateApiKey(req, res, async () => {
-    if (!req.user.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    const dbClient = req.app.get('dbClient');
-    const databaseService = req.app.get('databaseService');
-
-    try {
-      // Test database connection
-      const dbTest = await dbClient.query('SELECT NOW()');
-      
-      // Get system metrics
-      const usersCount = await databaseService.getUsersCount();
-      const projectsCount = await databaseService.getProjectsCount();
-      
-      res.json({
-        database: '✅ Connected',
+router.get('/admin/system-status', authenticateAdmin, async (req, res) => {
+  try {
+    if (!req.dbClient) {
+      return res.status(503).json({
+        database: '❌ Unavailable',
         api: '✅ Active',
-        totalUsers: parseInt(usersCount.rows[0].count),
-        activeProjects: parseInt(projectsCount.rows[0].count),
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error checking system status:', error);
-      res.status(500).json({ 
-        database: '❌ Error',
-        api: '❌ Error',
         totalUsers: 0,
         activeProjects: 0,
-        error: error.message 
+        error: 'Database service unavailable',
+        fallback: 'Server restarting...'
       });
     }
-  });
+
+    // Test database connection
+    const dbTest = await req.dbClient.query('SELECT NOW()');
+    
+    // Get system metrics with fallback
+    let usersCount = { rows: [{ count: '0' }] };
+    let projectsCount = { rows: [{ count: '0' }] };
+    
+    if (req.databaseService) {
+      // Use service if available
+      usersCount = await req.databaseService.getUsersCount();
+      projectsCount = await req.databaseService.getProjectsCount();
+    } else {
+      // Fallback to direct database queries
+      usersCount = await req.dbClient.query('SELECT COUNT(*) as count FROM users');
+      projectsCount = await req.dbClient.query('SELECT COUNT(*) as count FROM user_projects');
+    }
+    
+    res.json({
+      database: '✅ Connected',
+      api: '✅ Active',
+      totalUsers: parseInt(usersCount.rows[0].count),
+      activeProjects: parseInt(projectsCount.rows[0].count),
+      timestamp: new Date().toISOString(),
+      fallbackMode: !req.databaseService
+    });
+  } catch (error) {
+    console.error('Error checking system status:', error);
+    res.status(500).json({ 
+      database: '❌ Error',
+      api: '❌ Error',
+      totalUsers: 0,
+      activeProjects: 0,
+      error: error.message 
+    });
+  }
 });
 
 // GET /api/admin/metrics - Get system metrics
-router.get('/admin/metrics', async (req, res) => {
-  const authenticateApiKey = req.app.get('authenticateApiKey');
-  await authenticateApiKey(req, res, async () => {
-    if (!req.user.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    const databaseService = req.app.get('databaseService');
-
-    try {
-      const usersCount = await databaseService.getUsersCount();
-      const projectsCount = await databaseService.getProjectsCount();
-      
-      res.json({
-        database: '✅ Connected',
-        api: '✅ Active',
-        totalUsers: parseInt(usersCount.rows[0].count),
-        activeProjects: parseInt(projectsCount.rows[0].count)
+router.get('/admin/metrics', authenticateAdmin, async (req, res) => {
+  try {
+    if (!req.dbClient) {
+      return res.status(503).json({ 
+        error: 'Database service unavailable',
+        fallback: 'Server restarting...' 
       });
-    } catch (error) {
-      console.error('Error loading metrics:', error);
-      res.status(500).json({ error: 'Failed to load metrics' });
     }
-  });
+
+    // Get system metrics with fallback
+    let usersCount = { rows: [{ count: '0' }] };
+    let projectsCount = { rows: [{ count: '0' }] };
+    
+    if (req.databaseService) {
+      // Use service if available
+      usersCount = await req.databaseService.getUsersCount();
+      projectsCount = await req.databaseService.getProjectsCount();
+    } else {
+      // Fallback to direct database queries
+      usersCount = await req.dbClient.query('SELECT COUNT(*) as count FROM users');
+      projectsCount = await req.dbClient.query('SELECT COUNT(*) as count FROM user_projects');
+    }
+    
+    res.json({
+      database: '✅ Connected',
+      api: '✅ Active',
+      totalUsers: parseInt(usersCount.rows[0].count),
+      activeProjects: parseInt(projectsCount.rows[0].count),
+      fallbackMode: !req.databaseService
+    });
+  } catch (error) {
+    console.error('Error loading metrics:', error);
+    res.status(500).json({ error: 'Failed to load metrics' });
+  }
 });
 
 // GET /api/admin/chart-data - Get chart data for dashboard
@@ -386,27 +469,55 @@ router.get('/admin/chart-data', async (req, res) => {
 });
 
 // GET /api/admin/analytics - Get comprehensive analytics
-router.get('/admin/analytics', async (req, res) => {
-  const authenticateApiKey = req.app.get('authenticateApiKey');
-  await authenticateApiKey(req, res, async () => {
-    if (!req.user.is_admin) {
-      return res.status(403).json({ error: 'Admin access required' });
+router.get('/admin/analytics', authenticateAdmin, async (req, res) => {
+  try {
+    const { timeframe = '24h' } = req.query;
+    
+    if (!req.dbClient) {
+      return res.status(503).json({ 
+        error: 'Database service unavailable',
+        fallback: 'Server restarting...' 
+      });
     }
-
-    const analyticsService = req.app.get('analyticsService');
-
-    try {
-      const { timeframe = '24h' } = req.query;
-      
-      // Use AnalyticsService for comprehensive analytics
-      const analyticsData = await analyticsService.getComprehensiveAnalytics(timeframe);
-
+    
+    if (req.analyticsService) {
+      // Use AnalyticsService if available
+      const analyticsData = await req.analyticsService.getComprehensiveAnalytics(timeframe);
       res.json(analyticsData);
-    } catch (error) {
-      console.error('Error loading analytics:', error);
-      res.status(500).json({ error: 'Failed to load analytics' });
+    } else {
+      // Fallback to basic analytics
+      console.log('🔄 Using fallback analytics (service unavailable)');
+      
+      // Basic analytics with direct database queries
+      const usersCount = await req.dbClient.query('SELECT COUNT(*) as count FROM users');
+      const projectsCount = await req.dbClient.query('SELECT COUNT(*) as count FROM user_projects');
+      
+      // Try to get usage data if table exists
+      let usageData = { rows: [] };
+      try {
+        usageData = await req.dbClient.query(`
+          SELECT COUNT(*) as total_requests, SUM(total_cost) as total_cost 
+          FROM usage_logs_v2 
+          WHERE timestamp >= NOW() - INTERVAL '24 hours'
+        `);
+      } catch (error) {
+        console.log('Usage logs table not available:', error.message);
+      }
+      
+      res.json({
+        totalUsers: parseInt(usersCount.rows[0].count),
+        totalProjects: parseInt(projectsCount.rows[0].count),
+        totalRequests: usageData.rows[0]?.total_requests || 0,
+        totalCost: usageData.rows[0]?.total_cost || 0,
+        timeframe: timeframe,
+        fallbackMode: true,
+        message: 'Limited analytics - analytics service unavailable'
+      });
     }
-  });
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    res.status(500).json({ error: 'Failed to load analytics' });
+  }
 });
 
 // ==================== TESTING ENDPOINTS ====================
