@@ -15,6 +15,13 @@ async function setupDatabase() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE,
+        password_hash VARCHAR(255),
+        credits_remaining INTEGER DEFAULT 100,
+        is_admin BOOLEAN DEFAULT FALSE,
+        email_verified BOOLEAN DEFAULT FALSE,
+        api_key VARCHAR(255) UNIQUE,
+        last_login TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
@@ -64,7 +71,8 @@ async function setupDatabase() {
 
     // Create a default "guest" user for testing
     await client.query(`
-      INSERT INTO users (username) VALUES ('guest')
+      INSERT INTO users (username, email, api_key, credits_remaining, is_admin) 
+      VALUES ('guest', 'guest@example.com', 'guest-api-key-for-testing', 1000, false)
       ON CONFLICT (username) DO NOTHING;
     `);
     console.log('✅ Default guest user created');

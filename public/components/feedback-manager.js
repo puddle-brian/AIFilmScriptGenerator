@@ -189,11 +189,9 @@ class FeedbackManager {
     }
     
     showFeedbackModal() {
-        // Check if user is authenticated
-        if (!window.appState || !window.appState.isAuthenticated) {
-            alert('Please log in to submit feedback.');
-            return;
-        }
+        // Allow feedback from both authenticated and guest users
+        // Guest users will be handled with fallback authentication
+        console.log('🎯 Opening feedback modal for:', window.appState?.user?.username || 'guest user');
         
         const modalHtml = `
             <div class="feedback-modal" id="feedbackModal">
@@ -282,15 +280,39 @@ class FeedbackManager {
                 body: JSON.stringify(feedbackData)
             });
             
-            const result = await response.json();
+            // Handle specific timeout errors
+            if (response.status === 504) {
+                throw new Error('🔄 Request timed out - services are starting up. Please try again in a few moments.');
+            }
+            
+            if (response.status === 503) {
+                throw new Error('🔄 Services starting up, please wait a moment and try again...');
+            }
+            
+            // Try to parse as JSON, but handle HTML error pages
+            let result;
+            try {
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    result = await response.json();
+                } else {
+                    // Not JSON - probably HTML error page
+                    const text = await response.text();
+                    throw new Error(`Server returned ${response.status}: ${text.substring(0, 100)}`);
+                }
+            } catch (parseError) {
+                if (parseError.message.includes('Server returned')) {
+                    throw parseError; // Re-throw our custom error
+                }
+                // JSON parsing failed - likely HTML error page
+                throw new Error(`Server error (${response.status}): Unable to parse response`);
+            }
             
             // Handle server errors with specific messages
             if (!response.ok) {
                 let errorMessage = 'Failed to submit feedback';
                 
-                if (response.status === 503 || response.status === 504) {
-                    errorMessage = '🔄 Services starting up, please wait a moment and try again...';
-                } else if (response.status === 400 && result.error) {
+                if (response.status === 400 && result.error) {
                     errorMessage = result.error; // Show validation errors
                 } else if (result.error) {
                     errorMessage = result.error;

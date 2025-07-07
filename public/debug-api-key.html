@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug API Key</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .info { background: #f0f8ff; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .error { background: #ffe6e6; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        .success { background: #e6ffe6; padding: 15px; border-radius: 5px; margin: 10px 0; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>🔍 API Key Debug Tool</h1>
+    
+    <div class="info">
+        <h3>Frontend Storage</h3>
+        <p><strong>API Key in localStorage:</strong> <span id="frontendApiKey">Loading...</span></p>
+        <p><strong>User Data in localStorage:</strong> <span id="frontendUserData">Loading...</span></p>
+    </div>
+    
+    <div class="info">
+        <h3>Database Data</h3>
+        <p><strong>BGibson API Key in Database:</strong> user_b5b5c3e96fabb05ea04dc50447550f96c0a09798f993e35e83235f311ee1725e</p>
+    </div>
+    
+    <div class="info">
+        <h3>Test Authentication</h3>
+        <button onclick="testAuth()">Test Current API Key</button>
+        <button onclick="fixApiKey()">Fix API Key</button>
+        <div id="testResult"></div>
+    </div>
+    
+    <script>
+        // Display current localStorage values
+        document.getElementById('frontendApiKey').textContent = localStorage.getItem('apiKey') || 'Not found';
+        document.getElementById('frontendUserData').textContent = localStorage.getItem('userData') || 'Not found';
+        
+        async function testAuth() {
+            const resultDiv = document.getElementById('testResult');
+            const apiKey = localStorage.getItem('apiKey');
+            
+            if (!apiKey) {
+                resultDiv.innerHTML = '<div class="error">No API key found in localStorage</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/feedback/categories', {
+                    method: 'GET',
+                    headers: {
+                        'X-API-Key': apiKey
+                    }
+                });
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<div class="success">✅ API key works! Authentication successful.</div>';
+                } else {
+                    const error = await response.text();
+                    resultDiv.innerHTML = `<div class="error">❌ API key failed: ${response.status} - ${error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Request failed: ${error.message}</div>`;
+            }
+        }
+        
+        async function fixApiKey() {
+            const correctApiKey = 'user_b5b5c3e96fabb05ea04dc50447550f96c0a09798f993e35e83235f311ee1725e';
+            localStorage.setItem('apiKey', correctApiKey);
+            
+            // Reload the page to refresh the display
+            location.reload();
+        }
+    </script>
+</body>
+</html> 
