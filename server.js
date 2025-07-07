@@ -310,56 +310,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Detailed health check for monitoring systems
-app.get('/api/health', authenticateApiKey, async (req, res) => {
-  const healthCheck = {
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0',
-    services: {}
-  };
-
-  try {
-    // Check database
-    const dbStart = Date.now();
-    await databaseService.healthCheck();
-    healthCheck.services.database = {
-      status: 'ok',
-      responseTime: Date.now() - dbStart
-    };
-  } catch (error) {
-    healthCheck.status = 'degraded';
-    healthCheck.services.database = {
-      status: 'error',
-      error: error.message
-    };
-  }
-
-  try {
-    // Check AI service
-    const aiStart = Date.now();
-    await anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
-      max_tokens: 5,
-      messages: [{ role: 'user', content: 'ping' }]
-    });
-    healthCheck.services.ai = {
-      status: 'ok',
-      responseTime: Date.now() - aiStart
-    };
-  } catch (error) {
-    healthCheck.status = 'degraded';
-    healthCheck.services.ai = {
-      status: 'error',
-      error: error.message
-    };
-  }
-
-  const statusCode = healthCheck.status === 'ok' ? 200 : 503;
-  res.status(statusCode).json(healthCheck);
-});
+// Detailed health check has been moved to debug endpoints
+// Public health check is now available at /api/health (no auth required)
 
 // ==================== STRIPE WEBHOOK ENDPOINTS (MUST BE BEFORE JSON MIDDLEWARE) ====================
 // ==================== STRIPE WEBHOOK ENDPOINTS MOVED TO routes/payments.js ====================
@@ -5124,7 +5076,7 @@ if (process.env.VERCEL) {
       next();
     });
     
-    // Health check endpoint
+    // Health check endpoint (public, no auth required)
     app.get('/api/health', (req, res) => {
       res.json({ 
         status: 'ok', 

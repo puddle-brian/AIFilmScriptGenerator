@@ -15,6 +15,82 @@ router.use((req, res, next) => {
   next();
 });
 
+// Fallback project listing handler (when ProjectService is unavailable)
+async function handleListProjectsFallback(req, res, dbClient, parseProjectContext) {
+  const username = req.query.username || 'guest';
+  
+  try {
+    console.log(`🔄 Fallback project listing for user: ${username}`);
+    
+    // Get user ID
+    const userResult = await dbClient.query('SELECT id FROM users WHERE username = $1', [username]);
+    if (userResult.rows.length === 0) {
+      return res.json([]); // Return empty array if user not found
+    }
+    
+    const userId = userResult.rows[0].id;
+    
+    // Get projects from database
+    const projectResult = await dbClient.query(
+      'SELECT project_name, project_context, created_at, updated_at FROM user_projects WHERE user_id = $1 ORDER BY updated_at DESC',
+      [userId]
+    );
+    
+    // Parse and format projects
+    const projects = projectResult.rows.map(dbProject => {
+      try {
+        const projectContext = parseProjectContext(dbProject.project_context);
+        return {
+          projectId: projectContext.projectId || dbProject.project_name,
+          projectName: dbProject.project_name,
+          title: projectContext.storyInput?.title || dbProject.project_name,
+          genre: projectContext.storyInput?.genre || 'Unknown',
+          template: projectContext.selectedTemplate?.name || 'Unknown',
+          createdAt: dbProject.created_at,
+          updatedAt: dbProject.updated_at,
+          currentStep: projectContext.currentStep || 1,
+          progress: calculateProjectProgress(projectContext)
+        };
+      } catch (parseError) {
+        console.error(`Error parsing project ${dbProject.project_name}:`, parseError);
+        return {
+          projectId: dbProject.project_name,
+          projectName: dbProject.project_name,
+          title: dbProject.project_name,
+          genre: 'Unknown',
+          template: 'Unknown',
+          createdAt: dbProject.created_at,
+          updatedAt: dbProject.updated_at,
+          currentStep: 1,
+          progress: 0
+        };
+      }
+    });
+    
+    console.log(`✅ Fallback project listing completed: ${projects.length} projects`);
+    
+    res.json(projects);
+    
+  } catch (error) {
+    console.error('Fallback project listing error:', error);
+    res.status(500).json({ 
+      error: 'Failed to list projects',
+      fallbackMode: true
+    });
+  }
+}
+
+// Helper function to calculate project progress
+function calculateProjectProgress(projectContext) {
+  let progress = 0;
+  if (projectContext.storyInput) progress += 20;
+  if (projectContext.selectedTemplate) progress += 20;
+  if (projectContext.generatedStructure) progress += 20;
+  if (projectContext.plotPoints && projectContext.plotPoints.length > 0) progress += 20;
+  if (projectContext.generatedScenes && projectContext.generatedScenes.length > 0) progress += 20;
+  return progress;
+}
+
 // =====================================
 // PROJECT MANAGEMENT ROUTES
 // =====================================
@@ -164,9 +240,17 @@ router.get('/list-projects', async (req, res) => {
   try {
     // Get services from app-level dependency injection
     const projectService = req.app.get('projectService');
+    const dbClient = req.app.get('dbClient');
+    const parseProjectContext = req.app.get('parseProjectContext');
     
-    // Check if new services are available
-    if (!projectService) {
+    // Fallback to direct database access if ProjectService unavailable
+    if (!projectService && dbClient && parseProjectContext) {
+      console.log('🔄 Using fallback project listing (direct database access)');
+      return await handleListProjectsFallback(req, res, dbClient, parseProjectContext);
+    }
+    
+    // Check if no services are available
+    if (!projectService && !dbClient) {
       return res.status(503).json({ 
         error: 'Project service temporarily unavailable. Please try again later.',
         fallback: 'Server restarting...'
