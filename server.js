@@ -1560,7 +1560,7 @@ app.get('/api/load-plot-points/:projectPath', async (req, res) => {
     
     // Use ProjectService to load project data
     try {
-      const project = await projectService.loadProject(projectPath, username);
+      const project = await projectService.loadProject(username, projectPath);
       
       if (!project) {
         return res.status(404).json({ error: 'Project not found' });
