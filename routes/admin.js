@@ -464,27 +464,38 @@ router.get('/admin/chart-data', authenticateAdmin, async (req, res) => {
       // Fallback to basic chart data
       console.log('🔄 Using fallback chart data (service unavailable)');
       
-      // Generate basic chart data with direct database queries
-      let chartData = {
-        labels: [],
-        datasets: [{
-          label: 'Requests',
-          data: [],
-          borderColor: 'rgb(75, 192, 192)',
-          tension: 0.1
-        }]
-      };
+      // Generate chart data in the format frontend expects
+      let dailyUsage = [];
+      let endpoints = [];
       
-      // Generate labels for the requested timeframe
+      // Generate daily usage data for the requested timeframe
       for (let i = days - 1; i >= 0; i--) {
         const date = new Date();
         date.setDate(date.getDate() - i);
-        chartData.labels.push(date.toISOString().split('T')[0]);
-        chartData.datasets[0].data.push(Math.floor(Math.random() * 10)); // Fallback data
+        const dateStr = date.toISOString().split('T')[0];
+        
+        dailyUsage.push({
+          date: dateStr,
+          requests: Math.floor(Math.random() * 50) + 10, // 10-60 requests
+          cost: Math.floor(Math.random() * 500) / 100, // $0.00-$5.00
+          tokens: Math.floor(Math.random() * 5000) + 1000, // 1000-6000 tokens
+          successRate: Math.floor(Math.random() * 10) + 90, // 90-100%
+          errorRate: Math.floor(Math.random() * 10) // 0-10%
+        });
       }
       
+      // Generate endpoint data
+      endpoints = [
+        { name: 'Generate Script', requests: Math.floor(Math.random() * 100) + 50 },
+        { name: 'Analyze Story', requests: Math.floor(Math.random() * 80) + 30 },
+        { name: 'Create Characters', requests: Math.floor(Math.random() * 60) + 20 },
+        { name: 'Generate Scenes', requests: Math.floor(Math.random() * 40) + 15 },
+        { name: 'Plot Points', requests: Math.floor(Math.random() * 30) + 10 }
+      ];
+      
       res.json({
-        ...chartData,
+        dailyUsage,
+        endpoints,
         fallbackMode: true,
         message: 'Basic chart data - analytics service unavailable'
       });
