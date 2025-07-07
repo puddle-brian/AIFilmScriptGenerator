@@ -65,6 +65,12 @@ setupGlobalErrorHandlers();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Configure Express for serverless deployment
+if (process.env.VERCEL) {
+  app.set('trust proxy', 1); // Trust first proxy (Vercel)
+  console.log('✅ Express trust proxy configured for Vercel');
+}
+
 // Initialize Claude (Anthropic)
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -5087,8 +5093,7 @@ const startServer = async () => {
 
 // For Vercel serverless deployment
 if (process.env.VERCEL) {
-  // Initialize database for serverless with timeout protection
-  console.log('🔧 Serverless mode - initializing database with pooling');
+  console.log('🔧 Serverless mode - initializing with guaranteed route mounting');
   
   // Function to set up dependency injection (with or without services)
   const setupDependencyInjection = () => {
@@ -5113,6 +5118,21 @@ if (process.env.VERCEL) {
   
   // Function to mount routes
   const mountRoutes = () => {
+    // Add debug middleware to log all requests
+    app.use((req, res, next) => {
+      console.log(`📍 ${req.method} ${req.path} - ${new Date().toISOString()}`);
+      next();
+    });
+    
+    // Health check endpoint
+    app.get('/api/health', (req, res) => {
+      res.json({ 
+        status: 'ok', 
+        timestamp: new Date().toISOString(),
+        environment: process.env.VERCEL ? 'serverless' : 'local'
+      });
+    });
+    
     app.use('/api/auth', authRoutes.router);
     app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
     app.use('/api', generationRoutes.router);
@@ -5121,36 +5141,53 @@ if (process.env.VERCEL) {
     app.use('/api', libraryRoutes.router);
     app.use('/api', adminRoutes.router);
     app.use('/api/feedback', feedbackRoutes);
+    console.log('✅ All routes mounted successfully');
   };
   
-  initializeDatabase().then(async () => {
-    console.log('✅ Serverless database initialized successfully');
-    
+  // ALWAYS mount routes first to ensure availability
+  setupDependencyInjection();
+  mountRoutes();
+  
+  // Initialize database and services asynchronously (non-blocking)
+  (async () => {
     try {
-      // Initialize services for serverless
-      await initializeServices();
-      console.log('✅ Services initialized successfully');
-    } catch (serviceError) {
-      console.error('⚠️  Service initialization failed:', serviceError.message);
-      console.log('📝 Continuing with basic functionality...');
+      console.log('🔄 Starting async initialization...');
+      
+      // Initialize database connection first
+      try {
+        await connectToDatabase();
+        console.log('✅ Database connection established');
+      } catch (dbError) {
+        console.error('⚠️  Database connection failed:', dbError.message);
+      }
+      
+      // Initialize database tables
+      try {
+        await initializeDatabase();
+        console.log('✅ Database tables initialized');
+      } catch (tableError) {
+        console.error('⚠️  Database table initialization failed:', tableError.message);
+      }
+      
+      // Initialize services
+      try {
+        await initializeServices();
+        console.log('✅ Services initialized');
+      } catch (serviceError) {
+        console.error('⚠️  Service initialization failed:', serviceError.message);
+        console.error('🔍 Service error details:', serviceError.stack);
+      }
+      
+      // Update dependency injection with initialized services
+      setupDependencyInjection();
+      console.log('✅ Dependency injection updated');
+      
+    } catch (error) {
+      console.error('⚠️  Async initialization failed:', error.message);
+      console.error('🔍 Error details:', error.stack);
+      console.log('📝 Application running with limited functionality');
     }
-    
-    // Set up dependency injection regardless of service status
-    setupDependencyInjection();
-    
-    // Mount route modules
-    mountRoutes();
-    
-    console.log('✅ Serverless route modules mounted successfully');
-  }).catch((error) => {
-    console.error('⚠️  Serverless database initialization failed:', error.message);
-    
-    // Even if database init fails, set up basic dependency injection and routes
-    setupDependencyInjection();
-    mountRoutes();
-    
-    console.log('⚠️  Routes mounted with limited functionality');
-  });
+  })();
   
   // Export the Express app for Vercel
   module.exports = app;

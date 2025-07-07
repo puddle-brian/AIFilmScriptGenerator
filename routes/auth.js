@@ -7,9 +7,88 @@ const router = express.Router();
 // Import authentication middleware from dedicated middleware file
 const { authenticateApiKey, checkCredits, requireAdmin, rateLimit, optionalAuth } = require('../middleware/auth');
 
+// Fallback login handler (when AuthService is unavailable)
+async function handleLoginFallback(req, res, dbClient) {
+  const { email, password, rememberMe = false } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  
+  try {
+    // Get user by email
+    const result = await dbClient.query(
+      'SELECT id, username, email, password_hash, credits_remaining, is_admin, email_verified, api_key FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    const user = result.rows[0];
+    
+    if (!user.password_hash) {
+      return res.status(401).json({ error: 'Password not set for this user' });
+    }
+    
+    // Verify password
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid email or password' });
+    }
+    
+    // Update last login
+    await dbClient.query(
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
+      [user.id]
+    );
+    
+    console.log(`✅ Fallback login successful for user: ${user.username}`);
+    
+    // Return user data and API key
+    res.json({
+      message: 'Login successful',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        credits_remaining: user.credits_remaining,
+        is_admin: user.is_admin,
+        email_verified: user.email_verified
+      },
+      apiKey: user.api_key,
+      rememberMe,
+      fallbackMode: true,
+      generatedBy: 'Fallback authentication v1.0'
+    });
+    
+  } catch (error) {
+    console.error('Fallback login error:', error);
+    res.status(500).json({ 
+      error: 'Login failed. Please try again.',
+      fallbackMode: true
+    });
+  }
+}
+
 // =====================================
 // AUTHENTICATION ROUTES
 // =====================================
+
+// Simple test endpoint
+router.get('/test', (req, res) => {
+  res.json({
+    message: 'Auth routes are working',
+    timestamp: new Date().toISOString(),
+    availableServices: {
+      authService: !!req.app.get('authService'),
+      dbClient: !!req.app.get('dbClient'),
+      userService: !!req.app.get('userService')
+    }
+  });
+});
 
 // 🆕 MIGRATED: User Registration using AuthService (Phase 2B)
 router.post('/register', async (req, res) => {
@@ -86,23 +165,22 @@ router.post('/login', async (req, res) => {
   try {
     // Get services from app-level dependency injection
     const authService = req.app.get('authService');
+    const dbClient = req.app.get('dbClient');
     
-    if (!authService) {
-      console.error('🚨 AuthService not available for login - checking dependency injection');
-      const services = {
-        authService: !!req.app.get('authService'),
-        dbClient: !!req.app.get('dbClient'),
-        userService: !!req.app.get('userService')
-      };
-      console.error('🔍 Available services:', services);
-      
+    if (!authService && !dbClient) {
+      console.error('🚨 No services available for login - using fallback');
       return res.status(503).json({ 
         error: 'Authentication service temporarily unavailable. Please try again later.',
-        debug: 'AuthService not initialized - check server logs',
+        debug: 'All services unavailable - check server logs',
         fallback: 'Server restarting...',
-        availableServices: services,
         troubleshooting: 'Try /api/debug/services for more details'
       });
+    }
+    
+    // Fallback to direct database access if AuthService unavailable
+    if (!authService && dbClient) {
+      console.log('🔄 Using fallback authentication (direct database access)');
+      return await handleLoginFallback(req, res, dbClient);
     }
 
     const { email, password, rememberMe = false } = req.body;
