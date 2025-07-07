@@ -86,85 +86,183 @@ class FeedbackManager {
                 
                 .feedback-modal-content {
                     background: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    max-width: 500px;
+                    border-radius: 8px;
                     width: 90%;
-                    max-height: 80vh;
+                    max-width: 600px;
+                    min-width: 500px;
+                    max-height: 90vh;
                     overflow-y: auto;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
                     position: relative;
                 }
                 
                 .feedback-modal-header {
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border-radius: 8px 8px 0 0;
+                    padding: 1.5rem 2rem;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    margin-bottom: 20px;
+                }
+                
+                .feedback-modal-header h3 {
+                    color: white;
+                    font-weight: 600;
+                    margin: 0;
+                    font-size: 1.25rem;
                 }
                 
                 .feedback-modal-close {
-                    background: none;
-                    border: none;
-                    font-size: 24px;
+                    background: rgba(255, 255, 255, 0.15);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    color: white;
+                    opacity: 0.9;
+                    font-weight: 500;
+                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 6px;
                     cursor: pointer;
-                    color: #666;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 18px;
+                    transition: all 0.2s;
+                }
+                
+                .feedback-modal-close:hover {
+                    background: #ef4444;
+                    border-color: #ef4444;
+                    color: white;
+                    opacity: 1;
+                    transform: scale(1.05);
+                    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+                }
+                
+                .feedback-modal-body {
+                    padding: 2rem;
                 }
                 
                 .feedback-form {
                     display: flex;
                     flex-direction: column;
-                    gap: 15px;
+                    gap: 1.5rem;
+                }
+                
+                .feedback-form .form-group {
+                    margin-bottom: 0;
                 }
                 
                 .feedback-form label {
                     font-weight: 500;
-                    color: #333;
+                    color: #374151;
+                    margin-bottom: 0.5rem;
+                    display: block;
+                    font-size: 0.95rem;
                 }
                 
                 .feedback-form select,
                 .feedback-form textarea {
-                    padding: 10px;
-                    border: 1px solid #ddd;
-                    border-radius: 5px;
-                    font-size: 14px;
+                    width: 100%;
+                    padding: 0.75rem;
+                    border: 1px solid #d1d5db;
+                    border-radius: 6px;
+                    font-size: 0.95rem;
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                    font-family: inherit;
+                }
+                
+                .feedback-form select:focus,
+                .feedback-form textarea:focus {
+                    outline: none;
+                    border-color: #667eea;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
                 }
                 
                 .feedback-form textarea {
                     resize: vertical;
-                    min-height: 120px;
+                    min-height: 140px;
+                    line-height: 1.5;
+                }
+                
+                .feedback-form small {
+                    color: #6b7280;
+                    font-size: 0.875rem;
+                    margin-top: 0.25rem;
+                    display: block;
+                }
+                
+                .feedback-modal-footer {
+                    padding: 1.5rem 2rem;
+                    border-top: 1px solid #e5e7eb;
+                    background: #f9fafb;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 0.75rem;
+                    border-radius: 0 0 8px 8px;
                 }
                 
                 .feedback-form-actions {
                     display: flex;
-                    gap: 10px;
-                    justify-content: flex-end;
+                    gap: 0.75rem;
                 }
                 
                 .feedback-form-actions button {
-                    padding: 10px 20px;
-                    border: none;
-                    border-radius: 5px;
+                    padding: 0.625rem 1.25rem;
+                    font-weight: 500;
+                    border-radius: 6px;
+                    transition: all 0.2s;
                     cursor: pointer;
-                    font-size: 14px;
+                    font-size: 0.95rem;
                 }
                 
                 .feedback-cancel {
-                    background: #f8f9fa;
-                    color: #666;
+                    background: #f3f4f6;
+                    color: #6b7280;
+                    border: 1px solid #d1d5db;
+                }
+                
+                .feedback-cancel:hover {
+                    background: #e5e7eb;
+                    color: #374151;
                 }
                 
                 .feedback-submit {
-                    background: #007bff;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                     color: white;
+                    border: none;
                 }
                 
                 .feedback-submit:hover {
-                    background: #0056b3;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
                 }
                 
                 .feedback-submit:disabled {
-                    background: #ccc;
+                    background: #d1d5db;
                     cursor: not-allowed;
+                    transform: none;
+                    box-shadow: none;
+                }
+                
+                /* Mobile responsiveness */
+                @media (max-width: 768px) {
+                    .feedback-modal-content {
+                        min-width: auto;
+                        margin: 1rem;
+                        max-height: 90vh;
+                    }
+                    
+                    .feedback-modal-header,
+                    .feedback-modal-body,
+                    .feedback-modal-footer {
+                        padding: 1rem;
+                    }
+                    
+                    .feedback-form {
+                        gap: 1rem;
+                    }
                 }
             </style>
         `;
@@ -200,38 +298,41 @@ class FeedbackManager {
                         <h3>💬 Send us your feedback</h3>
                         <button class="feedback-modal-close" onclick="window.feedbackManagerInstance.hideFeedbackModal()">&times;</button>
                     </div>
-                    <form class="feedback-form" id="feedbackForm">
-                        <div>
-                            <label for="feedbackCategory">What type of feedback is this?</label>
-                            <select id="feedbackCategory" name="category" required>
-                                <option value="">Select a category</option>
-                                <option value="bug">🐛 Bug Report</option>
-                                <option value="feature">💡 Feature Request</option>
-                                <option value="other">💭 Other</option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label for="feedbackMessage">Tell us what you think:</label>
-                            <textarea 
-                                id="feedbackMessage" 
-                                name="message" 
-                                placeholder="Describe your feedback, suggestion, or issue..."
-                                maxlength="1000"
-                                required
-                            ></textarea>
-                            <small style="color: #666;">1000 characters maximum</small>
-                        </div>
-                        
+                    <div class="feedback-modal-body">
+                        <form class="feedback-form" id="feedbackForm">
+                            <div class="form-group">
+                                <label for="feedbackCategory">What type of feedback is this?</label>
+                                <select id="feedbackCategory" name="category" required>
+                                    <option value="">Select a category</option>
+                                    <option value="bug">🐛 Bug Report</option>
+                                    <option value="feature">💡 Feature Request</option>
+                                    <option value="other">💭 Other</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="feedbackMessage">Tell us what you think:</label>
+                                <textarea 
+                                    id="feedbackMessage" 
+                                    name="message" 
+                                    placeholder="Describe your feedback, suggestion, or issue..."
+                                    maxlength="1000"
+                                    required
+                                ></textarea>
+                                <small>1000 characters maximum</small>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="feedback-modal-footer">
                         <div class="feedback-form-actions">
                             <button type="button" class="feedback-cancel" onclick="window.feedbackManagerInstance.hideFeedbackModal()">
                                 Cancel
                             </button>
-                            <button type="submit" class="feedback-submit">
+                            <button type="submit" class="feedback-submit" form="feedbackForm">
                                 Send Feedback
                             </button>
                         </div>
-                    </form>
+                    </div>
                 </div>
             </div>
         `;
