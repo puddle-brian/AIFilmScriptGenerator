@@ -152,7 +152,11 @@ class LibraryManager {
                     if (response.ok) {
                         const libraries = await response.json();
                         if (type === 'characters' || type === 'storyconcepts') {
-                            userLibraries[type] = libraries.map(lib => lib.entry_data);
+                            // For characters and story concepts, preserve both entry_data and entry_key
+                            userLibraries[type] = libraries.map(lib => ({
+                                ...lib.entry_data,
+                                entry_key: lib.entry_key
+                            }));
                         } else {
                             userLibraries[type] = libraries.map(lib => lib.entry_data.name);
                         }

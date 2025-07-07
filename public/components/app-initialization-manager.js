@@ -149,7 +149,7 @@ class AppInitializationManager {
                         appState.isLoadedProject = false;
                         saveToLocalStorage();
                     }
-                } else if (appState.currentStep > 1) {
+                } else if (appState.currentStep >= 1) {
                     console.log('Checking navigation for non-loaded project...');
                     console.log('Current step:', appState.currentStep);
                     console.log('Can navigate to step 7?', canNavigateToStep(7));
