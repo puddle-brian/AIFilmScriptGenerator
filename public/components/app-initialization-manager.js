@@ -260,8 +260,10 @@ class AppInitializationManager {
                 console.log(`PopulateDropdowns: Adding ${userLibraries.directors?.length || 0} directors`);
                 (userLibraries.directors || []).forEach(director => {
                     const option = document.createElement('option');
-                    option.value = director;
-                    option.textContent = director;
+                    // Handle both string and object formats
+                    const directorName = typeof director === 'string' ? director : director.name;
+                    option.value = directorName;
+                    option.textContent = directorName;
                     directorSelect.appendChild(option);
                 });
             }
@@ -275,8 +277,10 @@ class AppInitializationManager {
                 console.log(`PopulateDropdowns: Adding ${userLibraries.screenwriters?.length || 0} screenwriters`);
                 (userLibraries.screenwriters || []).forEach(screenwriter => {
                     const option = document.createElement('option');
-                    option.value = screenwriter;
-                    option.textContent = screenwriter;
+                    // Handle both string and object formats
+                    const screenwriterName = typeof screenwriter === 'string' ? screenwriter : screenwriter.name;
+                    option.value = screenwriterName;
+                    option.textContent = screenwriterName;
                     screenwriterSelect.appendChild(option);
                 });
             }
@@ -290,8 +294,10 @@ class AppInitializationManager {
                 console.log(`PopulateDropdowns: Adding ${userLibraries.films?.length || 0} films`);
                 (userLibraries.films || []).forEach(film => {
                     const option = document.createElement('option');
-                    option.value = film;
-                    option.textContent = film;
+                    // Handle both string and object formats
+                    const filmName = typeof film === 'string' ? film : film.name;
+                    option.value = filmName;
+                    option.textContent = filmName;
                     filmSelect.appendChild(option);
                 });
             }
@@ -305,8 +311,10 @@ class AppInitializationManager {
                 console.log(`PopulateDropdowns: Adding ${userLibraries.tones?.length || 0} tones`);
                 (userLibraries.tones || []).forEach(tone => {
                     const option = document.createElement('option');
-                    option.value = tone;
-                    option.textContent = tone;
+                    // Handle both string and object formats
+                    const toneName = typeof tone === 'string' ? tone : tone.name;
+                    option.value = toneName;
+                    option.textContent = toneName;
                     toneSelect.appendChild(option);
                 });
             }
