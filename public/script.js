@@ -399,7 +399,26 @@ function editStoryConcept() {
     if (!appState.currentStoryConcept) return;
     
     const config = LIBRARY_TYPES.storyconcept;
-    showUniversalLibrarySaveModal('storyconcept', appState.currentStoryConcept.title, config, true);
+    
+    // Generate the key for the existing story concept
+    const storyConceptKey = appState.currentStoryConcept.title.toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+        .replace(/\s+/g, '-')         // Replace spaces with hyphens
+        .replace(/-+/g, '-')          // Remove multiple hyphens
+        .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
+    
+    // Set the editing state to indicate this is an update, not a new entry
+    window.editingLibraryEntry = {
+        type: 'storyconcepts',
+        key: storyConceptKey,
+        data: {
+            name: appState.currentStoryConcept.title,
+            description: appState.currentStoryConcept.logline || ''
+        },
+        originalName: appState.currentStoryConcept.title
+    };
+    
+    showUniversalLibrarySaveModal('storyconcept', appState.currentStoryConcept.title, config, false);
     
     // Pre-populate the modal with current values
     setTimeout(() => {
