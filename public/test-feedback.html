@@ -40,6 +40,12 @@
     </div>
     
     <div class="test-section">
+        <h3>3.5. Test Rate Limiting</h3>
+        <button onclick="testRateLimit()">Test /api/feedback/test-rate-limit</button>
+        <div id="rateLimitResult"></div>
+    </div>
+    
+    <div class="test-section">
         <h3>4. Test Feedback Submission</h3>
         <form id="feedbackForm">
             <select id="category" required>
@@ -123,6 +129,32 @@
                     result.innerHTML = '<div class="success">✅ Categories work! ' + JSON.stringify(data) + '</div>';
                 } else {
                     result.innerHTML = '<div class="error">❌ Categories failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testRateLimit() {
+            const result = document.getElementById('rateLimitResult');
+            result.innerHTML = '<div class="info">Testing rate limiting...</div>';
+            
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) {
+                result.innerHTML = '<div class="error">❌ No API key found in localStorage</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/feedback/test-rate-limit', {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Rate limiting works! ' + JSON.stringify(data) + '</div>';
+                } else {
+                    result.innerHTML = '<div class="error">❌ Rate limiting failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
                 }
             } catch (error) {
                 result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';

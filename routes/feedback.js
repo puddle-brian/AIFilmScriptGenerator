@@ -61,7 +61,8 @@ async function handleSubmitFeedbackFallback(req, res, dbClient, timeoutId = null
 // =====================================
 
 // Submit feedback (requires authentication)
-router.post('/submit', authenticateApiKey, rateLimit, async (req, res) => {
+router.post('/submit', authenticateApiKey, async (req, res) => {
+  console.log('🎯 Feedback submission started for user:', req.user?.username || 'unknown');
   // Add timeout to prevent hanging
   const timeoutId = setTimeout(() => {
     if (!res.headersSent) {
@@ -194,6 +195,16 @@ router.get('/test-auth', authenticateApiKey, (req, res) => {
     user: req.user ? req.user.username : 'No user',
     timestamp: new Date().toISOString(),
     status: 'authenticated'
+  });
+});
+
+// Test endpoint with rate limiting (to isolate the issue)
+router.get('/test-rate-limit', authenticateApiKey, rateLimit, (req, res) => {
+  res.json({
+    message: 'Rate limiting is working',
+    user: req.user ? req.user.username : 'No user',
+    timestamp: new Date().toISOString(),
+    status: 'rate-limited'
   });
 });
 
