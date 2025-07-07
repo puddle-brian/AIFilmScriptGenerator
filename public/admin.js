@@ -2339,6 +2339,10 @@ function displayFeedbackStats(stats) {
                 <div class="stat-label">Total Feedback</div>
             </div>
             <div class="feedback-stat">
+                <div class="stat-number">${stats.general_feedback || 0}</div>
+                <div class="stat-label">General</div>
+            </div>
+            <div class="feedback-stat">
                 <div class="stat-number">${stats.bug_reports || 0}</div>
                 <div class="stat-label">Bug Reports</div>
             </div>
@@ -2397,7 +2401,7 @@ function displayFeedback(feedback) {
         <div class="feedback-item">
             <div class="feedback-header">
                 <div class="feedback-category ${item.category}">
-                    ${item.category === 'bug' ? '🐛' : item.category === 'feature' ? '💡' : '💭'} 
+                    ${item.category === 'bug' ? '🐛' : item.category === 'feature' ? '💡' : item.category === 'general' ? '💬' : '💭'} 
                     ${item.category.charAt(0).toUpperCase() + item.category.slice(1)}
                 </div>
                 <div class="feedback-date">${new Date(item.created_at).toLocaleDateString()}</div>

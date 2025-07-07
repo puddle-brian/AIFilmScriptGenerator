@@ -103,6 +103,7 @@ class FeedbackService {
       const result = await this.client.query(`
         SELECT 
           COUNT(*) as total_feedback,
+          COUNT(*) FILTER (WHERE category = 'general') as general_feedback,
           COUNT(*) FILTER (WHERE category = 'bug') as bug_reports,
           COUNT(*) FILTER (WHERE category = 'feature') as feature_requests,
           COUNT(*) FILTER (WHERE category = 'other') as other_feedback,

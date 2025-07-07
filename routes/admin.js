@@ -1008,21 +1008,21 @@ router.get('/admin/feedback/stats', authenticateAdmin, async (req, res) => {
       // Fallback to direct database query for basic stats
       console.log('🔄 Using fallback feedback stats (service unavailable)');
       
-      const totalResult = await req.dbClient.query('SELECT COUNT(*) as total FROM feedback');
-      const categoryResult = await req.dbClient.query(`
-        SELECT category, COUNT(*) as count 
-        FROM feedback 
-        GROUP BY category 
-        ORDER BY count DESC
+      const result = await req.dbClient.query(`
+        SELECT 
+          COUNT(*) as total_feedback,
+          COUNT(*) FILTER (WHERE category = 'general') as general_feedback,
+          COUNT(*) FILTER (WHERE category = 'bug') as bug_reports,
+          COUNT(*) FILTER (WHERE category = 'feature') as feature_requests,
+          COUNT(*) FILTER (WHERE category = 'other') as other_feedback,
+          COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as recent_feedback
+        FROM feedback
       `);
       
       res.json({
         success: true,
-        stats: {
-          total: parseInt(totalResult.rows[0].total),
-          byCategory: categoryResult.rows,
-          fallbackMode: true
-        }
+        stats: result.rows[0],
+        fallbackMode: true
       });
     }
   } catch (error) {
