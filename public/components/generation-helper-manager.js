@@ -60,6 +60,45 @@ class GenerationHelperManager {
         return false;
     }
 
+    // Normalize plot points format to ensure consistency
+    normalizePlotPointsFormat(plotPointsData, structureKey) {
+        if (!plotPointsData) {
+            return [];
+        }
+        
+        // Already in correct format (direct array)
+        if (Array.isArray(plotPointsData)) {
+            return plotPointsData;
+        }
+        
+        // Handle database object format with plotPoints array inside
+        if (typeof plotPointsData === 'object' && plotPointsData !== null) {
+            if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                console.log(`🔧 NORMALIZE: Converting object format to array for ${structureKey}`);
+                return plotPointsData.plotPoints;
+            }
+        }
+        
+        // Handle string format (might be stored as stringified JSON)
+        if (typeof plotPointsData === 'string') {
+            try {
+                const parsed = JSON.parse(plotPointsData);
+                if (Array.isArray(parsed)) {
+                    console.log(`🔧 NORMALIZE: Converting string array format for ${structureKey}`);
+                    return parsed;
+                } else if (parsed && parsed.plotPoints && Array.isArray(parsed.plotPoints)) {
+                    console.log(`🔧 NORMALIZE: Converting string object format for ${structureKey}`);
+                    return parsed.plotPoints;
+                }
+            } catch (e) {
+                console.log(`🔧 NORMALIZE: String parse error for ${structureKey}:`, e);
+            }
+        }
+        
+        console.log(`🔧 NORMALIZE: Unknown format for ${structureKey}, returning empty array`);
+        return [];
+    }
+
     // Check if all previous acts have plot points generated (prerequisite for current act)
     canGeneratePlotPointsForElement(structureKey) {
         if (!appState.generatedStructure) return false;
@@ -197,5 +236,8 @@ class GenerationHelperManager {
 
 // Create global instance
 const generationHelperManager = new GenerationHelperManager();
+
+// Expose globally for scene generation access
+window.generationHelperManager = generationHelperManager;
 
 console.log('🔧 GenerationHelperManager component loaded successfully'); 

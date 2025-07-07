@@ -108,13 +108,29 @@ class SceneGenerationManager {
                     
                     appState.generatedScenes[structureKey] = allScenes;
                     
-                    // Update preview with act summary
+                    // Update the display in real-time after each act
+                    displayScenes(appState.generatedScenes);
+                    
+                    // Update preview with actual scene content (like dialogue does)
                     const sceneCount = data.totalScenesGenerated || 0;
                     const plotPointCount = data.plotPointScenes?.length || 0;
-                    progressTracker.updatePreview(
-                        `Generated ${sceneCount} scenes across ${plotPointCount} plot points`,
-                        `Act ${actNumber}`
-                    );
+                    
+                    // Show the actual generated scenes in the processing window
+                    if (data.plotPointScenes && data.plotPointScenes.length > 0) {
+                        const sceneContentPreview = data.plotPointScenes.map(plotPointData => {
+                            const scenesList = plotPointData.scenes.map(scene => 
+                                `**${scene.title}**\n${scene.description}`
+                            ).join('\n\n');
+                            return `**Plot Point ${plotPointData.plotPointIndex + 1}:** ${plotPointData.plotPoint}\n\n${scenesList}`;
+                        }).join('\n\n---\n\n');
+                        
+                        progressTracker.updatePreview(sceneContentPreview, `Act ${actNumber}`);
+                    } else {
+                        progressTracker.updatePreview(
+                            `Generated ${sceneCount} scenes across ${plotPointCount} plot points`,
+                            `Act ${actNumber}`
+                        );
+                    }
                     
                     // Increment progress step
                     progressTracker.incrementStep(`Generated ${sceneCount} scenes for ${structureKey}`);
@@ -127,7 +143,6 @@ class SceneGenerationManager {
             displayScenes(appState.generatedScenes);
             
             // Update progress meters after generating scenes
-            console.log('🔍 PROGRESS UPDATE: Updating progress meters after scenes generation');
             updateAllProgressMeters();
             
             // Update navigation system
@@ -216,6 +231,18 @@ class SceneGenerationManager {
                 
                 // Refresh the scenes display
                 displayScenes(appState.generatedScenes);
+                
+                // Update progress tracker with actual scene content
+                if (data.plotPointScenes && data.plotPointScenes.length > 0) {
+                    const sceneContentPreview = data.plotPointScenes.map(plotPointData => {
+                        const scenesList = plotPointData.scenes.map(scene => 
+                            `**${scene.title}**\n${scene.description}`
+                        ).join('\n\n');
+                        return `**Plot Point ${plotPointData.plotPointIndex + 1}:** ${plotPointData.plotPoint}\n\n${scenesList}`;
+                    }).join('\n\n---\n\n');
+                    
+                    progressTracker.updatePreview(sceneContentPreview, `${structureKey} Scenes`);
+                }
                 
                 // Update progress meters after generating scenes
                 console.log('🔍 PROGRESS UPDATE: Updating progress meters after scenes generation');
@@ -339,6 +366,18 @@ class SceneGenerationManager {
                 
                 // Refresh the scenes display to show the new scenes
                 displayScenes(appState.generatedScenes);
+                
+                // Update progress tracker with actual scene content
+                if (data.scenes && data.scenes.length > 0) {
+                    const sceneContentPreview = data.scenes.map(scene => 
+                        `**${scene.title}**\n${scene.description}`
+                    ).join('\n\n');
+                    
+                    progressTracker.updatePreview(
+                        `**Plot Point ${hierarchicalNumber}:** ${plotPoint}\n\n${sceneContentPreview}`,
+                        `Plot Point ${hierarchicalNumber}`
+                    );
+                }
                 
                 // Refresh credits after successful generation
                 window.creditWidget.refreshAfterOperation();

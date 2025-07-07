@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scene Generation Debug</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .debug-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .debug-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .structure-key {
+            background: #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+        }
+        .plot-points-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .warning {
+            color: #856404;
+            background: #fff3cd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Scene Generation Debug Tool</h1>
+    <p>This tool helps diagnose why scene generation is failing by checking the plot points data structure.</p>
+    
+    <div class="debug-section">
+        <h2 class="debug-title">Quick Actions</h2>
+        <button onclick="debugSceneGeneration()">🔍 Debug Scene Generation</button>
+        <button onclick="testPlotPointsFormat()">🧪 Test Plot Points Format</button>
+        <button onclick="fixPlotPointsFormat()">🔧 Fix Plot Points Format</button>
+        <button onclick="clearResults()">🗑️ Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // Debug scene generation issues
+        function debugSceneGeneration() {
+            const results = document.getElementById('results');
+            let html = '<div class="debug-section"><h2 class="debug-title">🔍 Scene Generation Debug Results</h2>';
+            
+            // Check if we're in the main app context
+            if (typeof window.appState === 'undefined' || !window.appState) {
+                html += '<div class="error">❌ Error: appState not found. This debug tool must be run from the main application context.</div>';
+                html += '<div class="warning">💡 Open this debug tool from your main application by navigating to /debug-scene-generation.html</div>';
+                html += '</div>';
+                results.innerHTML = html;
+                return;
+            }
+
+            const appState = window.appState;
+            
+            // Check basic requirements
+            html += '<h3>📋 Basic Requirements Check</h3>';
+            html += `<div class="structure-key">✅ appState exists: ${!!appState}</div>`;
+            html += `<div class="structure-key">✅ projectPath: ${appState.projectPath || 'NOT SET'}</div>`;
+            html += `<div class="structure-key">✅ generatedStructure: ${appState.generatedStructure ? Object.keys(appState.generatedStructure).length + ' acts' : 'NOT SET'}</div>`;
+            html += `<div class="structure-key">✅ plotPoints: ${appState.plotPoints ? Object.keys(appState.plotPoints).length + ' acts with plot points' : 'NOT SET'}</div>`;
+            
+            if (!appState.generatedStructure || !appState.plotPoints) {
+                html += '<div class="error">❌ Missing basic requirements. Please ensure you have generated story structure and plot points first.</div>';
+                html += '</div>';
+                results.innerHTML = html;
+                return;
+            }
+
+            // Check each act
+            html += '<h3>🎭 Act-by-Act Analysis</h3>';
+            const structureKeys = Object.keys(appState.generatedStructure);
+            
+            for (const structureKey of structureKeys) {
+                html += `<div class="structure-key">`;
+                html += `<h4>📖 Act: ${structureKey}</h4>`;
+                
+                // Check if plot points exist for this act
+                const plotPointsData = appState.plotPoints[structureKey];
+                
+                if (!plotPointsData) {
+                    html += `<div class="error">❌ No plot points found for ${structureKey}</div>`;
+                } else {
+                    html += `<div class="success">✅ Plot points found for ${structureKey}</div>`;
+                    
+                    // Check the format
+                    html += `<div class="plot-points-data">`;
+                    html += `<strong>Data Type:</strong> ${typeof plotPointsData} ${Array.isArray(plotPointsData) ? '(Array)' : '(Object)'}<br>`;
+                    
+                    if (Array.isArray(plotPointsData)) {
+                        html += `<strong>Format:</strong> Direct array format<br>`;
+                        html += `<strong>Count:</strong> ${plotPointsData.length} plot points<br>`;
+                        html += `<strong>hasPlotPointsForElement result:</strong> ${window.generationHelperManager ? window.generationHelperManager.hasPlotPointsForElement(structureKey) : 'generationHelperManager not available'}<br>`;
+                    } else if (typeof plotPointsData === 'object' && plotPointsData !== null) {
+                        html += `<strong>Format:</strong> Object format<br>`;
+                        html += `<strong>Keys:</strong> ${Object.keys(plotPointsData).join(', ')}<br>`;
+                        
+                        if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                            html += `<strong>Contains plotPoints array:</strong> Yes (${plotPointsData.plotPoints.length} items)<br>`;
+                        } else {
+                            html += `<strong>Contains plotPoints array:</strong> No<br>`;
+                        }
+                        
+                        html += `<strong>hasPlotPointsForElement result:</strong> ${window.generationHelperManager ? window.generationHelperManager.hasPlotPointsForElement(structureKey) : 'generationHelperManager not available'}<br>`;
+                    }
+                    
+                    html += `<details><summary>📋 Full Data Structure</summary><pre>${JSON.stringify(plotPointsData, null, 2)}</pre></details>`;
+                    html += `</div>`;
+                }
+                
+                html += `</div>`;
+            }
+            
+            // Check the hasPlotPointsForElement function
+            html += '<h3>🔧 Function Analysis</h3>';
+            if (window.generationHelperManager) {
+                html += '<div class="success">✅ generationHelperManager available</div>';
+                
+                const actsWithPlotPoints = structureKeys.filter(key => 
+                    window.generationHelperManager.hasPlotPointsForElement(key)
+                );
+                
+                html += `<div class="structure-key">Acts with plot points detected: ${actsWithPlotPoints.length} out of ${structureKeys.length}</div>`;
+                html += `<div class="structure-key">Acts detected: ${actsWithPlotPoints.join(', ')}</div>`;
+                
+                if (actsWithPlotPoints.length === 0) {
+                    html += '<div class="error">❌ No acts detected with plot points - This is the root cause of the scene generation failure!</div>';
+                } else if (actsWithPlotPoints.length < structureKeys.length) {
+                    html += '<div class="warning">⚠️ Some acts not detected with plot points - This may cause partial scene generation failure</div>';
+                } else {
+                    html += '<div class="success">✅ All acts detected with plot points</div>';
+                }
+            } else {
+                html += '<div class="error">❌ generationHelperManager not available</div>';
+            }
+            
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function testPlotPointsFormat() {
+            const results = document.getElementById('results');
+            let html = '<div class="debug-section"><h2 class="debug-title">🧪 Plot Points Format Test</h2>';
+            
+            if (typeof window.appState === 'undefined' || !window.appState || !window.appState.plotPoints) {
+                html += '<div class="error">❌ No plot points data available for testing</div>';
+                html += '</div>';
+                results.innerHTML = html;
+                return;
+            }
+            
+            const plotPoints = window.appState.plotPoints;
+            
+            html += '<h3>📊 Format Analysis</h3>';
+            
+            for (const [structureKey, plotPointsData] of Object.entries(plotPoints)) {
+                html += `<div class="structure-key">`;
+                html += `<h4>Act: ${structureKey}</h4>`;
+                
+                // Test the hasPlotPointsForElement function logic manually
+                let isValid = false;
+                let formatType = 'unknown';
+                let plotPointsArray = [];
+                
+                if (!plotPointsData) {
+                    formatType = 'null/undefined';
+                } else if (Array.isArray(plotPointsData)) {
+                    formatType = 'direct array';
+                    isValid = plotPointsData.length > 0;
+                    plotPointsArray = plotPointsData;
+                } else if (typeof plotPointsData === 'object' && plotPointsData !== null) {
+                    if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                        formatType = 'object with plotPoints array';
+                        isValid = plotPointsData.plotPoints.length > 0;
+                        plotPointsArray = plotPointsData.plotPoints;
+                    } else {
+                        formatType = 'object without plotPoints array';
+                    }
+                }
+                
+                html += `<div class="plot-points-data">`;
+                html += `<strong>Format Type:</strong> ${formatType}<br>`;
+                html += `<strong>Should be valid:</strong> ${isValid ? '✅ Yes' : '❌ No'}<br>`;
+                html += `<strong>Plot Points Count:</strong> ${plotPointsArray.length}<br>`;
+                
+                if (plotPointsArray.length > 0) {
+                    html += `<strong>First plot point:</strong> ${typeof plotPointsArray[0] === 'string' ? plotPointsArray[0].substring(0, 50) + '...' : JSON.stringify(plotPointsArray[0])}<br>`;
+                }
+                
+                html += `</div>`;
+                html += `</div>`;
+            }
+            
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function fixPlotPointsFormat() {
+            const results = document.getElementById('results');
+            let html = '<div class="debug-section"><h2 class="debug-title">🔧 Plot Points Format Fix</h2>';
+            
+            if (typeof window.appState === 'undefined' || !window.appState || !window.appState.plotPoints) {
+                html += '<div class="error">❌ No plot points data available for fixing</div>';
+                html += '</div>';
+                results.innerHTML = html;
+                return;
+            }
+            
+            const plotPoints = window.appState.plotPoints;
+            let fixedCount = 0;
+            let totalCount = 0;
+            
+            html += '<h3>🔧 Fixing Plot Points Format</h3>';
+            
+            for (const [structureKey, plotPointsData] of Object.entries(plotPoints)) {
+                totalCount++;
+                html += `<div class="structure-key">`;
+                html += `<h4>Act: ${structureKey}</h4>`;
+                
+                if (!plotPointsData) {
+                    html += `<div class="error">❌ No data to fix</div>`;
+                } else if (Array.isArray(plotPointsData)) {
+                    html += `<div class="success">✅ Already in correct format (direct array)</div>`;
+                } else if (typeof plotPointsData === 'object' && plotPointsData !== null) {
+                    if (plotPointsData.plotPoints && Array.isArray(plotPointsData.plotPoints)) {
+                        // Fix: Convert to direct array format
+                        window.appState.plotPoints[structureKey] = plotPointsData.plotPoints;
+                        fixedCount++;
+                        html += `<div class="success">✅ Fixed: Converted object format to direct array (${plotPointsData.plotPoints.length} plot points)</div>`;
+                    } else {
+                        html += `<div class="error">❌ Cannot fix: Object format without plotPoints array</div>`;
+                    }
+                } else {
+                    html += `<div class="error">❌ Cannot fix: Unknown format</div>`;
+                }
+                
+                html += `</div>`;
+            }
+            
+            html += `<div class="structure-key">`;
+            html += `<strong>Summary:</strong> Fixed ${fixedCount} out of ${totalCount} acts<br>`;
+            if (fixedCount > 0) {
+                html += `<div class="success">✅ Plot points format has been fixed! Try scene generation again.</div>`;
+                html += `<div class="warning">💡 Remember to save your project to persist these changes.</div>`;
+            } else {
+                html += `<div class="warning">⚠️ No fixes were needed or possible.</div>`;
+            }
+            html += `</div>`;
+            
+            html += '</div>';
+            results.innerHTML = html;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-run debug when page loads in app context
+        window.addEventListener('load', function() {
+            // Small delay to ensure app context is loaded
+            setTimeout(function() {
+                if (typeof window.appState !== 'undefined' && window.appState) {
+                    debugSceneGeneration();
+                }
+            }, 1000);
+        });
+    </script>
+</body>
+</html> 

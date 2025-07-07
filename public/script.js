@@ -2158,13 +2158,29 @@ async function previewElementScenesPrompt(structureKey) {
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function hasPlotPointsForElement(structureKey) {
-    return generationHelperManager.hasPlotPointsForElement(structureKey);
+    if (window.generationHelperManager) {
+        return window.generationHelperManager.hasPlotPointsForElement(structureKey);
+    } else {
+        console.warn('generationHelperManager not available, falling back to basic check');
+        // Fallback logic if manager not available
+        if (!appState.plotPoints || !appState.plotPoints[structureKey]) {
+            return false;
+        }
+        const plotPointsData = appState.plotPoints[structureKey];
+        return Array.isArray(plotPointsData) && plotPointsData.length > 0;
+    }
 }
 
 // 🔧 MOVED TO: public/components/generation-helper-manager.js
 // Legacy function for backward compatibility
 function canGeneratePlotPointsForElement(structureKey) {
-    return generationHelperManager.canGeneratePlotPointsForElement(structureKey);
+    if (window.generationHelperManager) {
+        return window.generationHelperManager.canGeneratePlotPointsForElement(structureKey);
+    } else {
+        console.warn('generationHelperManager not available, falling back to basic check');
+        // Simple fallback - always allow if structure exists
+        return appState.generatedStructure && appState.generatedStructure[structureKey];
+    }
 }
 
 // This function has been replaced with proper hierarchical implementation

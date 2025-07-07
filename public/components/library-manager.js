@@ -378,6 +378,11 @@ class LibraryManager {
                         // Update character tags to reflect name changes
                         updateCharacterTags();
                     } else if (type === 'storyconcept') {
+                        // Update the story concept in appState.currentStoryConcept to reflect changes
+                        if (appState.currentStoryConcept) {
+                            appState.currentStoryConcept.title = name;
+                            appState.currentStoryConcept.logline = description || appState.currentStoryConcept.logline;
+                        }
                         // Update story concept display
                         updateStoryConceptDisplay();
                     } else {

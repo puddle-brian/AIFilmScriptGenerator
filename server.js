@@ -3947,7 +3947,7 @@ app.post('/api/generate-all-scenes-for-act/:projectPath/:actKey', authenticateAp
     
     // Handle both old format (just array) and new format (object with metadata)
     let plotPoints;
-    let totalScenesForAct = 12; // Default fallback
+    let totalScenesForAct = totalScenes || 12; // Use request totalScenes or fallback
     
     if (Array.isArray(plotPointsData)) {
       // Old format: just array of plot point strings
