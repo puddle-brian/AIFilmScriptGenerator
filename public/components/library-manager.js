@@ -358,6 +358,31 @@ class LibraryManager {
                     if (autoSaveManager) {
                         autoSaveManager.markDirty();
                     }
+                } else if (isEditing && !isEditing.isNewCharacterEntry) {
+                    // Handle editing existing entries
+                    if (type === 'character') {
+                        // Update the character in appState.projectCharacters to reflect the new name
+                        const oldName = isEditing.originalName;
+                        if (oldName && oldName !== name) {
+                            appState.projectCharacters.forEach(character => {
+                                if (character.name === oldName) {
+                                    character.name = name;
+                                    character.description = description || character.description;
+                                }
+                            });
+                        }
+                        // Update character tags to reflect name changes
+                        updateCharacterTags();
+                    } else if (type === 'storyconcept') {
+                        // Update story concept display
+                        updateStoryConceptDisplay();
+                    }
+                    
+                    saveToLocalStorage();
+                    appState.pendingChanges = true;
+                    if (autoSaveManager) {
+                        autoSaveManager.markDirty();
+                    }
                 }
                 
                 await populateDropdowns();
