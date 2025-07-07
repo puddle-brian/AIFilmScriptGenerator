@@ -92,11 +92,11 @@ router.post('/submit', authenticateApiKey, async (req, res) => {
     }
     
     // Validate category
-    const validCategories = ['bug', 'feature', 'other'];
+    const validCategories = ['general', 'bug', 'feature', 'other'];
     if (!validCategories.includes(category)) {
       clearTimeout(timeoutId);
       return res.status(400).json({ 
-        error: 'Invalid category. Must be one of: bug, feature, other' 
+        error: 'Invalid category. Must be one of: general, bug, feature, other' 
       });
     }
     
@@ -172,6 +172,7 @@ router.post('/submit', authenticateApiKey, async (req, res) => {
 router.get('/categories', (req, res) => {
   res.json({
     categories: [
+      { value: 'general', label: 'General Feedback' },
       { value: 'bug', label: 'Bug Report' },
       { value: 'feature', label: 'Feature Request' },
       { value: 'other', label: 'Other' }
