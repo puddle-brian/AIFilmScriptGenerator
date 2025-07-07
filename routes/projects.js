@@ -73,10 +73,8 @@ async function handleListProjectsFallback(req, res, dbClient, parseProjectContex
     
   } catch (error) {
     console.error('Fallback project listing error:', error);
-    res.status(500).json({ 
-      error: 'Failed to list projects',
-      fallbackMode: true
-    });
+    // Return empty array instead of error to prevent frontend issues
+    res.json([]);
   }
 }
 
@@ -249,12 +247,10 @@ router.get('/list-projects', async (req, res) => {
       return await handleListProjectsFallback(req, res, dbClient, parseProjectContext);
     }
     
-    // Check if no services are available
+    // Ultimate fallback: return empty array if no services available
     if (!projectService && !dbClient) {
-      return res.status(503).json({ 
-        error: 'Project service temporarily unavailable. Please try again later.',
-        fallback: 'Server restarting...'
-      });
+      console.log('⚠️ No services available - returning empty project list');
+      return res.json([]);  // Return empty array instead of 503
     }
 
     const username = req.query.username || 'guest';
@@ -270,11 +266,8 @@ router.get('/list-projects', async (req, res) => {
     
   } catch (error) {
     console.error('Error listing projects (migrated):', error);
-    res.status(500).json({ 
-      error: 'Failed to list projects',
-      details: error.message,
-      migratedEndpoint: true
-    });
+    // Return empty array to prevent frontend issues
+    res.json([]);
   }
 });
 

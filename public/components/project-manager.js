@@ -297,7 +297,28 @@ class ProjectManager {
         try {
             const username = appState.user?.username || 'guest';
             const response = await fetch(`/api/list-projects?username=${encodeURIComponent(username)}`);
-            const projects = await response.json();
+            const data = await response.json();
+            
+            // Handle server errors (503, 500, etc.)
+            if (!response.ok) {
+                console.error('Server error loading projects:', data);
+                if (response.status === 503) {
+                    projectsList.innerHTML = '<p style="color: orange; text-align: center;">🔄 Services starting up, please wait a moment and try again...</p>';
+                } else {
+                    projectsList.innerHTML = '<p style="color: red; text-align: center;">Error loading projects. Please try again.</p>';
+                }
+                return;
+            }
+            
+            // Handle error responses that returned 200 but contain errors
+            if (data.error) {
+                console.error('API error loading projects:', data);
+                projectsList.innerHTML = '<p style="color: red; text-align: center;">Error loading projects. Please try again.</p>';
+                return;
+            }
+            
+            // Ensure we have an array
+            const projects = Array.isArray(data) ? data : [];
             
             if (projects.length === 0) {
                 projectsList.innerHTML = '<p style="text-align: center; color: #718096;">No previous projects found.</p>';
