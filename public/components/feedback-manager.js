@@ -90,8 +90,6 @@ class FeedbackManager {
                     width: 90%;
                     max-width: 600px;
                     min-width: 500px;
-                    max-height: 90vh;
-                    overflow-y: auto;
                     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
                     position: relative;
                 }
@@ -303,7 +301,7 @@ class FeedbackManager {
                             <div class="form-group">
                                 <label for="feedbackCategory">What type of feedback is this?</label>
                                 <select id="feedbackCategory" name="category" required>
-                                    <option value="">Select a category</option>
+                                    <option value="general" selected>💬 General Feedback</option>
                                     <option value="bug">🐛 Bug Report</option>
                                     <option value="feature">💡 Feature Request</option>
                                     <option value="other">💭 Other</option>
