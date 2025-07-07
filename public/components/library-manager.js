@@ -158,7 +158,11 @@ class LibraryManager {
                                 entry_key: lib.entry_key
                             }));
                         } else {
-                            userLibraries[type] = libraries.map(lib => lib.entry_data.name);
+                            // For influences, preserve both name and entry_key for editing
+                            userLibraries[type] = libraries.map(lib => ({
+                                name: lib.entry_data.name,
+                                entry_key: lib.entry_key
+                            }));
                         }
                     }
                 } catch (error) {
@@ -376,6 +380,19 @@ class LibraryManager {
                     } else if (type === 'storyconcept') {
                         // Update story concept display
                         updateStoryConceptDisplay();
+                    } else {
+                        // Handle influence editing - update the name in appState.influences
+                        const oldName = isEditing.originalName;
+                        if (oldName && oldName !== name) {
+                            const pluralType = config.plural;
+                            if (appState.influences && appState.influences[pluralType]) {
+                                const index = appState.influences[pluralType].indexOf(oldName);
+                                if (index > -1) {
+                                    appState.influences[pluralType][index] = name;
+                                    this.updateInfluenceTags(type);
+                                }
+                            }
+                        }
                     }
                     
                     saveToLocalStorage();

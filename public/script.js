@@ -469,8 +469,8 @@ async function editInfluenceEntry(type, influenceName) {
     
     entryData = libraryEntries.find(entry => {
         const entryName = typeof entry === 'string' ? entry : 
-                         (entry.entry_data && entry.entry_data.name ? entry.entry_data.name : 
-                         (entry.name ? entry.name : 'unknown'));
+                         (entry.name ? entry.name : 
+                         (entry.entry_data && entry.entry_data.name ? entry.entry_data.name : 'unknown'));
         
         console.log(`🔍 Checking entry: "${entryName}" against "${influenceName}"`);
         
@@ -478,13 +478,15 @@ async function editInfluenceEntry(type, influenceName) {
             const match = entry === influenceName;
             if (match) console.log(`✅ String match found: "${entry}"`);
             return match;
-        } else if (entry.entry_data && entry.entry_data.name) {
-            const match = entry.entry_data.name === influenceName;
-            if (match) console.log(`✅ Entry data name match found: "${entry.entry_data.name}"`);
-            return match;
         } else if (entry.name) {
+            // For influences: {name, entry_key}
             const match = entry.name === influenceName;
             if (match) console.log(`✅ Entry name match found: "${entry.name}"`);
+            return match;
+        } else if (entry.entry_data && entry.entry_data.name) {
+            // For characters/story concepts: {entry_data: {name, description}, entry_key}
+            const match = entry.entry_data.name === influenceName;
+            if (match) console.log(`✅ Entry data name match found: "${entry.entry_data.name}"`);
             return match;
         }
         return false;
@@ -493,7 +495,7 @@ async function editInfluenceEntry(type, influenceName) {
     if (entryData) {
         console.log(`✅ STRATEGY 1 SUCCESS: Found exact match`, {
             type: typeof entryData,
-            name: typeof entryData === 'string' ? entryData : (entryData.entry_data?.name || entryData.name),
+            name: typeof entryData === 'string' ? entryData : (entryData.name || entryData.entry_data?.name),
             key: entryData.entry_key || entryData.key || 'no-key'
         });
     } else {
@@ -510,13 +512,13 @@ async function editInfluenceEntry(type, influenceName) {
             
         console.log(`🔍 FALLBACK SEARCH: Looking for key "${searchKey}" in ${libraryEntries.length} entries`);
         console.log(`📋 Available entries:`, libraryEntries.map(e => ({
-            name: e.entry_data?.name || e.name || (typeof e === 'string' ? e : 'unknown'),
+            name: e.name || e.entry_data?.name || (typeof e === 'string' ? e : 'unknown'),
             key: e.entry_key || e.key || 'no-key'
         })));
         
         entryData = libraryEntries.find(entry => {
             const entryKey = entry.entry_key || entry.key || '';
-            const entryName = entry.entry_data?.name || entry.name || (typeof entry === 'string' ? entry : '');
+            const entryName = entry.name || entry.entry_data?.name || (typeof entry === 'string' ? entry : '');
             
             console.log(`🔍 Checking entry: name="${entryName}", key="${entryKey}" against search="${searchKey}"`);
             
@@ -551,7 +553,7 @@ async function editInfluenceEntry(type, influenceName) {
         
         if (entryData) {
             console.log(`✅ Found by fallback search:`, {
-                name: entryData.entry_data?.name || entryData.name || 'string-entry',
+                name: entryData.name || entryData.entry_data?.name || 'string-entry',
                 key: entryData.entry_key || entryData.key || 'no-key'
             });
         } else {
@@ -577,12 +579,14 @@ async function editInfluenceEntry(type, influenceName) {
                 .replace(/^-+|-+$/g, '');     // Remove leading/trailing hyphens
                 
             console.log(`🔧 STRING ENTRY KEY DERIVATION: "${entryData}" -> original: "${originalName}" -> key: "${actualKey}"`);
-        } else if (entryData.entry_data && entryData.entry_data.name) {
-            actualData = entryData.entry_data;
-            actualKey = entryData.entry_key;
         } else if (entryData.name) {
+            // For influences: {name, entry_key}
             actualData = { name: entryData.name, description: entryData.description || '' };
             actualKey = entryData.entry_key || entryData.key;
+        } else if (entryData.entry_data && entryData.entry_data.name) {
+            // For characters/story concepts: {entry_data: {name, description}, entry_key}
+            actualData = entryData.entry_data;
+            actualKey = entryData.entry_key;
         } else {
             actualData = { name: influenceName, description: '' };
             // Strip edit suffixes to get original key for fallback case too
