@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback System Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; max-width: 800px; }
+        .test-section { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        input, select, textarea { width: 100%; padding: 8px; margin: 5px 0; border: 1px solid #ddd; border-radius: 4px; }
+        textarea { height: 100px; resize: vertical; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Feedback System Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Basic Routing</h3>
+        <button onclick="testBasicRouting()">Test /api/feedback/test</button>
+        <div id="basicResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Authentication</h3>
+        <button onclick="testAuth()">Test /api/feedback/test-auth</button>
+        <div id="authResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test Categories Endpoint</h3>
+        <button onclick="testCategories()">Test /api/feedback/categories</button>
+        <div id="categoriesResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Feedback Submission</h3>
+        <form id="feedbackForm">
+            <select id="category" required>
+                <option value="">Select Category</option>
+                <option value="bug">Bug Report</option>
+                <option value="feature">Feature Request</option>
+                <option value="other">Other</option>
+            </select>
+            <textarea id="message" placeholder="Enter your feedback..." required></textarea>
+            <button type="submit">Submit Feedback</button>
+        </form>
+        <div id="submitResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>5. Current State</h3>
+        <p><strong>API Key:</strong> <span id="apiKey"></span></p>
+        <p><strong>User:</strong> <span id="userData"></span></p>
+        <p><strong>Authentication:</strong> <span id="authStatus"></span></p>
+    </div>
+    
+    <script>
+        // Display current state
+        document.getElementById('apiKey').textContent = localStorage.getItem('apiKey') || 'Not found';
+        document.getElementById('userData').textContent = localStorage.getItem('userData') || 'Not found';
+        document.getElementById('authStatus').textContent = localStorage.getItem('apiKey') ? 'Has API key' : 'No API key';
+        
+        async function testBasicRouting() {
+            const result = document.getElementById('basicResult');
+            result.innerHTML = '<div class="info">Testing basic routing...</div>';
+            
+            try {
+                const response = await fetch('/api/feedback/test');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Basic routing works! ' + JSON.stringify(data) + '</div>';
+                } else {
+                    result.innerHTML = '<div class="error">❌ Basic routing failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testAuth() {
+            const result = document.getElementById('authResult');
+            result.innerHTML = '<div class="info">Testing authentication...</div>';
+            
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) {
+                result.innerHTML = '<div class="error">❌ No API key found in localStorage</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/feedback/test-auth', {
+                    headers: { 'X-API-Key': apiKey }
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Authentication works! ' + JSON.stringify(data) + '</div>';
+                } else {
+                    result.innerHTML = '<div class="error">❌ Authentication failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        }
+        
+        async function testCategories() {
+            const result = document.getElementById('categoriesResult');
+            result.innerHTML = '<div class="info">Testing categories...</div>';
+            
+            try {
+                const response = await fetch('/api/feedback/categories');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Categories work! ' + JSON.stringify(data) + '</div>';
+                } else {
+                    result.innerHTML = '<div class="error">❌ Categories failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        }
+        
+        document.getElementById('feedbackForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const result = document.getElementById('submitResult');
+            result.innerHTML = '<div class="info">Submitting feedback...</div>';
+            
+            const apiKey = localStorage.getItem('apiKey');
+            if (!apiKey) {
+                result.innerHTML = '<div class="error">❌ No API key found in localStorage</div>';
+                return;
+            }
+            
+            const category = document.getElementById('category').value;
+            const message = document.getElementById('message').value;
+            
+            try {
+                const response = await fetch('/api/feedback/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': apiKey
+                    },
+                    body: JSON.stringify({
+                        category: category,
+                        message: message,
+                        pageUrl: window.location.href
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = '<div class="success">✅ Feedback submitted! ' + JSON.stringify(data) + '</div>';
+                    document.getElementById('feedbackForm').reset();
+                } else {
+                    result.innerHTML = '<div class="error">❌ Feedback failed: ' + response.status + ' - ' + JSON.stringify(data) + '</div>';
+                }
+            } catch (error) {
+                result.innerHTML = '<div class="error">❌ Request failed: ' + error.message + '</div>';
+            }
+        });
+    </script>
+</body>
+</html> 
