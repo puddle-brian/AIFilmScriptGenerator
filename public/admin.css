@@ -1173,4 +1173,148 @@
         flex-direction: column;
         gap: 0.25rem;
     }
+}
+
+/* ==================== FEEDBACK SECTION STYLES ==================== */
+
+.feedback-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.feedback-stat {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(139, 69, 19, 0.05);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(139, 69, 19, 0.1);
+}
+
+.feedback-stat .stat-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+.feedback-stat .stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.feedback-list {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.feedback-item {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.feedback-item:last-child {
+    margin-bottom: 0;
+}
+
+.feedback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.feedback-category {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.feedback-category.bug {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+}
+
+.feedback-category.feature {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+}
+
+.feedback-category.other {
+    background: rgba(107, 114, 128, 0.1);
+    color: #4b5563;
+}
+
+.feedback-date {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.feedback-user {
+    font-size: 0.75rem;
+    color: #4b5563;
+    font-weight: 500;
+}
+
+.feedback-content {
+    margin-bottom: 1rem;
+}
+
+.feedback-message {
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: #374151;
+    margin-bottom: 0.5rem;
+}
+
+.feedback-url {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    word-break: break-all;
+}
+
+.feedback-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.stats-error {
+    text-align: center;
+    color: #ef4444;
+    font-size: 0.875rem;
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    .feedback-stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .feedback-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .feedback-actions {
+        justify-content: flex-start;
+    }
 } 

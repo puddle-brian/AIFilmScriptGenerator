@@ -24,6 +24,7 @@ const projectRoutes = require('./routes/projects');
 const paymentsRoutes = require('./routes/payments');
 const libraryRoutes = require('./routes/library');
 const adminRoutes = require('./routes/admin');
+const feedbackRoutes = require('./routes/feedback');
 const { authenticateApiKey, checkCredits, requireAdmin, optionalAuth } = require('./middleware/auth');
 
 // Import middleware modules
@@ -4878,6 +4879,8 @@ let userService = null;
 
 async function initializeServices() {
   try {
+    console.log('🔄 Starting service initialization...');
+    
     const GenerationService = require('./src/services/GenerationService');
     const CreditService = require('./src/services/CreditService');
     const DatabaseService = require('./src/services/DatabaseService');
@@ -4887,25 +4890,52 @@ async function initializeServices() {
     const AnalyticsService = require('./src/services/AnalyticsService');
     const UserService = require('./src/services/UserService');
     
+    console.log('✅ Service modules loaded successfully');
+    
     // Load prompt builders from existing system
     const promptBuilders = require('./prompt-builders');
+    console.log('✅ Prompt builders loaded');
     
-    // Initialize services
+    // Initialize services step by step with error handling
+    console.log('🔄 Initializing DatabaseService...');
     databaseService = new DatabaseService();
     await databaseService.connect();
+    console.log('✅ DatabaseService initialized');
     
-    // Initialize TrackedAnthropicAPI with UserService dependency injection
+    console.log('🔄 Initializing UserService...');
     userService = new UserService(dbClient);
-    trackedAnthropic = new TrackedAnthropicAPI(anthropic, dbClient, userService);
+    console.log('✅ UserService initialized');
     
+    console.log('🔄 Initializing TrackedAnthropicAPI...');
+    trackedAnthropic = new TrackedAnthropicAPI(anthropic, dbClient, userService);
+    console.log('✅ TrackedAnthropicAPI initialized');
+    
+    console.log('🔄 Initializing GenerationService...');
     generationService = new GenerationService(trackedAnthropic, dbClient, promptBuilders);
+    console.log('✅ GenerationService initialized');
+    
+    console.log('🔄 Initializing CreditService...');
     creditService = new CreditService(dbClient);
+    console.log('✅ CreditService initialized');
+    
+    console.log('🔄 Initializing AuthService...');
     authService = new AuthService(databaseService);
+    console.log('✅ AuthService initialized');
+    
+    console.log('🔄 Initializing ProjectService...');
     projectService = new ProjectService(databaseService);
+    console.log('✅ ProjectService initialized');
+    
+    console.log('🔄 Initializing LibraryService...');
     libraryService = new LibraryService(databaseService);
+    console.log('✅ LibraryService initialized');
+    
+    console.log('🔄 Initializing AnalyticsService...');
     analyticsService = new AnalyticsService(dbClient);
+    console.log('✅ AnalyticsService initialized');
     
     // Create admin user if it doesn't exist (after UserService is initialized)
+    console.log('🔄 Checking for admin user...');
     const adminUser = await userService.getUserByUsername('admin');
     
     if (adminUser.rows.length === 0) {
@@ -4914,12 +4944,16 @@ async function initializeServices() {
       
       console.log('✅ Admin user created with API key:', adminApiKey);
       console.log('   Save this API key securely - it won\'t be shown again!');
+    } else {
+      console.log('✅ Admin user already exists');
     }
     
-    console.log('✅ New services initialized successfully');
+    console.log('✅ All services initialized successfully');
   } catch (error) {
     console.error('⚠️  Failed to initialize new services:', error.message);
+    console.error('🔍 Error details:', error.stack);
     console.log('📝 Fallback: Using existing endpoints');
+    throw error; // Re-throw to ensure calling code knows initialization failed
   }
 }
 
@@ -4980,8 +5014,30 @@ app.get('/api/v2/service-status', (req, res) => {
     authService: authService ? 'available' : 'not available',
     projectService: projectService ? 'available' : 'not available',
     libraryService: libraryService ? 'available' : 'not available',
+    environment: process.env.VERCEL ? 'serverless' : 'local',
     timestamp: new Date().toISOString(),
     refactoringPhase: 'Phase 3A - Library Management Migration'
+  });
+});
+
+// 🔧 DEBUG ENDPOINT - Check what's available in dependency injection
+app.get('/api/debug/services', (req, res) => {
+  const services = {
+    dbClient: !!req.app.get('dbClient'),
+    authService: !!req.app.get('authService'),
+    generationService: !!req.app.get('generationService'),
+    creditService: !!req.app.get('creditService'),
+    userService: !!req.app.get('userService'),
+    environment: process.env.VERCEL ? 'serverless' : 'local',
+    nodeEnv: process.env.NODE_ENV,
+    hasDatabase: !!process.env.DATABASE_URL,
+    hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY
+  };
+  
+  res.json({
+    status: 'debug',
+    services,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -5018,6 +5074,7 @@ const startServer = async () => {
   app.use('/api', paymentsRoutes.router);
   app.use('/api', libraryRoutes.router);
   app.use('/api', adminRoutes.router);
+  app.use('/api/feedback', feedbackRoutes);
   
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
@@ -5033,13 +5090,8 @@ if (process.env.VERCEL) {
   // Initialize database for serverless with timeout protection
   console.log('🔧 Serverless mode - initializing database with pooling');
   
-  initializeDatabase().then(async () => {
-    console.log('✅ Serverless database initialized successfully');
-    
-    // Initialize services for serverless
-    await initializeServices();
-    
-    // Set up dependency injection for route modules (serverless)
+  // Function to set up dependency injection (with or without services)
+  const setupDependencyInjection = () => {
     app.set('dbClient', dbClient);
     app.set('authService', authService);
     app.set('populateUserStarterPack', populateUserStarterPack);
@@ -5057,8 +5109,10 @@ if (process.env.VERCEL) {
     app.set('userService', userService);
     app.set('starterPack', starterPack);
     app.set('authenticateApiKey', authenticateApiKey);
-
-    // Mount route modules (serverless)
+  };
+  
+  // Function to mount routes
+  const mountRoutes = () => {
     app.use('/api/auth', authRoutes.router);
     app.use('/api/v2/auth', authRoutes.router); // V2 auth endpoints
     app.use('/api', generationRoutes.router);
@@ -5066,10 +5120,36 @@ if (process.env.VERCEL) {
     app.use('/api', paymentsRoutes.router);
     app.use('/api', libraryRoutes.router);
     app.use('/api', adminRoutes.router);
+    app.use('/api/feedback', feedbackRoutes);
+  };
+  
+  initializeDatabase().then(async () => {
+    console.log('✅ Serverless database initialized successfully');
+    
+    try {
+      // Initialize services for serverless
+      await initializeServices();
+      console.log('✅ Services initialized successfully');
+    } catch (serviceError) {
+      console.error('⚠️  Service initialization failed:', serviceError.message);
+      console.log('📝 Continuing with basic functionality...');
+    }
+    
+    // Set up dependency injection regardless of service status
+    setupDependencyInjection();
+    
+    // Mount route modules
+    mountRoutes();
     
     console.log('✅ Serverless route modules mounted successfully');
   }).catch((error) => {
     console.error('⚠️  Serverless database initialization failed:', error.message);
+    
+    // Even if database init fails, set up basic dependency injection and routes
+    setupDependencyInjection();
+    mountRoutes();
+    
+    console.log('⚠️  Routes mounted with limited functionality');
   });
   
   // Export the Express app for Vercel

@@ -49,6 +49,19 @@ async function setupDatabase() {
     `);
     console.log('✅ User projects table created');
 
+    // Create feedback table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS feedback (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        category VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        page_url VARCHAR(500),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Feedback table created');
+
     // Create a default "guest" user for testing
     await client.query(`
       INSERT INTO users (username) VALUES ('guest')

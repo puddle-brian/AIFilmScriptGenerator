@@ -771,4 +771,101 @@ router.delete('/emergency-delete-cckrad', async (req, res) => {
   }
 });
 
+// ==================== FEEDBACK MANAGEMENT ====================
+
+// GET /api/admin/feedback - Get all feedback
+router.get('/admin/feedback', async (req, res) => {
+  const authenticateApiKey = req.app.get('authenticateApiKey');
+  await authenticateApiKey(req, res, async () => {
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const FeedbackService = require('../src/services/FeedbackService');
+    const feedbackService = new FeedbackService();
+
+    try {
+      const { category = 'all' } = req.query;
+      
+      // Get all feedback with optional category filter
+      const result = await feedbackService.getAllFeedback({ category });
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      res.json({
+        success: true,
+        feedback: result.data,
+        totalCount: result.data.length
+      });
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      res.status(500).json({ error: 'Failed to fetch feedback' });
+    }
+  });
+});
+
+// GET /api/admin/feedback/stats - Get feedback statistics
+router.get('/admin/feedback/stats', async (req, res) => {
+  const authenticateApiKey = req.app.get('authenticateApiKey');
+  await authenticateApiKey(req, res, async () => {
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const FeedbackService = require('../src/services/FeedbackService');
+    const feedbackService = new FeedbackService();
+
+    try {
+      const result = await feedbackService.getFeedbackStats();
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      res.json({
+        success: true,
+        stats: result.data
+      });
+    } catch (error) {
+      console.error('Error fetching feedback stats:', error);
+      res.status(500).json({ error: 'Failed to fetch feedback statistics' });
+    }
+  });
+});
+
+// DELETE /api/admin/feedback/:feedbackId - Delete feedback
+router.delete('/admin/feedback/:feedbackId', async (req, res) => {
+  const authenticateApiKey = req.app.get('authenticateApiKey');
+  await authenticateApiKey(req, res, async () => {
+    if (!req.user.is_admin) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const FeedbackService = require('../src/services/FeedbackService');
+    const feedbackService = new FeedbackService();
+
+    try {
+      const { feedbackId } = req.params;
+      
+      const result = await feedbackService.deleteFeedback(feedbackId);
+      
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+      
+      console.log(`🗑️ Feedback ${feedbackId} deleted by admin ${req.user.username}`);
+      
+      res.json({
+        success: true,
+        message: 'Feedback deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      res.status(500).json({ error: 'Failed to delete feedback' });
+    }
+  });
+});
+
 module.exports = { router }; 

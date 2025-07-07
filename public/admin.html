@@ -242,6 +242,33 @@
             </div>
         </section>
 
+        <!-- User Feedback -->
+        <section class="admin-section">
+            <div class="admin-card">
+                <div class="admin-card-header">
+                    <h2>💬 User Feedback</h2>
+                    <div class="card-actions">
+                        <select id="feedbackFilter" class="select-compact">
+                            <option value="all">All Feedback</option>
+                            <option value="bug">Bug Reports</option>
+                            <option value="feature">Feature Requests</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <button class="btn btn-sm btn-outline" onclick="refreshFeedback()">Refresh</button>
+                    </div>
+                </div>
+                <div class="admin-card-body">
+                    <div class="feedback-stats" id="feedbackStats">
+                        <div class="stats-loading">Loading feedback statistics...</div>
+                    </div>
+                    
+                    <div class="feedback-list" id="feedbackList">
+                        <div class="loading-message">Loading feedback...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Quick Actions -->
         <section class="admin-section">
             <div class="admin-card">

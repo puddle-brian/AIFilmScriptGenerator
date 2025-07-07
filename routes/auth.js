@@ -19,9 +19,20 @@ router.post('/register', async (req, res) => {
     const populateUserStarterPack = req.app.get('populateUserStarterPack');
     
     if (!authService) {
+      console.error('🚨 AuthService not available for registration - checking dependency injection');
+      const services = {
+        authService: !!req.app.get('authService'),
+        dbClient: !!req.app.get('dbClient'),
+        userService: !!req.app.get('userService')
+      };
+      console.error('🔍 Available services:', services);
+      
       return res.status(503).json({ 
         error: 'Authentication service temporarily unavailable. Please try again later.',
-        fallback: 'Server restarting...'
+        debug: 'AuthService not initialized - check server logs',
+        fallback: 'Server restarting...',
+        availableServices: services,
+        troubleshooting: 'Try /api/debug/services for more details'
       });
     }
 
@@ -77,9 +88,20 @@ router.post('/login', async (req, res) => {
     const authService = req.app.get('authService');
     
     if (!authService) {
+      console.error('🚨 AuthService not available for login - checking dependency injection');
+      const services = {
+        authService: !!req.app.get('authService'),
+        dbClient: !!req.app.get('dbClient'),
+        userService: !!req.app.get('userService')
+      };
+      console.error('🔍 Available services:', services);
+      
       return res.status(503).json({ 
         error: 'Authentication service temporarily unavailable. Please try again later.',
-        fallback: 'Server restarting...'
+        debug: 'AuthService not initialized - check server logs',
+        fallback: 'Server restarting...',
+        availableServices: services,
+        troubleshooting: 'Try /api/debug/services for more details'
       });
     }
 

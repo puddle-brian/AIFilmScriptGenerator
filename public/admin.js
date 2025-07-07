@@ -45,7 +45,9 @@ async function initializeAdminPanel() {
         checkSystemStatus(),
         loadSystemMetrics(),
         loadAnalytics('24h'),
-        loadTopUsersByCost() // Automatically load top 10 users by cost
+        loadTopUsersByCost(), // Automatically load top 10 users by cost
+        loadFeedbackStats(),
+        loadFeedback()
     ]);
     
     // Initialize charts module (separate from main admin logic)
@@ -2211,6 +2213,12 @@ function setupEventListeners() {
         timeframeSelect.addEventListener('change', refreshAnalytics);
     }
     
+    // Feedback filter change
+    const feedbackFilter = document.getElementById('feedbackFilter');
+    if (feedbackFilter) {
+        feedbackFilter.addEventListener('change', loadFeedback);
+    }
+    
     // Search on Enter key
     const userSearch = document.getElementById('userSearch');
     if (userSearch) {
@@ -2295,6 +2303,150 @@ function verifyAdminSession() {
         showAdminToast('❌ Session verification failed. Please refresh page.', 'error');
         return false;
     }
+}
+
+// ==================== FEEDBACK MANAGEMENT ====================
+
+async function loadFeedbackStats() {
+    try {
+        const response = await fetch('/api/admin/feedback/stats', {
+            headers: { 'X-API-Key': adminState.apiKey }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayFeedbackStats(data.stats);
+        } else {
+            throw new Error('Failed to load feedback stats');
+        }
+    } catch (error) {
+        console.error('Error loading feedback stats:', error);
+        const statsContainer = document.getElementById('feedbackStats');
+        if (statsContainer) {
+            statsContainer.innerHTML = '<div class="stats-error">Error loading feedback statistics</div>';
+        }
+    }
+}
+
+function displayFeedbackStats(stats) {
+    const statsContainer = document.getElementById('feedbackStats');
+    if (!statsContainer) return;
+    
+    const statsHtml = `
+        <div class="feedback-stats-grid">
+            <div class="feedback-stat">
+                <div class="stat-number">${stats.total_feedback || 0}</div>
+                <div class="stat-label">Total Feedback</div>
+            </div>
+            <div class="feedback-stat">
+                <div class="stat-number">${stats.bug_reports || 0}</div>
+                <div class="stat-label">Bug Reports</div>
+            </div>
+            <div class="feedback-stat">
+                <div class="stat-number">${stats.feature_requests || 0}</div>
+                <div class="stat-label">Feature Requests</div>
+            </div>
+            <div class="feedback-stat">
+                <div class="stat-number">${stats.other_feedback || 0}</div>
+                <div class="stat-label">Other</div>
+            </div>
+            <div class="feedback-stat">
+                <div class="stat-number">${stats.recent_feedback || 0}</div>
+                <div class="stat-label">Last 7 Days</div>
+            </div>
+        </div>
+    `;
+    
+    statsContainer.innerHTML = statsHtml;
+}
+
+async function loadFeedback() {
+    try {
+        const filterSelect = document.getElementById('feedbackFilter');
+        const category = filterSelect ? filterSelect.value : 'all';
+        
+        const response = await fetch(`/api/admin/feedback?category=${category}`, {
+            headers: { 'X-API-Key': adminState.apiKey }
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            displayFeedback(data.feedback);
+        } else {
+            throw new Error('Failed to load feedback');
+        }
+    } catch (error) {
+        console.error('Error loading feedback:', error);
+        const feedbackContainer = document.getElementById('feedbackList');
+        if (feedbackContainer) {
+            feedbackContainer.innerHTML = '<div class="loading-message text-error">Error loading feedback</div>';
+        }
+    }
+}
+
+function displayFeedback(feedback) {
+    const feedbackContainer = document.getElementById('feedbackList');
+    if (!feedbackContainer) return;
+    
+    if (!feedback || feedback.length === 0) {
+        feedbackContainer.innerHTML = '<div class="loading-message">No feedback found</div>';
+        return;
+    }
+    
+    const feedbackHtml = feedback.map(item => `
+        <div class="feedback-item">
+            <div class="feedback-header">
+                <div class="feedback-category ${item.category}">
+                    ${item.category === 'bug' ? '🐛' : item.category === 'feature' ? '💡' : '💭'} 
+                    ${item.category.charAt(0).toUpperCase() + item.category.slice(1)}
+                </div>
+                <div class="feedback-date">${new Date(item.created_at).toLocaleDateString()}</div>
+                <div class="feedback-user">by ${item.username || 'Unknown'}</div>
+            </div>
+            <div class="feedback-content">
+                <div class="feedback-message">${item.message}</div>
+                ${item.page_url ? `<div class="feedback-url">Page: ${item.page_url}</div>` : ''}
+            </div>
+            <div class="feedback-actions">
+                <button class="btn btn-sm btn-danger" onclick="deleteFeedback(${item.id})">
+                    🗑️ Delete
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    feedbackContainer.innerHTML = feedbackHtml;
+}
+
+async function deleteFeedback(feedbackId) {
+    if (!confirm('Are you sure you want to delete this feedback?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/admin/feedback/${feedbackId}`, {
+            method: 'DELETE',
+            headers: { 'X-API-Key': adminState.apiKey }
+        });
+        
+        if (response.ok) {
+            showAdminToast('Feedback deleted successfully');
+            await loadFeedback(); // Refresh the feedback list
+        } else {
+            throw new Error('Failed to delete feedback');
+        }
+    } catch (error) {
+        console.error('Error deleting feedback:', error);
+        showAdminToast('Error deleting feedback', 'error');
+    }
+}
+
+async function refreshFeedback() {
+    // Load both stats and feedback
+    await Promise.all([
+        loadFeedbackStats(),
+        loadFeedback()
+    ]);
 }
 
 // Auto-refresh system status every 30 seconds
