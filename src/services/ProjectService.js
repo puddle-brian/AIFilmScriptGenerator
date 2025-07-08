@@ -156,7 +156,9 @@ class ProjectService {
         projectCharacters, 
         currentStep,
         username,
-        existingProjectPath 
+        existingProjectPath,
+        creativeDirections,
+        globalCreativeDirections
       } = requestBody;
       
       let projectPath = existingProjectPath;
@@ -185,6 +187,12 @@ class ProjectService {
         generatedDialogues,
         influences,
         projectCharacters,
+        creativeDirections: creativeDirections || {},
+        globalCreativeDirections: globalCreativeDirections || {
+          plotPoints: "",
+          scenes: "",
+          dialogue: ""
+        },
         currentStep: currentStep || 1,
         generatedAt: new Date().toISOString(),
         projectPath

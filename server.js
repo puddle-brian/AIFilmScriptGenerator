@@ -1283,6 +1283,12 @@ app.post('/api/save-project', async (req, res) => {
       currentStep: projectData.currentStep || 1,
       influences: projectData.influences || {},
       projectCharacters: projectData.projectCharacters || [],
+      creativeDirections: projectData.creativeDirections || {},
+      globalCreativeDirections: projectData.globalCreativeDirections || {
+        plotPoints: "",
+        scenes: "",
+        dialogue: ""
+      },
       generatedAt: new Date().toISOString()
     };
     
