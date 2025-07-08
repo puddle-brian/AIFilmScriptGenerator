@@ -3200,6 +3200,8 @@ app.post('/api/export', async (req, res) => {
       title: projectData.storyInput.title
     });
     
+    console.log('🔧 EXPORT FIX DEPLOYED - SERVER v2.1 - dialogue order preservation active');
+    
     // Use projectData directly since everything is now in database v2.0 format
     // No file system access needed - all data is in the projectData object
     const fullProjectData = {

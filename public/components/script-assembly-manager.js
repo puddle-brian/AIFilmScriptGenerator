@@ -342,6 +342,7 @@ class ScriptAssemblyManager {
             // Get dialogue keys in the same order as frontend assembly
             const dialogueKeys = Object.keys(appState.generatedDialogues);
             console.log('📋 Sending dialogue keys order to server:', dialogueKeys);
+            console.log('🔧 EXPORT FIX DEPLOYED - v2.1 - dialogue order preservation active');
             
             const response = await fetch('/api/export', {
                 method: 'POST',

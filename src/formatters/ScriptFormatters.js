@@ -62,6 +62,7 @@ function generateContentFromV2Format(data) {
     // 🔧 FIX: Use explicit dialogue keys order sent from frontend
     const dialogueKeys = data.dialogueKeysOrder || Object.keys(data.generatedDialogues);
     console.log('📋 Dialogue keys in exact generation order (server-side):', dialogueKeys);
+    console.log('🔧 FORMATTER FIX DEPLOYED - v2.1 - using explicit dialogue order from frontend');
     
     // Process each dialogue in the exact order they were generated
     dialogueKeys.forEach((dialogueKey) => {
