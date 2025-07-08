@@ -264,9 +264,19 @@ class DialogueGenerationManager {
             return;
         }
         
-        // Collect all scenes that exist
+        // 🔧 FIX: Collect all scenes in the correct chronological order
         const allScenes = [];
-        Object.entries(appState.generatedScenes).forEach(([structureKey, sceneGroup]) => {
+        
+        // Use the correct Save the Cat chronological order
+        const saveTheCatOrder = [
+            'opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 
+            'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 
+            'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'
+        ];
+        
+        // Process scenes in the correct chronological order
+        saveTheCatOrder.forEach(structureKey => {
+            const sceneGroup = appState.generatedScenes[structureKey];
             if (Array.isArray(sceneGroup)) {
                 sceneGroup.forEach((scene, index) => {
                     const sceneId = `${structureKey}-${index}`;

@@ -47,6 +47,9 @@ class ScriptAssemblyManager {
         console.log('- plotPoints keys:', Object.keys(appState.plotPoints || {}));
         console.log('- templateData structure keys:', appState.templateData?.structure ? Object.keys(appState.templateData.structure) : 'No template structure');
         
+        // 🔧 FIX: Reorder existing dialogues in chronological order before assembly
+        this.reorderDialoguesChronologically();
+        
         // Professional title page
         script += this.generateTitlePage();
         
@@ -339,6 +342,9 @@ class ScriptAssemblyManager {
         }
         
         try {
+            // 🔧 FIX: Reorder existing dialogues in chronological order before export
+            this.reorderDialoguesChronologically();
+            
             // Get dialogue keys in the same order as frontend assembly
             const dialogueKeys = Object.keys(appState.generatedDialogues);
             console.log('📋 Sending dialogue keys order to server:', dialogueKeys);
@@ -564,6 +570,39 @@ class ScriptAssemblyManager {
             hasStructure: !!appState.templateData?.structure,
             dialogueKeys: dialogueKeys
         };
+    }
+
+    // 🔧 FIX: Reorder existing dialogues in chronological order before export
+    reorderDialoguesChronologically() {
+        if (!appState.generatedDialogues || Object.keys(appState.generatedDialogues).length === 0) {
+            return;
+        }
+        
+        console.log('🔄 Reordering dialogues in chronological order');
+        
+        // Save the current dialogues
+        const currentDialogues = { ...appState.generatedDialogues };
+        
+        // Clear the current dialogues
+        appState.generatedDialogues = {};
+        
+        // Reorder in Save the Cat chronological order
+        const saveTheCatOrder = [
+            'opening_image', 'setup', 'theme_stated', 'catalyst', 'debate', 'break_into_two', 
+            'b_story', 'fun_and_games', 'midpoint', 'bad_guys_close_in', 'all_is_lost', 
+            'dark_night_of_soul', 'break_into_three', 'finale', 'final_image'
+        ];
+        
+        // Add dialogues back in chronological order
+        saveTheCatOrder.forEach(structureKey => {
+            Object.keys(currentDialogues).forEach(dialogueKey => {
+                if (dialogueKey.startsWith(structureKey + '-')) {
+                    appState.generatedDialogues[dialogueKey] = currentDialogues[dialogueKey];
+                }
+            });
+        });
+        
+        console.log('✅ Dialogues reordered. New order:', Object.keys(appState.generatedDialogues));
     }
 }
 
