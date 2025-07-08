@@ -231,8 +231,8 @@ class SceneVoiceGenerator {
                         </div>
                         
                         <div class="form-group">
-                            <label>Stability: <span id="stability-value">0</span></label>
-                            <input type="range" id="stability" class="form-control-range" value="0" min="0" max="1" step="0.05" oninput="document.getElementById('stability-value').textContent = this.value">
+                            <label>Stability: <span id="stability-value">1</span></label>
+                            <input type="range" id="stability" class="form-control-range" value="1" min="0" max="1" step="0.05" oninput="document.getElementById('stability-value').textContent = this.value">
                             <small>Lower = more expressive but less stable</small>
                         </div>
                         
@@ -243,8 +243,8 @@ class SceneVoiceGenerator {
                         </div>
                         
                         <div class="form-group">
-                            <label>Style Exaggeration: <span id="style-value">1</span></label>
-                            <input type="range" id="style-exaggeration" class="form-control-range" value="1" min="0" max="1" step="0.05" oninput="document.getElementById('style-value').textContent = this.value">
+                            <label>Style Exaggeration: <span id="style-value">0</span></label>
+                            <input type="range" id="style-exaggeration" class="form-control-range" value="0" min="0" max="1" step="0.05" oninput="document.getElementById('style-value').textContent = this.value">
                             <small>Higher = more dramatic/expressive</small>
                         </div>
                         
@@ -432,9 +432,17 @@ class SceneVoiceGenerator {
                     <button class="btn btn-primary" onclick="sceneVoiceGenerator.playSceneAudio('${sceneId}', ${JSON.stringify(audioResult).replace(/"/g, '&quot;')})">
                         ▶️ Play Scene Audio
                     </button>
-                    <button class="btn btn-outline" onclick="sceneVoiceGenerator.downloadSceneAudio('${sceneId}')">
-                        📥 Download Audio
+                    <button class="btn btn-success" onclick="sceneVoiceGenerator.downloadSceneAudio('${sceneId}')">
+                        🎵 Download Complete Scene MP3
                     </button>
+                    <button class="btn btn-outline btn-sm" onclick="sceneVoiceGenerator.downloadSceneParts('${sceneId}')">
+                        📁 Download Individual Parts (ZIP)
+                    </button>
+                </div>
+                
+                <div class="download-info" style="margin: 15px 0; padding: 10px; background: #d4edda; border-radius: 6px; border-left: 4px solid #28a745;">
+                    <small><strong>🎵 Complete Scene:</strong> Single MP3 file with all dialogue combined in sequence - perfect for listening.<br>
+                    <strong>📁 Individual Parts:</strong> Separate audio files for each line - ideal for editing and remixing.</small>
                 </div>
                 
                 <div class="audio-segments">
@@ -508,10 +516,20 @@ class SceneVoiceGenerator {
     }
 
     /**
-     * Download scene audio
+     * Download complete scene audio as single MP3 file
      */
     async downloadSceneAudio(sceneId) {
         try {
+            // Get project title for better file naming
+            const projectTitle = appState.currentProject?.title || 'Unnamed_Project';
+            const cleanProjectTitle = projectTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+            
+            // Create timestamp for unique file naming
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            
+            // Clean scene ID for filename
+            const cleanSceneId = sceneId.replace(/[^a-zA-Z0-9_-]/g, '_');
+            
             const response = await fetch(`/api/voice/download-scene/${sceneId}`, {
                 headers: {
                     'X-API-Key': appState.apiKey
@@ -525,16 +543,81 @@ class SceneVoiceGenerator {
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             
+            // Create descriptive filename: ProjectName_SceneID_YYYY-MM-DDTHH-MM-SS_Complete.mp3
+            const filename = `${cleanProjectTitle}_${cleanSceneId}_${timestamp}_Complete.mp3`;
+            
+            // Create download link and trigger download
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${sceneId}_audio.mp3`;
-            a.click();
+            a.download = filename;
             
-            URL.revokeObjectURL(url);
+            // Add to downloads folder automatically (browser handles this)
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            
+            showToast(`Complete scene MP3 downloaded: ${filename}`, 'success');
             
         } catch (error) {
             console.error('Download failed:', error);
-            showToast('Download failed', 'error');
+            showToast('Complete scene download failed', 'error');
+        }
+    }
+
+    /**
+     * Download individual scene audio parts as ZIP file
+     */
+    async downloadSceneParts(sceneId) {
+        try {
+            // Get project title for better file naming
+            const projectTitle = appState.currentProject?.title || 'Unnamed_Project';
+            const cleanProjectTitle = projectTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+            
+            // Create timestamp for unique file naming
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            
+            // Clean scene ID for filename
+            const cleanSceneId = sceneId.replace(/[^a-zA-Z0-9_-]/g, '_');
+            
+            const response = await fetch(`/api/voice/download-scene-parts/${sceneId}`, {
+                headers: {
+                    'X-API-Key': appState.apiKey
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to download audio parts');
+            }
+            
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            
+            // Create descriptive filename: ProjectName_SceneID_YYYY-MM-DDTHH-MM-SS_Parts.zip
+            const filename = `${cleanProjectTitle}_${cleanSceneId}_${timestamp}_Parts.zip`;
+            
+            // Create download link and trigger download
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            
+            // Add to downloads folder automatically (browser handles this)
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            
+            showToast(`Individual parts ZIP downloaded: ${filename}`, 'success');
+            
+        } catch (error) {
+            console.error('Parts download failed:', error);
+            showToast('Individual parts download failed', 'error');
         }
     }
 

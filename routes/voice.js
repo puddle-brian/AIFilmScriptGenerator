@@ -53,9 +53,9 @@ router.post('/preview', async (req, res) => {
         
         // Build voice settings object
         const settings = {
-            stability: voiceSettings?.stability !== undefined ? voiceSettings.stability : 0,
+            stability: voiceSettings?.stability !== undefined ? voiceSettings.stability : 1,
             similarity_boost: voiceSettings?.similarityBoost !== undefined ? voiceSettings.similarityBoost : 1,
-            style: voiceSettings?.styleExaggeration !== undefined ? voiceSettings.styleExaggeration : 1,
+            style: voiceSettings?.styleExaggeration !== undefined ? voiceSettings.styleExaggeration : 0,
             use_speaker_boost: voiceSettings?.speakerBoost !== undefined ? voiceSettings.speakerBoost : true
         };
         
@@ -210,36 +210,125 @@ router.get('/temp-audio/:filename', async (req, res) => {
     }
 });
 
-// Download scene audio (combined)
+// Download scene audio as single combined MP3 file
 router.get('/download-scene/:sceneId', async (req, res) => {
     try {
         const sceneId = req.params.sceneId;
         const audioDir = path.join(__dirname, '../temp_audio');
         
-        // This would ideally combine all segments into one file
-        // For now, we'll just return a zip of all segments
-        const archiver = require('archiver');
-        const archive = archiver('zip', { zlib: { level: 9 } });
+        // Check if combined file already exists
+        const combinedFilePath = path.join(audioDir, `${sceneId}_combined.mp3`);
         
-        res.setHeader('Content-Type', 'application/zip');
-        res.setHeader('Content-Disposition', `attachment; filename="${sceneId}_audio.zip"`);
-        
-        archive.pipe(res);
-        
-        // Add all audio files for this scene
-        const files = await fs.readdir(audioDir);
-        const sceneFiles = files.filter(file => file.startsWith(sceneId));
-        
-        for (const file of sceneFiles) {
-            const filepath = path.join(audioDir, file);
-            archive.file(filepath, { name: file });
+        try {
+            await fs.access(combinedFilePath);
+            // Combined file exists, serve it directly
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.setHeader('Content-Disposition', `attachment; filename="${sceneId}_Complete_Scene.mp3"`);
+            
+            const fileStream = require('fs').createReadStream(combinedFilePath);
+            fileStream.pipe(res);
+            return;
+        } catch {
+            // Combined file doesn't exist, create it
         }
         
-        await archive.finalize();
+        // Get all audio files for this scene
+        const files = await fs.readdir(audioDir);
+        const sceneFiles = files.filter(file => file.startsWith(sceneId) && file.endsWith('.mp3') && !file.includes('combined'));
+        
+        // Sort files by segment number for logical ordering
+        sceneFiles.sort((a, b) => {
+            const aMatch = a.match(/segment_(\d+)/);
+            const bMatch = b.match(/segment_(\d+)/);
+            if (aMatch && bMatch) {
+                return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+            }
+            return a.localeCompare(b);
+        });
+        
+        if (sceneFiles.length === 0) {
+            return res.status(404).json({ error: 'No audio files found for this scene' });
+        }
+        
+        // Combine audio files using simple buffer concatenation
+        const combinedBuffer = await combineAudioFiles(sceneFiles.map(f => path.join(audioDir, f)));
+        
+        // Save combined file for future requests
+        await fs.writeFile(combinedFilePath, combinedBuffer);
+        
+        // Serve the combined file
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Disposition', `attachment; filename="${sceneId}_Complete_Scene.mp3"`);
+        res.setHeader('Content-Length', combinedBuffer.length);
+        res.send(combinedBuffer);
         
     } catch (error) {
         console.error('Failed to download scene audio:', error);
         res.status(500).json({ error: 'Failed to download scene audio' });
+    }
+});
+
+// Download individual scene audio files as ZIP (for editing)
+router.get('/download-scene-parts/:sceneId', async (req, res) => {
+    try {
+        const sceneId = req.params.sceneId;
+        const audioDir = path.join(__dirname, '../temp_audio');
+        
+        const archiver = require('archiver');
+        const archive = archiver('zip', { zlib: { level: 9 } });
+        
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${sceneId}_Individual_Parts.zip"`);
+        
+        archive.pipe(res);
+        
+        // Add all audio files for this scene with organized structure
+        const files = await fs.readdir(audioDir);
+        const sceneFiles = files.filter(file => file.startsWith(sceneId) && file.endsWith('.mp3') && !file.includes('combined'));
+        
+        // Sort files by segment number for logical ordering
+        sceneFiles.sort((a, b) => {
+            const aMatch = a.match(/segment_(\d+)/);
+            const bMatch = b.match(/segment_(\d+)/);
+            if (aMatch && bMatch) {
+                return parseInt(aMatch[1]) - parseInt(bMatch[1]);
+            }
+            return a.localeCompare(b);
+        });
+        
+        // Add files to organized folders within ZIP
+        for (let i = 0; i < sceneFiles.length; i++) {
+            const file = sceneFiles[i];
+            const filepath = path.join(audioDir, file);
+            
+            // Create more descriptive names within the ZIP
+            const segmentNumber = String(i + 1).padStart(2, '0');
+            const newFileName = `${segmentNumber}_${file.replace(sceneId + '_segment_', 'segment_')}`;
+            
+            archive.file(filepath, { 
+                name: `IndividualParts/${newFileName}` 
+            });
+        }
+        
+        // Add a README file
+        const readmeContent = `Individual Scene Audio Parts - ${sceneId}
+Generated: ${new Date().toISOString()}
+
+This package contains individual audio segments for editing purposes.
+Files are numbered in sequence order.
+
+For complete scene audio, use the "Download Complete Scene" option instead.
+
+Generated by Film Script Generator Voice System
+`;
+        
+        archive.append(readmeContent, { name: 'IndividualParts/README.txt' });
+        
+        await archive.finalize();
+        
+    } catch (error) {
+        console.error('Failed to download scene audio parts:', error);
+        res.status(500).json({ error: 'Failed to download scene audio parts' });
     }
 });
 
@@ -362,9 +451,9 @@ function parseDialogueIntoLines(dialogueText) {
 async function generateAudioForText(text, voiceId, voiceSettings) {
     // Build voice settings object
     const settings = {
-        stability: voiceSettings?.stability !== undefined ? voiceSettings.stability : 0,
+        stability: voiceSettings?.stability !== undefined ? voiceSettings.stability : 1,
         similarity_boost: voiceSettings?.similarityBoost !== undefined ? voiceSettings.similarityBoost : 1,
-        style: voiceSettings?.styleExaggeration !== undefined ? voiceSettings.styleExaggeration : 1,
+        style: voiceSettings?.styleExaggeration !== undefined ? voiceSettings.styleExaggeration : 0,
         use_speaker_boost: voiceSettings?.speakerBoost !== undefined ? voiceSettings.speakerBoost : true
     };
     
@@ -409,6 +498,161 @@ function removeParentheticalContent(text) {
     cleanedText = cleanedText.replace(/\s+/g, ' ').trim();
     
     return cleanedText;
+}
+
+async function combineAudioFiles(filePaths) {
+    try {
+        const ffmpeg = require('fluent-ffmpeg');
+        const ffmpegStatic = require('ffmpeg-static');
+        const path = require('path');
+        const os = require('os');
+        
+        if (filePaths.length === 0) {
+            throw new Error('No audio files to combine');
+        }
+        
+        // If only one file, just return it
+        if (filePaths.length === 1) {
+            return await fs.readFile(filePaths[0]);
+        }
+        
+        // Set FFmpeg binary path
+        ffmpeg.setFfmpegPath(ffmpegStatic);
+        
+        // Create temp directory for processing
+        const tempDir = path.join(os.tmpdir(), 'voice-combine-' + Date.now());
+        await fs.mkdir(tempDir, { recursive: true });
+        
+        // Output file path
+        const outputPath = path.join(tempDir, 'combined.mp3');
+        
+        console.log('Combining audio files:', filePaths);
+        
+        // Use fluent-ffmpeg to concatenate MP3 files properly
+        await new Promise((resolve, reject) => {
+            let command = ffmpeg();
+            
+            // Add all input files
+            filePaths.forEach(file => {
+                command = command.addInput(file);
+            });
+            
+            command
+                .on('start', (commandLine) => {
+                    console.log('FFmpeg command:', commandLine);
+                })
+                .on('progress', (progress) => {
+                    console.log('Processing: ' + progress.percent + '% done');
+                })
+                .on('end', () => {
+                    console.log('Audio combination finished');
+                    resolve();
+                })
+                .on('error', (err) => {
+                    console.error('FFmpeg error:', err);
+                    reject(err);
+                })
+                .mergeToFile(outputPath, tempDir);
+        });
+        
+        // Read the combined file
+        const combinedBuffer = await fs.readFile(outputPath);
+        
+        // Clean up temp files
+        await fs.unlink(outputPath).catch(() => {});
+        await fs.rmdir(tempDir).catch(() => {});
+        
+        return combinedBuffer;
+        
+    } catch (error) {
+        console.error('Failed to combine audio files with FFmpeg:', error);
+        
+        // Fallback: try alternative method
+        try {
+            return await combineAudioFilesAlternative(filePaths);
+        } catch (fallbackError) {
+            console.error('Fallback method also failed:', fallbackError);
+            throw new Error('Audio combination failed: ' + error.message);
+        }
+    }
+}
+
+async function combineAudioFilesAlternative(filePaths) {
+    try {
+        // Alternative method: More sophisticated MP3 concatenation
+        // This handles ID3 tags and MP3 frame structure properly
+        
+        if (filePaths.length === 0) {
+            throw new Error('No audio files to combine');
+        }
+        
+        if (filePaths.length === 1) {
+            return await fs.readFile(filePaths[0]);
+        }
+        
+        console.log('Using alternative MP3 concatenation method');
+        
+        const combinedParts = [];
+        let hasWrittenHeader = false;
+        
+        for (let i = 0; i < filePaths.length; i++) {
+            const fileBuffer = await fs.readFile(filePaths[i]);
+            console.log(`Processing file ${i + 1}/${filePaths.length}: ${filePaths[i]}`);
+            
+            if (i === 0) {
+                // First file: include everything (ID3 tags + audio data)
+                combinedParts.push(fileBuffer);
+                hasWrittenHeader = true;
+            } else {
+                // Subsequent files: skip ID3 tags and metadata, keep only audio frames
+                let audioStart = 0;
+                
+                // Skip ID3v2 tag if present (starts with "ID3")
+                if (fileBuffer.length >= 10 && 
+                    fileBuffer[0] === 0x49 && fileBuffer[1] === 0x44 && fileBuffer[2] === 0x33) {
+                    // ID3v2 tag found, calculate its size
+                    const tagSize = ((fileBuffer[6] & 0x7F) << 21) | 
+                                  ((fileBuffer[7] & 0x7F) << 14) | 
+                                  ((fileBuffer[8] & 0x7F) << 7) | 
+                                  (fileBuffer[9] & 0x7F);
+                    audioStart = 10 + tagSize;
+                    console.log(`Skipping ID3v2 tag of size ${tagSize} bytes`);
+                }
+                
+                // Find first MP3 frame sync pattern (0xFF followed by 0xFB, 0xFA, 0xF3, 0xF2)
+                for (let j = audioStart; j < fileBuffer.length - 1; j++) {
+                    if (fileBuffer[j] === 0xFF && (fileBuffer[j + 1] & 0xE0) === 0xE0) {
+                        audioStart = j;
+                        break;
+                    }
+                }
+                
+                // Add only the audio data (skip any remaining metadata)
+                const audioData = fileBuffer.slice(audioStart);
+                if (audioData.length > 0) {
+                    combinedParts.push(audioData);
+                    console.log(`Added ${audioData.length} bytes of audio data`);
+                }
+            }
+        }
+        
+        // Combine all parts
+        const totalLength = combinedParts.reduce((sum, part) => sum + part.length, 0);
+        const combinedBuffer = Buffer.alloc(totalLength);
+        
+        let offset = 0;
+        for (const part of combinedParts) {
+            part.copy(combinedBuffer, offset);
+            offset += part.length;
+        }
+        
+        console.log(`Combined ${filePaths.length} files into ${totalLength} bytes`);
+        return combinedBuffer;
+        
+    } catch (error) {
+        console.error('Alternative combination method failed:', error);
+        throw error;
+    }
 }
 
 module.exports = router; 
