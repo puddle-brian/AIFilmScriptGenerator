@@ -4689,6 +4689,11 @@ function saveActsCreativeDirection() {
     // Save to localStorage
     saveToLocalStorage();
     
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    
     // Show success message
     showToast('Acts creative direction saved!', 'success');
     
@@ -4759,6 +4764,11 @@ function saveScenesCreativeDirection() {
     // Save to localStorage
     saveToLocalStorage();
     
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    
     // Show success message
     showToast('Scenes creative direction saved!', 'success');
     
@@ -4814,6 +4824,11 @@ function savePlotPointsCreativeDirection() {
     
     // Save to localStorage
     saveToLocalStorage();
+    
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
     
     // Show success message
     showToast('Plot points creative direction saved!', 'success');
@@ -5089,6 +5104,11 @@ function saveDialogueCreativeDirection() {
     // Save to localStorage
     saveToLocalStorage();
     
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    
     // Show success message
     showToast('Dialogue creative direction saved!', 'success');
     
@@ -5128,6 +5148,11 @@ function saveGlobalPlotPointsCreativeDirection() {
     
     // Save to localStorage
     saveToLocalStorage();
+    
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
     
     // Show success message
     showToast('Global plot points creative direction saved!', 'success');
@@ -5171,6 +5196,11 @@ function saveGlobalScenesCreativeDirection() {
     // Save to localStorage
     saveToLocalStorage();
     
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
+    
     // Show success message
     showToast('Global scenes creative direction saved!', 'success');
     
@@ -5212,6 +5242,11 @@ function saveGlobalDialogueCreativeDirection() {
     
     // Save to localStorage
     saveToLocalStorage();
+    
+    // 🔧 Mark for database auto-save
+    if (window.autoSaveManager) {
+        autoSaveManager.markDirty();
+    }
     
     // Show success message
     showToast('Global dialogue creative direction saved!', 'success');
