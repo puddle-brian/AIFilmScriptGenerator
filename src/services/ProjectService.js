@@ -103,6 +103,12 @@ class ProjectService {
         generatedDialogues: projectContext.generatedDialogues,
         influences: projectContext.influences,
         projectCharacters: projectContext.projectCharacters,
+        creativeDirections: projectContext.creativeDirections || {},
+        globalCreativeDirections: projectContext.globalCreativeDirections || {
+          plotPoints: "",
+          scenes: "",
+          dialogue: ""
+        },
         currentStep: projectContext.currentStep,
         generatedAt: dbProject.created_at,
         updatedAt: dbProject.updated_at

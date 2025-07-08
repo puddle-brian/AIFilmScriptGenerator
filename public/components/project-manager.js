@@ -146,8 +146,14 @@ class ProjectManager {
                 throw new Error(errorMessage);
             }
             
-            const projectData = await response.json();
-            console.log('Project data loaded:', projectData);
+            const rawProjectData = await response.json();
+            console.log('Raw project data loaded:', rawProjectData);
+            
+            // Handle different response formats:
+            // - Direct format: { storyInput: {}, creativeDirections: {} }
+            // - Wrapped format: { project: { storyInput: {}, creativeDirections: {} } }
+            const projectData = rawProjectData.project || rawProjectData;
+            console.log('Processed project data:', projectData);
             
             try {
                 // Populate all form fields with loaded data

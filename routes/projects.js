@@ -322,6 +322,12 @@ router.get('/project/:id', async (req, res) => {
           plotPoints: projectContext.plotPoints,
           generatedScenes: projectContext.generatedScenes,
           generatedDialogues: projectContext.generatedDialogues,
+          creativeDirections: projectContext.creativeDirections || {},
+          globalCreativeDirections: projectContext.globalCreativeDirections || {
+            plotPoints: "",
+            scenes: "",
+            dialogue: ""
+          },
           currentStep: projectContext.currentStep,
           generatedAt: dbProject.created_at,
           updatedAt: dbProject.updated_at
