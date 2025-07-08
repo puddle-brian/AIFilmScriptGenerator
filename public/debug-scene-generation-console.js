@@ -192,4 +192,113 @@ window.testActPlotPoints = testActPlotPoints;
 window.debugHelp = debugHelp;
 
 console.log('🔧 Scene Generation Debug Functions Loaded!');
-console.log('Type debugHelp() for available commands.'); 
+console.log('Type debugHelp() for available commands.');
+
+// 🔍 DEBUG SCENE GENERATION ISSUE
+// Run this in the console to diagnose the "generating 0 scenes for 0 acts" problem
+
+console.log('🔍 DEBUGGING SCENE GENERATION ISSUE');
+console.log('=====================================');
+
+// 1. Check if appState exists and what's in it
+console.log('1. AppState Check:');
+console.log('  appState exists:', !!window.appState);
+console.log('  appState.generatedStructure:', window.appState?.generatedStructure ? Object.keys(window.appState.generatedStructure) : 'NOT FOUND');
+console.log('  appState.plotPoints:', window.appState?.plotPoints ? Object.keys(window.appState.plotPoints) : 'NOT FOUND');
+console.log('  appState.projectPath:', window.appState?.projectPath);
+
+// 2. Check plot points data structure
+if (window.appState?.plotPoints) {
+    console.log('\n2. Plot Points Data Structure:');
+    Object.entries(window.appState.plotPoints).forEach(([actKey, plotData]) => {
+        console.log(`  ${actKey}:`, {
+            type: typeof plotData,
+            isArray: Array.isArray(plotData),
+            hasPlotPointsProperty: plotData?.plotPoints ? 'YES' : 'NO',
+            length: Array.isArray(plotData) ? plotData.length : (plotData?.plotPoints?.length || 'N/A'),
+            sample: Array.isArray(plotData) ? plotData[0] : plotData?.plotPoints?.[0]
+        });
+    });
+} else {
+    console.log('\n2. ❌ NO PLOT POINTS FOUND IN appState');
+}
+
+// 3. Check if generationHelperManager exists
+console.log('\n3. Generation Helper Manager:');
+console.log('  window.generationHelperManager exists:', !!window.generationHelperManager);
+
+// 4. Test hasPlotPointsForElement function for each act
+if (window.appState?.generatedStructure) {
+    console.log('\n4. Testing hasPlotPointsForElement for each act:');
+    Object.keys(window.appState.generatedStructure).forEach(actKey => {
+        const hasPlotPoints = window.hasPlotPointsForElement ? window.hasPlotPointsForElement(actKey) : 'FUNCTION NOT FOUND';
+        console.log(`  ${actKey}: ${hasPlotPoints}`);
+    });
+} else {
+    console.log('\n4. ❌ NO GENERATED STRUCTURE FOUND');
+}
+
+// 5. Test the filtering logic directly
+if (window.appState?.generatedStructure) {
+    console.log('\n5. Testing Scene Generation Filter Logic:');
+    const structureKeys = Object.keys(window.appState.generatedStructure);
+    console.log('  Structure keys:', structureKeys);
+    
+    const actsWithPlotPoints = structureKeys.filter(key => {
+        const hasPlots = window.hasPlotPointsForElement ? window.hasPlotPointsForElement(key) : false;
+        console.log(`    ${key} has plot points:`, hasPlots);
+        return hasPlots;
+    });
+    
+    console.log('  Acts with plot points:', actsWithPlotPoints);
+    console.log('  Count:', actsWithPlotPoints.length);
+}
+
+// 6. Check if we're in the right step
+console.log('\n6. Current Step Check:');
+console.log('  currentStep:', window.appState?.currentStep);
+console.log('  Should be step 5 for scene generation');
+
+// 🚨 NEW: Targeted scene generation debugging
+console.log('\n7. Scene Generation Prerequisites:');
+console.log('  appState.isAuthenticated:', window.appState?.isAuthenticated);
+console.log('  appState.apiKey exists:', !!window.appState?.apiKey);
+console.log('  creditWidget exists:', !!window.creditWidget);
+
+// 8. Test the actual scene generation logic step by step
+console.log('\n8. Manual Scene Generation Test:');
+try {
+    if (window.sceneGenerationManager) {
+        console.log('  sceneGenerationManager exists: ✅');
+        
+        // Test the exact logic from generateAllScenes
+        const structureKeys = Object.keys(window.appState.generatedStructure || {});
+        console.log('  Structure keys count:', structureKeys.length);
+        
+        if (structureKeys.length === 0) {
+            console.log('  ❌ ERROR: No structural elements found');
+        } else {
+            // Filter to only acts that have plot points
+            const actsWithPlotPoints = structureKeys.filter(key => window.hasPlotPointsForElement(key));
+            console.log('  Acts with plot points count:', actsWithPlotPoints.length);
+            console.log('  Acts with plot points:', actsWithPlotPoints);
+            
+            if (actsWithPlotPoints.length === 0) {
+                console.log('  ❌ ERROR: No acts have plot points - This is the bug!');
+            } else {
+                console.log('  ✅ Ready for scene generation!');
+            }
+        }
+    } else {
+        console.log('  ❌ sceneGenerationManager not found');
+    }
+} catch (error) {
+    console.log('  ❌ Error in manual test:', error);
+}
+
+// 9. Check progress tracker
+console.log('\n9. Progress Tracker Check:');
+console.log('  progressTracker exists:', !!window.progressTracker);
+
+console.log('\n=====================================');
+console.log('🔍 DEBUG COMPLETE - Check the output above for issues'); 

@@ -1,5 +1,37 @@
 // Script formatting functions for different output formats
 
+// Helper function to wrap text at specified width while preserving indentation
+function wrapTextWithIndentation(text, maxWidth = 60, indent = '') {
+  console.log(`🔧 TEXT WRAPPING: "${text.substring(0, 50)}..." with indent "${indent}" maxWidth ${maxWidth}`);
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = '';
+  
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testLineWithIndent = `${indent}${testLine}`;
+    
+    if (testLineWithIndent.length <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) {
+        lines.push(`${indent}${currentLine}`);
+        currentLine = word;
+      } else {
+        // Word is too long, just add it as-is
+        lines.push(`${indent}${word}`);
+      }
+    }
+  }
+  
+  if (currentLine) {
+    lines.push(`${indent}${currentLine}`);
+  }
+  
+  console.log(`🔧 TEXT WRAPPING RESULT: ${lines.length} lines`);
+  return lines.join('\n');
+}
+
 function generateBasicScript(data) {
   let script = `${data.storyInput.title}\n`;
   script += `Written by: [Author Name]\n\n`;
@@ -123,7 +155,9 @@ function formatPlaceholderScene(scene, sceneNumber) {
   }
   
   if (scene.description) {
-    placeholder += `${scene.description}\n\n`;
+    // Wrap scene description text at 60 characters
+    const wrappedDescription = wrapTextWithIndentation(scene.description, 60, '');
+    placeholder += `${wrappedDescription}\n\n`;
   }
   
   placeholder += `[DIALOGUE TO BE WRITTEN FOR: ${scene.title || 'Untitled Scene'}]\n\n`;
@@ -200,13 +234,15 @@ function formatDialogueForScreenplay(dialogue) {
     else if (line.match(/^\(.+\)$/)) {
       formatted += `                  ${line}\n`;
     }
-    // Dialogue lines
+    // Dialogue lines - wrap with proper indentation
     else if (inDialogue && !line.match(/^(INT\.|EXT\.)/i)) {
-      formatted += `          ${line}\n`;
+      const wrappedDialogue = wrapTextWithIndentation(line, 60, '          ');
+      formatted += `${wrappedDialogue}\n`;
     }
-    // Action lines
+    // Action lines - wrap without indentation
     else {
-      formatted += `${line}\n`;
+      const wrappedAction = wrapTextWithIndentation(line, 60, '');
+      formatted += `${wrappedAction}\n`;
       inDialogue = false;
     }
   }

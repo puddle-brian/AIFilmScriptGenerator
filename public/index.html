@@ -1337,5 +1337,51 @@
     
     <script src="genie-suggestions.js?v=1.0"></script>
     <script src="script.js?v=20250627222030"></script>
+
+    <!-- 🔧 ROBUST INITIALIZATION - Prevent SceneGenerationManager failures -->
+    <script>
+    // Bulletproof scene generation system
+    document.addEventListener('DOMContentLoaded', function() {
+        // Multiple initialization attempts to prevent flimsy failures
+        let initAttempts = 0;
+        const maxAttempts = 5;
+        
+        function initializeSceneGeneration() {
+            initAttempts++;
+            console.log(`🔧 Scene generation init attempt ${initAttempts}/${maxAttempts}`);
+            
+            if (typeof SceneGenerationManager !== 'undefined') {
+                window.sceneGenerationManager = new SceneGenerationManager();
+                console.log('✅ SceneGenerationManager initialized successfully');
+                return true;
+            }
+            
+            // If class not found, ensure legacy functions work
+            if (typeof generateAllScenes !== 'undefined') {
+                console.log('✅ Using legacy scene generation functions');
+                // Create a mock sceneGenerationManager that uses legacy functions
+                window.sceneGenerationManager = {
+                    generateAllScenes: window.generateAllScenes,
+                    displayScenes: window.displayScenes || function(scenes) {
+                        console.log('Displaying scenes:', scenes);
+                    }
+                };
+                return true;
+            }
+            
+            if (initAttempts < maxAttempts) {
+                console.log(`⏳ Retrying scene generation init in 200ms...`);
+                setTimeout(initializeSceneGeneration, 200);
+                return false;
+            }
+            
+            console.error('❌ FAILED to initialize scene generation after all attempts');
+            return false;
+        }
+        
+        // Start first attempt after a short delay
+        setTimeout(initializeSceneGeneration, 100);
+    });
+    </script>
 </body>
 </html> 

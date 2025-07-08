@@ -654,7 +654,14 @@ Return ONLY valid JSON in this exact format:
       ],
     });
 
-    const scenesData = JSON.parse(completion.content[0].text);
+    // Helper function to clean markdown formatting from AI response
+    const cleanJsonResponse = (text) => {
+      // Remove markdown code blocks if present
+      return text.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    };
+
+    const cleanedResponse = cleanJsonResponse(completion.content[0].text);
+    const scenesData = JSON.parse(cleanedResponse);
 
     // Save scenes to database (part of unified format - scenes will be saved by the calling endpoint)
     console.log(`✅ Generated ${scenesData.scenes.length} scenes for plot point ${plotPointIndexNum} (database integration)`);

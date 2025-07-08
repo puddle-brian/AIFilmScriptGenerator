@@ -672,4 +672,4 @@ class SceneGenerationManager {
 }
 
 // Initialize the global instance
-const sceneGenerationManager = new SceneGenerationManager(); 
+window.sceneGenerationManager = new SceneGenerationManager(); 
