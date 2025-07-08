@@ -55,8 +55,25 @@ function generateContentFromV2Format(data) {
     dialogueKeys: Object.keys(data.generatedDialogues || {})
   });
   
-  // Use the same logic as frontend assembleScript() function
-  if (data.generatedScenes) {
+  // 🔧 FIX: Use the same logic as frontend assembleScript() function for consistent ordering
+  if (data.generatedDialogues && Object.keys(data.generatedDialogues).length > 0) {
+    console.log('✅ Using dialogue generation order for consistent scene assembly (server-side)');
+    
+    // 🔧 FIX: Use explicit dialogue keys order sent from frontend
+    const dialogueKeys = data.dialogueKeysOrder || Object.keys(data.generatedDialogues);
+    console.log('📋 Dialogue keys in exact generation order (server-side):', dialogueKeys);
+    
+    // Process each dialogue in the exact order they were generated
+    dialogueKeys.forEach((dialogueKey) => {
+      const dialogueContent = data.generatedDialogues[dialogueKey];
+      console.log(`📝 Adding scene ${sceneNumber} with dialogue from key: ${dialogueKey}`);
+      content += formatSceneForScreenplay(dialogueContent, sceneNumber);
+      sceneNumber++;
+    });
+  }
+  // Fallback: if no dialogues, use template structure for scenes without dialogue
+  else if (data.generatedScenes) {
+    console.log('📄 No dialogues found, using template structure fallback (server-side)');
     let structureKeys = Object.keys(data.generatedScenes);
     
     // If we have template data, use its order (same as frontend)
@@ -76,29 +93,8 @@ function generateContentFromV2Format(data) {
       
       if (sceneGroup && Array.isArray(sceneGroup)) {
         sceneGroup.forEach((scene, index) => {
-          // Use exact same sceneId format as frontend: structureKey-index
-          const sceneId = `${structureKey}-${index}`;
-          
-          console.log(`🔍 Checking scene ${sceneId} for dialogue`);
-          
-          // Check if dialogue exists (same logic as frontend)
-          let dialogueFound = false;
-          let dialogueContent = null;
-          
-          if (data.generatedDialogues && data.generatedDialogues[sceneId]) {
-            dialogueContent = data.generatedDialogues[sceneId];
-            dialogueFound = true;
-            console.log(`✅ Found dialogue for ${sceneId}`);
-          }
-          
-          if (dialogueFound) {
-            // Format the same way as frontend formatSceneForScreenplay
-            content += formatSceneForScreenplay(dialogueContent, sceneNumber);
-          } else {
-            // No dialogue - show placeholder (same as frontend)
-            content += formatPlaceholderScene(scene, sceneNumber);
-          }
-          
+          console.log(`📝 Adding scene ${sceneNumber} with scene info: "${scene.title || 'Untitled'}"`);
+          content += formatPlaceholderScene(scene, sceneNumber);
           sceneNumber++;
         });
       }

@@ -57,284 +57,63 @@ class ScriptAssemblyManager {
         const totalDialogues = Object.keys(appState.generatedDialogues || {}).length;
         console.log('Total dialogues available:', totalDialogues);
         
-        // Always use template structure as foundation if available
-        if (appState.templateData && appState.templateData.structure) {
-            console.log('✅ Using template structure with enhanced dialogue lookup');
+        // 🔧 FIX: Always use dialogue generation order for scene assembly
+        // This ensures scenes appear in the same order as they were generated
+        if (appState.generatedDialogues && Object.keys(appState.generatedDialogues).length > 0) {
+            console.log('✅ Using dialogue generation order for consistent scene assembly');
+            
+            // Get all dialogue keys in their EXACT generation order (no sorting!)
+            const dialogueKeys = Object.keys(appState.generatedDialogues);
+            console.log('📋 Dialogue keys in exact generation order:', dialogueKeys);
+            
+            // Process each dialogue in the exact order they were generated
+            dialogueKeys.forEach((dialogueKey) => {
+                const dialogueContent = appState.generatedDialogues[dialogueKey];
+                console.log(`📝 Adding scene ${sceneNumber} with dialogue from key: ${dialogueKey}`);
+                script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
+                totalGeneratedScenes++;
+                totalScenes++;
+                sceneNumber++;
+                console.log(`✅ Added dialogue from key: ${dialogueKey}`);
+            });
+        }
+        // Fallback: if no dialogues, use the old template-based approach
+        else if (appState.templateData && appState.templateData.structure) {
+            console.log('📄 No dialogues found, using template structure fallback');
             const templateStructure = appState.templateData.structure;
             console.log('Template structure keys:', Object.keys(templateStructure));
             
-            // 🎯 CONTENT-FIRST PROCESSING: Process acts with dialogue first
-            const allActKeys = Object.keys(templateStructure);
-            const dialogueKeys = Object.keys(appState.generatedDialogues || {});
-            
-            // Separate acts with dialogue from acts without dialogue
-            const actsWithDialogue = allActKeys.filter(actKey => {
-                const actDialogueKeys = dialogueKeys.filter(key => key.startsWith(actKey + '-'));
-                return actDialogueKeys.length > 0;
-            });
-            
-            const actsWithoutDialogue = allActKeys.filter(actKey => {
-                const actDialogueKeys = dialogueKeys.filter(key => key.startsWith(actKey + '-'));
-                return actDialogueKeys.length === 0;
-            });
-            
-            console.log('🎯 Content-first processing:');
-            console.log('- Acts with dialogue (processed first):', actsWithDialogue);
-            console.log('- Acts without dialogue (processed after):', actsWithoutDialogue);
-            
-            // Process acts with dialogue first, then acts without dialogue
-            const orderedActKeys = [...actsWithDialogue, ...actsWithoutDialogue];
-            console.log('🎯 Final processing order:', orderedActKeys);
+            // Process template structure for scenes without dialogue
+            const orderedActKeys = Object.keys(templateStructure);
             
             orderedActKeys.forEach((actKey) => {
                 const act = templateStructure[actKey];
-                console.log(`\n🎭 Processing act: ${actKey}`);
+                console.log(`\n🎭 Processing act: ${actKey} (fallback mode)`);
                 
-                // Check if we have plot points for this act
-                const plotPoints = appState.plotPoints && appState.plotPoints[actKey];
-                console.log(`📋 Plot points for ${actKey}:`, plotPoints ? plotPoints.length : 'none');
-                
-                // 🔍 DETAILED PLOT POINT DEBUGGING
-                if (appState.plotPoints && appState.plotPoints[actKey]) {
-                    console.log(`🔍 Plot points structure for ${actKey}:`, appState.plotPoints[actKey]);
-                    console.log(`🔍 Plot points type for ${actKey}:`, typeof appState.plotPoints[actKey]);
-                    console.log(`🔍 Plot points Array.isArray for ${actKey}:`, Array.isArray(appState.plotPoints[actKey]));
-                } else {
-                    console.log(`🔍 No plot points found for ${actKey}`);
-                    console.log(`🔍 appState.plotPoints[${actKey}]:`, appState.plotPoints ? appState.plotPoints[actKey] : 'plotPoints object missing');
-                    console.log(`🔍 Available plotPoints keys:`, appState.plotPoints ? Object.keys(appState.plotPoints) : 'none');
-                    if (appState.plotPoints && Object.keys(appState.plotPoints).includes(actKey)) {
-                        console.log(`🔍 Key "${actKey}" exists but value is:`, appState.plotPoints[actKey]);
-                    }
-                }
-                
-                // 🔍 DETAILED DEBUGGING: Check what dialogue keys exist for this act
-                const actDialogueKeys = dialogueKeys.filter(key => key.startsWith(actKey + '-'));
-                console.log(`🎬 Available dialogue keys for ${actKey}:`, actDialogueKeys);
-                
-                // 🎯 HIERARCHICAL CONTENT FALLBACK: Show best available content for each act
-                const hasScenes = appState.generatedScenes && appState.generatedScenes[actKey];
-                const hasDialogue = actDialogueKeys.length > 0;
-                const hasPlotPoints = plotPoints && Array.isArray(plotPoints) && plotPoints.length > 0;
-                
-                console.log(`✅ Processing act: ${actKey} (content levels: dialogue=${hasDialogue}, scenes=${!!hasScenes}, plotPoints=${hasPlotPoints})`);
-                
-                if (plotPoints && Array.isArray(plotPoints)) {
-                    // Track overall scene count for this act (for old dialogue key fallback)
-                    let actSceneCount = 0;
-                    
-                    // Process each plot point
-                    plotPoints.forEach((plotPoint, plotIndex) => {
-                        const plotPointKey = `${actKey}-${plotIndex}`;
-                        
-                        // Check if we have scenes for this plot point
-                        const scenes = appState.generatedScenes && appState.generatedScenes[plotPointKey];
-                        console.log(`🔍 Looking for scenes with key: ${plotPointKey}`, scenes ? `Found ${scenes.length} scenes` : 'No scenes');
-                        
-                        if (scenes && Array.isArray(scenes)) {
-                            // Process each scene
-                            scenes.forEach((scene, sceneIndex) => {
-                                const sceneId = `${plotPointKey}-${sceneIndex}`;
-                                totalScenes++;
-                                
-                                // Enhanced dialogue lookup with multiple fallback strategies
-                                let dialogueFound = false;
-                                let dialogueContent = null;
-                                let lookupMethod = '';
-                                
-                                console.log(`🎬 Scene ${sceneNumber}: "${scene.title || 'Untitled'}" (${sceneId})`);
-                                
-                                // Strategy 1: Try exact scene ID (plot-point-based)
-                                if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
-                                    dialogueContent = appState.generatedDialogues[sceneId];
-                                    dialogueFound = true;
-                                    lookupMethod = `exact sceneId: ${sceneId}`;
-                                }
-                                // Strategy 2: Try scene title
-                                else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
-                                    dialogueContent = appState.generatedDialogues[scene.title];
-                                    dialogueFound = true;
-                                    lookupMethod = `scene title: ${scene.title}`;
-                                }
-                                // Strategy 3: Try normalized scene title
-                                else if (appState.generatedDialogues && scene.title) {
-                                    const normalizedTitle = scene.title.replace(/\s+/g, '_');
-                                    if (appState.generatedDialogues[normalizedTitle]) {
-                                        dialogueContent = appState.generatedDialogues[normalizedTitle];
-                                        dialogueFound = true;
-                                        lookupMethod = `normalized title: ${normalizedTitle}`;
-                                    }
-                                }
-                                // Strategy 4: Try act-based key (common format: actKey-sceneIndex)
-                                else {
-                                    const actBasedKey = `${actKey}-${actSceneCount}`;
-                                    if (appState.generatedDialogues && appState.generatedDialogues[actBasedKey]) {
-                                        dialogueContent = appState.generatedDialogues[actBasedKey];
-                                        dialogueFound = true;
-                                        lookupMethod = `act-based key: ${actBasedKey}`;
-                                    }
-                                    // Strategy 5: Try simple scene index
-                                    else {
-                                        const simpleKey = `${actKey}-${sceneIndex}`;
-                                        if (appState.generatedDialogues && appState.generatedDialogues[simpleKey]) {
-                                            dialogueContent = appState.generatedDialogues[simpleKey];
-                                            dialogueFound = true;
-                                            lookupMethod = `simple key: ${simpleKey}`;
-                                        }
-                                    }
-                                }
-                                
-                                // 🎯 HIERARCHICAL CONTENT FALLBACK
-                                if (dialogueFound) {
-                                    console.log(`✅ Level 1: Found dialogue using ${lookupMethod}`);
-                                    script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
-                                    totalGeneratedScenes++;
-                                } else {
-                                    console.log(`⬇️ Level 2: No dialogue found, using scene info for "${scene.title || 'Untitled'}"`);
-                                    script += this.formatPlaceholderScene(scene, sceneNumber);
-                                }
-                                
-                                actSceneCount++;
-                                sceneNumber++;
-                            });
-                        } else {
-                            // No scenes for this plot point - check for dialogue anyway
-                            console.log(`🔍 No scenes for ${plotPointKey}, checking for dialogue...`);
-                            
-                            let dialogueFound = false;
-                            let dialogueContent = null;
-                            let lookupMethod = '';
-                            
-                            if (appState.generatedDialogues) {
-                                // Try various key formats
-                                const possibleKeys = [
-                                    `${actKey}-${plotIndex}`,
-                                    `${actKey}-0`,
-                                    `${actKey}-${sceneNumber-1}`
-                                ];
-                                
-                                for (const key of possibleKeys) {
-                                    if (appState.generatedDialogues[key]) {
-                                        dialogueContent = appState.generatedDialogues[key];
-                                        dialogueFound = true;
-                                        lookupMethod = `fallback key: ${key}`;
-                                        console.log(`✅ Found dialogue using ${lookupMethod}`);
-                                        break;
-                                    }
-                                }
-                            }
-                            
-                            totalScenes++;
-                            // 🎯 HIERARCHICAL CONTENT FALLBACK
-                            if (dialogueFound) {
-                                console.log(`✅ Level 1: Found dialogue using ${lookupMethod}`);
-                                script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
-                                totalGeneratedScenes++;
-                            } else {
-                                console.log(`⬇️ Level 3: No dialogue or scenes found, using plot point info for "${plotPoint.title || plotPoint.description || 'Untitled'}"`);
-                                script += this.formatPlotPointFallback(plotPoint, actKey, plotIndex, sceneNumber);
-                            }
-                            sceneNumber++;
-                        }
+                // Check if we have scenes for this act (without dialogue)
+                const actScenes = appState.generatedScenes && appState.generatedScenes[actKey];
+                if (actScenes && Array.isArray(actScenes) && actScenes.length > 0) {
+                    console.log(`⬇️ Found ${actScenes.length} scenes for ${actKey} (no dialogue)`);
+                    // Process scenes without dialogue
+                    actScenes.forEach((scene, index) => {
+                        console.log(`📝 Adding scene ${sceneNumber} with scene info: "${scene.title || 'Untitled'}"`);
+                        script += this.formatPlaceholderScene(scene, sceneNumber);
+                        totalScenes++;
+                        sceneNumber++;
                     });
                 } else {
-                    // No plot points - enhanced fallback with better dialogue detection
-                    console.log(`📝 No plot points for ${actKey}, using enhanced act fallback`);
-                    console.log(`🔍 Checking for dialogue keys starting with "${actKey}-":`, actDialogueKeys);
-                    
-                    // Check for ANY dialogue that starts with this actKey
-                    let foundDialogue = false;
-                    if (appState.generatedDialogues && actDialogueKeys.length > 0) {
-                        console.log(`✅ Found ${actDialogueKeys.length} dialogue entries for ${actKey}:`, actDialogueKeys);
-                        
-                        // Sort keys to ensure proper order (act1-0, act1-1, etc.)
-                        actDialogueKeys.sort();
-                        
-                        // Add each dialogue as a scene
-                        actDialogueKeys.forEach((dialogueKey, index) => {
-                            const dialogueContent = appState.generatedDialogues[dialogueKey];
-                            console.log(`📝 Adding scene ${sceneNumber} with dialogue from key: ${dialogueKey}`);
-                            script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
-                            totalGeneratedScenes++;
-                            totalScenes++;
-                            sceneNumber++;
-                            console.log(`✅ Added dialogue from key: ${dialogueKey}`);
-                        });
-                        foundDialogue = true;
-                    }
-                    
-                    // 🎯 HIERARCHICAL CONTENT FALLBACK: Check for scenes even without dialogue
-                    if (!foundDialogue) {
-                        // Check if we have scenes for this act (without dialogue)
-                        const actScenes = appState.generatedScenes && appState.generatedScenes[actKey];
-                        if (actScenes && Array.isArray(actScenes) && actScenes.length > 0) {
-                            console.log(`⬇️ Level 2: No dialogue found, but found ${actScenes.length} scenes for ${actKey}`);
-                            // Process scenes without dialogue
-                            actScenes.forEach((scene, index) => {
-                                console.log(`📝 Adding scene ${sceneNumber} with scene info: "${scene.title || 'Untitled'}"`);
-                                script += this.formatPlaceholderScene(scene, sceneNumber);
-                                totalScenes++;
-                                sceneNumber++;
-                            });
-                        } else {
-                            console.log(`⬇️ Level 4: No dialogue, scenes, or plot points found for ${actKey}, using act info`);
-                            script += this.formatActFallback(act, actKey, sceneNumber);
-                            totalScenes++;
-                            sceneNumber++;
-                        }
-                    }
+                    console.log(`⬇️ No scenes found for ${actKey}, using act info`);
+                    script += this.formatActFallback(act, actKey, sceneNumber);
+                    totalScenes++;
+                    sceneNumber++;
                 }
             });
         }
-        // Legacy fallback: if no template structure, try to use existing generated content
-        else if (appState.generatedScenes && Object.keys(appState.generatedScenes).length > 0) {
-            console.log('📄 No template structure, using existing generated scenes');
-            let structureKeys = Object.keys(appState.generatedScenes);
-            
-            structureKeys.forEach((structureKey) => {
-                const sceneGroup = appState.generatedScenes[structureKey];
-                if (sceneGroup && Array.isArray(sceneGroup)) {
-                    sceneGroup.forEach((scene, index) => {
-                        const sceneId = `${structureKey}-${index}`;
-                        totalScenes++;
-                        
-                        // Check for dialogue
-                        let dialogueFound = false;
-                        let dialogueContent = null;
-                        
-                        if (appState.generatedDialogues && appState.generatedDialogues[sceneId]) {
-                            dialogueContent = appState.generatedDialogues[sceneId];
-                            dialogueFound = true;
-                            console.log(`✅ Found dialogue for ${sceneId}`);
-                        }
-                        else if (appState.generatedDialogues && scene.title && appState.generatedDialogues[scene.title]) {
-                            dialogueContent = appState.generatedDialogues[scene.title];
-                            dialogueFound = true;
-                            console.log(`✅ Found dialogue by title: ${scene.title}`);
-                        }
-                        
-                        if (dialogueFound) {
-                            script += this.formatSceneForScreenplay(dialogueContent, sceneNumber);
-                            totalGeneratedScenes++;
-                        } else {
-                            console.log(`❌ No dialogue found for ${sceneId}`);
-                            script += this.formatPlaceholderScene(scene, sceneNumber);
-                        }
-                        
-                        sceneNumber++;
-                    });
-                }
-            });
-        } else {
-            // Final fallback: if no structure at all, just add generated dialogues
-            console.log('🔄 No structure, using fallback dialogue method');
-            console.log('Available dialogues in fallback:', Object.keys(appState.generatedDialogues || {}));
-            Object.values(appState.generatedDialogues || {}).forEach(dialogue => {
-                script += this.formatSceneForScreenplay(dialogue, sceneNumber);
-                totalGeneratedScenes++;
-                sceneNumber++;
-            });
-            totalScenes = totalGeneratedScenes;
+        // Final fallback: if no structure at all, just add what we have
+        else {
+            console.log('🔄 No structure or dialogues, using basic fallback');
+            script += '\n\nNo content available for script assembly.\n\nPlease generate scenes and dialogue first.\n\n';
+            totalScenes = 1;
         }
         
         script += '\n\nFADE OUT.\n\nTHE END';
@@ -560,6 +339,10 @@ class ScriptAssemblyManager {
         }
         
         try {
+            // Get dialogue keys in the same order as frontend assembly
+            const dialogueKeys = Object.keys(appState.generatedDialogues);
+            console.log('📋 Sending dialogue keys order to server:', dialogueKeys);
+            
             const response = await fetch('/api/export', {
                 method: 'POST',
                 headers: {
@@ -567,6 +350,7 @@ class ScriptAssemblyManager {
                 },
                 body: JSON.stringify({
                     projectData: appState,
+                    dialogueKeysOrder: dialogueKeys,  // 🔧 Send explicit order
                     format: format,
                     projectPath: appState.projectPath
                 })

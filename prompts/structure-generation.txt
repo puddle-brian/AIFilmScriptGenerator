@@ -56,4 +56,11 @@ CRITICAL: Use the EXACT structure keys from the Template Structure Elements abov
 
 IMPORTANT: Your response must be ONLY valid JSON, with no additional text, markdown formatting, or explanations. Start with { and end with }.
 
+JSON FORMATTING REQUIREMENTS:
+- All string values must be properly escaped (use \" for quotes, \n for line breaks)
+- Keep descriptions concise but detailed (2-3 sentences max per element)
+- Avoid using unescaped quotes, apostrophes, or line breaks within string values
+- Use simple, clear language that focuses on concrete actions and events
+- Ensure all strings are properly terminated with closing quotes
+
 The JSON structure should match the Template Structure Elements exactly, using the same keys and updating the names/descriptions based on the story content while preserving the template's structural intent. 

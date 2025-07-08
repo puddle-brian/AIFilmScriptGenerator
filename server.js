@@ -3180,7 +3180,7 @@ Format: {"element_name": {"scenes": [{"title": "...", "location": "...", "descri
 // Export final script with professional formatting (v2.0 database format)
 app.post('/api/export', async (req, res) => {
   try {
-    const { projectData, format = 'text', projectPath } = req.body;
+    const { projectData, format = 'text', projectPath, dialogueKeysOrder } = req.body;
     
     console.log('🎬 Export request:', { format, projectPath: projectPath ? 'exists' : 'none' });
     
@@ -3194,13 +3194,18 @@ app.post('/api/export', async (req, res) => {
       sceneKeys: Object.keys(projectData.generatedScenes || {}),
       hasGeneratedDialogues: !!projectData.generatedDialogues,
       dialogueKeys: Object.keys(projectData.generatedDialogues || {}),
+      hasDialogueKeysOrder: !!dialogueKeysOrder,
+      dialogueKeysOrderLength: dialogueKeysOrder ? dialogueKeysOrder.length : 0,
       hasStoryInput: !!projectData.storyInput,
       title: projectData.storyInput.title
     });
     
     // Use projectData directly since everything is now in database v2.0 format
     // No file system access needed - all data is in the projectData object
-    const fullProjectData = projectData;
+    const fullProjectData = {
+      ...projectData,
+      dialogueKeysOrder: dialogueKeysOrder  // 🔧 Pass explicit dialogue order to formatter
+    };
     
     // Generate script based on format
     let script;
