@@ -355,25 +355,30 @@ class ProjectManager {
         const progressInfo = this.calculateProjectCardProgress(project);
         const progressBadge = `<span class="progress-badge" title="${progressInfo.icon} ${progressInfo.label}">${progressInfo.step}/7</span>`;
         
+        // Safe fallback values for undefined properties
+        const safeTitle = project.title || 'Untitled Project';
+        const safeLogline = project.logline || 'No description available';
+        const escapedTitle = safeTitle.replace(/'/g, "\\'");
+        
         // Different actions based on context
         const actions = context === 'profile' ? `
             <button class="load-project-btn" onclick="event.stopPropagation(); openProject('${project.path}')">
                 📁 Open Project
             </button>
-            <button class="duplicate-project-btn" onclick="event.stopPropagation(); duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}')">
+            <button class="duplicate-project-btn" onclick="event.stopPropagation(); duplicateProject('${project.path}', '${escapedTitle}')">
                 📄 Duplicate
             </button>
-            <button class="delete-project-btn" onclick="event.stopPropagation(); (async () => { try { await deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}'); } catch(e) { console.error('Delete error:', e); } })()">
+            <button class="delete-project-btn" onclick="event.stopPropagation(); (async () => { try { await deleteProject('${project.path}', '${escapedTitle}'); } catch(e) { console.error('Delete error:', e); } })()">
                 🗑️ Delete
             </button>
         ` : `
             <button class="load-project-btn" onclick="(async () => { try { await loadProject('${project.path}'); } catch(e) { console.error('Load error:', e); } })()">
                 📁 Load Project
             </button>
-            <button class="duplicate-project-btn" onclick="(async () => { try { await duplicateProject('${project.path}', '${project.title.replace(/'/g, "\\'")}'); } catch(e) { console.error('Duplicate error:', e); } })()">
+            <button class="duplicate-project-btn" onclick="(async () => { try { await duplicateProject('${project.path}', '${escapedTitle}'); } catch(e) { console.error('Duplicate error:', e); } })()">
                 📄 Duplicate
             </button>
-            <button class="delete-project-btn" onclick="(async () => { try { await deleteProject('${project.path}', '${project.title.replace(/'/g, "\\'")}'); } catch(e) { console.error('Delete error:', e); } })()">
+            <button class="delete-project-btn" onclick="(async () => { try { await deleteProject('${project.path}', '${escapedTitle}'); } catch(e) { console.error('Delete error:', e); } })()">
                 🗑️ Delete
             </button>
         `;
@@ -381,13 +386,13 @@ class ProjectManager {
         return `
             <div class="project-item">
                 <div class="project-header">
-                    <h4>${project.title}</h4>
+                    <h4>${safeTitle}</h4>
                     ${progressBadge}
                 </div>
                 <div class="project-meta">
                     <strong>Last saved:</strong> ${new Date(project.updatedAt || project.createdAt).toLocaleString()}
                 </div>
-                <div class="project-logline">"${project.logline}"</div>
+                <div class="project-logline">"${safeLogline}"</div>
                 <div class="project-actions">
                     ${actions}
                 </div>

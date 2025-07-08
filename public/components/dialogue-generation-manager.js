@@ -827,6 +827,11 @@ class DialogueGenerationManager {
                 <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${globalSceneIndex})" title="Preview dialogue prompt">
                     🔍 Preview
                 </button>
+                ${hasExistingDialogue ? `
+                <button class="btn btn-voice btn-sm" onclick="sceneVoiceGenerator.showVoiceAssignmentModal('${sceneId}', appState.generatedDialogues['${sceneId}'])" title="Generate voice audio for this scene">
+                    🎙️ Voice
+                </button>
+                ` : ''}
             </div>
         `;
         
@@ -956,6 +961,11 @@ class DialogueGenerationManager {
                 <button class="btn btn-outline btn-sm" onclick="previewDialoguePrompt('${structureKey}', ${index})" title="Preview the prompt used to generate dialogue for this scene">
                     🔍 Dialogue Prompt
                 </button>
+                ${hasExistingDialogue ? `
+                <button class="btn btn-voice btn-sm" onclick="sceneVoiceGenerator.showVoiceAssignmentModal('${sceneId}', appState.generatedDialogues['${sceneId}'])" title="Generate voice audio for this scene">
+                    🎙️ Generate Voice
+                </button>
+                ` : ''}
             `;
             container.appendChild(actionsDiv);
         });

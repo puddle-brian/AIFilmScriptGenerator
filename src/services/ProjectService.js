@@ -32,12 +32,12 @@ class ProjectService {
           if (projectContext.storyInput) {
             projectList.push({
               path: row.project_name,
-              title: projectContext.storyInput.title,
+              title: projectContext.storyInput.title || row.project_name || 'Untitled Project',
               tone: projectContext.storyInput.tone,
               totalScenes: projectContext.storyInput.totalScenes,
               createdAt: row.created_at,
               updatedAt: row.updated_at,
-              logline: projectContext.storyInput.logline,
+              logline: projectContext.storyInput.logline || 'No description available',
               source: 'database',
               thumbnail_data: row.thumbnail_data
             });

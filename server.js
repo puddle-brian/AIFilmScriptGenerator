@@ -25,6 +25,7 @@ const paymentsRoutes = require('./routes/payments');
 const libraryRoutes = require('./routes/library');
 const adminRoutes = require('./routes/admin');
 const feedbackRoutes = require('./routes/feedback');
+const voiceRoutes = require('./routes/voice');
 const { authenticateApiKey, checkCredits, requireAdmin, optionalAuth } = require('./middleware/auth');
 
 // Import middleware modules
@@ -5110,6 +5111,9 @@ const startServer = async () => {
   app.use('/api', adminRoutes.router);
   app.use('/api/feedback', feedbackRoutes);
   
+  // Voice generation routes
+  app.use('/api/voice', voiceRoutes);
+  
   app.listen(PORT, () => {
     console.log(`🚀 Film Script Generator server running on port ${PORT}`);
     console.log(`🌐 Access: http://localhost:${PORT}`);
@@ -5169,6 +5173,10 @@ if (process.env.VERCEL) {
     app.use('/api', libraryRoutes.router);
     app.use('/api', adminRoutes.router);
     app.use('/api/feedback', feedbackRoutes);
+    
+    // Voice generation routes
+    app.use('/api/voice', voiceRoutes);
+    
     console.log('✅ All routes mounted successfully');
   };
   
