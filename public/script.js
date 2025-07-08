@@ -5137,6 +5137,9 @@ function saveGlobalPlotPointsCreativeDirection() {
     
     // Update UI to show global direction is active
     updateGlobalDirectionIndicators();
+    
+    // 🔧 FIX: Refresh display to show updated creative direction previews
+    displayPlotPointsGeneration();
 }
 
 // Global Scenes Creative Direction Modal Functions
@@ -5173,6 +5176,9 @@ function saveGlobalScenesCreativeDirection() {
     
     // Update UI to show global direction is active
     updateGlobalDirectionIndicators();
+    
+    // 🔧 FIX: Refresh display to show updated creative direction previews
+    displayScenes(appState.generatedScenes || {});
 }
 
 // Global Dialogue Creative Direction Modal Functions
@@ -5209,6 +5215,9 @@ function saveGlobalDialogueCreativeDirection() {
     
     // Update UI to show global direction is active
     updateGlobalDirectionIndicators();
+    
+    // 🔧 FIX: Refresh display to show updated creative direction previews
+    displayDialogueGeneration();
 }
 
 // Update global direction indicators in the UI
