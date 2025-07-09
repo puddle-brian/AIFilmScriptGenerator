@@ -62,7 +62,7 @@ class SceneVoiceGenerator {
                         type: 'action',
                         text: currentLine,
                         character: null,
-                        shouldSpeak: true
+                        shouldSpeak: false  // Action lines should never be spoken
                     });
                     currentLine = '';
                 }
@@ -70,7 +70,7 @@ class SceneVoiceGenerator {
                     type: 'scene_heading',
                     text: line,
                     character: null,
-                    shouldSpeak: true
+                    shouldSpeak: false  // Scene headings should never be spoken
                 });
                 continue;
             }
@@ -141,7 +141,7 @@ class SceneVoiceGenerator {
                 type: 'action',
                 text: currentLine,
                 character: null,
-                shouldSpeak: true
+                shouldSpeak: false  // Action lines should never be spoken
             });
         }
         
@@ -174,7 +174,7 @@ class SceneVoiceGenerator {
                 <div class="scene-info">
                     <h5>🎬 Generate Audio for Scene</h5>
                     <p><strong>Characters:</strong> ${characters.join(', ')}</p>
-                    <p><strong>Lines:</strong> ${parsedLines.filter(line => line.shouldSpeak).length}</p>
+                    <p><strong>Dialogue Lines:</strong> ${parsedLines.filter(line => line.type === 'dialogue').length}</p>
                 </div>
                 
                 <div class="voice-assignments">
@@ -197,23 +197,10 @@ class SceneVoiceGenerator {
                     `).join('')}
                 </div>
                 
-                <div class="narrator-voice">
-                    <h6>Narrator Voice (for scene directions)</h6>
-                    <select id="narrator-voice" class="form-control">
-                        <option value="">Select narrator voice...</option>
-                        ${this.availableVoices.map(voice => `
-                            <option value="${voice.id}">${voice.name} (${voice.category || 'General'})</option>
-                        `).join('')}
-                    </select>
-                </div>
+
                 
                 <div class="generation-options">
-                    <label>
-                        <input type="checkbox" id="include-actions">
-                        Include scene directions and actions
-                    </label>
-                    <br>
-                    <label>Pause between lines (seconds):</label>
+                    <label>Pause between dialogue lines (seconds):</label>
                     <input type="number" id="pause-duration" class="form-control" value="0" min="0" max="3" step="0.1">
                     
                     <div class="advanced-settings" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px;">
@@ -278,17 +265,61 @@ class SceneVoiceGenerator {
      * Auto-assign voices to characters
      */
     autoAssignVoices(characters) {
+        let matchedCount = 0;
+        const usedVoices = new Set();
+        
         characters.forEach((character, index) => {
-            const voiceIndex = index % this.availableVoices.length;
-            const voice = this.availableVoices[voiceIndex];
-            document.getElementById(`voice-${character}`).value = voice.id;
+            const characterLower = character.toLowerCase();
+            
+            // First, try to find an exact or close match by name
+            let matchedVoice = null;
+            
+            // Look for exact match first
+            matchedVoice = this.availableVoices.find(voice => 
+                voice.name.toLowerCase() === characterLower && !usedVoices.has(voice.id)
+            );
+            
+            // If no exact match, try partial match (character name contains voice name or vice versa)
+            if (!matchedVoice) {
+                matchedVoice = this.availableVoices.find(voice => {
+                    const voiceLower = voice.name.toLowerCase();
+                    return (
+                        (characterLower.includes(voiceLower) || voiceLower.includes(characterLower)) &&
+                        voiceLower.length >= 3 && // Avoid matching very short names
+                        !usedVoices.has(voice.id)
+                    );
+                });
+            }
+            
+            // If still no match, use round-robin for remaining characters
+            if (!matchedVoice) {
+                const availableVoices = this.availableVoices.filter(voice => !usedVoices.has(voice.id));
+                if (availableVoices.length > 0) {
+                    const voiceIndex = (index - matchedCount) % availableVoices.length;
+                    matchedVoice = availableVoices[voiceIndex];
+                }
+            } else {
+                matchedCount++;
+            }
+            
+            // Fallback to any voice if all else fails
+            if (!matchedVoice) {
+                const voiceIndex = index % this.availableVoices.length;
+                matchedVoice = this.availableVoices[voiceIndex];
+            }
+            
+            if (matchedVoice) {
+                document.getElementById(`voice-${character}`).value = matchedVoice.id;
+                usedVoices.add(matchedVoice.id);
+            }
         });
         
-        // Auto-assign narrator
-        const narratorVoice = this.availableVoices.find(v => v.name.toLowerCase().includes('narrator')) || this.availableVoices[0];
-        document.getElementById('narrator-voice').value = narratorVoice.id;
+
         
-        showToast('Voices auto-assigned!', 'success');
+        const message = matchedCount > 0 ? 
+            `Voices auto-assigned! (${matchedCount} name matches found)` : 
+            'Voices auto-assigned!';
+        showToast(message, 'success');
     }
 
     /**
@@ -361,8 +392,6 @@ class SceneVoiceGenerator {
             voiceAssignments[character] = voiceId;
         }
         
-        const narratorVoiceId = document.getElementById('narrator-voice').value;
-        const includeActions = document.getElementById('include-actions').checked;
         const pauseDuration = parseFloat(document.getElementById('pause-duration').value);
         
         // Get advanced voice settings
@@ -389,8 +418,7 @@ class SceneVoiceGenerator {
                     sceneId: sceneId,
                     dialogueText: dialogueText,
                     voiceAssignments: voiceAssignments,
-                    narratorVoiceId: narratorVoiceId,
-                    includeActions: includeActions,
+                    includeActions: false,  // Always false since action lines should never be spoken
                     pauseDuration: pauseDuration,
                     voiceSettings: voiceSettings
                 })
@@ -521,14 +549,24 @@ class SceneVoiceGenerator {
     async downloadSceneAudio(sceneId) {
         try {
             // Get project title for better file naming
-            const projectTitle = appState.currentProject?.title || 'Unnamed_Project';
-            const cleanProjectTitle = projectTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const projectTitle = appState.storyInput?.title || appState.currentStoryConcept?.title || 'Unnamed Project';
+            console.log('🎬 Voice download - Project title debug:', {
+                storyInputTitle: appState.storyInput?.title,
+                storyConceptTitle: appState.currentStoryConcept?.title,
+                finalTitle: projectTitle
+            });
+            // Clean project title but preserve spaces and common characters
+            const cleanProjectTitle = projectTitle.replace(/[<>:"/\\|?*]/g, '').trim();
             
-            // Create timestamp for unique file naming
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            // Clean scene ID - only convert underscores to dots for hierarchical numbering (1_2_3 -> 1.2.3)
+            let cleanSceneId = sceneId.replace(/[<>:"/\\|?*]/g, '');
             
-            // Clean scene ID for filename
-            const cleanSceneId = sceneId.replace(/[^a-zA-Z0-9_-]/g, '_');
+            // Check if it's a hierarchical pattern (numbers separated by underscores)
+            if (/^\d+_\d+(?:_\d+)?$/.test(cleanSceneId)) {
+                // Convert numeric hierarchical pattern to dots (1_2_3 -> 1.2.3)
+                cleanSceneId = cleanSceneId.replace(/_/g, '.');
+            }
+            // Otherwise keep descriptive names as-is (opening_image-0 stays opening_image-0)
             
             const response = await fetch(`/api/voice/download-scene/${sceneId}`, {
                 headers: {
@@ -543,8 +581,8 @@ class SceneVoiceGenerator {
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             
-            // Create descriptive filename: ProjectName_SceneID_YYYY-MM-DDTHH-MM-SS_Complete.mp3
-            const filename = `${cleanProjectTitle}_${cleanSceneId}_${timestamp}_Complete.mp3`;
+            // Simple filename: ProjectName_SceneID.mp3
+            const filename = `${cleanProjectTitle}_${cleanSceneId}.mp3`;
             
             // Create download link and trigger download
             const a = document.createElement('a');
@@ -560,7 +598,7 @@ class SceneVoiceGenerator {
             // Clean up
             setTimeout(() => URL.revokeObjectURL(url), 1000);
             
-            showToast(`Complete scene MP3 downloaded: ${filename}`, 'success');
+            showToast(`Downloaded: ${filename}`, 'success');
             
         } catch (error) {
             console.error('Download failed:', error);
@@ -574,14 +612,19 @@ class SceneVoiceGenerator {
     async downloadSceneParts(sceneId) {
         try {
             // Get project title for better file naming
-            const projectTitle = appState.currentProject?.title || 'Unnamed_Project';
-            const cleanProjectTitle = projectTitle.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const projectTitle = appState.storyInput?.title || appState.currentStoryConcept?.title || 'Unnamed Project';
+            // Clean project title but preserve spaces and common characters
+            const cleanProjectTitle = projectTitle.replace(/[<>:"/\\|?*]/g, '').trim();
             
-            // Create timestamp for unique file naming
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+            // Clean scene ID - only convert underscores to dots for hierarchical numbering (1_2_3 -> 1.2.3)
+            let cleanSceneId = sceneId.replace(/[<>:"/\\|?*]/g, '');
             
-            // Clean scene ID for filename
-            const cleanSceneId = sceneId.replace(/[^a-zA-Z0-9_-]/g, '_');
+            // Check if it's a hierarchical pattern (numbers separated by underscores)
+            if (/^\d+_\d+(?:_\d+)?$/.test(cleanSceneId)) {
+                // Convert numeric hierarchical pattern to dots (1_2_3 -> 1.2.3)
+                cleanSceneId = cleanSceneId.replace(/_/g, '.');
+            }
+            // Otherwise keep descriptive names as-is (opening_image-0 stays opening_image-0)
             
             const response = await fetch(`/api/voice/download-scene-parts/${sceneId}`, {
                 headers: {
@@ -596,8 +639,8 @@ class SceneVoiceGenerator {
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             
-            // Create descriptive filename: ProjectName_SceneID_YYYY-MM-DDTHH-MM-SS_Parts.zip
-            const filename = `${cleanProjectTitle}_${cleanSceneId}_${timestamp}_Parts.zip`;
+            // Simple filename: ProjectName_SceneID_Parts.zip
+            const filename = `${cleanProjectTitle}_${cleanSceneId}_Parts.zip`;
             
             // Create download link and trigger download
             const a = document.createElement('a');
@@ -613,7 +656,7 @@ class SceneVoiceGenerator {
             // Clean up
             setTimeout(() => URL.revokeObjectURL(url), 1000);
             
-            showToast(`Individual parts ZIP downloaded: ${filename}`, 'success');
+            showToast(`Downloaded: ${filename}`, 'success');
             
         } catch (error) {
             console.error('Parts download failed:', error);

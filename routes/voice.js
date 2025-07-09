@@ -92,7 +92,7 @@ router.post('/preview', async (req, res) => {
 // Generate line-by-line audio for a scene
 router.post('/generate-scene-audio', async (req, res) => {
     try {
-        const { sceneId, dialogueText, voiceAssignments, narratorVoiceId, includeActions, pauseDuration, voiceSettings } = req.body;
+        const { sceneId, dialogueText, voiceAssignments, includeActions, pauseDuration, voiceSettings } = req.body;
         
         if (!sceneId || !dialogueText || !voiceAssignments) {
             return res.status(400).json({ error: 'Scene ID, dialogue text, and voice assignments are required' });
@@ -101,22 +101,30 @@ router.post('/generate-scene-audio', async (req, res) => {
         // Parse dialogue into lines
         const parsedLines = parseDialogueIntoLines(dialogueText);
         
-        // Generate audio for each line
+        console.log('🎬 Parsed lines for scene:', sceneId);
+        parsedLines.forEach((line, index) => {
+            console.log(`Line ${index}: type=${line.type}, character=${line.character}, shouldSpeak=${line.shouldSpeak}, text="${line.text.substring(0, 50)}..."`);
+        });
+        
+        // Filter to only dialogue lines (never process action lines or scene headings)
+        const dialogueLines = parsedLines.filter(line => line.type === 'dialogue' && line.character);
+        
+        console.log(`🎯 Processing ${dialogueLines.length} dialogue lines (out of ${parsedLines.length} total lines)`);
+        
+        // Double-check: log exactly what we're about to process as dialogue
+        dialogueLines.forEach((line, index) => {
+            console.log(`🔥 WILL GENERATE AUDIO FOR: Character="${line.character}", Text="${line.text}"`);
+        });
+        
+        // Generate audio for each dialogue line only
         const audioSegments = [];
         let totalDuration = 0;
         
-        for (const line of parsedLines) {
-            if (!line.shouldSpeak) continue;
-            
-            const voiceId = line.character ? voiceAssignments[line.character] : narratorVoiceId;
+        for (const line of dialogueLines) {
+            const voiceId = voiceAssignments[line.character];
             
             if (!voiceId) {
-                if (line.character) {
-                    throw new Error(`No voice assigned to character: ${line.character}`);
-                } else if (includeActions) {
-                    throw new Error('No narrator voice assigned');
-                }
-                continue;
+                throw new Error(`No voice assigned to character: ${line.character}`);
             }
             
             try {
@@ -372,7 +380,7 @@ function parseDialogueIntoLines(dialogueText) {
                     type: 'action',
                     text: currentLine,
                     character: null,
-                    shouldSpeak: true
+                    shouldSpeak: false  // Action lines should never be spoken
                 });
                 currentLine = '';
             }
@@ -380,26 +388,28 @@ function parseDialogueIntoLines(dialogueText) {
                 type: 'scene_heading',
                 text: line,
                 character: null,
-                shouldSpeak: true
+                shouldSpeak: false  // Scene headings should never be spoken
             });
             continue;
         }
         
-        // Character name (all caps)
-        if (line.match(/^[A-Z][A-Z\s']+(\s*\([^)]*\))?$/)) {
+        // Character name (all caps) - but not scene directions like "BEDROOM - NIGHT"
+        if (line.match(/^[A-Z][A-Z\s']+(\s*\([^)]*\))?$/) && !line.includes(' - ') && !line.match(/^(INT\.|EXT\.)/)) {
             // Save previous action line if exists
             if (currentLine) {
+                console.log(`📝 FOUND ACTION LINE: "${currentLine}"`);
                 parsedLines.push({
                     type: 'action',
                     text: currentLine,
                     character: null,
-                    shouldSpeak: true
+                    shouldSpeak: false  // Action lines should never be spoken
                 });
                 currentLine = '';
             }
             
             const characterMatch = line.match(/^([A-Z][A-Z\s']+)(\s*\([^)]*\))?$/);
             currentCharacter = characterMatch[1].trim();
+            console.log(`🎭 FOUND CHARACTER: "${currentCharacter}"`);
             continue;
         }
         
@@ -416,6 +426,7 @@ function parseDialogueIntoLines(dialogueText) {
             
             // Only add if there's actual dialogue content after cleaning
             if (cleanedText.trim()) {
+                console.log(`💬 FOUND DIALOGUE: "${currentCharacter}" says "${cleanedText}"`);
                 parsedLines.push({
                     type: 'dialogue',
                     text: cleanedText,
@@ -433,15 +444,24 @@ function parseDialogueIntoLines(dialogueText) {
         } else {
             currentLine = line;
         }
+        console.log(`📖 BUILDING ACTION LINE: "${currentLine.substring(0, 100)}${currentLine.length > 100 ? '...' : ''}"`);
+        
+        // CRITICAL FIX: If we have a currentCharacter but we're building action lines, 
+        // this means the previous "character" detection was wrong (probably scene directions)
+        if (currentCharacter) {
+            console.log(`🚨 WARNING: Had currentCharacter "${currentCharacter}" but building action line - clearing character!`);
+            currentCharacter = null;
+        }
     }
     
     // Add final action line if exists
     if (currentLine) {
+        console.log(`📝 FOUND FINAL ACTION LINE: "${currentLine}"`);
         parsedLines.push({
             type: 'action',
             text: currentLine,
             character: null,
-            shouldSpeak: true
+            shouldSpeak: false  // Action lines should never be spoken
         });
     }
     
